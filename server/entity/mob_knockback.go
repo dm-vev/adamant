@@ -1,8 +1,8 @@
 package entity
 
 import (
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"math"
-	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
@@ -33,7 +33,8 @@ func knockBackResisted(e knockBackable, src mgl64.Vec3, force, height, resistanc
 	}
 	xd, zd := e.Position()[0]-src[0], e.Position()[2]-src[2]
 	for xd*xd+zd*zd < 1e-5 {
-		xd, zd = (rand.Float64()-rand.Float64())*.01, (rand.Float64()-rand.Float64())*.01
+		r := knockBackRandom(e)
+		xd, zd = (r.NextDouble()-r.NextDouble())*.01, (r.NextDouble()-r.NextDouble())*.01
 	}
 	l := math.Sqrt(xd*xd + zd*zd)
 	push := force * scale
@@ -55,4 +56,10 @@ func entityKnockbackResistance(e world.Entity) float64 {
 		return a.Armour().KnockBackResistance()
 	}
 	return 0
+}
+
+// knockBackRandom returns the random stream of an entity that is knocked back,
+// its mob's, as LivingEntity.knockback draws from the random of the entity.
+func knockBackRandom(e knockBackable) *vanilla.Random {
+	return randomOf(e.(interface{ currentTx() *world.Tx }).currentTx(), e)
 }

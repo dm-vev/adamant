@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"hash/fnv"
-
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/cube/trace"
@@ -37,11 +35,13 @@ type netherConfig struct {
 	seed                       int64
 }
 type netherState struct {
-	kind            netherKind
-	health          *HealthManager
-	effects         *EffectManager
-	mc              *MovementComputer
-	random          vanilla.Random
+	kind    netherKind
+	health  *HealthManager
+	effects *EffectManager
+	mc      *MovementComputer
+	random  vanilla.Random
+	// randomSeeded is set once random has been seeded.
+	randomSeeded    bool
 	size, jumpDelay int
 	// explosionPower is the power of the fireballs of a ghast.
 	explosionPower int
@@ -92,11 +92,8 @@ func openNether(tx *world.Tx, h *world.EntityHandle, d *world.EntityData, k neth
 		(netherConfig{kind: k, size: size}).Apply(d)
 	}
 	s := d.Data.(*netherState)
-	if h != nil {
-		u := h.UUID()
-		r := fnv.New64a()
-		_, _ = r.Write(u[:])
-		s.random = vanilla.NewLegacyRandom(int64(r.Sum64()))
+	if h != nil && !s.randomSeeded {
+		s.random, s.randomSeeded = openRandom(tx, h), true
 	}
 	e := &Ent{tx: tx, handle: h, data: d}
 	switch k {

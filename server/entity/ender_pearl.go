@@ -1,11 +1,8 @@
 package entity
 
 import (
-	"hash/fnv"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/cube/trace"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -57,11 +54,7 @@ func teleport(e *Ent, tx *world.Tx, _ trace.Result) {
 	}
 	dest := behaviour.oldPos
 	if isPlayerEntity(owner) {
-		uuid := e.H().UUID()
-		hash := fnv.New64a()
-		_, _ = hash.Write(uuid[:])
-		random := vanilla.NewLegacyRandom(int64(hash.Sum64()))
-		if random.NextFloat() < .05 && tx.World().GameRuleBool("spawn_monsters") && tx.World().Difficulty() != world.DifficultyPeaceful {
+		if tx.RegionRandom().NextFloat() < .05 && tx.World().GameRuleBool("spawn_monsters") && tx.World().Difficulty() != world.DifficultyPeaceful {
 			tx.AddEntity(NewEndermite(world.EntitySpawnOpts{Position: owner.Position(), Rotation: owner.Rotation(), SpawnReason: "ender_pearl"}))
 		}
 	}

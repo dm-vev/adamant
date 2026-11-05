@@ -1,7 +1,7 @@
 package entity
 
 import (
-	"math/rand/v2"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
@@ -263,7 +263,7 @@ func finishBreeding(a, partner breeder, tx *world.Tx) {
 	resetLove(partner)
 	viewBreederAction(a, LoveHeartsAction{})
 	if tx.World().GameRuleBool("mob_drops") {
-		for _, orb := range NewExperienceOrbs(a.Position(), 1+rand.IntN(7)) {
+		for _, orb := range NewExperienceOrbs(tx, a.Position(), 1+randInt(randomOf(tx, a), 7)) {
 			tx.AddEntity(orb)
 		}
 	}
@@ -274,14 +274,6 @@ func finishBreeding(a, partner breeder, tx *world.Tx) {
 // the baby skips the spawn initialisation of natural spawns.
 func babyAt(a breeder) world.EntitySpawnOpts {
 	return world.EntitySpawnOpts{Position: a.Position(), SpawnReason: "BREEDING", SpawnFinalized: true}
-}
-
-// randomParent returns either of the two values with equal chance.
-func randomParent[T any](a, b T) T {
-	if rand.IntN(2) == 0 {
-		return a
-	}
-	return b
 }
 
 // encodeNBT adds the Java InLove, LoveCause, ForcedAge and AgeLocked tags.
@@ -323,7 +315,7 @@ func viewBreederState(a breeder) {
 // mixedDyeColour ports DyeColor.getMixedColor: the colour of the dye a
 // crafting recipe of exactly two dyes of the colours passed makes, or either
 // colour if no recipe does.
-func mixedDyeColour(a, b item.Colour) item.Colour {
+func mixedDyeColour(r *vanilla.Random, a, b item.Colour) item.Colour {
 	for _, r := range recipe.Recipes() {
 		s, ok := r.(recipe.Shapeless)
 		if !ok || s.Block() != "crafting_table" || len(s.Input()) != 2 || len(s.Output()) != 1 {
@@ -339,7 +331,7 @@ func mixedDyeColour(a, b item.Colour) item.Colour {
 			return out.Colour
 		}
 	}
-	return randomParent(a, b)
+	return randomParent(r, a, b)
 }
 
 // recipeDyeColour returns the colour of a recipe ingredient that is a dye.

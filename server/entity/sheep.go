@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"math/rand/v2"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -205,7 +204,7 @@ func (s *Sheep) Shear(_ *world.Tx) item.Stack {
 	}
 	b.sheared = true
 	viewBreederState(s)
-	stacks, err := loot.Generate("minecraft:shearing/sheep/"+item.Colours()[b.color].String(), rand.Int64(), loot.Context{Entity: "minecraft:sheep", Origin: s.Position()})
+	stacks, err := loot.Generate("minecraft:shearing/sheep/"+item.Colours()[b.color].String(), randomOf(s.tx, s).NextLong(), loot.Context{Entity: "minecraft:sheep", Origin: s.Position()})
 	if err != nil || len(stacks) == 0 {
 		return item.Stack{}
 	}
@@ -248,7 +247,7 @@ func (s *Sheep) breedingFood(stack item.Stack) bool { return itemNamed(stack, "m
 // colour two dyes of the parents' colours craft into, or the colour of
 // either parent if they craft into none.
 func (s *Sheep) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
-	colour := mixedDyeColour(item.Colours()[s.behaviour().color], item.Colours()[partner.(*Sheep).behaviour().color])
+	colour := mixedDyeColour(randomOf(s.tx, s), item.Colours()[s.behaviour().color], item.Colours()[partner.(*Sheep).behaviour().color])
 	return babyAt(s).New(SheepType, SheepConfig{AgeTicks: babyStartAge, WoolColor: sheepColor(colour.String())})
 }
 

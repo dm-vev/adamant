@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"math/rand/v2"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
@@ -387,7 +385,7 @@ func (t *Turtle) spawnChildFromBreeding(tx *world.Tx, partner breeder) {
 	resetLove(t)
 	resetLove(partner)
 	if tx.World().GameRuleBool("mob_drops") {
-		for _, orb := range NewExperienceOrbs(t.Position(), 1+rand.IntN(7)) {
+		for _, orb := range NewExperienceOrbs(tx, t.Position(), 1+randInt(randomOf(tx, t), 7)) {
 			tx.AddEntity(orb)
 		}
 	}

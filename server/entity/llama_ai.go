@@ -1,8 +1,8 @@
 package entity
 
 import (
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"math"
-	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -88,7 +88,7 @@ func (m *Mount) spit(tx *world.Tx, target world.Entity) {
 	if d.Len() == 0 {
 		return
 	}
-	tx.AddEntity(NewLlamaSpit(world.EntitySpawnOpts{Position: origin, Velocity: shootVelocity(d, 1.5, 10)}, m))
+	tx.AddEntity(NewLlamaSpit(world.EntitySpawnOpts{Position: origin, Velocity: shootVelocity(randomOf(tx, m), d, 1.5, 10)}, m))
 	tx.PlaySound(m.Position(), sound.Event{Name: "spit", Entity: m.H().Type().EncodeEntity()})
 	m.b().llamaState.didSpit = true
 }
@@ -96,8 +96,8 @@ func (m *Mount) spit(tx *world.Tx, target world.Entity) {
 // shootVelocity ports Projectile.getMovementToShoot: the direction, spread
 // by a triangular distribution growing with the uncertainty, at the power
 // passed.
-func shootVelocity(d mgl64.Vec3, power, uncertainty float64) mgl64.Vec3 {
+func shootVelocity(r *vanilla.Random, d mgl64.Vec3, power, uncertainty float64) mgl64.Vec3 {
 	spread := .0172275 * uncertainty
-	triangle := func() float64 { return spread * (rand.Float64() - rand.Float64()) }
+	triangle := func() float64 { return spread * (r.NextDouble() - r.NextDouble()) }
 	return d.Normalize().Add(mgl64.Vec3{triangle(), triangle(), triangle()}).Mul(power)
 }

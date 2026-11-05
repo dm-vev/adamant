@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
@@ -89,9 +88,6 @@ func (c GoatConfig) New() *GoatBehaviour {
 	}
 	b := &GoatBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, screaming: c.Screaming, leftHorn: c.LeftHorn, rightHorn: c.RightHorn, speed: .2, effects: NewEffectManager()}
 	b.br = newGoatBrain(b)
-	// GoatAi.initMemories.
-	b.br.set(memLongJumpCooldownTicks, 600+rand.IntN(601))
-	b.br.set(memRamCooldownTicks, 600+rand.IntN(5401))
 	return b
 }
 
@@ -110,6 +106,9 @@ type GoatBehaviour struct {
 	loweringHead, longJumping bool
 	speed                     float64
 	breeding                  breeding
+	// memoriesInit is set once the goat has run GoatAi.initMemories, which
+	// draws from the random of the goat in its first tick.
+	memoriesInit bool
 }
 
 func (g *Goat) behaviour() *GoatBehaviour { return g.Behaviour().(*GoatBehaviour) }
@@ -133,6 +132,17 @@ func (b *GoatBehaviour) attackDamage() float64 {
 // brain.
 func (b *GoatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	g := &Goat{Ent: e}
+	if !b.memoriesInit {
+		// GoatAi.initMemories.
+		b.memoriesInit = true
+		r := b.ai.randomSource(tx, e)
+		if !b.br.has(memLongJumpCooldownTicks) {
+			b.br.set(memLongJumpCooldownTicks, 600+randInt(r, 601))
+		}
+		if !b.br.has(memRamCooldownTicks) {
+			b.br.set(memRamCooldownTicks, 600+randInt(r, 5401))
+		}
+	}
 	b.ai.MovementSpeed, b.ai.EyeHeight = b.speed, 1.105
 	if b.age < 0 {
 		b.ai.EyeHeight = .59375
@@ -567,7 +577,7 @@ func (g *Goat) Interact(_ *world.Tx, u item.User, c *item.UseContext) bool {
 	if !feedBreeder(g, u, c) {
 		return false
 	}
-	r := rand.Float64()*.4 + .8
+	r := randomOf(g.tx, g).NextDouble()*.4 + .8
 	g.tx.PlaySound(g.Position(), sound.Custom{Name: g.behaviour().sound("entity.goat.eat", "entity.goat.screaming.eat"), Volume: 1, Pitch: r})
 	return true
 }
@@ -583,7 +593,8 @@ func (g *Goat) breedingFood(stack item.Stack) bool { return itemNamed(stack, "mi
 // breedOffspring ports Goat.getBreedOffspring: the kid screams like a
 // randomly picked parent, or with a 2% chance regardless.
 func (g *Goat) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
-	screaming := randomParent(g, partner.(*Goat)).behaviour().screaming || rand.Float64() < 0.02
+	r := randomOf(g.tx, g)
+	screaming := randomParent(r, g, partner.(*Goat)).behaviour().screaming || r.NextDouble() < 0.02
 	return babyAt(g).New(GoatType, GoatConfig{Age: babyStartAge, Screaming: screaming})
 }
 

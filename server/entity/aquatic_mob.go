@@ -1,7 +1,6 @@
 package entity
 
 import (
-	"hash/fnv"
 	"maps"
 	"time"
 
@@ -38,11 +37,8 @@ func (t aquaticMobType) Open(tx *world.Tx, h *world.EntityHandle, data *world.En
 	if data.Data == nil {
 		conf.Apply(data)
 	}
-	if h != nil {
-		hash := fnv.New64a()
-		_, _ = hash.Write([]byte(h.UUID().String()))
-		behaviour := data.Data.(*AquaticMobBehaviour)
-		behaviour.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
+	if behaviour := data.Data.(*AquaticMobBehaviour); h != nil && !behaviour.randomSeeded {
+		behaviour.random, behaviour.randomSeeded = openRandom(tx, h), true
 	}
 	base := &AquaticMob{Ent: &Ent{tx: tx, handle: h, data: data}}
 	switch t.id {
@@ -298,6 +294,8 @@ type AquaticMobBehaviour struct {
 	panic  *PanicGoal
 	speed  float64
 	random vanilla.Random
+	// randomSeeded is set once random has been seeded.
+	randomSeeded bool
 	// leader, leaderState and schoolSize are those of Java's
 	// AbstractSchoolingFish: the fish followed and the size of the school a
 	// leader leads.

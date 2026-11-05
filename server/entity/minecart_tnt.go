@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -86,7 +85,7 @@ func (b *MinecartTNTBehaviour) explode(e *Ent, tx *world.Tx, speedSq float64) {
 	if root > 5 {
 		root = 5
 	}
-	size := 4 + rand.Float64()*1.5*root
+	size := 4 + tx.RegionRandom().NextDouble()*1.5*root
 	block.ExplosionConfig{}.Explode(tx, world.NewEntityExplosionSource(e, size))
 }
 

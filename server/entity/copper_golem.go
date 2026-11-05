@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"hash/fnv"
-
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
@@ -24,9 +22,9 @@ func (copperGolemType) Open(tx *world.Tx, h *world.EntityHandle, d *world.Entity
 		(CopperGolemBehaviourConfig{NextWeatheringTick: -1}).Apply(d)
 	}
 	golem := &CopperGolem{Ent: &Ent{tx: tx, handle: h, data: d}}
-	hash := fnv.New64a()
-	_, _ = hash.Write([]byte(h.UUID().String()))
-	golem.b().random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
+	if b := golem.b(); !b.randomSeeded {
+		b.random, b.randomSeeded = openRandom(tx, h), true
+	}
 	return golem
 }
 func (copperGolemType) EncodeEntity() string        { return "minecraft:copper_golem" }
@@ -122,12 +120,14 @@ func (c CopperGolemBehaviourConfig) New() *CopperGolemBehaviour {
 }
 
 type CopperGolemBehaviour struct {
-	health             *HealthManager
-	effects            *EffectManager
-	ai                 MobAI
-	br                 *Brain
-	speed              float64
-	random             vanilla.Random
+	health  *HealthManager
+	effects *EffectManager
+	ai      MobAI
+	br      *Brain
+	speed   float64
+	random  vanilla.Random
+	// randomSeeded is set once random has been seeded.
+	randomSeeded       bool
 	weather, state     int
 	waxed, dead        bool
 	nextWeatheringTick int64

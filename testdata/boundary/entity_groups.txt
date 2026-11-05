@@ -196,6 +196,7 @@ raid_spawn.go spawn
 raider_ai.go villager
 raider_banner.go villager
 raider_mobs_ai.go villager
+random.go ai
 random_pos.go ai
 register.go registry
 rider_seat.go core

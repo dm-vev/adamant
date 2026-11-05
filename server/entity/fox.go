@@ -294,7 +294,7 @@ func (f *Fox) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
 			trusted = append(trusted, cause.String())
 		}
 	}
-	return babyAt(f).New(FoxType, FoxConfig{Age: babyStartAge, Variant: randomParent(f.b().variant, mate.b().variant), Trusted: trusted})
+	return babyAt(f).New(FoxType, FoxConfig{Age: babyStartAge, Variant: randomParent(randomOf(f.tx, f), f.b().variant, mate.b().variant), Trusted: trusted})
 }
 func (f *Fox) FinalizeSpawn(_ string, r *vanilla.Random) {
 	if r == nil {

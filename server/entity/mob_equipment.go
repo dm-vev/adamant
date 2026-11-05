@@ -540,7 +540,7 @@ func dropMobEquipment(tx *world.Tx, e world.Entity, stack item.Stack, chance flo
 	if oceanStackEnchantmentLevel(stack, "Curse of Vanishing", "minecraft:vanishing_curse") > 0 {
 		return
 	}
-	random := e.H().RegionRandom()
+	random := e.H().RegionRandomIn(tx)
 	if random.NextFloat() >= oceanEquipmentDropChance(chance, looting) {
 		return
 	}
@@ -553,7 +553,7 @@ func dropMobEquipment(tx *world.Tx, e world.Entity, stack item.Stack, chance flo
 			}
 		}
 	}
-	tx.AddEntity(NewItemDrop(world.EntitySpawnOpts{Position: e.Position()}, stack))
+	tx.AddEntity(NewItemDrop(tx, world.EntitySpawnOpts{Position: e.Position()}, stack))
 }
 
 func oceanEquipmentDropChance(chance float32, looting int) float32 {

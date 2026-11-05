@@ -1,10 +1,8 @@
 package entity
 
 import (
-	"hash/fnv"
 	"maps"
 	"math"
-	"math/rand/v2"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -31,11 +29,8 @@ func (t hostileMobType) Open(tx *world.Tx, h *world.EntityHandle, d *world.Entit
 		hostileConfig{kind: t.id}.Apply(d)
 	}
 	m := &HostileMob{Ent: &Ent{tx: tx, handle: h, data: d}}
-	if h != nil {
-		id := h.UUID()
-		hash := fnv.New64a()
-		_, _ = hash.Write(id[:])
-		d.Data.(*hostileState).random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
+	if s := d.Data.(*hostileState); h != nil && !s.randomSeeded {
+		s.random, s.randomSeeded = openRandom(tx, h), true
 	}
 	return hostileSpecies(m, t.id)
 }
@@ -383,10 +378,12 @@ func hostileTypeFor(id string) hostileMobType {
 }
 
 type hostileState struct {
-	health                                 *HealthManager
-	effects                                *EffectManager
-	mc                                     *MovementComputer
-	random                                 vanilla.Random
+	health  *HealthManager
+	effects *EffectManager
+	mc      *MovementComputer
+	random  vanilla.Random
+	// randomSeeded is set once random has been seeded.
+	randomSeeded                           bool
 	speed, attack                          float64
 	cureTicks                              int
 	cureStarter                            string
@@ -928,7 +925,7 @@ func (b *hostileState) burnUndead(e *Ent, tx *world.Tx) {
 		return
 	}
 	if _, durable := b.head.Item().(item.Durable); durable {
-		b.head = b.head.Damage(rand.IntN(2))
+		b.head = b.head.Damage(randInt(entRandom(tx, e), 2))
 	}
 }
 
@@ -942,7 +939,7 @@ func sunBurnTick(e *Ent, tx *world.Tx) bool {
 	eye := cube.PosFromVec3(EyePosition(e))
 	brightness := float32(max(int(tx.SkyLight(eye))-tx.SkyDarken(), int(tx.Light(eye)))) / 15
 	brightness /= 4 - 3*brightness
-	if brightness <= 0.5 || rand.Float32()*30 >= (brightness-0.4)*2 {
+	if brightness <= 0.5 || entRandom(tx, e).NextFloat()*30 >= (brightness-0.4)*2 {
 		return false
 	}
 	feet := cube.PosFromVec3(e.Position())

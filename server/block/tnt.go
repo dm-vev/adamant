@@ -1,6 +1,7 @@
 package block
 
 import (
+	"math"
 	"math/rand/v2"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // TNT is an explosive block that can be primed to generate an explosion.
@@ -89,6 +91,9 @@ func (t TNT) EncodeBlock() (name string, properties map[string]interface{}) {
 func spawnTnt(pos cube.Pos, tx *world.Tx, fuse time.Duration, owner world.Entity) {
 	tx.PlaySound(pos.Vec3Centre(), sound.TNT{})
 	tx.SetBlock(pos, nil, nil)
-	opts := world.EntitySpawnOpts{Position: pos.Vec3Centre()}
+	// PrimedTnt's constructor throws the TNT in a direction drawn from the
+	// Level.random of its world.
+	angle := tx.RegionRandom().NextDouble() * math.Pi * 2
+	opts := world.EntitySpawnOpts{Position: pos.Vec3Centre(), Velocity: mgl64.Vec3{-math.Sin(angle) * 0.02, 0.1, -math.Cos(angle) * 0.02}}
 	tx.AddEntity(tx.World().EntityRegistry().Config().TNT(opts, fuse, owner))
 }

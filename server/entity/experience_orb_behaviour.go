@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"math/rand/v2"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -95,7 +94,8 @@ func (exp *ExperienceOrbBehaviour) move(e *Ent, tx *world.Tx, mc *MovementComput
 		vel[1] -= exp.conf.Gravity
 	}
 	if l, ok := tx.Liquid(cube.PosFromVec3(pos)); ok && l.LiquidType() == "lava" {
-		vel = mgl64.Vec3{float64((rand.Float32() - rand.Float32()) * .2), float64(float32(.2)), float64((rand.Float32() - rand.Float32()) * .2)}
+		r := tx.RegionRandom()
+		vel = mgl64.Vec3{float64((r.NextFloat() - r.NextFloat()) * .2), float64(float32(.2)), float64((r.NextFloat() - r.NextFloat()) * .2)}
 	}
 	vel = exp.follow(e, tx, vel)
 

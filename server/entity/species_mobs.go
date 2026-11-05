@@ -1,7 +1,6 @@
 package entity
 
 import (
-	"hash/fnv"
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -58,11 +57,13 @@ type speciesConfig struct {
 	native                                 map[string]any
 }
 type speciesState struct {
-	kind                                     speciesKind
-	health                                   *HealthManager
-	effects                                  *EffectManager
-	mc                                       *MovementComputer
-	random                                   vanilla.Random
+	kind    speciesKind
+	health  *HealthManager
+	effects *EffectManager
+	mc      *MovementComputer
+	random  vanilla.Random
+	// randomSeeded is set once random has been seeded.
+	randomSeeded                             bool
 	speed, attack                            float64
 	fuse, swell, cooldown, jumpDelay, size   int
 	charged, ignited, climbing, dead, loaded bool
@@ -124,11 +125,8 @@ func openSpecies(tx *world.Tx, h *world.EntityHandle, d *world.EntityData, k spe
 		(speciesConfig{kind: k}).Apply(d)
 	}
 	s := d.Data.(*speciesState)
-	if h != nil {
-		u := h.UUID()
-		hash := fnv.New64a()
-		_, _ = hash.Write(u[:])
-		s.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
+	if h != nil && !s.randomSeeded {
+		s.random, s.randomSeeded = openRandom(tx, h), true
 	}
 	m := &speciesMob{Ent: &Ent{tx: tx, handle: h, data: d}, kind: k}
 	switch k {

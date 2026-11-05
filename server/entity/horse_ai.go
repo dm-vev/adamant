@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -267,6 +266,7 @@ var (
 func (m *Mount) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
 	o := partner.(interface{ mount() *Mount }).mount()
 	b, ob := m.b(), o.b()
+	r := randomOf(m.tx, m)
 	kind := b.kind
 	switch {
 	case b.kind == mountHorse && ob.kind == mountDonkey, b.kind == mountDonkey && ob.kind == mountHorse:
@@ -278,21 +278,21 @@ func (m *Mount) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle
 	c := defaultMountConfig(kind)
 	c.AgeTicks = babyStartAge
 	if kind != mountCamel {
-		c.MaxHealth = offspringAttribute(m.MaxHealth(), o.MaxHealth(), horseHealthRange)
+		c.MaxHealth = offspringAttribute(r, m.MaxHealth(), o.MaxHealth(), horseHealthRange)
 		c.Health = c.MaxHealth
-		c.JumpStrength = offspringAttribute(b.jumpStrength, ob.jumpStrength, horseJumpRange)
-		c.Speed = offspringAttribute(b.movementSpeed, ob.movementSpeed, horseSpeedRange)
+		c.JumpStrength = offspringAttribute(r, b.jumpStrength, ob.jumpStrength, horseJumpRange)
+		c.Speed = offspringAttribute(r, b.movementSpeed, ob.movementSpeed, horseSpeedRange)
 	}
 	switch {
 	case kind == mountHorse:
-		c.Variant = horseOffspringLook(b.variant, ob.variant)
+		c.Variant = horseOffspringLook(r, b.variant, ob.variant)
 	case b.llama():
-		strength := rand.IntN(max(b.strength, ob.strength)) + 1
-		if rand.Float32() < .03 {
+		strength := randInt(r, max(b.strength, ob.strength)) + 1
+		if r.NextFloat() < .03 {
 			strength++
 		}
 		c.Strength = min(strength, 5)
-		c.Variant = randomParent(b.variant, ob.variant)
+		c.Variant = randomParent(r, b.variant, ob.variant)
 	}
 	return babyAt(m).New(mountTypeFor(kind), c)
 }
@@ -301,19 +301,19 @@ func (m *Mount) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle
 // Horse.getBreedOffspring: four in nine foals take the colour of the parent
 // that bred, four of the partner and one a random one, and two in five the
 // markings of either parent or one in five random markings.
-func horseOffspringLook(own, partner int) int {
+func horseOffspringLook(r *vanilla.Random, own, partner int) int {
 	colour := own & 0xff
-	switch r := rand.IntN(9); {
-	case r >= 8:
-		colour = rand.IntN(7)
-	case r >= 4:
+	switch roll := randInt(r, 9); {
+	case roll >= 8:
+		colour = randInt(r, 7)
+	case roll >= 4:
 		colour = partner & 0xff
 	}
 	markings := own >> 8 & 0xff
-	switch r := rand.IntN(5); {
-	case r >= 4:
-		markings = rand.IntN(5)
-	case r >= 2:
+	switch roll := randInt(r, 5); {
+	case roll >= 4:
+		markings = randInt(r, 5)
+	case roll >= 2:
 		markings = partner >> 8 & 0xff
 	}
 	return colour | markings<<8
@@ -322,11 +322,11 @@ func horseOffspringLook(own, partner int) int {
 // offspringAttribute ports AbstractHorse.createOffspringAttribute: the
 // average of the parents, spread by their difference plus 15% of the range
 // either way and reflected back into the range.
-func offspringAttribute(a, b float64, r [2]float64) float64 {
+func offspringAttribute(rng *vanilla.Random, a, b float64, r [2]float64) float64 {
 	a, b = max(r[0], min(a, r[1])), max(r[0], min(b, r[1]))
 	margin := .15 * (r[1] - r[0])
 	spread := math.Abs(a-b) + margin*2
-	quality := (rand.Float64()+rand.Float64()+rand.Float64())/3 - .5
+	quality := (rng.NextDouble()+rng.NextDouble()+rng.NextDouble())/3 - .5
 	v := (a+b)/2 + spread*quality
 	switch {
 	case v > r[1]:

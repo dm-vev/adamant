@@ -94,7 +94,7 @@ func (b *oceanBehaviour) customServerAiStep(m *Mob) {
 	if b.kind != oceanElderGuardian {
 		return
 	}
-	if (m.AI.tickCount+int(m.H().UniqueID()&0x7fffffff))%1200 == 0 {
+	if (m.AI.tickCount+m.AI.entityID)%1200 == 0 {
 		for p := range m.tx.Players() {
 			if p.Position().Sub(m.data.Pos).LenSqr() > 2500 {
 				continue
@@ -284,7 +284,7 @@ func (c *guardianMoveControl) tick(m *Mob) {
 	m.AI.bodyYaw = yaw
 	speed := m.AI.speed + (mc.SpeedModifier()*m.AI.MovementSpeed-m.AI.speed)*.125
 	m.SetSpeed(speed)
-	phase := float64(m.AI.tickCount + int(m.H().UniqueID()&0x7fffffff))
+	phase := float64(m.AI.tickCount + m.AI.entityID)
 	push := math.Sin(phase*.5) * .05
 	cos, sin := math.Cos(yaw*math.Pi/180), math.Sin(yaw*math.Pi/180)
 	yPush := math.Sin(phase*.75) * .05

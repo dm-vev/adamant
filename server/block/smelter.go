@@ -368,7 +368,7 @@ func (s *smelter) broken(pos cube.Pos, tx *world.Tx) {
 	for _, i := range s.inventory.Clear() {
 		dropItem(tx, i, pos.Vec3())
 	}
-	for _, orb := range tx.World().EntityRegistry().Config().ExperienceOrbs(pos.Vec3Centre(), s.ResetExperience()) {
+	for _, orb := range tx.World().EntityRegistry().Config().ExperienceOrbs(tx, pos.Vec3Centre(), s.ResetExperience()) {
 		tx.AddEntity(orb)
 	}
 }

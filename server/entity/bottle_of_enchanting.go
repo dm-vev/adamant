@@ -29,7 +29,7 @@ var bottleOfEnchantingConf = ProjectileBehaviourConfig{
 // a trace.Result.
 func spawnExperience(_ *Ent, tx *world.Tx, target trace.Result) {
 	// ThrownExperienceBottle.onHit: 3 + nextInt(5) + nextInt(5) experience.
-	for _, orb := range NewExperienceOrbs(target.Position(), 3+rand.IntN(5)+rand.IntN(5)) {
+	for _, orb := range NewExperienceOrbs(tx, target.Position(), 3+rand.IntN(5)+rand.IntN(5)) {
 		tx.AddEntity(orb)
 	}
 }

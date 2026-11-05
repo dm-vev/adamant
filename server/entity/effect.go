@@ -104,9 +104,22 @@ func (m *EffectManager) Effects() []effect.Effect {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	effects := slices.Collect(maps.Values(m.effects))
+	effects := m.orderedLocked()
 	initial := append([]effect.Effect(nil), m.initialEffects...)
 	return append(effects, initial...)
+}
+
+// orderedLocked returns the lasting effects in the order of their IDs, so that
+// ticking them and listing them does not depend on the order of a map. The
+// caller holds the lock.
+func (m *EffectManager) orderedLocked() []effect.Effect {
+	effects := slices.Collect(maps.Values(m.effects))
+	slices.SortFunc(effects, func(a, b effect.Effect) int {
+		x, _ := effect.ID(a.Type())
+		y, _ := effect.ID(b.Type())
+		return x - y
+	})
+	return effects
 }
 
 // restore adds an effect a saved entity had. Like the effects passed to
@@ -127,7 +140,8 @@ func (m *EffectManager) Tick(entity Living, tx *world.Tx) {
 
 	var toApply []effect.Effect
 	var toEnd []effect.Effect
-	for i, eff := range m.effects {
+	for _, eff := range m.orderedLocked() {
+		i := reflect.TypeOf(eff.Type())
 		if m.expired(eff) {
 			delete(m.effects, i)
 			toEnd = append(toEnd, eff)

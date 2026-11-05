@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"math/rand/v2"
-
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
@@ -617,7 +615,7 @@ func piglinRandomNearbyPos(m *Mob) mgl64.Vec3 {
 // piglinBarterResponse ports PiglinAi.getBarterResponseItems: the loot of
 // the piglin bartering table.
 func piglinBarterResponse(m *Mob) []item.Stack {
-	stacks, err := loot.Generate("minecraft:gameplay/piglin_bartering", rand.Int64(), loot.Context{Entity: "minecraft:piglin", Origin: m.data.Pos})
+	stacks, err := loot.Generate("minecraft:gameplay/piglin_bartering", m.Random().NextLong(), loot.Context{Entity: "minecraft:piglin", Origin: m.data.Pos})
 	if err != nil {
 		return nil
 	}

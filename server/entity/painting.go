@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -113,7 +112,7 @@ func CreatePainting(tx *world.Tx, pos cube.Pos, facing cube.Direction) *world.En
 	if len(candidates) == 0 {
 		return nil
 	}
-	return NewPainting(world.EntitySpawnOpts{}, pos, facing, candidates[rand.IntN(len(candidates))])
+	return NewPainting(world.EntitySpawnOpts{}, pos, facing, candidates[randInt(tx.RegionRandom(), len(candidates))])
 }
 
 // paintingBox is Painting.calculateBoundingBox in absolute coordinates.

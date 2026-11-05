@@ -73,7 +73,10 @@ type MobAI struct {
 
 	maluses map[PathType]float64
 	random  *vanilla.Random
-	started bool
+	// entityID stands in for entity.getId(), which staggers the ticks the goals
+	// of the mob start on. It is drawn when the AI starts.
+	entityID int
+	started  bool
 
 	tickCount    int
 	noActionTime int
@@ -156,6 +159,10 @@ func (ai *MobAI) start(m *Mob) {
 		return
 	}
 	ai.started = true
+	// Java staggers the goals of mobs and some of their effects by
+	// entity.getId(), a counter of the level; the mob gets an id drawn from
+	// the Level.random of its world instead of one from its random UUID.
+	ai.entityID = int(m.tx.RegionRandom().NextInt32() & 0x7fffffff)
 	if ai.FollowRange == 0 {
 		ai.FollowRange = 16
 	}

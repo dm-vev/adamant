@@ -172,7 +172,7 @@ func breezeShootWindCharge(m *Mob, target world.Entity) {
 	d := mgl64.Vec3{tp[0] - m.data.Pos[0], tp[1] + target.H().Type().BBox(target).Height()*fraction - firingY, tp[2] - m.data.Pos[2]}
 	difficulty, _ := world.DifficultyID(m.tx.World().Difficulty())
 	origin := mgl64.Vec3{m.data.Pos[0], firingY, m.data.Pos[2]}
-	m.tx.AddEntity(NewBreezeWindCharge(world.EntitySpawnOpts{Position: origin, Velocity: shootVelocity(d, float64(float32(.7)), float64(5-difficulty*4))}, m.Self))
+	m.tx.AddEntity(NewBreezeWindCharge(world.EntitySpawnOpts{Position: origin, Velocity: shootVelocity(m.Random(), d, float64(float32(.7)), float64(5-difficulty*4))}, m.Self))
 	m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "entity.breeze.shoot", Volume: 1.5, Pitch: 1})
 }
 

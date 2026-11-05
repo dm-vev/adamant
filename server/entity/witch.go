@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"hash/fnv"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
@@ -35,10 +33,9 @@ func (witchType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) 
 		WitchConfig{}.Apply(d)
 	}
 	b := d.Data.(*WitchBehaviour)
-	id := h.UUID()
-	hash := fnv.New64a()
-	_, _ = hash.Write(id[:])
-	b.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
+	if !b.randomSeeded {
+		b.random, b.randomSeeded = openRandom(tx, h), true
+	}
 	return &Witch{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
 func (witchType) EncodeEntity() string        { return "minecraft:witch" }
@@ -99,10 +96,12 @@ func (c WitchConfig) Apply(d *world.EntityData) {
 }
 
 type WitchBehaviour struct {
-	health        *HealthManager
-	effects       *EffectManager
-	mc            *MovementComputer
-	random        vanilla.Random
+	health  *HealthManager
+	effects *EffectManager
+	mc      *MovementComputer
+	random  vanilla.Random
+	// randomSeeded is set once random has been seeded.
+	randomSeeded  bool
 	speed         float64
 	potionUseTime int
 	drinking      bool

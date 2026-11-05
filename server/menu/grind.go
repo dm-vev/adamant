@@ -69,7 +69,7 @@ func (t *Tx) Grind() error {
 		resultStack = resultStack.WithDurability(firstDurability + secondDurability + maxDurability*5/100)
 	}
 
-	for _, o := range entity.NewExperienceOrbs(entity.EyePosition(t.o.Owner), experienceFromEnchantments(resultStack)) {
+	for _, o := range entity.NewExperienceOrbs(t.o.Tx, entity.EyePosition(t.o.Owner), experienceFromEnchantments(resultStack)) {
 		t.o.Tx.AddEntity(o)
 	}
 

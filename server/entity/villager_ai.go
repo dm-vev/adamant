@@ -2206,6 +2206,14 @@ func (b *VillagerBehaviour) transferGossip(m *Mob, source *VillagerBehaviour, co
 	if len(entries) == 0 {
 		return
 	}
+	// The random picks index the entries, so their order must not be that of
+	// a map.
+	slices.SortFunc(entries, func(a, b entry) int {
+		if c := strings.Compare(a.target, b.target); c != 0 {
+			return c
+		}
+		return strings.Compare(a.kind, b.kind)
+	})
 	ranges := make([]int, len(entries))
 	end := 0
 	for i, e := range entries {

@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"math/rand/v2"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -62,7 +60,7 @@ func spawnEggBabyNBT(tx *world.Tx, parent world.Entity, id string) map[string]an
 	case "minecraft:zombie", "minecraft:husk", "minecraft:drowned", "minecraft:zombie_villager", "minecraft:zombified_piglin":
 		// Zombie.onOffspringSpawnedFromEgg.
 		multiplier := tx.LocalDifficulty(cube.PosFromVec3(parent.Position())).SpecialMultiplier()
-		data["CanPickUpLoot"] = boolByte(rand.Float32() < 0.55*multiplier)
+		data["CanPickUpLoot"] = boolByte(tx.RegionRandom().NextFloat() < 0.55*multiplier)
 	default:
 		return nil
 	}
@@ -73,7 +71,7 @@ func spawnEggBabyNBT(tx *world.Tx, parent world.Entity, id string) map[string]an
 // the baby takes the biome's type half of the time, otherwise the parent's.
 func (v *Villager) eggOffspring(tx *world.Tx) *world.EntityHandle {
 	variant := villagerTypeForBiome(world.JavaBiomeName(tx.Biome(cube.PosFromVec3(v.Position()))))
-	if rand.Float64() >= 0.5 {
+	if tx.RegionRandom().NextDouble() >= 0.5 {
 		variant = v.Variant()
 	}
 	conf := VillagerBehaviourConfig{Profession: "minecraft:none", Type: variant, Level: 1, Age: babyStartAge, Finalized: true}

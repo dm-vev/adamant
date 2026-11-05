@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
@@ -14,12 +13,12 @@ import (
 
 // NewEyeOfEnder creates a thrown eye of ender travelling towards target,
 // following Java EyeOfEnder.signalTo.
-func NewEyeOfEnder(opts world.EntitySpawnOpts, target mgl64.Vec3) *world.EntityHandle {
+func NewEyeOfEnder(tx *world.Tx, opts world.EntitySpawnOpts, target mgl64.Vec3) *world.EntityHandle {
 	delta := target.Sub(opts.Position)
 	if horizontal := math.Hypot(delta[0], delta[2]); horizontal > 12 {
 		target = opts.Position.Add(mgl64.Vec3{delta[0] / horizontal * 12, 8, delta[2] / horizontal * 12})
 	}
-	return opts.New(EyeOfEnderType, eyeOfEnderConfig{target: target, survive: rand.IntN(5) > 0})
+	return opts.New(EyeOfEnderType, eyeOfEnderConfig{target: target, survive: randInt(tx.RegionRandom(), 5) > 0})
 }
 
 type eyeOfEnderConfig struct {

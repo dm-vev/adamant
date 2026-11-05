@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"math/rand/v2"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -29,13 +28,14 @@ func (b *oceanBehaviour) aiTickDrowned(e *Ent, tx *world.Tx) *Movement {
 		ai.EyeHeight = .775
 	}
 	self := &Drowned{&oceanMob{Ent: e}}
+	random := ai.randomSource(tx, e)
 	if sunBurnTick(e, tx) {
 		if b.head.Empty() {
 			if e.OnFireDuration() < 8*time.Second {
 				e.SetOnFire(8 * time.Second)
 			}
 		} else if _, durable := b.head.Item().(item.Durable); durable {
-			b.head = b.head.Damage(rand.IntN(2))
+			b.head = b.head.Damage(randInt(random, 2))
 		}
 	}
 	mov := ai.Tick(e, self, b.registerDrownedGoals)

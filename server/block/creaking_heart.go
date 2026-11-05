@@ -554,7 +554,7 @@ func (h CreakingHeart) OnExplosionHit(src world.ExplosionSource, pos cube.Pos, t
 	if !ok || player.GameMode().CreativeInventory() || !player.GameMode().AllowsInteraction() {
 		return
 	}
-	for _, orb := range tx.World().EntityRegistry().Config().ExperienceOrbs(pos.Vec3Centre(), h.SourceExperience(tx)) {
+	for _, orb := range tx.World().EntityRegistry().Config().ExperienceOrbs(tx, pos.Vec3Centre(), h.SourceExperience(tx)) {
 		tx.AddEntity(orb)
 	}
 }

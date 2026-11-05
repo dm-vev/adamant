@@ -1,7 +1,6 @@
 package entity
 
 import (
-	"math/rand/v2"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -186,7 +185,7 @@ func (b *EndCrystalBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		if _, air := tx.Block(pos).(block.Air); air {
 			fire := block.Fire{}
 			tx.SetBlock(pos, fire, nil)
-			tx.ScheduleBlockUpdate(pos, fire, time.Duration(30+rand.IntN(10))*time.Second/20)
+			tx.ScheduleBlockUpdate(pos, fire, time.Duration(30+randInt(tx.RegionRandom(), 10))*time.Second/20)
 		}
 	}
 	return b.stationary.Tick(e, tx)

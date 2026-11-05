@@ -7,7 +7,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 	"math"
-	"math/rand/v2"
 )
 
 // FallingBlockBehaviourConfig holds optional parameters for
@@ -130,7 +129,7 @@ func (f *FallingBlockBehaviour) damageEntities(e *Ent, pos mgl64.Vec3, tx *world
 	for e := range filterLiving(tx.EntitiesWithin(e.H().Type().BBox(e).Translate(pos).Grow(0.05))) {
 		e.(Living).Hurt(dmg, src)
 	}
-	if b, ok := f.block.(breakable); ok && dmg > 0.0 && rand.Float64() < (dist+1)*0.05 {
+	if b, ok := f.block.(breakable); ok && dmg > 0.0 && tx.RegionRandom().NextDouble() < (dist+1)*0.05 {
 		f.block = b.Break()
 	}
 }

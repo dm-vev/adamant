@@ -301,7 +301,7 @@ func (c *Cow) breedingFood(stack item.Stack) bool { return itemNamed(stack, "min
 // breedOffspring ports Cow.getBreedOffspring: the calf takes the variant of
 // either parent.
 func (c *Cow) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
-	return babyAt(c).New(CowType, CowConfig{AgeTicks: babyStartAge, Variant: randomParent(c.behaviour().variant, partner.(*Cow).behaviour().variant)})
+	return babyAt(c).New(CowType, CowConfig{AgeTicks: babyStartAge, Variant: randomParent(randomOf(c.tx, c), c.behaviour().variant, partner.(*Cow).behaviour().variant)})
 }
 
 // FinalizeSpawn ports Cow.finalizeSpawn: the biome selects the variant and

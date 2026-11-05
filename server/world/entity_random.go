@@ -18,3 +18,15 @@ func (e *EntityHandle) RegionRandom() *vanilla.Random {
 	}
 	return e.javaRandom
 }
+
+// RegionRandomIn returns Entity.random like RegionRandom, but creates it with a
+// seed drawn from the Level.random of the world of tx rather than from the UUID
+// of the entity, which is random: the same world seed then gives the same
+// entity streams. A stream that exists already is returned as it is.
+func (e *EntityHandle) RegionRandomIn(tx *Tx) *vanilla.Random {
+	if e.javaRandom == nil {
+		random := vanilla.NewLegacyRandom(tx.RegionRandom().NextLong())
+		e.javaRandom = &random
+	}
+	return e.javaRandom
+}

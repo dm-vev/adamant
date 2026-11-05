@@ -3,7 +3,6 @@ package entity
 import (
 	"encoding/binary"
 	"math"
-	"math/rand/v2"
 	"slices"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -234,7 +233,8 @@ func (f *dragonFight) findOrCreateDragon(tx *world.Tx) {
 }
 
 func (f *dragonFight) createDragon(tx *world.Tx) *EnderDragon {
-	opts := world.EntitySpawnOpts{Position: mgl64.Vec3{0, 128, 0}, Rotation: cube.Rotation{float64(rand.Float32() * 360), 0}, SpawnReason: "event", SpawnSeed: rand.Int64()}
+	r := tx.RegionRandom()
+	opts := world.EntitySpawnOpts{Position: mgl64.Vec3{0, 128, 0}, Rotation: cube.Rotation{float64(r.NextFloat() * 360), 0}, SpawnReason: "event", SpawnSeed: r.NextLong()}
 	handle := opts.New(EnderDragonType, EnderDragonBehaviourConfig{Phase: DragonHoldingPattern, Fight: f})
 	f.data.DragonSpawned, f.data.DragonUniqueID = true, endFightEntityID(handle)
 	return tx.AddEntity(handle).(*EnderDragon)

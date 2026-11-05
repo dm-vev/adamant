@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"math/rand/v2"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
@@ -398,7 +396,7 @@ func (s *Strider) Interact(tx *world.Tx, u item.User, c *item.UseContext) bool {
 	}
 	if feedBreeder(s, u, c) {
 		if food {
-			tx.PlaySound(s.Position(), sound.Custom{Name: "entity.strider.eat", Volume: 1, Pitch: 1 + (rand.Float64()-rand.Float64())*.2})
+			tx.PlaySound(s.Position(), sound.Custom{Name: "entity.strider.eat", Volume: 1, Pitch: 1 + (randomOf(tx, s).NextDouble()-randomOf(tx, s).NextDouble())*.2})
 		}
 		return true
 	}

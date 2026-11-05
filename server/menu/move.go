@@ -216,7 +216,7 @@ func (t *Tx) collectRewards(s Slot) {
 		if f, ok := t.o.Tx.Block(m.Pos()).(smelter); ok {
 			// AbstractFurnaceBlockEntity.awardUsedRecipesAndPopExperience
 			// spawns the orbs at the player's feet.
-			for _, o := range entity.NewExperienceOrbs(t.o.Owner.Position(), f.ResetExperience()) {
+			for _, o := range entity.NewExperienceOrbs(t.o.Tx, t.o.Owner.Position(), f.ResetExperience()) {
 				t.o.Tx.AddEntity(o)
 			}
 		}

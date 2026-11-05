@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
@@ -223,9 +222,10 @@ func (r *Rabbit) breedingFood(stack item.Stack) bool {
 // breedOffspring ports Rabbit.getBreedOffspring: the kit takes the variant
 // of either parent, or 1 in 20 times the variant of the biome it is born in.
 func (r *Rabbit) breedOffspring(tx *world.Tx, partner breeder) *world.EntityHandle {
-	variant := rabbitBiomeVariant(tx, cube.PosFromVec3(r.Position()))
-	if rand.IntN(20) != 0 {
-		variant = randomParent(partner.(*Rabbit).behaviour().variant, r.behaviour().variant)
+	random := randomOf(tx, r)
+	variant := rabbitBiomeVariant(tx, cube.PosFromVec3(r.Position()), random)
+	if randInt(random, 20) != 0 {
+		variant = randomParent(random, partner.(*Rabbit).behaviour().variant, r.behaviour().variant)
 	}
 	return babyAt(r).New(RabbitType, RabbitConfig{Age: babyStartAge, Variant: variant})
 }
@@ -233,8 +233,8 @@ func (r *Rabbit) breedOffspring(tx *world.Tx, partner breeder) *world.EntityHand
 // rabbitBiomeVariant ports Rabbit.getRandomRabbitVariant: white or
 // splotched rabbits in #spawns_white_rabbits, gold ones in
 // #spawns_gold_rabbits, and brown, salt and pepper or black ones elsewhere.
-func rabbitBiomeVariant(tx *world.Tx, pos cube.Pos) int {
-	return rabbitVariantIn(world.JavaBiomeName(tx.Biome(pos)), rand.IntN(100))
+func rabbitBiomeVariant(tx *world.Tx, pos cube.Pos, random *vanilla.Random) int {
+	return rabbitVariantIn(world.JavaBiomeName(tx.Biome(pos)), randInt(random, 100))
 }
 
 // rabbitVariantIn returns the variant of a rabbit spawning in a biome for a

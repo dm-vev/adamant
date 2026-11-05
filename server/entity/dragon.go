@@ -311,7 +311,7 @@ func (b *EnderDragonBehaviour) tickDeath(e *Ent, tx *world.Tx) *Movement {
 	}
 	drops := tx.World().GameRuleBool("mob_drops")
 	if b.deathTime > 150 && b.deathTime%5 == 0 && drops {
-		for _, orb := range NewExperienceOrbs(e.Position(), int(math.Floor(float64(float32(xp)*.08)))) {
+		for _, orb := range NewExperienceOrbs(tx, e.Position(), int(math.Floor(float64(float32(xp)*.08)))) {
 			tx.AddEntity(orb)
 		}
 	}
@@ -327,7 +327,7 @@ func (b *EnderDragonBehaviour) tickDeath(e *Ent, tx *world.Tx) *Movement {
 	}
 	if b.deathTime >= 200 {
 		if drops {
-			for _, orb := range NewExperienceOrbs(e.Position(), int(math.Floor(float64(float32(xp)*.2)))) {
+			for _, orb := range NewExperienceOrbs(tx, e.Position(), int(math.Floor(float64(float32(xp)*.2)))) {
 				tx.AddEntity(orb)
 			}
 		}
@@ -370,7 +370,7 @@ func (b *EnderDragonBehaviour) checkCrystals(e *Ent, tx *world.Tx) {
 			b.health.AddHealth(1)
 		}
 	}
-	if rand.IntN(10) != 0 {
+	if randInt(tx.RegionRandom(), 10) != 0 {
 		return
 	}
 	box := e.H().Type().BBox(e).Translate(e.Position()).Grow(32)
@@ -574,7 +574,8 @@ func (b *EnderDragonBehaviour) checkWalls(tx *world.Tx, box cube.BBox) bool {
 		}
 	}
 	if destroyed {
-		at := cube.Pos{x0 + rand.IntN(x1-x0+1), y0 + rand.IntN(y1-y0+1), z0 + rand.IntN(z1-z0+1)}
+		r := tx.RegionRandom()
+		at := cube.Pos{x0 + randInt(r, x1-x0+1), y0 + randInt(r, y1-y0+1), z0 + randInt(r, z1-z0+1)}
 		tx.AddParticle(at.Vec3(), particle.DragonDestroyBlock{})
 	}
 	return hitWall

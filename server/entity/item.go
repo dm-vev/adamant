@@ -6,7 +6,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
-	"math/rand/v2"
 	"time"
 )
 
@@ -21,9 +20,10 @@ func NewItem(opts world.EntitySpawnOpts, i item.Stack) *world.EntityHandle {
 }
 
 // NewItemDrop creates ordinary loot with the native upward toss and random
-// horizontal spread. NewItem preserves explicitly supplied motion instead.
-func NewItemDrop(opts world.EntitySpawnOpts, i item.Stack) *world.EntityHandle {
-	opts.Velocity = mgl64.Vec3{rand.Float64()*0.2 - 0.1, 0.2, rand.Float64()*0.2 - 0.1}
+// horizontal spread drawn from the Level.random of the world of tx. NewItem preserves explicitly supplied motion instead.
+func NewItemDrop(tx *world.Tx, opts world.EntitySpawnOpts, i item.Stack) *world.EntityHandle {
+	r := tx.RegionRandom()
+	opts.Velocity = mgl64.Vec3{r.NextDouble()*0.2 - 0.1, 0.2, r.NextDouble()*0.2 - 0.1}
 	return NewItem(opts, i)
 }
 

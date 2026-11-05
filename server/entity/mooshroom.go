@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -214,8 +213,9 @@ func (m *Mooshroom) breedingFood(stack item.Stack) bool { return itemNamed(stack
 // a calf of the other type.
 func (m *Mooshroom) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
 	own, other := m.behaviour().variant, partner.(*Mooshroom).behaviour().variant
-	variant := randomParent(own, other)
-	if own == other && rand.IntN(1024) == 0 {
+	r := randomOf(m.tx, m)
+	variant := randomParent(r, own, other)
+	if own == other && randInt(r, 1024) == 0 {
 		variant = 1 - own
 	}
 	return babyAt(m).New(MooshroomType, MooshroomConfig{Age: babyStartAge, Variant: variant})
@@ -228,7 +228,7 @@ func (m *Mooshroom) Shear(tx *world.Tx) item.Stack {
 	if m.behaviour().variant == 1 {
 		name = "brown"
 	}
-	stacks, err := loot.Generate("minecraft:shearing/mooshroom/"+name, rand.Int64(), loot.Context{Entity: "minecraft:mooshroom", Origin: m.Position()})
+	stacks, err := loot.Generate("minecraft:shearing/mooshroom/"+name, randomOf(tx, m).NextLong(), loot.Context{Entity: "minecraft:mooshroom", Origin: m.Position()})
 	opts := world.EntitySpawnOpts{Position: m.Position(), Rotation: m.Rotation()}
 	convertMob(tx, m, NewCow(opts), conversion{})
 	if err != nil || len(stacks) == 0 {

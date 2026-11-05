@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -219,21 +218,21 @@ func distToCenterSqr(p cube.Pos, pos mgl64.Vec3) float64 {
 
 // navigate ports navigateToNextPathNode of the flying phases: the next node
 // becomes the target, up to 20 blocks above it.
-func navigate(path *dragonPath, target *dragonTarget) {
+func navigate(r *vanilla.Random, path *dragonPath, target *dragonTarget) {
 	if !path.live() {
 		return
 	}
 	current := path.nextPos()
 	path.advance()
-	y := float64(current[1]) + float64(rand.Float32()*20)
+	y := float64(current[1]) + float64(r.NextFloat()*20)
 	*target = dragonTarget{mgl64.Vec3{float64(current[0]), y, float64(current[2])}, true}
 }
 
 // circleNode ports the ring a flying phase circles on: one node on, or six
 // across now and then, and only on the inner rings once no crystal is left.
-func (b *EnderDragonBehaviour) circleNode(current int, clockwise *bool, allowOuter bool) int {
+func (b *EnderDragonBehaviour) circleNode(r *vanilla.Random, current int, clockwise *bool, allowOuter bool) int {
 	target := current
-	if rand.IntN(8) == 0 {
+	if randInt(r, 8) == 0 {
 		*clockwise = !*clockwise
 		target += 6
 	}
@@ -270,7 +269,7 @@ func (b *EnderDragonBehaviour) holdingPatternTarget(e *Ent, tx *world.Tx) {
 		if b.fight != nil {
 			crystals = b.fight.AliveCrystals()
 		}
-		if rand.IntN(crystals+3) == 0 {
+		if randInt(tx.RegionRandom(), crystals+3) == 0 {
 			b.setPhase(tx, DragonLandingApproach)
 			return
 		}
@@ -279,20 +278,20 @@ func (b *EnderDragonBehaviour) holdingPatternTarget(e *Ent, tx *world.Tx) {
 		if player != nil {
 			distSqr = distToCenterSqr(egg, player.Position()) / 512
 		}
-		if player != nil && (rand.IntN(int(distSqr+2)) == 0 || rand.IntN(crystals+2) == 0) {
+		if player != nil && (randInt(tx.RegionRandom(), int(distSqr+2)) == 0 || randInt(tx.RegionRandom(), crystals+2) == 0) {
 			b.strafePlayer(e, tx, player)
 			return
 		}
 	}
 	if ph.holdPath.missingOrDone() {
 		current := b.closestNode(tx, e)
-		target := b.circleNode(current, &ph.holdClockwise, b.fight != nil && b.fight.AliveCrystals() >= 0)
+		target := b.circleNode(tx.RegionRandom(), current, &ph.holdClockwise, b.fight != nil && b.fight.AliveCrystals() >= 0)
 		ph.holdPath = b.findPath(tx, current, target, nil)
 		if ph.holdPath.valid {
 			ph.holdPath.advance()
 		}
 	}
-	navigate(&ph.holdPath, &ph.holdTarget)
+	navigate(tx.RegionRandom(), &ph.holdPath, &ph.holdTarget)
 }
 
 // strafePlayer ports DragonHoldingPatternPhase.strafePlayer.
@@ -316,7 +315,7 @@ func (b *EnderDragonBehaviour) setStrafeTarget(e *Ent, tx *world.Tx, target worl
 	ph.strafePath = b.findPath(tx, current, targetNode, &final)
 	if ph.strafePath.valid {
 		ph.strafePath.advance()
-		navigate(&ph.strafePath, &ph.strafeTarget)
+		navigate(tx.RegionRandom(), &ph.strafePath, &ph.strafeTarget)
 	}
 }
 
@@ -341,13 +340,13 @@ func (b *EnderDragonBehaviour) tickStrafe(e *Ent, tx *world.Tx) {
 	if dist := ph.strafeTarget.distanceSqr(pos); dist < 100 || dist > 22500 {
 		if ph.strafePath.missingOrDone() {
 			current := b.closestNode(tx, e)
-			target := b.circleNode(current, &ph.strafeClockwise, b.fight != nil && b.fight.AliveCrystals() > 0)
+			target := b.circleNode(tx.RegionRandom(), current, &ph.strafeClockwise, b.fight != nil && b.fight.AliveCrystals() > 0)
 			ph.strafePath = b.findPath(tx, current, target, nil)
 			if ph.strafePath.valid {
 				ph.strafePath.advance()
 			}
 		}
-		navigate(&ph.strafePath, &ph.strafeTarget)
+		navigate(tx.RegionRandom(), &ph.strafePath, &ph.strafeTarget)
 	}
 	if tp.Sub(pos).LenSqr() >= 4096 || !dragonSees(tx, e, attack) {
 		if ph.strafeCharge > 0 {
@@ -421,7 +420,7 @@ func (b *EnderDragonBehaviour) tickLandingApproach(e *Ent, tx *world.Tx) {
 			ph.approachPath.advance()
 		}
 	}
-	navigate(&ph.approachPath, &ph.approachTarget)
+	navigate(tx.RegionRandom(), &ph.approachPath, &ph.approachTarget)
 	if ph.approachPath.finished() {
 		b.setPhase(tx, DragonLanding)
 	}
@@ -467,7 +466,7 @@ func (b *EnderDragonBehaviour) tickTakeoff(e *Ent, tx *world.Tx) {
 	ph.takeoffPath = b.findPath(tx, current, target, nil)
 	if ph.takeoffPath.valid {
 		ph.takeoffPath.advance()
-		navigate(&ph.takeoffPath, &ph.takeoffTarget)
+		navigate(tx.RegionRandom(), &ph.takeoffPath, &ph.takeoffTarget)
 	}
 }
 

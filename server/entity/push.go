@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/parallel"
@@ -87,7 +86,7 @@ func TickEntityCollisions(tx *world.Tx) {
 // pushEntities ports the end of LivingEntity.pushEntities for the entity e
 // overlapping others: cramming damage beyond maxCramming, then the pushes.
 func pushEntities(tx *world.Tx, e world.Entity, others []world.Entity, maxCramming int) {
-	if maxCramming > 0 && len(others) > maxCramming-1 && rand.IntN(4) == 0 {
+	if maxCramming > 0 && len(others) > maxCramming-1 && randInt(randomOf(tx, e), 4) == 0 {
 		count := 0
 		for _, other := range others {
 			if !isPassenger(other) {

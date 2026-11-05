@@ -938,11 +938,11 @@ type EntityRegistryConfig struct {
 	// choosing a canvas that fits. It returns nil if none fits.
 	Painting func(tx *Tx, pos cube.Pos, facing cube.Direction) *EntityHandle
 	// EyeOfEnder throws an eye of ender signal towards a located stronghold.
-	EyeOfEnder func(opts EntitySpawnOpts, target mgl64.Vec3) *EntityHandle
+	EyeOfEnder func(tx *Tx, opts EntitySpawnOpts, target mgl64.Vec3) *EntityHandle
 	// TieLeashedEntities attaches entities held by a user to a fence knot.
 	TieLeashedEntities func(pos cube.Pos, tx *Tx, user Entity) bool
 	// ExperienceOrbs creates the source denominations for a block's XP reward.
-	ExperienceOrbs func(pos mgl64.Vec3, amount int) []*EntityHandle
+	ExperienceOrbs func(tx *Tx, pos mgl64.Vec3, amount int) []*EntityHandle
 	// NewFromBucket creates the mob a bucket holds, of a type of reg, the
 	// registry it is called through.
 	NewFromBucket func(reg EntityRegistry, opts EntitySpawnOpts, entityID string, data map[string]any) *EntityHandle

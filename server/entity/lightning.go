@@ -1,7 +1,6 @@
 package entity
 
 import (
-	"math/rand/v2"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -29,7 +28,7 @@ func NewLightningWithDamage(opts world.EntitySpawnOpts, dmg float64, blockFire b
 		EntityFireDuration: entityFireDuration,
 		BlockFire:          blockFire,
 		state:              2,
-		lifetime:           rand.IntN(3) + 1,
+		lifetime:           -1,
 	}).tick
 	return opts.New(LightningType, conf)
 }
@@ -39,7 +38,7 @@ func NewLightningWithDamage(opts world.EntitySpawnOpts, dmg float64, blockFire b
 // springs a skeleton trap.
 func NewVisualLightning(opts world.EntitySpawnOpts) *world.EntityHandle {
 	conf := lightningConf
-	conf.Tick = (&lightningState{visualOnly: true, state: 2, lifetime: rand.IntN(3) + 1}).tick
+	conf.Tick = (&lightningState{visualOnly: true, state: 2, lifetime: -1}).tick
 	return opts.New(LightningType, conf)
 }
 
@@ -51,8 +50,11 @@ type lightningState struct {
 	Damage             float64
 	EntityFireDuration time.Duration
 	BlockFire          bool
-	state, lifetime    int
-	visualOnly         bool
+	// lifetime is -1 until the bolt draws it, in its first tick: the
+	// constructor of LightningBolt draws it from its random, which a bolt
+	// made outside of a world has none of.
+	state, lifetime int
+	visualOnly      bool
 }
 
 // tick ports LightningBolt.tick: the strike lights fires, powers a struck
@@ -60,6 +62,9 @@ type lightningState struct {
 // bolt flashes a few times, damaging nearby entities while visible.
 func (s *lightningState) tick(e *Ent, tx *world.Tx) {
 	pos := e.Position()
+	if s.lifetime < 0 {
+		s.lifetime = randInt(tx.RegionRandom(), 3) + 1
+	}
 	if s.state == 2 {
 		if d := tx.World().Difficulty(); s.BlockFire && !s.visualOnly && (d == world.DifficultyNormal || d == world.DifficultyHard) {
 			s.spawnFire(tx, cube.PosFromVec3(pos), 4)
@@ -83,7 +88,7 @@ func (s *lightningState) tick(e *Ent, tx *world.Tx) {
 		if s.lifetime == 0 {
 			_ = e.CloseIn(tx)
 			return
-		} else if s.state < -rand.IntN(10) {
+		} else if s.state < -randInt(tx.RegionRandom(), 10) {
 			s.lifetime--
 			s.state = 1
 			if s.BlockFire && !s.visualOnly {
@@ -109,9 +114,10 @@ func clearCopperOnLightningStrike(tx *world.Tx, struck cube.Pos) {
 	} else {
 		tx.SetBlock(struck, copper.WithOxidationLevel(block.UnoxidisedOxidation()), nil)
 	}
-	for range rand.IntN(3) + 3 {
+	r := tx.RegionRandom()
+	for range randInt(r, 3) + 3 {
 		walk := struck
-		for range rand.IntN(8) + 1 {
+		for range randInt(r, 8) + 1 {
 			next, ok := cleanRandomCopperNear(tx, walk)
 			if !ok {
 				break
@@ -126,7 +132,8 @@ func clearCopperOnLightningStrike(tx *world.Tx, struck cube.Pos) {
 // oxidation level and becomes the next step.
 func cleanRandomCopperNear(tx *world.Tx, pos cube.Pos) (cube.Pos, bool) {
 	for range 10 {
-		candidate := pos.Add(cube.Pos{rand.IntN(3) - 1, rand.IntN(3) - 1, rand.IntN(3) - 1})
+		r := tx.RegionRandom()
+		candidate := pos.Add(cube.Pos{randInt(r, 3) - 1, randInt(r, 3) - 1, randInt(r, 3) - 1})
 		copper, ok := tx.Block(candidate).(block.Oxidisable)
 		if !ok || !copper.CanOxidate() {
 			continue
@@ -169,7 +176,8 @@ func (s *lightningState) spawnFire(tx *world.Tx, pos cube.Pos, additional int) {
 	}
 	s.lightFire(tx, pos)
 	for range additional {
-		s.lightFire(tx, pos.Add(cube.Pos{rand.IntN(3) - 1, rand.IntN(3) - 1, rand.IntN(3) - 1}))
+		r := tx.RegionRandom()
+		s.lightFire(tx, pos.Add(cube.Pos{randInt(r, 3) - 1, randInt(r, 3) - 1, randInt(r, 3) - 1}))
 	}
 }
 

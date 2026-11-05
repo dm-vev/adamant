@@ -2,7 +2,6 @@ package entity
 
 import (
 	"fmt"
-	"hash/fnv"
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -85,11 +84,8 @@ func (phantomType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData
 		phantomConfig{}.Apply(d)
 	}
 	s := d.Data.(*phantomState)
-	if h != nil {
-		hash := fnv.New64a()
-		u := h.UUID()
-		_, _ = hash.Write(u[:])
-		s.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
+	if h != nil && !s.randomSeeded {
+		s.random, s.randomSeeded = openRandom(tx, h), true
 	}
 	return &Phantom{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
@@ -139,11 +135,13 @@ func (c phantomConfig) Apply(d *world.EntityData) {
 }
 
 type phantomState struct {
-	health       *HealthManager
-	effects      *EffectManager
-	speed        float64
-	mc           *MovementComputer
-	random       vanilla.Random
+	health  *HealthManager
+	effects *EffectManager
+	speed   float64
+	mc      *MovementComputer
+	random  vanilla.Random
+	// randomSeeded is set once random has been seeded.
+	randomSeeded bool
 	size, attack int
 	target       int64
 	anchor       mgl64.Vec3
@@ -236,9 +234,9 @@ func (witherType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData)
 	if h != nil {
 		id := h.UUID()
 		s.bar = bossbar.New("Wither").WithID(fmt.Sprintf("adamant:wither:%x", id[8:]))
-		hash := fnv.New64a()
-		_, _ = hash.Write(id[:])
-		s.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
+		if !s.randomSeeded {
+			s.random, s.randomSeeded = openRandom(tx, h), true
+		}
 	}
 	return &Wither{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
@@ -277,11 +275,13 @@ func (c witherConfig) Apply(d *world.EntityData) {
 }
 
 type witherState struct {
-	health                      *HealthManager
-	effects                     *EffectManager
-	ai                          MobAI
-	speed                       float64
-	random                      vanilla.Random
+	health  *HealthManager
+	effects *EffectManager
+	ai      MobAI
+	speed   float64
+	random  vanilla.Random
+	// randomSeeded is set once random has been seeded.
+	randomSeeded                bool
 	invulnerable, charge, death int
 	// heads are the targets of the middle and side heads, the alternative
 	// targets of WitherBoss.

@@ -228,7 +228,7 @@ func (ai *MobAI) serverAiStep(m *Mob) {
 	// The goals and brain of a mob steering its vehicle walk it instead.
 	vehicle, _ := m.controlledVehicle()
 	ai.steer(vehicle)
-	if (ai.tickCount+int(m.H().UniqueID()&0x7fffffff))%2 != 0 && ai.tickCount > 1 {
+	if (ai.tickCount+ai.entityID)%2 != 0 && ai.tickCount > 1 {
 		ai.Targets.TickRunning(m, false)
 		ai.Goals.TickRunning(m, false)
 	} else {

@@ -1,7 +1,6 @@
 package entity
 
 import (
-	"math/rand/v2"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -1215,7 +1214,7 @@ func (m *Mount) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	onMobHurt(m.tx, m)
 	if m.Dead() {
 		m.die(src)
-	} else if rand.IntN(3) == 0 {
+	} else if randInt(randomOf(m.tx, m), 3) == 0 {
 		b.standIfPossible(m)
 	}
 	return old - b.health.Health(), true

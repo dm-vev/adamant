@@ -1221,7 +1221,7 @@ func (p *Player) kill(src world.DamageSource) {
 	p.tx.EmitGameEvent(world.GameEventEntityDie, pos, world.GameEventContext{Source: p, Experience: xp})
 	if !keepInv {
 		if !xp.Consumed {
-			for _, orb := range entity.NewExperienceOrbs(pos, xp.Amount) {
+			for _, orb := range entity.NewExperienceOrbs(p.tx, pos, xp.Amount) {
 				p.tx.AddEntity(orb)
 			}
 		}
@@ -3182,7 +3182,7 @@ func (p *Player) BreakBlock(pos cube.Pos) {
 		if info.BreakHandler != nil {
 			info.BreakHandler(pos, p.tx, p)
 		}
-		for _, orb := range entity.NewExperienceOrbs(pos.Vec3Centre(), xp) {
+		for _, orb := range entity.NewExperienceOrbs(p.tx, pos.Vec3Centre(), xp) {
 			p.tx.AddEntity(orb)
 		}
 	}

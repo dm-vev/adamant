@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"math/rand/v2"
-
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
@@ -66,8 +64,8 @@ func (c frogConfig) Apply(data *world.EntityData) {
 	}
 	b := &frogBehaviour{health: NewHealthManager(h, 10), effects: NewEffectManager(), variant: c.variant, age: c.age, speed: 1}
 	b.br = newFrogBrain(b)
-	// FrogAi.initMemories.
-	b.br.set(memLongJumpCooldownTicks, frogTimeBetweenLongJumps.min+rand.IntN(frogTimeBetweenLongJumps.max-frogTimeBetweenLongJumps.min+1))
+	// FrogAi.initMemories runs in the first tick, which draws from the random
+	// of the frog.
 	if c.pregnant {
 		b.br.set(memIsPregnant, true)
 	}
@@ -99,6 +97,8 @@ type frogBehaviour struct {
 	// tongueTarget is Frog.DATA_TONGUE_TARGET_ID, what the frog reaches for
 	// with its tongue.
 	tongueTarget *world.EntityHandle
+	// memoriesInit is set once the frog has run FrogAi.initMemories.
+	memoriesInit bool
 }
 
 // Frog is a living amphibian runtime entity. Tadpoles convert into this runtime at Java's age threshold.
@@ -137,6 +137,13 @@ func (b *frogBehaviour) panicking() bool { return b.br.has(memIsPanicking) }
 // Tick runs a tick of the frog: its love and its MobAI with its brain.
 func (b *frogBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	f := &Frog{Ent: e}
+	if !b.memoriesInit {
+		// FrogAi.initMemories.
+		b.memoriesInit = true
+		if !b.br.has(memLongJumpCooldownTicks) {
+			b.br.set(memLongJumpCooldownTicks, frogTimeBetweenLongJumps.min+randInt(b.ai.randomSource(tx, e), frogTimeBetweenLongJumps.max-frogTimeBetweenLongJumps.min+1))
+		}
+	}
 	// Frog.createAttributes and getHeadRotSpeed and getMaxHeadYRot.
 	b.ai.MovementSpeed, b.ai.StepHeight = b.speed, 1
 	b.ai.HeadRotSpeed, b.ai.MaxHeadYaw = 35, 5

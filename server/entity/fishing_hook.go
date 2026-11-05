@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/cube/trace"
@@ -139,7 +138,7 @@ func (b *FishingHookBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		if math.Abs(force) < 0.01 {
 			force += math.Copysign(0.1, force)
 		}
-		e.data.Vel = mgl64.Vec3{vel[0] * 0.9, vel[1] - force*float64(rand.Float32())*0.2, vel[2] * 0.9}
+		e.data.Vel = mgl64.Vec3{vel[0] * 0.9, vel[1] - force*float64(tx.RegionRandom().NextFloat())*0.2, vel[2] * 0.9}
 		if b.nibble <= 0 && b.timeUntilHooked <= 0 {
 			b.openWater = true
 		} else {
@@ -148,7 +147,7 @@ func (b *FishingHookBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		if inWater {
 			b.outOfWaterTime = max(0, b.outOfWaterTime-1)
 			if b.biting {
-				e.data.Vel[1] += -0.1 * float64(rand.Float32()*rand.Float32())
+				e.data.Vel[1] += -0.1 * float64(tx.RegionRandom().NextFloat()*tx.RegionRandom().NextFloat())
 			}
 			b.catchingFish(e, tx, blockPos)
 		} else {
@@ -239,13 +238,14 @@ func (b *FishingHookBehaviour) checkCollision(e *Ent, tx *world.Tx, owner world.
 // a covered sky slows it down; fish are lured for 100 to 600 ticks less the
 // lure speed, approach for 20 to 80 and nibble for 20 to 40.
 func (b *FishingHookBehaviour) catchingFish(e *Ent, tx *world.Tx, blockPos cube.Pos) {
+	r := tx.RegionRandom()
 	speed := 1
 	above := blockPos.Side(cube.FaceUp)
-	if rand.Float32() < 0.25 && tx.RainingAt(above) {
+	if r.NextFloat() < 0.25 && tx.RainingAt(above) {
 		speed++
 	}
 	// Level.canSeeSky: the sky light there is full.
-	if rand.Float32() < 0.5 && tx.SkyLight(above) < 15 {
+	if r.NextFloat() < 0.5 && tx.SkyLight(above) < 15 {
 		speed--
 	}
 	switch {
@@ -255,13 +255,13 @@ func (b *FishingHookBehaviour) catchingFish(e *Ent, tx *world.Tx, blockPos cube.
 		}
 	case b.timeUntilHooked > 0:
 		if b.timeUntilHooked -= speed; b.timeUntilHooked > 0 {
-			b.fishAngle += float32(9.188 * (rand.Float64() - rand.Float64()))
-			if rand.Float32() < 0.15 {
+			b.fishAngle += float32(9.188 * (r.NextDouble() - r.NextDouble()))
+			if r.NextFloat() < 0.15 {
 				b.viewAction(e, tx, FishHookBubbleAction{})
 			}
 		} else {
 			tx.AddParticle(e.Position().Add(mgl64.Vec3{0, 0.5}), particle.Splash{})
-			b.nibble = 20 + rand.IntN(21)
+			b.nibble = 20 + randInt(r, 21)
 			b.biting = true
 			b.viewAction(e, tx, FishHookBiteAction{})
 		}
@@ -276,15 +276,15 @@ func (b *FishingHookBehaviour) catchingFish(e *Ent, tx *world.Tx, blockPos cube.
 		case b.timeUntilLured < 60:
 			tease += float32(60-b.timeUntilLured) * 0.01
 		}
-		if rand.Float32() < tease {
+		if r.NextFloat() < tease {
 			b.viewAction(e, tx, FishHookTeaseAction{})
 		}
 		if b.timeUntilLured <= 0 {
-			b.fishAngle = rand.Float32() * 360
-			b.timeUntilHooked = 20 + rand.IntN(61)
+			b.fishAngle = r.NextFloat() * 360
+			b.timeUntilHooked = 20 + randInt(r, 61)
 		}
 	default:
-		b.timeUntilLured = 100 + rand.IntN(501) - b.lureSpeed
+		b.timeUntilLured = 100 + randInt(r, 501) - b.lureSpeed
 	}
 }
 
@@ -386,7 +386,7 @@ func (b *FishingHookBehaviour) Retrieve(e *Ent, tx *world.Tx) (int, error) {
 			d := owner.Position().Sub(e.Position())
 			vel := mgl64.Vec3{d[0] * 0.1, d[1]*0.1 + math.Sqrt(math.Sqrt(d.Len()))*0.08, d[2] * 0.1}
 			tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: e.Position(), Velocity: vel}, catch))
-			for _, orb := range NewExperienceOrbs(owner.Position().Add(mgl64.Vec3{0, 0.5, 0.5}), rand.IntN(6)+1) {
+			for _, orb := range NewExperienceOrbs(tx, owner.Position().Add(mgl64.Vec3{0, 0.5, 0.5}), randInt(tx.RegionRandom(), 6)+1) {
 				tx.AddEntity(orb)
 			}
 		}

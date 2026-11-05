@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -38,7 +37,7 @@ func TriggerDeathEffects(tx *world.Tx, e world.Entity, pos mgl64.Vec3, effects [
 			burstWindOnDeath(tx, e, pos)
 		case effect.Weaving:
 			if e.H().Type().EncodeEntity() == "minecraft:player" || tx.World().GameRuleBool("mob_griefing") {
-				spreadCobwebs(tx, cube.PosFromVec3(pos), 2+rand.IntN(2))
+				spreadCobwebs(tx, cube.PosFromVec3(pos), 2+randInt(tx.RegionRandom(), 2))
 			}
 		case effect.Oozing:
 			releaseOozingSlimes(tx, e, pos)
@@ -51,8 +50,8 @@ func TriggerDeathEffects(tx *world.Tx, e world.Entity, pos mgl64.Vec3, effects [
 // silverfish.
 func TriggerHurtEffects(tx *world.Tx, e world.Entity, effects []effect.Effect) {
 	for _, eff := range effects {
-		if eff.Type() == effect.Infested && rand.Float32() <= 0.1 {
-			for range 1 + rand.IntN(2) {
+		if eff.Type() == effect.Infested && tx.RegionRandom().NextFloat() <= 0.1 {
+			for range 1 + randInt(tx.RegionRandom(), 2) {
 				releaseSilverfish(tx, e)
 			}
 		}
@@ -81,7 +80,7 @@ func burstWindOnDeath(tx *world.Tx, e world.Entity, pos mgl64.Vec3) {
 	origin := pos.Add(mgl64.Vec3{0, float64(float32(e.H().Type().BBox(e).Height()) / 2)})
 	tx.AddParticle(origin, particle.WindBurst{})
 	tx.PlaySound(origin, sound.BreezeWindChargeBurst{})
-	windGust(tx, e.H(), origin, 3+rand.Float32()*2, 1, !mobGriefingDisabled(tx))
+	windGust(tx, e.H(), origin, 3+tx.RegionRandom().NextFloat()*2, 1, !mobGriefingDisabled(tx))
 }
 
 // spreadCobwebs ports WeavingMobEffect.spawnCobwebsRandomlyAround: of 15
@@ -89,8 +88,9 @@ func burstWindOnDeath(tx *world.Tx, e world.Entity, pos mgl64.Vec3) {
 // on a sturdy floor become cobwebs.
 func spreadCobwebs(tx *world.Tx, pos cube.Pos, count int) {
 	chosen := make([]cube.Pos, 0, count)
+	random := tx.RegionRandom()
 	for range 15 {
-		p := pos.Add(cube.Pos{rand.IntN(3) - 1, rand.IntN(3) - 1, rand.IntN(3) - 1})
+		p := pos.Add(cube.Pos{randInt(random, 3) - 1, randInt(random, 3) - 1, randInt(random, 3) - 1})
 		if containsPos(chosen, p) {
 			continue
 		}
@@ -136,7 +136,7 @@ func releaseOozingSlimes(tx *world.Tx, e world.Entity, pos mgl64.Vec3) {
 		count = min(max(0, cramming-nearby), count)
 	}
 	for range count {
-		opts := world.EntitySpawnOpts{Position: pos.Add(mgl64.Vec3{0, 0.5}), Rotation: cube.Rotation{rand.Float64() * 360}}
+		opts := world.EntitySpawnOpts{Position: pos.Add(mgl64.Vec3{0, 0.5}), Rotation: cube.Rotation{tx.RegionRandom().NextDouble() * 360}}
 		tx.AddEntity(NewSlime(opts))
 	}
 }
@@ -147,10 +147,11 @@ func releaseOozingSlimes(tx *world.Tx, e world.Entity, pos mgl64.Vec3) {
 func releaseSilverfish(tx *world.Tx, e world.Entity) {
 	look := e.Rotation().Vec3().Mul(0.3)
 	look[1] *= 1.5
-	angle := rand.Float64()*math.Pi - math.Pi/2
+	random := tx.RegionRandom()
+	angle := random.NextDouble()*math.Pi - math.Pi/2
 	sin, cos := math.Sincos(angle)
 	vel := mgl64.Vec3{look[0]*cos + look[2]*sin, look[1], -look[0]*sin + look[2]*cos}
 	pos := e.Position().Add(mgl64.Vec3{0, e.H().Type().BBox(e).Height() / 2})
-	tx.AddEntity(NewSilverfish(world.EntitySpawnOpts{Position: pos, Velocity: vel, Rotation: cube.Rotation{rand.Float64() * 360}}))
+	tx.AddEntity(NewSilverfish(world.EntitySpawnOpts{Position: pos, Velocity: vel, Rotation: cube.Rotation{random.NextDouble() * 360}}))
 	tx.PlaySound(pos, sound.Event{Name: "hurt", Entity: "minecraft:silverfish"})
 }

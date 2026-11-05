@@ -61,7 +61,7 @@ func (a *Axolotl) breedingFood(stack item.Stack) bool {
 // of either parent, or is blue with a chance of 1 in 1200.
 func (a *Axolotl) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
 	b := a.behaviour()
-	variant := randomParent(b.variant, partner.(*Axolotl).behaviour().variant)
+	variant := randomParent(&b.random, b.variant, partner.(*Axolotl).behaviour().variant)
 	if b.random.NextInt(1200) == 0 {
 		variant = 4
 	}

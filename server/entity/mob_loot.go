@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"math/rand/v2"
-
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
@@ -32,7 +30,7 @@ func dropAllDeathLoot(tx *world.Tx, e world.Entity, src world.DamageSource) {
 	id := world.JavaEntityID(e)
 	monster := javaMonsters[id]
 	baby := mobIsBaby(e)
-	xp := &world.DeathExperience{Amount: mobBaseExperience(e, id, baby), Eligible: monster || id == "minecraft:hoglin" || id != "minecraft:tadpole" && !baby}
+	xp := &world.DeathExperience{Amount: mobBaseExperience(tx, e, id, baby), Eligible: monster || id == "minecraft:hoglin" || id != "minecraft:tadpole" && !baby}
 	tx.EmitGameEvent(world.GameEventEntityDie, e.Position(), world.GameEventContext{Source: e, Experience: xp})
 
 	mobDrops := tx.World().GameRuleBool("mob_drops")
@@ -49,7 +47,7 @@ func dropAllDeathLoot(tx *world.Tx, e world.Entity, src world.DamageSource) {
 			panic(err)
 		}
 		for _, stack := range drops {
-			tx.AddEntity(NewItemDrop(world.EntitySpawnOpts{Position: e.Position()}, stack))
+			tx.AddEntity(NewItemDrop(tx, world.EntitySpawnOpts{Position: e.Position()}, stack))
 		}
 		if custom, ok := e.(interface {
 			dropCustomDeathLoot(killedByPlayer bool, looting int)
@@ -67,7 +65,7 @@ func dropAllDeathLoot(tx *world.Tx, e world.Entity, src world.DamageSource) {
 		equipped.dropEquipment()
 	}
 	if !xp.Consumed && player != nil && xp.Eligible && mobDrops && xp.Amount > 0 {
-		for _, orb := range NewExperienceOrbs(e.Position(), xp.Amount) {
+		for _, orb := range NewExperienceOrbs(tx, e.Position(), xp.Amount) {
 			tx.AddEntity(orb)
 		}
 	}
@@ -214,7 +212,8 @@ type experienceRewarder interface {
 }
 
 // mobBaseExperience ports getBaseExperienceReward of the mob's Java class.
-func mobBaseExperience(e world.Entity, id string, baby bool) int {
+func mobBaseExperience(tx *world.Tx, e world.Entity, id string, baby bool) int {
+	random := randomOf(tx, e)
 	switch id {
 	case "minecraft:piglin":
 		return 5
@@ -232,7 +231,7 @@ func mobBaseExperience(e world.Entity, id string, baby bool) int {
 		if baby {
 			return 0
 		}
-		return 1 + rand.IntN(2)
+		return 1 + randInt(random, 2)
 	case "minecraft:chicken":
 		if r, ok := e.(experienceRewarder); ok {
 			if xp, ok := r.baseExperience(); ok {
@@ -246,13 +245,13 @@ func mobBaseExperience(e world.Entity, id string, baby bool) int {
 		}
 		if equipped, ok := e.(interface{ experienceEquipment() int }); ok {
 			for range equipped.experienceEquipment() {
-				reward += 1 + rand.IntN(3)
+				reward += 1 + randInt(random, 3)
 			}
 		}
 		return reward
 	}
 	if javaAnimals[id] {
-		return 1 + rand.IntN(3)
+		return 1 + randInt(random, 3)
 	}
 	return 0
 }

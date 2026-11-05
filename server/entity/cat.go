@@ -389,9 +389,9 @@ func (c *Cat) canMateWith(partner breeder) bool {
 // the collar colours of the parents mixed.
 func (c *Cat) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
 	b, p := c.b(), partner.(*Cat).b()
-	conf := CatBehaviourConfig{AgeTicks: babyStartAge, Variant: randomParent(b.variant, p.variant), variantSet: true}
+	conf := CatBehaviourConfig{AgeTicks: babyStartAge, Variant: randomParent(randomOf(c.tx, c), b.variant, p.variant), variantSet: true}
 	if b.tamed {
-		collar := mixedDyeColour(item.Colours()[b.collarColor%16], item.Colours()[p.collarColor%16])
+		collar := mixedDyeColour(randomOf(c.tx, c), item.Colours()[b.collarColor%16], item.Colours()[p.collarColor%16])
 		conf.Tamed, conf.OwnerUUID, conf.CollarColor, conf.collarSet = true, b.ownerUUID, collar.Uint8(), true
 	}
 	return babyAt(c).New(CatType, conf)

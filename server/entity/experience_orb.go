@@ -5,7 +5,6 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
-	"math/rand/v2"
 	"slices"
 )
 
@@ -13,26 +12,27 @@ import (
 var orbSplitSizes = []int{2477, 1237, 617, 307, 149, 73, 37, 17, 7, 3, 1}
 
 // NewExperienceOrbs takes in a position and an amount and automatically splits the amount into multiple orbs, returning
-// a slice of the created orbs.
-func NewExperienceOrbs(pos mgl64.Vec3, amount int) (orbs []*world.EntityHandle) {
+// a slice of the created orbs. Each orb is thrown in a direction drawn from the
+// Level.random of the world of tx, as the constructor of ExperienceOrb does.
+func NewExperienceOrbs(tx *world.Tx, pos mgl64.Vec3, amount int) (orbs []*world.EntityHandle) {
+	r := tx.RegionRandom()
 	for amount > 0 {
 		size := orbSplitSizes[slices.IndexFunc(orbSplitSizes, func(value int) bool {
 			return amount >= value
 		})]
 
-		orbs = append(orbs, NewExperienceOrb(world.EntitySpawnOpts{Position: pos}, size))
+		velocity := mgl64.Vec3{(r.NextDouble()*0.2 - 0.1) * 2, r.NextDouble() * 0.4, (r.NextDouble()*0.2 - 0.1) * 2}
+		orbs = append(orbs, NewExperienceOrb(world.EntitySpawnOpts{Position: pos, Velocity: velocity}, size))
 		amount -= size
 	}
 	return
 }
 
-// NewExperienceOrb creates a new experience orb and returns it.
+// NewExperienceOrb creates a new experience orb and returns it. The orb moves
+// with the velocity of opts; NewExperienceOrbs throws the orbs it creates.
 func NewExperienceOrb(opts world.EntitySpawnOpts, xp int) *world.EntityHandle {
 	conf := experienceOrbConf
 	conf.Experience = xp
-	if opts.Velocity.Len() == 0 {
-		opts.Velocity = mgl64.Vec3{(rand.Float64()*0.2 - 0.1) * 2, rand.Float64() * 0.4, (rand.Float64()*0.2 - 0.1) * 2}
-	}
 	return opts.New(ExperienceOrbType, conf)
 }
 

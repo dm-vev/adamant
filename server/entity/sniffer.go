@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"math/rand/v2"
 	"slices"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -294,7 +293,7 @@ func snifferHeadBlock(m *Mob) cube.Pos {
 // sniffer digging table at its head.
 func (b *SnifferBehaviour) dropSeed(m *Mob) {
 	head := snifferHeadBlock(m)
-	stacks, err := loot.Generate("minecraft:gameplay/sniffer_digging", rand.Int64(), loot.Context{Entity: "minecraft:sniffer", Origin: head.Vec3()})
+	stacks, err := loot.Generate("minecraft:gameplay/sniffer_digging", m.Random().NextLong(), loot.Context{Entity: "minecraft:sniffer", Origin: head.Vec3()})
 	if err == nil {
 		for _, stack := range stacks {
 			m.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: head.Vec3()}, stack))
@@ -551,7 +550,7 @@ func (s *Sniffer) Interact(tx *world.Tx, u item.User, c *item.UseContext) bool {
 		return false
 	}
 	// Sniffer.playEatingSound.
-	tx.PlaySound(s.Position(), sound.Custom{Name: "entity.sniffer.eat", Volume: 1, Pitch: .8 + rand.Float64()*.4})
+	tx.PlaySound(s.Position(), sound.Custom{Name: "entity.sniffer.eat", Volume: 1, Pitch: .8 + randomOf(tx, s).NextDouble()*.4})
 	return true
 }
 

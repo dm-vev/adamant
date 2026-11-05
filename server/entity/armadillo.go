@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
@@ -93,10 +92,9 @@ func (c ArmadilloConfig) New() *ArmadilloBehaviour {
 	if c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	if c.ScuteTicks == 0 {
-		c.ScuteTicks = armadilloScuteDropTime(func(n int32) int32 { return int32(rand.IntN(int(n))) })
-	}
-	b := &ArmadilloBehaviour{health: c.Health, maxHealth: c.MaxHealth, effects: NewEffectManager(), age: c.Age, scuteTime: c.ScuteTicks, state: c.State, speed: .14}
+	// A scute time of zero is drawn from the random of the armadillo when it
+	// first ticks.
+	b := &ArmadilloBehaviour{health: c.Health, maxHealth: c.MaxHealth, effects: NewEffectManager(), age: c.Age, scuteTime: c.ScuteTicks, scuteTimePending: c.ScuteTicks == 0, state: c.State, speed: .14}
 	b.br = newArmadilloBrain(b)
 	return b
 }
@@ -129,8 +127,10 @@ type ArmadilloBehaviour struct {
 	ai                MobAI
 	br                *Brain
 	age, scuteTime    int
-	state             armadilloState
-	inStateTicks      int64
+	// scuteTimePending is set while scuteTime still has to be drawn.
+	scuteTimePending bool
+	state            armadilloState
+	inStateTicks     int64
 	// peekTicks counts down the peek of a scared armadillo viewers see.
 	peekTicks int
 	dead      bool
@@ -170,6 +170,10 @@ func (b *ArmadilloBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 func (b *ArmadilloBehaviour) customServerAiStep(m *Mob) {
 	b.br.tick(m)
 	b.br.setActiveToFirstValid(activityPanic, activityIdle)
+	if b.scuteTimePending {
+		b.scuteTimePending = false
+		b.scuteTime = armadilloScuteDropTime(m.Random().NextInt)
+	}
 	if b.scuteTime--; b.scuteTime <= 0 && m.Alive() {
 		if dropArmadilloShed(m.Ent, m.tx) {
 			r := m.Random()
@@ -360,7 +364,7 @@ func newArmadilloBallUp(a *ArmadilloBehaviour) *behavior {
 }
 
 func dropArmadilloShed(e *Ent, tx *world.Tx) bool {
-	stacks, err := loot.Generate("minecraft:gameplay/armadillo_shed", rand.Int64(), loot.Context{Entity: "minecraft:armadillo", Origin: e.Position()})
+	stacks, err := loot.Generate("minecraft:gameplay/armadillo_shed", entRandom(tx, e).NextLong(), loot.Context{Entity: "minecraft:armadillo", Origin: e.Position()})
 	if err != nil || len(stacks) == 0 {
 		return false
 	}
@@ -476,7 +480,7 @@ func (a *Armadillo) Brush() item.Stack {
 	if a.Dead() || a.behaviour().age < 0 {
 		return item.Stack{}
 	}
-	stacks, err := loot.Generate("minecraft:brush/armadillo", rand.Int64(), loot.Context{Entity: "minecraft:armadillo", Origin: a.Position()})
+	stacks, err := loot.Generate("minecraft:brush/armadillo", randomOf(a.tx, a).NextLong(), loot.Context{Entity: "minecraft:armadillo", Origin: a.Position()})
 	if err != nil || len(stacks) == 0 {
 		return item.Stack{}
 	}

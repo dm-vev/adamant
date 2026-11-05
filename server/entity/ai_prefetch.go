@@ -280,7 +280,8 @@ func (ai *MobAI) prefetchPath(e *Ent, self world.Entity, v *world.ReadView) {
 			break
 		}
 	}
-	if melee == nil {
+	if melee == nil || !ai.started {
+		// The id that staggers the goals is known once the AI has started.
 		return
 	}
 	targetPos, ok := v.EntityPosition(ai.target)
@@ -305,7 +306,7 @@ func (ai *MobAI) prefetchPath(e *Ent, self world.Entity, v *world.ReadView) {
 		// The goals start on every other tick of the mob, and canUse paths
 		// at most once in 20 ticks, if no running goal holds its flags.
 		next := ai.tickCount + 1
-		full := (next+int(e.H().UniqueID()&0x7fffffff))%2 == 0 || next <= 1
+		full := (next+ai.entityID)%2 == 0 || next <= 1
 		if !full || melee.hasLastCanUseCheck && tick-melee.lastCanUseCheck < 20 || wrapped.goal.Flags()&ai.Goals.disabled != 0 || !ai.Goals.canReplaceAll(wrapped) {
 			return
 		}

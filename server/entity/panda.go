@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"math/rand/v2"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
@@ -289,7 +287,7 @@ func (p *Panda) breedingFood(stack item.Stack) bool { return pandaFood(stack) }
 // chance of 1 in 32.
 func (p *Panda) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
 	a, b := p.b(), partner.(*Panda).b()
-	r := vanilla.NewLegacyRandom(rand.Int64())
+	r := randomOf(p.tx, p)
 	oneOf := func(s *pandaState) int {
 		if r.NextBoolean() {
 			return s.gene
@@ -303,10 +301,10 @@ func (p *Panda) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle
 		main, hidden = oneOf(b), oneOf(a)
 	}
 	if r.NextInt(32) == 0 {
-		main = pandaRandomGene(&r)
+		main = pandaRandomGene(r)
 	}
 	if r.NextInt(32) == 0 {
-		hidden = pandaRandomGene(&r)
+		hidden = pandaRandomGene(r)
 	}
 	return babyAt(p).New(PandaType, PandaConfig{Age: babyStartAge, Variant: pandaVariant(main, hidden), Gene: main, HiddenGene: hidden})
 }

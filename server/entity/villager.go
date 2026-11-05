@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-	"math/rand/v2"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -879,7 +878,7 @@ func (v *Villager) CompleteMerchantTrade(tx *world.Tx, user world.Entity, index 
 	}
 	if tx != nil && o.RewardXP {
 		// Villager.rewardTradeXp: 3-6 experience, 5 more on promotion.
-		amount := 3 + rand.IntN(4)
+		amount := 3 + randInt(randomOf(tx, v), 4)
 		if newLevel != oldLevel {
 			amount += 5
 		}
@@ -890,7 +889,7 @@ func (v *Villager) CompleteMerchantTrade(tx *world.Tx, user world.Entity, index 
 
 // spawnTradeXP drops trade experience half a block above the merchant.
 func spawnTradeXP(tx *world.Tx, pos mgl64.Vec3, amount int) {
-	for _, orb := range NewExperienceOrbs(pos.Add(mgl64.Vec3{0, .5}), amount) {
+	for _, orb := range NewExperienceOrbs(tx, pos.Add(mgl64.Vec3{0, .5}), amount) {
 		tx.AddEntity(orb)
 	}
 }

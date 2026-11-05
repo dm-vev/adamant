@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"math"
-	"math/rand/v2"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -547,10 +546,11 @@ func (w *Wolf) canMateWith(partner breeder) bool {
 // belongs to its owner with the collar colours of the parents mixed.
 func (w *Wolf) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
 	b, p := w.behaviour(), partner.(*Wolf).behaviour()
+	r := randomOf(w.tx, w)
 	sounds := [...]string{"classic", "puglin", "sad", "angry", "grumpy", "big", "cute"}
-	conf := WolfBehaviourConfig{AgeTicks: babyStartAge, Variant: int(randomParent(b.variant, p.variant)), SoundVariant: sounds[rand.IntN(len(sounds))]}
+	conf := WolfBehaviourConfig{AgeTicks: babyStartAge, Variant: int(randomParent(r, b.variant, p.variant)), SoundVariant: sounds[randInt(r, len(sounds))]}
 	if b.tamed {
-		collar := mixedDyeColour(item.Colours()[b.collarColor%16], item.Colours()[p.collarColor%16])
+		collar := mixedDyeColour(r, item.Colours()[b.collarColor%16], item.Colours()[p.collarColor%16])
 		conf.Tamed, conf.OwnerUUID, conf.CollarColor, conf.collarSet = true, b.ownerUUID, collar.Uint8(), true
 	}
 	return babyAt(w).New(WolfType, conf)
@@ -609,7 +609,7 @@ func (w *Wolf) TameWithBone(tx *world.Tx, user world.Entity) bool {
 	if b.tamed || b.angry() {
 		return false
 	}
-	if rand.IntN(3) == 0 {
+	if randInt(randomOf(tx, w), 3) == 0 {
 		// Wolf.tryToTame: a tamed wolf sits down and forgets its target.
 		b.tamed, b.orderedToSit = true, true
 		b.owner = user.H()

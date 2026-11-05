@@ -1,8 +1,8 @@
 package entity
 
 import (
+	"bytes"
 	"math"
-	"math/rand/v2"
 	"slices"
 	"time"
 
@@ -184,11 +184,11 @@ func (s *wardenState) Tick(e *Ent, tx *world.Tx) *Movement {
 // sight of players around it every six seconds, and its anger cools down.
 func (s *wardenState) customServerAiStep(m *Mob) {
 	s.br.tick(m)
-	if (m.AI.tickCount+int(m.H().UniqueID()&0x7fffffff))%120 == 0 {
+	if (m.AI.tickCount+m.AI.entityID)%120 == 0 {
 		applyDarknessAround(m.tx, m.data.Pos, 20)
 	}
 	if m.AI.tickCount%20 == 0 {
-		s.anger.tick(m.tx, func(e world.Entity) bool { return wardenCanTarget(m, e) })
+		s.anger.tick(m.tx, m.Random(), func(e world.Entity) bool { return wardenCanTarget(m, e) })
 		s.syncClientAnger(m)
 	}
 	s.br.setActiveToFirstValid(activityEmerge, activityDig, activityRoar, activityFight, activityInvestigate, activitySniff, activityIdle)
@@ -875,7 +875,7 @@ type angerSuspect struct {
 }
 
 func newAngerManagement(saved []wardenSavedAnger) *angerManagement {
-	a := &angerManagement{conversionDelay: rand.IntN(3), byUUID: make(map[uuid.UUID]int, len(saved))}
+	a := &angerManagement{conversionDelay: -1, byUUID: make(map[uuid.UUID]int, len(saved))}
 	for _, s := range saved {
 		a.byUUID[s.id] = s.anger
 	}
@@ -888,8 +888,13 @@ func (a *angerManagement) saved() []wardenSavedAnger {
 	for _, s := range a.suspects {
 		out = append(out, wardenSavedAnger{s.h.UUID(), s.anger})
 	}
-	for id, anger := range a.byUUID {
-		out = append(out, wardenSavedAnger{id, anger})
+	ids := make([]uuid.UUID, 0, len(a.byUUID))
+	for id := range a.byUUID {
+		ids = append(ids, id)
+	}
+	slices.SortFunc(ids, func(x, y uuid.UUID) int { return bytes.Compare(x[:], y[:]) })
+	for _, id := range ids {
+		out = append(out, wardenSavedAnger{id, a.byUUID[id]})
 	}
 	return out
 }
@@ -914,11 +919,23 @@ func (a *angerManagement) angerOf(e world.Entity) int {
 }
 
 // tick ports AngerManagement.tick.
-func (a *angerManagement) tick(tx *world.Tx, valid func(world.Entity) bool) {
+func (a *angerManagement) tick(tx *world.Tx, r *vanilla.Random, valid func(world.Entity) bool) {
+	if a.conversionDelay < 0 {
+		// Mth.randomBetweenInclusive(RandomSource.create(), 0, 2) at the
+		// construction, drawn from the random of the warden in its first tick.
+		a.conversionDelay = randInt(r, 3)
+	}
 	if a.conversionDelay--; a.conversionDelay <= 0 {
-		for id, anger := range a.byUUID {
+		// The ids in order, so that the suspects do not depend on the order
+		// of a map.
+		ids := make([]uuid.UUID, 0, len(a.byUUID))
+		for id := range a.byUUID {
+			ids = append(ids, id)
+		}
+		slices.SortFunc(ids, func(x, y uuid.UUID) int { return bytes.Compare(x[:], y[:]) })
+		for _, id := range ids {
 			if e, ok := tx.EntityByUUID(id); ok {
-				a.suspects = append(a.suspects, &angerSuspect{e.H(), anger})
+				a.suspects = append(a.suspects, &angerSuspect{e.H(), a.byUUID[id]})
 				delete(a.byUUID, id)
 			}
 		}

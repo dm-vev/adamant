@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"math/rand/v2"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -98,10 +97,9 @@ func (c ChickenBehaviourConfig) New() *ChickenBehaviour {
 	if soundVariant != "picky" {
 		soundVariant = "classic"
 	}
-	if !c.eggTimerSet {
-		c.EggLayTime = 6000 + rand.IntN(6000)
-	}
-	return &ChickenBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), speed: .25, ageTicks: c.AgeTicks, eggTimer: c.EggLayTime, variant: c.Variant, soundVariant: soundVariant, jockey: c.Jockey}
+	// An egg lay time not set is drawn from the random of the chicken when it
+	// first ticks.
+	return &ChickenBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), speed: .25, ageTicks: c.AgeTicks, eggTimer: c.EggLayTime, eggTimerPending: !c.eggTimerSet, variant: c.Variant, soundVariant: soundVariant, jockey: c.Jockey}
 }
 
 type Chicken struct{ *Ent }
@@ -110,10 +108,12 @@ type ChickenBehaviour struct {
 	effects            *EffectManager
 	speed              float64
 	ageTicks, eggTimer int
-	variant            int
-	soundVariant       string
-	dead, jockey       bool
-	breeding           breeding
+	// eggTimerPending is set while eggTimer still has to be drawn.
+	eggTimerPending bool
+	variant         int
+	soundVariant    string
+	dead, jockey    bool
+	breeding        breeding
 	animalAI
 }
 
@@ -132,9 +132,13 @@ func (b *ChickenBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if !e.OnGround() && e.data.Vel[1] < 0 {
 		e.data.Vel[1] *= .6
 	}
+	if b.eggTimerPending {
+		b.eggTimerPending = false
+		b.eggTimer = 6000 + randInt(entRandom(tx, e), 6000)
+	}
 	if b.ageTicks >= 0 && !b.jockey {
 		if b.eggTimer--; b.eggTimer <= 0 {
-			b.eggTimer = 6000 + rand.IntN(6000)
+			b.eggTimer = 6000 + randInt(entRandom(tx, e), 6000)
 			egg := item.Egg{}
 			switch b.variant {
 			case 1:
@@ -269,7 +273,7 @@ func (c *Chicken) breedingFood(stack item.Stack) bool {
 // breedOffspring ports Chicken.getBreedOffspring: the chick takes the
 // variant of either parent.
 func (c *Chicken) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
-	return babyAt(c).New(ChickenType, ChickenBehaviourConfig{AgeTicks: babyStartAge, Variant: randomParent(c.behaviour().variant, partner.(*Chicken).behaviour().variant)})
+	return babyAt(c).New(ChickenType, ChickenBehaviourConfig{AgeTicks: babyStartAge, Variant: randomParent(randomOf(c.tx, c), c.behaviour().variant, partner.(*Chicken).behaviour().variant)})
 }
 
 func (b *ChickenBehaviour) effectManager() *EffectManager { return b.effects }

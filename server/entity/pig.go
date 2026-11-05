@@ -444,7 +444,7 @@ func (p *Pig) breedingFood(stack item.Stack) bool {
 // breedOffspring ports Pig.getBreedOffspring: the piglet takes the variant of
 // either parent.
 func (p *Pig) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
-	return babyAt(p).New(PigType, PigConfig{Age: babyStartAge, Variant: randomParent(p.behaviour().variant, partner.(*Pig).behaviour().variant)})
+	return babyAt(p).New(PigType, PigConfig{Age: babyStartAge, Variant: randomParent(randomOf(p.tx, p), p.behaviour().variant, partner.(*Pig).behaviour().variant)})
 }
 
 // FinalizeSpawn ports Pig.finalizeSpawn: the biome selects the variant and
