@@ -144,8 +144,9 @@ func enchantmentType(name string) item.EnchantmentType {
 
 // Run ports EnchantCommand.enchant: the enchantment goes on the main-hand item
 // of each living target. A target that cannot take it fails the command with
-// the reason only if it is the sole target, and the command fails with
-// "Nothing happened" if no target took it.
+// the reason only if it is the sole target, and the command fails with Java's
+// commands.enchant.failed ("Nothing changed. Targets either have no item in
+// their hands or the enchantment could not be applied") if no target took it.
 func (c enchantCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	e := enchantmentType(c.Enchantment)
 	if e == nil {
@@ -208,7 +209,7 @@ func (c enchantCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	name := enchantmentFullName(e, level)
 	switch len(enchanted) {
 	case 0:
-		o.Errorf("Nothing happened")
+		o.Errorf("Nothing changed. Targets either have no item in their hands or the enchantment could not be applied")
 	case 1:
 		o.Printf("Applied enchantment %s to %s's item", name, commandTargetDisplayName(enchanted[0]))
 	default:
