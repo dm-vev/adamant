@@ -57,6 +57,11 @@ func TestMobExperienceRequiresPlayerKillAndFollowsJavaRewards(t *testing.T) {
 		{name: "zombie killed by a fall", nbt: map[string]any{"id": "minecraft:zombie"}},
 		{name: "adult cow killed by player", nbt: map[string]any{"id": "minecraft:cow"}, byPlayer: true, minXP: 1, maxXP: 3},
 		{name: "calf drops neither loot nor experience", nbt: map[string]any{"id": "minecraft:cow", "Age": int32(-24000)}, byPlayer: true, wantItemsEmpty: true},
+		// Java's loot tables of villagers and wandering traders have no pools
+		// and neither mob rewards experience.
+		{name: "villager killed by player drops nothing", nbt: map[string]any{"id": "minecraft:villager"}, byPlayer: true, wantItemsEmpty: true},
+		{name: "villager killed by a fall drops nothing", nbt: map[string]any{"id": "minecraft:villager"}, wantItemsEmpty: true},
+		{name: "wandering trader killed by player drops nothing", nbt: map[string]any{"id": "minecraft:wandering_trader"}, byPlayer: true, wantItemsEmpty: true},
 		{name: "blaze rewards ten", nbt: map[string]any{"id": "minecraft:blaze"}, byPlayer: true, minXP: 10, maxXP: 10},
 	}
 	for _, c := range cases {
