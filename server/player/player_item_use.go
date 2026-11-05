@@ -35,6 +35,76 @@ type itemUseState struct {
 	fishingHook              *world.EntityHandle
 }
 
+// useBegin records the start of the use of the stack held in the slot passed.
+func (s *itemUseState) useBegin(stack item.Stack, slot uint32) {
+	s.usingItem = true
+	s.usingSince = time.Now()
+	s.usingTicks = 0
+	s.usingStack = stack
+	if _, ok := stack.Item().(item.KineticWeapon); ok {
+		if s.kineticRecent == nil {
+			s.kineticRecent = make(map[*world.EntityHandle]int64)
+		}
+		clear(s.kineticRecent)
+	}
+	s.usingSlot = slot
+	s.itemUseRecentlyCompleted = false
+}
+
+// useFinish ends the use of the item and forgets what was used.
+func (s *itemUseState) useFinish() {
+	s.usingItem = false
+	s.usingTicks = 0
+	s.usingStack = item.Stack{}
+	clear(s.kineticRecent)
+}
+
+// useMarkCompleted remembers that the use of the stack held in the slot passed
+// completed in the tick of the last use tick.
+func (s *itemUseState) useMarkCompleted(held item.Stack, slot uint32) {
+	s.itemUseCompleteTick = s.itemUseTick
+	s.itemUseCompletedStack = held
+	s.itemUseCompletedSlot = slot
+	s.itemUseRecentlyCompleted = true
+}
+
+// useMatches reports whether the stack in use is the stack passed, held in the
+// slot passed.
+func (s *itemUseState) useMatches(slot uint32, stack item.Stack) bool {
+	return s.usingSlot == slot && s.usingStack.Equal(stack)
+}
+
+// useRecentlyCompleted reports whether the use of the stack passed, held in the
+// slot passed, completed within the last two ticks. A completion that no
+// longer matches, or has aged, is forgotten.
+func (s *itemUseState) useRecentlyCompleted(slot uint32, stack item.Stack) bool {
+	if !s.itemUseRecentlyCompleted {
+		return false
+	}
+	if s.itemUseCompletedSlot != slot || !s.itemUseCompletedStack.Equal(stack) {
+		s.itemUseRecentlyCompleted = false
+		return false
+	}
+	if ticks := s.itemUseTick - s.itemUseCompleteTick; ticks >= 0 && ticks <= 2 {
+		// Ignore the completion packet that commonly follows server-side completion within 100ms.
+		return true
+	}
+	s.itemUseRecentlyCompleted = false
+	return false
+}
+
+// useElapsed returns the duration the item has been in use: the longer of the
+// time and of the ticks.
+func (s *itemUseState) useElapsed() time.Duration {
+	return max(time.Since(s.usingSince)+time.Second/20, time.Duration(s.usingTicks)*time.Second/20)
+}
+
+// useCountTick counts a tick of the use of the item, which is the tick passed.
+func (s *itemUseState) useCountTick(current int64) {
+	s.itemUseTick = current
+	s.usingTicks++
+}
+
 // IsFishing reports if the player currently has an active fishing hook.
 func (p *Player) IsFishing() bool {
 	if p.fishingHook == nil {
@@ -247,18 +317,7 @@ func (p *Player) ReleaseItem() {
 }
 
 func (p *Player) startItemUse(stack item.Stack) {
-	p.usingItem = true
-	p.usingSince = time.Now()
-	p.usingTicks = 0
-	p.usingStack = stack
-	if _, ok := stack.Item().(item.KineticWeapon); ok {
-		if p.kineticRecent == nil {
-			p.kineticRecent = make(map[*world.EntityHandle]int64)
-		}
-		clear(p.kineticRecent)
-	}
-	p.usingSlot = atomic.LoadUint32(p.heldSlot)
-	p.itemUseRecentlyCompleted = false
+	p.useBegin(stack, atomic.LoadUint32(p.heldSlot))
 	p.emitGameEvent(world.GameEventItemInteractStart, p.Position(), nil)
 	p.updateState()
 }
@@ -267,45 +326,25 @@ func (p *Player) cancelItemUse() {
 	if !p.usingItem {
 		return
 	}
-	p.usingItem = false
-	p.usingTicks = 0
-	p.usingStack = item.Stack{}
-	clear(p.kineticRecent)
+	p.useFinish()
 	p.emitGameEvent(world.GameEventItemInteractFinish, p.Position(), nil)
 	p.updateState()
 }
 
 func (p *Player) completeItemUse() {
-	p.usingItem = false
-	p.usingTicks = 0
-	p.usingStack = item.Stack{}
-	clear(p.kineticRecent)
+	p.useFinish()
 	p.emitGameEvent(world.GameEventItemInteractFinish, p.Position(), nil)
-	p.itemUseCompleteTick = p.itemUseTick
-	p.itemUseCompletedStack, _ = p.HeldItems()
-	p.itemUseCompletedSlot = atomic.LoadUint32(p.heldSlot)
-	p.itemUseRecentlyCompleted = true
+	held, _ := p.HeldItems()
+	p.useMarkCompleted(held, atomic.LoadUint32(p.heldSlot))
 	p.updateState()
 }
 
 func (p *Player) itemUseMatches(stack item.Stack) bool {
-	return p.usingSlot == atomic.LoadUint32(p.heldSlot) && p.usingStack.Equal(stack)
+	return p.useMatches(atomic.LoadUint32(p.heldSlot), stack)
 }
 
 func (p *Player) recentlyCompletedItemUse(stack item.Stack) bool {
-	if !p.itemUseRecentlyCompleted {
-		return false
-	}
-	if p.itemUseCompletedSlot != atomic.LoadUint32(p.heldSlot) || !p.itemUseCompletedStack.Equal(stack) {
-		p.itemUseRecentlyCompleted = false
-		return false
-	}
-	if ticks := p.itemUseTick - p.itemUseCompleteTick; ticks >= 0 && ticks <= 2 {
-		// Ignore the completion packet that commonly follows server-side completion within 100ms.
-		return true
-	}
-	p.itemUseRecentlyCompleted = false
-	return false
+	return p.useRecentlyCompleted(atomic.LoadUint32(p.heldSlot), stack)
 }
 
 func (p *Player) canConsume(consumable item.Consumable) bool {
@@ -416,7 +455,7 @@ func (p *Player) handleUseContext(ctx *item.UseContext) {
 
 // useDuration returns the duration the player has been using the item in the main hand.
 func (p *Player) useDuration() time.Duration {
-	return max(time.Since(p.usingSince)+time.Second/20, time.Duration(p.usingTicks)*time.Second/20)
+	return p.useElapsed()
 }
 
 // UsingItem checks if the Player is currently using an item. True is returned if the Player is currently eating an
@@ -569,8 +608,7 @@ func (p *Player) UseItemOnEntity(e world.Entity) bool {
 }
 
 func (p *Player) tickItemUse(current int64) {
-	p.itemUseTick = current
-	p.usingTicks++
+	p.useCountTick(current)
 	held, _ := p.HeldItems()
 	if !p.itemUseMatches(held) {
 		p.cancelItemUse()
