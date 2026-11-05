@@ -121,6 +121,15 @@ func (tx *Tx) ChunkState(pos ChunkPos) (loaded bool, ready bool) {
 	return true, c.Ready()
 }
 
+// ChunkFailed reports whether the chunk at the given position is a stand-in
+// for one that failed to load or whose generation panicked: an empty chunk,
+// never saved, that the world serves so that nothing waits for the real one.
+// It does not load the chunk.
+func (tx *Tx) ChunkFailed(pos ChunkPos) bool {
+	c, ok := tx.loadedColumn(pos)
+	return ok && c.loadErr != nil
+}
+
 // ColumnBlockVersion returns the block version of the loaded column at pos,
 // which changes whenever one of its blocks does, and false if the column is
 // not loaded. It does not load the column.

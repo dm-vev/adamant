@@ -182,6 +182,12 @@ Other risks and their answers:
   the blocks entered, `Fly` the blocks below, before they set back.
 - **Latency:** the latency windows of impulses and effects, Java's buffers of reach, the grace after teleports
   counted from their acknowledgement.
+- **Chunks the server lacks:** a world still generating, and the empty stand-in of a chunk that failed to load.
+  `NoClip`, `Fly` and `Phase` judge a move against the blocks, so they wait while a chunk the box of the player
+  touches, before or after the move and a block around, is not loaded, not generated or a stand-in: the move is
+  not judged, the floating count starts again, and no setback puts the player back there. A client on blocks the
+  server lacks has the ground (`Ascend`, `Speed`). No check loads a chunk to look at it: that would wait for its
+  generation on the tick of the world.
 - **Server lag:** the movement checks count client ticks, not server ticks; the timer and the break time read the
   wall clock.
 - **Throttling** after a long stall is a short freeze, BDS's behaviour, never a setback unless the client stays

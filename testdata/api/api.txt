@@ -19394,6 +19394,7 @@ server/player	method	Context.Cancel	func()
 server/player	method	Context.CancelBlockUpdate	func(pos server/block/cube.Pos, b server/world.Block)
 server/player	method	Context.Cancelled	func() bool
 server/player	method	Context.CaptureStructure	func(origin server/block/cube.Pos, size [3]int, entities bool) *server/world.StructureTemplate
+server/player	method	Context.ChunkFailed	func(pos server/world.ChunkPos) bool
 server/player	method	Context.ChunkLoaded	func(pos server/world.ChunkPos) bool
 server/player	method	Context.ChunkReadySignal	func(pos server/world.ChunkPos) (<-chan struct{}, bool)
 server/player	method	Context.ChunkState	func(pos server/world.ChunkPos) (loaded bool, ready bool)
@@ -20738,6 +20739,7 @@ server/world	method	Context.Cancel	func()
 server/world	method	Context.CancelBlockUpdate	func(pos server/block/cube.Pos, b server/world.Block)
 server/world	method	Context.Cancelled	func() bool
 server/world	method	Context.CaptureStructure	func(origin server/block/cube.Pos, size [3]int, entities bool) *server/world.StructureTemplate
+server/world	method	Context.ChunkFailed	func(pos server/world.ChunkPos) bool
 server/world	method	Context.ChunkLoaded	func(pos server/world.ChunkPos) bool
 server/world	method	Context.ChunkReadySignal	func(pos server/world.ChunkPos) (<-chan struct{}, bool)
 server/world	method	Context.ChunkState	func(pos server/world.ChunkPos) (loaded bool, ready bool)
@@ -21063,6 +21065,7 @@ server/world	method	Tx.BuildStructure	func(pos server/block/cube.Pos, s server/w
 server/world	method	Tx.CanSpreadFireAround	func(pos server/block/cube.Pos) bool
 server/world	method	Tx.CancelBlockUpdate	func(pos server/block/cube.Pos, b server/world.Block)
 server/world	method	Tx.CaptureStructure	func(origin server/block/cube.Pos, size [3]int, entities bool) *server/world.StructureTemplate
+server/world	method	Tx.ChunkFailed	func(pos server/world.ChunkPos) bool
 server/world	method	Tx.ChunkLoaded	func(pos server/world.ChunkPos) bool
 server/world	method	Tx.ChunkReadySignal	func(pos server/world.ChunkPos) (<-chan struct{}, bool)
 server/world	method	Tx.ChunkState	func(pos server/world.ChunkPos) (loaded bool, ready bool)

@@ -4124,7 +4124,13 @@ func (p *Player) touchingWater() bool {
 	for x := int(math.Floor(box.Min()[0])); x <= int(math.Floor(box.Max()[0])); x++ {
 		for y := int(math.Floor(box.Min()[1])); y <= int(math.Floor(box.Max()[1])); y++ {
 			for z := int(math.Floor(box.Min()[2])); z <= int(math.Floor(box.Max()[2])); z++ {
-				if l, ok := p.tx.Liquid(cube.Pos{x, y, z}); ok && l.LiquidType() == "water" {
+				pos := cube.Pos{x, y, z}
+				if !p.movementChunkReady(pos) {
+					// Looking for water in a chunk the world lacks would load it,
+					// and wait for its generation.
+					continue
+				}
+				if l, ok := p.tx.Liquid(pos); ok && l.LiquidType() == "water" {
 					return true
 				}
 			}

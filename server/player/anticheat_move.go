@@ -10,6 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/player/anticheat"
+	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -153,19 +154,43 @@ func (p *Player) groundAt(pos mgl64.Vec3) bool {
 func (p *Player) groundWithin(pos mgl64.Vec3, margin, depth float64) bool {
 	box := p.H().Type().BBox(p).Translate(pos).GrowVec3(mgl64.Vec3{margin, 0, margin}).Extend(mgl64.Vec3{0, -depth, 0})
 	low, high := cube.PosFromVec3(box.Min()), cube.PosFromVec3(box.Max())
+	if p.chunksFailed(low, high) {
+		// The blocks of a chunk that failed to load are not the ground the
+		// client stands on.
+		return true
+	}
 	for x := low[0]; x <= high[0]; x++ {
 		for z := low[2]; z <= high[2]; z++ {
 			for y := low[1]; y <= high[1]; y++ {
 				bp := cube.Pos{x, y, z}
 				b, loaded := p.tx.BlockLoaded(bp)
 				if !loaded {
-					return true
+					// A block the server does not have may be the ground; the
+					// void below the world is not.
+					if !bp.OutOfBounds(p.tx.Range()) {
+						return true
+					}
+					continue
 				}
 				for _, bb := range b.Model().BBox(bp, p.tx) {
 					if bb.Translate(bp.Vec3()).IntersectsWith(box) {
 						return true
 					}
 				}
+			}
+		}
+	}
+	return false
+}
+
+// chunksFailed reports whether a chunk that holds a block from low to high
+// is the empty stand-in of one that failed to load.
+func (p *Player) chunksFailed(low, high cube.Pos) bool {
+	first, last := world.ChunkPosition(low), world.ChunkPosition(high)
+	for x := first[0]; x <= last[0]; x++ {
+		for z := first[1]; z <= last[1]; z++ {
+			if p.tx.ChunkFailed(world.ChunkPos{x, z}) {
+				return true
 			}
 		}
 	}
@@ -210,13 +235,20 @@ func (p *Player) frictionBelow(pos mgl64.Vec3) float64 {
 	return anticheat.DefaultFriction
 }
 
-// inLiquid reports whether the box of the player touches water or lava.
+// inLiquid reports whether the box of the player touches water or lava, in
+// the chunks the world has loaded.
 func (p *Player) inLiquid() bool {
 	box := p.H().Type().BBox(p).Translate(p.Position()).Grow(-.001)
 	for x := int(math.Floor(box.Min()[0])); x <= int(math.Floor(box.Max()[0])); x++ {
 		for y := int(math.Floor(box.Min()[1])); y <= int(math.Floor(box.Max()[1])); y++ {
 			for z := int(math.Floor(box.Min()[2])); z <= int(math.Floor(box.Max()[2])); z++ {
-				if _, ok := p.tx.Liquid(cube.Pos{x, y, z}); ok {
+				pos := cube.Pos{x, y, z}
+				// A liquid is looked up in the chunks the world has: asking for
+				// one it does not would load it, and wait for its generation.
+				if _, loaded := p.tx.BlockLoaded(pos); !loaded {
+					continue
+				}
+				if _, ok := p.tx.Liquid(pos); ok {
 					return true
 				}
 			}
@@ -249,16 +281,52 @@ func (p *Player) checkMove(ac *acState, m client.Move, delta mgl64.Vec3, st anti
 	if !p.movementChecked(ac, m) {
 		return moveVerdict{}
 	}
+	// The checks that judge a move against the blocks wait for the chunks
+	// they would read: where the server lacks the blocks a client stands on,
+	// it cannot tell it from a cheat.
+	trusted := p.blocksTrusted(m)
+	if !trusted {
+		ac.hover = 0
+	}
 	// NoClip first: a move into blocks is set back before it is judged by
 	// how fast it went.
-	if p.checkNoClip(ac, m) || p.checkSpeed(ac, m, delta, st) || p.checkFly(ac, m, delta) {
+	if trusted && p.checkNoClip(ac, m) || p.checkSpeed(ac, m, delta, st) || trusted && p.checkFly(ac, m, delta) {
 		return moveVerdict{refused: true}
 	}
 	verdict := p.checkAscend(ac, m, delta, st)
-	if verdict.refused || p.checkPhase(ac, m, delta) {
+	if verdict.refused || trusted && p.checkPhase(ac, m, delta) {
 		return moveVerdict{refused: true}
 	}
 	return verdict
+}
+
+// maxTrustedChunks is how many chunks wide a move may be for blocksTrusted
+// to look at the chunks it crosses: a longer one is not a walk.
+const maxTrustedChunks = 4
+
+// blocksTrusted reports whether the server has the blocks that judging the
+// move m of the player reads: every chunk the box of the player touches,
+// before and after the move and a block around, is loaded, generated, and
+// not the empty stand-in of a chunk that failed to load. A move too long to
+// be a walk is not.
+func (p *Player) blocksTrusted(m client.Move) bool {
+	box := p.H().Type().BBox(p)
+	from, to := p.Position(), m.Position
+	lo := cube.PosFromVec3(mgl64.Vec3{min(from[0], to[0]) + box.Min()[0] - 1, 0, min(from[2], to[2]) + box.Min()[2] - 1})
+	hi := cube.PosFromVec3(mgl64.Vec3{max(from[0], to[0]) + box.Max()[0] + 1, 0, max(from[2], to[2]) + box.Max()[2] + 1})
+	first, last := world.ChunkPosition(lo), world.ChunkPosition(hi)
+	if last[0]-first[0] >= maxTrustedChunks || last[1]-first[1] >= maxTrustedChunks {
+		return false
+	}
+	for x := first[0]; x <= last[0]; x++ {
+		for z := first[1]; z <= last[1]; z++ {
+			pos := world.ChunkPos{x, z}
+			if loaded, ready := p.tx.ChunkState(pos); !loaded || !ready || p.tx.ChunkFailed(pos) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // ascendJudged reports whether Ascend judges a move m of the player: the
