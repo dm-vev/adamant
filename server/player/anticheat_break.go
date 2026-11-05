@@ -14,8 +14,9 @@ type breakState struct {
 	// tick: tools switched and effects that changed count as they did.
 	progress float64
 	// since is when the break started, by the wall clock, which a lagging
-	// server does not slow.
-	since time.Time
+	// server does not slow, and arrivedSince when the input that started
+	// it reached the server, which a lagging server does not delay.
+	since, arrivedSince time.Time
 	// delayed is set once an early finish was delayed, Java's delayed
 	// destroy: the block breaks once its time is served.
 	delayed bool
@@ -42,7 +43,7 @@ func (p *Player) tickProgress(pos cube.Pos) float64 {
 // startBreakTime starts the progress of a break.
 func (p *Player) startBreakTime() {
 	if ac := p.anticheat(); ac != nil {
-		ac.breaking = breakState{since: ac.wallNow(), instant: ac.breaking.instant}
+		ac.breaking = breakState{since: ac.wallNow(), arrivedSince: p.inputArrival(ac), instant: ac.breaking.instant}
 	}
 }
 
@@ -64,12 +65,28 @@ func (p *Player) continueBreakTime() bool {
 	return false
 }
 
+// inputArrival returns when the input of the client that the player handles
+// in this tick reached the server, the wall clock now if there is none or it
+// does not say. A server that lags hands the inputs of a client together, in
+// a tick, though they arrived apart: the time between them is the client's
+// own.
+func (p *Player) inputArrival(ac *acState) time.Time {
+	if ac.inputAt.IsZero() || ac.inputTick != p.tickCount {
+		return ac.wallNow()
+	}
+	return ac.inputAt
+}
+
 // breakProgress returns the part of the break done: the most of what the
-// ticks added and of the time since the start over the break time now.
+// ticks added and of the time since the start over the break time now, by
+// the wall clock when the inputs were handled and by the time they arrived,
+// the later of the two: a server that lags handles the start and the finish
+// of a break in one tick.
 func (p *Player) breakProgress(ac *acState) float64 {
 	wall := 0.0
 	if ticks := p.breakTicks(p.breakingPos); ticks > 0 {
-		wall = float64(ac.wallNow().Sub(ac.breaking.since)) / float64(anticheatTick) / ticks
+		elapsed := max(ac.wallNow().Sub(ac.breaking.since), p.inputArrival(ac).Sub(ac.breaking.arrivedSince))
+		wall = float64(elapsed) / float64(anticheatTick) / ticks
 	}
 	return max(ac.breaking.progress, wall)
 }
@@ -136,7 +153,7 @@ func (p *Player) refuseDestroy(pos cube.Pos) bool {
 	switch {
 	case p.breakTicks(pos) > 1:
 		act = p.violate(ac, anticheat.BreakTime, "instant", p.breakTicks(pos), fmt.Sprintf("%s takes %.1f ticks", name, p.breakTicks(pos)))
-	case !ac.breaking.instant.Take(ac.wallNow(), conf.InstantPerSecond, conf.InstantBurst):
+	case !ac.breaking.instant.Take(p.inputArrival(ac), conf.InstantPerSecond, conf.InstantBurst):
 		act = p.violate(ac, anticheat.BreakTime, "rate", 1, fmt.Sprintf("%s beyond %v a second", name, conf.InstantPerSecond))
 	default:
 		return false

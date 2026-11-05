@@ -34,6 +34,35 @@ func (ac *acState) wallNow() time.Time {
 	return time.Now()
 }
 
+// maxServerLagTicks is the most ticks late the server is credited with: 10 s.
+const maxServerLagTicks = 10 * anticheat.TicksPerSecond
+
+// nextTick counts a tick of the player, and keeps when it came, for how
+// late the server is.
+func (p *Player) nextTick() {
+	p.tickCount++
+	if ac := p.acState; ac != nil {
+		ac.prevTickAt, ac.tickAt = ac.tickAt, ac.wallNow()
+	}
+}
+
+// serverLag returns how many ticks late the server is, from the time
+// between the last ticks of the player and the one now under way. A server
+// that lags hands the inputs of a client in bursts, whatever time they
+// arrived at: the timer credits the client with the ticks the server lost,
+// which no client can make, and only a cheat that makes the server lag
+// would use.
+func (ac *acState) serverLag() float64 {
+	if ac.tickAt.IsZero() {
+		return 0
+	}
+	gap := ac.wallNow().Sub(ac.tickAt)
+	if !ac.prevTickAt.IsZero() {
+		gap = max(gap, ac.tickAt.Sub(ac.prevTickAt))
+	}
+	return min(max(0, float64(gap)/float64(anticheatTick)-1), maxServerLagTicks)
+}
+
 // timerNow returns the clock of the timer of the player at the move m,
 // started at the move if it was not.
 func (p *Player) timerNow(ac *acState, m client.Move) float64 {
@@ -55,8 +84,9 @@ func (p *Player) countTimer(ac *acState, m client.Move) {
 }
 
 // checkTimer holds a client to real time: a client may make up MaxBalance
-// ticks it fell behind, and run Tolerance ticks ahead; a move beyond that
-// is ahead of time. checkTimer reports whether it decided what becomes of
+// ticks it fell behind, and run Tolerance ticks ahead, both and MaxQueue
+// longer by the ticks the server is late; a move beyond that is ahead of
+// time. checkTimer reports whether it decided what becomes of
 // the move m, and what.
 //
 // With the action throttle, the default, a move ahead of time is deferred:
@@ -71,7 +101,8 @@ func (p *Player) checkTimer(ac *acState, m client.Move) (client.MoveResult, bool
 		return 0, false
 	}
 	conf := ac.conf.Timer
-	balance, tolerance := float64(conf.MaxBalance), float64(conf.Tolerance)
+	lag := ac.serverLag()
+	balance, tolerance := float64(conf.MaxBalance)+lag, float64(conf.Tolerance)+lag
 	now := p.timerNow(ac, m)
 	ahead := ac.timer.clock.Ahead(now, balance)
 	waited := p.waitedTicks(ac, m)
@@ -94,7 +125,7 @@ func (p *Player) checkTimer(ac *acState, m client.Move) (client.MoveResult, bool
 		ac.timer.clock.Count(now, balance)
 		return 0, false
 	}
-	if waited > int64(conf.MaxQueue) {
+	if waited > int64(conf.MaxQueue)+int64(lag) {
 		act := p.violate(ac, anticheat.Timer, "queue", float64(waited-int64(conf.MaxQueue)), detail)
 		if act == anticheat.Kick {
 			return client.MoveRefused, true
@@ -104,7 +135,7 @@ func (p *Player) checkTimer(ac *acState, m client.Move) (client.MoveResult, bool
 		}
 		return client.MoveRefused, true
 	}
-	if waited > int64(conf.Tolerance) && !ac.timer.episode {
+	if waited > int64(tolerance) && !ac.timer.episode {
 		ac.timer.episode = true
 		switch p.violate(ac, anticheat.Timer, "ahead", ahead-tolerance, detail) {
 		case anticheat.Kick:

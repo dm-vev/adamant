@@ -27,6 +27,7 @@ func (p *Player) ClientMove(m client.Move) client.MoveResult {
 	ac := p.anticheat()
 	if ac != nil {
 		ac.attack.aim, ac.attack.camera = m.Aim, m.Camera
+		ac.inputAt, ac.inputTick = m.Arrived, p.tickCount
 		p.noteClientMove(ac, m)
 		if m.Loading {
 			// The clock starts again in the new world.

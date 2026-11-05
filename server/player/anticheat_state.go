@@ -49,6 +49,14 @@ type acState struct {
 	// time.Now: a test sets it.
 	timer timerState
 	now   func() time.Time
+	// inputAt is when the input of the client last handled reached the
+	// server, zero if it did not say, and inputTick the tick of the player
+	// it was handled in.
+	inputAt   time.Time
+	inputTick int64
+	// tickAt and prevTickAt are when the player last ticked, and the tick
+	// before: how late the server ticks.
+	tickAt, prevTickAt time.Time
 	// breaking is what BreakTime keeps, places the bucket of Place, attack
 	// what Attack and AttackAim keep.
 	breaking breakState

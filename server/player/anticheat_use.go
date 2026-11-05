@@ -24,7 +24,7 @@ func (p *Player) refuseFastUse(it world.Item) bool {
 		return false
 	}
 	perSecond := float64(anticheat.TicksPerSecond) / float64(conf.MinTicks)
-	if ac.uses.Take(ac.wallNow(), perSecond, conf.Burst) {
+	if ac.uses.Take(p.inputArrival(ac), perSecond, conf.Burst) {
 		return false
 	}
 	name, _ := it.EncodeItem()

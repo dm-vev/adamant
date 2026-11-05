@@ -60,7 +60,7 @@ func (p *Player) refusePlaceRate(pos cube.Pos) bool {
 		return false
 	}
 	conf := ac.conf.Place
-	if ac.places.Take(ac.wallNow(), conf.PerSecond, conf.Burst) {
+	if ac.places.Take(p.inputArrival(ac), conf.PerSecond, conf.Burst) {
 		return false
 	}
 	return p.violate(ac, anticheat.Place, "rate", 1, fmt.Sprintf("at %v beyond %v a second", pos, conf.PerSecond)) != anticheat.Log

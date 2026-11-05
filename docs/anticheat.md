@@ -188,8 +188,12 @@ Other risks and their answers:
   not judged, the floating count starts again, and no setback puts the player back there. A client on blocks the
   server lacks has the ground (`Ascend`, `Speed`). No check loads a chunk to look at it: that would wait for its
   generation on the tick of the world.
-- **Server lag:** the movement checks count client ticks, not server ticks; the timer and the break time read the
-  wall clock.
+- **Server lag:** the movement checks count client ticks, not server ticks. The timer reads the wall clock at the
+  arrival of a move, and credits a client with the ticks the server was late, from the time between its last ticks
+  (up to 10 s): the tolerance, the balance and `MaxQueue` are that many ticks longer, since a server that freezes
+  for 3 s hands the 60 inputs of a client at once, however late their arrival is stamped. The break time, the rate
+  of attacks, places, uses and instant breaks are read from the time the inputs arrived, not from when the server
+  handled them: a break of 0.8 s that a server ticking every second handles in one tick is not cancelled.
 - **Throttling** after a long stall is a short freeze, BDS's behaviour, never a setback unless the client stays
   `MaxQueue` ticks ahead.
 

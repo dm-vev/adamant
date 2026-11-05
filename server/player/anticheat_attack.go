@@ -42,7 +42,7 @@ func (p *Player) refuseAttack(ac *acState, e world.Entity) bool {
 	if p.checks(ac, anticheat.Attack) {
 		conf := ac.conf.Attack
 		a := &ac.attack
-		if !a.bucket.Take(ac.wallNow(), conf.PerSecond, conf.Burst) {
+		if !a.bucket.Take(p.inputArrival(ac), conf.PerSecond, conf.Burst) {
 			if p.violate(ac, anticheat.Attack, "rate", 1, fmt.Sprintf("beyond %v a second", conf.PerSecond)) != anticheat.Log {
 				return true
 			}

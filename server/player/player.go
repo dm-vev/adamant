@@ -3950,7 +3950,7 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 	p.showMove()
 	p.wardenSpawnTracker.Tick()
 	p.itemUseTick = current
-	p.tickCount++
+	p.nextTick()
 	if p.Dead() {
 		p.ReleaseShoulderParrots()
 		p.cancelItemUse()
