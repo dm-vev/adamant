@@ -182,9 +182,9 @@ func (conf Config) New() *World {
 	if conf.Generator == nil {
 		conf.Generator = NopGenerator{}
 	}
-	conf.GeneratorProfile = conf.GeneratorProfile.resolve(runtime.NumCPU())
+	conf.GeneratorProfile = conf.GeneratorProfile.resolve(schedulerCPUs())
 	if conf.GeneratorWorkers <= 0 {
-		conf.GeneratorWorkers = conf.GeneratorProfile.workers(runtime.NumCPU())
+		conf.GeneratorWorkers = conf.GeneratorProfile.workers(schedulerCPUs())
 	}
 	if tunable, ok := conf.Generator.(TunableGenerator); ok {
 		tunable.TuneGeneration(GenerationTuning{Workers: conf.GeneratorWorkers, Parallel: conf.GeneratorProfile == GeneratorProfileManyCores})
@@ -278,7 +278,7 @@ func (conf Config) New() *World {
 		chunks:              make(map[ChunkPos]*Column),
 		chunkRequests:       make(map[ChunkPos][]chunkCallback),
 		unsettled:           make(map[ChunkPos]*Column),
-		lightFills:          make(chan struct{}, runtime.NumCPU()),
+		lightFills:          make(chan struct{}, schedulerCPUs()),
 		workerLocals:        []map[any]any{make(map[any]any)},
 		queueClosing:        make(chan struct{}),
 		queueWake:           make(chan struct{}, 1),
@@ -356,4 +356,14 @@ func (conf Config) New() *World {
 
 	constructed = true
 	return w
+}
+
+// schedulerCPUs returns the CPUs the process runs on at once: the logical
+// CPUs of the host, or the processors the Go scheduler was given if fewer, as
+// a container limited to some of the CPUs of its host, or GOMAXPROCS, does.
+// The workers a world sizes by them share these processors with its owner and
+// the flushers of its sessions: more workers than processors leave the owner
+// waiting for one, as the lag of every action of a player during generation.
+func schedulerCPUs() int {
+	return max(1, min(runtime.NumCPU(), runtime.GOMAXPROCS(0)))
 }
