@@ -14,6 +14,7 @@ import (
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/protocol/bedrock/query"
 	"github.com/df-mc/dragonfly/server/config"
+	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/resource"
 )
@@ -416,6 +417,7 @@ func logProtocols(log *slog.Logger, protocols []*versions.Protocol, primary *ver
 	if log == nil {
 		return
 	}
+	log = logging.Sub(log, logging.Network)
 	log.Info("Protocols of Bedrock Edition.", "allowed", protocolList(protocols), "primary", primary.Version)
 	for _, note := range notes {
 		log.Warn(note)

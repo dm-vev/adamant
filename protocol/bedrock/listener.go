@@ -29,6 +29,7 @@ import (
 	"github.com/df-mc/dragonfly/protocol/bedrock/query"
 	"github.com/df-mc/dragonfly/protocol/bedrock/session"
 	"github.com/df-mc/dragonfly/server"
+	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/dm-vev/adamant/net/acme"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/login"
@@ -43,6 +44,7 @@ import (
 // Unless c.DisableResourceBuilding, it offers clients a resource pack of the
 // custom blocks and items of conf.Blocks after c.Resources.
 func (c Config) Listener(conf server.Config, host server.Host) (server.Listener, error) {
+	conf.Log = logging.Sub(conf.Log, logging.Network)
 	packs := slices.Clone(c.Resources)
 	if !c.DisableResourceBuilding {
 		if pack, ok := packbuilder.BuildResourcePack(conf.Blocks, c.oldestProtocol().Version, conf.Log); ok {

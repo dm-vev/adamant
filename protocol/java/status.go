@@ -10,6 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/config"
+	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/dm-vev/adamant/net/java"
 )
 
@@ -124,7 +125,7 @@ func (c Config) Listener(conf server.Config, host server.Host) (server.Listener,
 	if err != nil {
 		return nil, fmt.Errorf("listen for Java Edition: %w", err)
 	}
-	conf.Log.Info("Clients of Java Edition see the server.", "addr", jl.Addr())
+	logging.Sub(conf.Log, logging.Network).Info("Clients of Java Edition see the server.", "addr", jl.Addr())
 	l := &statusListener{jl: jl, closed: make(chan struct{})}
 	go func() {
 		for {
