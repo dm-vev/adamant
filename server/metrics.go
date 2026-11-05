@@ -84,6 +84,68 @@ func (srv *Server) registerMetrics() {
 	s := &srv.stats
 	s.capture, s.write = metrics.NewHistogram(checkpointBounds...), metrics.NewHistogram(checkpointBounds...)
 
+	srv.registerWorldMetrics(r)
+
+	r.HistogramFamily("adamant_checkpoint_seconds", "Time a phase of a checkpoint took: capture on the world owners, write off them.", func(emit func(*metrics.Histogram, ...string)) {
+		emit(s.capture, "phase", "capture")
+		emit(s.write, "phase", "write")
+	})
+	reasons := func(c *[4]metrics.Counter) func(emit func(uint64, ...string)) {
+		return func(emit func(uint64, ...string)) {
+			for i := range c {
+				if n := c[i].Load(); n != 0 || i < len(checkpointReasons) {
+					emit(n, "reason", reasonLabel(i))
+				}
+			}
+		}
+	}
+	r.CounterFamily("adamant_checkpoints_total", "Checkpoints saved, by reason.", reasons(&s.checkpoints))
+	r.CounterFamily("adamant_checkpoint_failures_total", "Checkpoints that failed, wholly or in part, by reason.", reasons(&s.checkpointFailures))
+	r.GaugeFunc("adamant_checkpoint_last_success_timestamp_seconds", "Unix time the last checkpoint that wrote everything finished, 0 if none did.", func() float64 {
+		if t := srv.checkpoints.lastSuccess.Load(); t != 0 {
+			return float64(t) / 1e9
+		}
+		return 0
+	})
+	r.GaugeFunc("adamant_checkpoint_chunks", "Columns the last checkpoint wrote.", func() float64 { return float64(s.lastChunks.Load()) })
+	r.GaugeFunc("adamant_checkpoint_players", "Players the last checkpoint saved.", func() float64 { return float64(s.lastPlayers.Load()) })
+
+	r.GaugeFunc("adamant_players_online", "Players online.", func() float64 { return float64(srv.PlayerCount()) })
+	r.GaugeFunc("adamant_players_max", "The most players the server accepts, 0 for no limit.", func() float64 { return float64(srv.conf.MaxPlayers) })
+	r.CounterFunc("adamant_player_joins_total", "Players that joined.", s.joins.Load)
+	r.CounterFunc("adamant_player_leaves_total", "Players that left.", s.leaves.Load)
+	r.GaugeFamily("adamant_listener_up", "1 while a listener of the server accepts clients.", func(emit func(float64, ...string)) {
+		for i, l := range srv.listeners {
+			emit(boolFloat(srv.listening[i].Load()), "listener", strconv.Itoa(i), "kind", listenerKind(l))
+		}
+	})
+
+	info, _ := debug.ReadBuildInfo()
+	goVersion, revision, mainVersion := "unknown", "", ""
+	if info != nil {
+		goVersion, mainVersion = info.GoVersion, info.Main.Version
+		for _, set := range info.Settings {
+			if set.Key == "vcs.revision" {
+				revision = set.Value
+			}
+		}
+	}
+	r.GaugeFamily("adamant_build_info", "The build of the server, as labels: always 1.", func(emit func(float64, ...string)) {
+		emit(1, "version", mainVersion, "minecraft", version.Minecraft, "go", goVersion, "commit", revision)
+	})
+	r.GaugeFunc("adamant_start_time_seconds", "Unix time the server started listening, 0 before.", func() float64 {
+		if t := srv.started.Load(); t != nil {
+			return float64(t.UnixNano()) / 1e9
+		}
+		return 0
+	})
+	registerRuntimeMetrics(r)
+}
+
+// registerWorldMetrics registers the metrics of the worlds of the server into
+// r, each labelled with the dimension of its world.
+func (srv *Server) registerWorldMetrics(r *metrics.Registry) {
+	s := &srv.stats
 	worlds := func(f func(w *world.World, dim string)) {
 		for _, w := range srv.distinctWorlds() {
 			f(w, dimensionLabel(w.Dimension()))
@@ -140,61 +202,6 @@ func (srv *Server) registerMetrics() {
 			}
 		})
 	})
-
-	r.HistogramFamily("adamant_checkpoint_seconds", "Time a phase of a checkpoint took: capture on the world owners, write off them.", func(emit func(*metrics.Histogram, ...string)) {
-		emit(s.capture, "phase", "capture")
-		emit(s.write, "phase", "write")
-	})
-	reasons := func(c *[4]metrics.Counter) func(emit func(uint64, ...string)) {
-		return func(emit func(uint64, ...string)) {
-			for i := range c {
-				if n := c[i].Load(); n != 0 || i < len(checkpointReasons) {
-					emit(n, "reason", reasonLabel(i))
-				}
-			}
-		}
-	}
-	r.CounterFamily("adamant_checkpoints_total", "Checkpoints saved, by reason.", reasons(&s.checkpoints))
-	r.CounterFamily("adamant_checkpoint_failures_total", "Checkpoints that failed, wholly or in part, by reason.", reasons(&s.checkpointFailures))
-	r.GaugeFunc("adamant_checkpoint_last_success_timestamp_seconds", "Unix time the last checkpoint that wrote everything finished, 0 if none did.", func() float64 {
-		if t := srv.checkpoints.lastSuccess.Load(); t != 0 {
-			return float64(t) / 1e9
-		}
-		return 0
-	})
-	r.GaugeFunc("adamant_checkpoint_chunks", "Columns the last checkpoint wrote.", func() float64 { return float64(s.lastChunks.Load()) })
-	r.GaugeFunc("adamant_checkpoint_players", "Players the last checkpoint saved.", func() float64 { return float64(s.lastPlayers.Load()) })
-
-	r.GaugeFunc("adamant_players_online", "Players online.", func() float64 { return float64(srv.PlayerCount()) })
-	r.GaugeFunc("adamant_players_max", "The most players the server accepts, 0 for no limit.", func() float64 { return float64(srv.conf.MaxPlayers) })
-	r.CounterFunc("adamant_player_joins_total", "Players that joined.", s.joins.Load)
-	r.CounterFunc("adamant_player_leaves_total", "Players that left.", s.leaves.Load)
-	r.GaugeFamily("adamant_listener_up", "1 while a listener of the server accepts clients.", func(emit func(float64, ...string)) {
-		for i, l := range srv.listeners {
-			emit(boolFloat(srv.listening[i].Load()), "listener", strconv.Itoa(i), "kind", listenerKind(l))
-		}
-	})
-
-	info, _ := debug.ReadBuildInfo()
-	goVersion, revision, mainVersion := "unknown", "", ""
-	if info != nil {
-		goVersion, mainVersion = info.GoVersion, info.Main.Version
-		for _, set := range info.Settings {
-			if set.Key == "vcs.revision" {
-				revision = set.Value
-			}
-		}
-	}
-	r.GaugeFamily("adamant_build_info", "The build of the server, as labels: always 1.", func(emit func(float64, ...string)) {
-		emit(1, "version", mainVersion, "minecraft", version.Minecraft, "go", goVersion, "commit", revision)
-	})
-	r.GaugeFunc("adamant_start_time_seconds", "Unix time the server started listening, 0 before.", func() float64 {
-		if t := srv.started.Load(); t != nil {
-			return float64(t.UnixNano()) / 1e9
-		}
-		return 0
-	})
-	registerRuntimeMetrics(r)
 }
 
 // listenerKind returns the type of a listener, as "*bedrockadapter.listener".
