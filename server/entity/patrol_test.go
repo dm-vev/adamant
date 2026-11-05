@@ -29,11 +29,21 @@ func droppedItems(tx *world.Tx) map[string]int {
 	return out
 }
 
-func TestPatrolLeaderIsCaptainAndDropsOminousBottle(t *testing.T) {
-	t.Parallel()
-	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
-	defer w.Close()
-	var leaderH, memberH *world.EntityHandle
+// patrolWorld makes a world with a patrol of a leader and a member, and runs
+// it for the 300 ticks it takes the leader to share a leg. It returns the
+// world, the handles of the two and whether the member got the leg.
+//
+// A patrol only holds while its members are within 16 blocks of each other
+// (LongDistancePatrolGoal.findPatrolCompanions). The first path of mobs fresh
+// from spawning fails and the patrol waits ten seconds, in which both stroll
+// up to 8 blocks each, so in about one patrol in a thousand they end up in
+// opposite directions more than 16 blocks apart and the leader ends the
+// patrol, as in Java. That is not a failure to share a leg, and the caller
+// tries another patrol.
+func patrolWorld(t *testing.T) (w *world.World, leaderH, memberH *world.EntityHandle, shared, ended bool) {
+	t.Helper()
+	w = world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
+	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {
 		patrolGround(tx)
 		if !spawnPatrolMember(tx, cube.Pos{0, 64, 0}, true, levelRandom(w)) || !spawnPatrolMember(tx, cube.Pos{2, 64, 0}, false, levelRandom(w)) {
@@ -63,7 +73,6 @@ func TestPatrolLeaderIsCaptainAndDropsOminousBottle(t *testing.T) {
 	// The leader walks a leg toward its target and hands it to the member.
 	// Mobs fresh from spawning are not on the ground yet, so their first path
 	// fails and the patrol waits ten seconds, as in Java.
-	shared := false
 	for range 300 {
 		if err := w.StepTicks(1); err != nil {
 			t.Fatal(err)
@@ -73,10 +82,35 @@ func TestPatrolLeaderIsCaptainAndDropsOminousBottle(t *testing.T) {
 			if e, ok := memberH.Entity(tx); ok {
 				shared = shared || e.(*Pillager).state().patrolTarget != (cube.Pos{})
 			}
+			if e, ok := leaderH.Entity(tx); ok {
+				ended = ended || !e.(*Pillager).state().patrolling
+			}
 		})
 	}
-	if !shared {
-		t.Fatal("leader did not share its patrol leg with the member")
+	return w, leaderH, memberH, shared, ended
+}
+
+func TestPatrolLeaderIsCaptainAndDropsOminousBottle(t *testing.T) {
+	t.Parallel()
+	var (
+		w                *world.World
+		leaderH, memberH *world.EntityHandle
+	)
+	// Up to eight patrols, which are not all ended by their members
+	// straying apart: that has to be a rare chance, and a leader that holds
+	// its patrol but never shares a leg fails at once.
+	for attempt := 1; ; attempt++ {
+		var shared, ended bool
+		w, leaderH, memberH, shared, ended = patrolWorld(t)
+		if shared {
+			break
+		}
+		if !ended {
+			t.Fatal("leader did not share its patrol leg with the member")
+		}
+		if attempt == 8 {
+			t.Fatalf("the members strayed more than 16 blocks apart in %d patrols in a row", attempt)
+		}
 	}
 	<-w.Exec(func(tx *world.Tx) {
 		leaderE, _ := leaderH.Entity(tx)
