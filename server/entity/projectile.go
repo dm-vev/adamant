@@ -105,6 +105,15 @@ func (conf ProjectileBehaviourConfig) Apply(data *world.EntityData) {
 	data.Data = conf.New()
 }
 
+// ownerHandle returns the handle of the owner of a projectile, or nil if it has
+// none, as a projectile a dispenser or a command creates.
+func ownerHandle(owner world.Entity) *world.EntityHandle {
+	if owner == nil {
+		return nil
+	}
+	return owner.H()
+}
+
 // New creates a new ProjectileBehaviour using conf. The owner passed may be nil
 // if the projectile does not have one.
 func (conf ProjectileBehaviourConfig) New() *ProjectileBehaviour {

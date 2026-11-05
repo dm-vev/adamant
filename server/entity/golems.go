@@ -224,13 +224,13 @@ func (m *IronGolem) OfferFlower() bool { return m.b().offerFlowerTick > 0 }
 
 func newGolemSnowball(opts world.EntitySpawnOpts, owner world.Entity) *world.EntityHandle {
 	conf := snowballConf
-	conf.Owner = owner.H()
+	conf.Owner = ownerHandle(owner)
 	conf.Hit = func(projectile *Ent, tx *world.Tx, result trace.Result) {
 		hit, ok := result.(trace.EntityResult)
 		if !ok || hit.Entity().H().Type().EncodeEntity() != "minecraft:blaze" {
 			return
 		}
-		attacker, _ := owner.H().Entity(tx)
+		attacker, _ := conf.Owner.Entity(tx)
 		if living, ok := hit.Entity().(Living); ok {
 			living.Hurt(3, ProjectileDamageSource{Projectile: projectile, Owner: attacker})
 		}

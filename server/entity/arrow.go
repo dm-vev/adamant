@@ -35,7 +35,7 @@ func NewTippedArrowWithDamage(opts world.EntitySpawnOpts, damage float64, owner 
 	conf := arrowConf
 	conf.Damage = damage
 	conf.Potion = tip
-	conf.Owner = owner.H()
+	conf.Owner = ownerHandle(owner)
 	return opts.New(ArrowType, conf)
 }
 
