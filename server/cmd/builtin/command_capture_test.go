@@ -40,8 +40,8 @@ var activeCapture *captureWorlds
 
 // captureProbe is the command a capture runs in place of the real work of a
 // nested command: it writes down the execution context it got and returns 7 as
-// its result. The order that a selector lists the entities in is not defined,
-// so a capture sorts the probes it saw.
+// its result. A capture does not rely on the order that the probes of the
+// branches of one line run in, so it sorts the probes it saw.
 type captureProbe struct{}
 
 func (captureProbe) Run(src cmd.Source, out *cmd.Output, tx *world.Tx) {
@@ -66,7 +66,7 @@ func (c *captureWorlds) entityLabel(e world.Entity) string {
 		return label
 	}
 	// Entities that a command made are named by their type: the order that
-	// they are met in is not defined.
+	// they are met in does not matter to a capture.
 	return strings.TrimPrefix(e.H().Type().EncodeEntity(), "minecraft:")
 }
 
@@ -181,7 +181,8 @@ func (c *captureWorlds) snapshot(tx *world.Tx) []string {
 // runCapture runs every line of lines as the arguments of the command name
 // for every source against worlds built afresh, with runner as the command
 // registered under name, and returns the written down output and effects.
-func runCapture(t *testing.T, lines []string, name string, runner cmd.Runnable) string {
+// extras write down more effects of a case than the snapshot does.
+func runCapture(t *testing.T, lines []string, name string, runner cmd.Runnable, extras ...func(c *captureWorlds, tx *world.Tx) []string) string {
 	t.Helper()
 	previous := map[string]cmd.Command{}
 	for _, name := range []string{"_capture_probe_", "setblock", "time", "data", "execute"} {
@@ -240,6 +241,11 @@ func runCapture(t *testing.T, lines []string, name string, runner cmd.Runnable) 
 				fmt.Fprintf(&b, "result=%d success=%v\n", out.Result(), out.Success())
 				for _, l := range c.snapshot(tx) {
 					fmt.Fprintf(&b, "%s\n", l)
+				}
+				for _, extra := range extras {
+					for _, l := range extra(c, tx) {
+						fmt.Fprintf(&b, "%s\n", l)
+					}
 				}
 			})
 			activeCapture = nil
