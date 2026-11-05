@@ -39,7 +39,7 @@ import (
 
 // literalEntityAction writes the packet of an action of entity_action_table.go
 // and returns true, or returns false for an action the table does not hold,
-// whose packets tabledEntityAction works out.
+// whose packets ViewEntityAction works out.
 func (s *Session) literalEntityAction(e world.Entity, a world.EntityAction) bool {
 	switch act := a.(type) {
 `)

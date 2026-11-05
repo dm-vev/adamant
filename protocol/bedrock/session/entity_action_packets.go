@@ -7,9 +7,9 @@ import (
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
-// tabledEntityAction shows an action performed by an entity: the actions of
+// ViewEntityAction shows an action performed by an entity: the actions of
 // entity_action_table.go by the generated switch, and those with logic here.
-func (s *Session) tabledEntityAction(e world.Entity, a world.EntityAction) {
+func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 	if s.literalEntityAction(e, a) {
 		return
 	}

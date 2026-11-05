@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"path/filepath"
-	"reflect"
 	"testing"
 	"time"
 
@@ -221,52 +220,4 @@ func TestEntityActionPacketsMatch(t *testing.T) {
 		}
 		checkTableGolden(t, filepath.Join("testdata", "entity_actions.golden"), *updateActions, "actions", got)
 	})
-}
-
-// TestEntityActionTableMatchesSwitch views every action of actionSamples with
-// the switch of Session.ViewEntityAction and with the table and the cases that
-// remain, and requires the same packets, field by field, and the same
-// remembered dying mobs.
-func TestEntityActionTableMatchesSwitch(t *testing.T) {
-	withActionWorld(t, func(w *actionWorld) {
-		for _, c := range actionSamples(w) {
-			func() {
-				defer func() {
-					if r := recover(); r != nil {
-						// A panic is the same on both paths: the golden holds it.
-						if !panicsAlike(w, c) {
-							t.Errorf("%s: the paths panic differently", c.label)
-						}
-					}
-				}()
-				old := session.EntityActionPackets(c.scene, c.target, c.action)
-				new := session.TabledEntityActionPackets(c.scene, c.target, c.action)
-				if !reflect.DeepEqual(old, new) {
-					t.Errorf("%s:\nswitch: %s\ntable:  %s", c.label, describeAction(old), describeAction(new))
-				}
-			}()
-		}
-	})
-}
-
-// panicsAlike reports whether both paths panic with the same value for the
-// sample.
-func panicsAlike(w *actionWorld, c actionSample) bool {
-	try := func(show func(session.ActionScene, world.Entity, world.EntityAction) session.ActionResult) (v any) {
-		defer func() { v = recover() }()
-		show(c.scene, c.target, c.action)
-		return nil
-	}
-	a, b := try(session.EntityActionPackets), try(session.TabledEntityActionPackets)
-	return a != nil && fmt.Sprint(a) == fmt.Sprint(b)
-}
-
-// describeAction returns what a session did as text, the packets by the fields
-// they point to.
-func describeAction(r session.ActionResult) string {
-	var s string
-	for _, pk := range r.Packets {
-		s += fmt.Sprintf("%T%+v ", pk, pk)
-	}
-	return fmt.Sprintf("%sdying %v", s, r.DeathAnimations)
 }

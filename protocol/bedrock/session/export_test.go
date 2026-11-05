@@ -138,13 +138,6 @@ func EntityActionPackets(sc ActionScene, e world.Entity, a world.EntityAction) A
 	return sc.show(func(s *Session) { s.ViewEntityAction(e, a) })
 }
 
-// TabledEntityActionPackets is EntityActionPackets by the table of the
-// actions (entity_action_table.go) and the cases of the rest, until the
-// switch it replaces is deleted.
-func TabledEntityActionPackets(sc ActionScene, e world.Entity, a world.EntityAction) ActionResult {
-	return sc.show(func(s *Session) { s.tabledEntityAction(e, a) })
-}
-
 // oldProtocol returns protocol 2193, the oldest the adapter speaks and the
 // primary the goldens of testdata/golden were recorded with.
 func oldProtocol() *versions.Protocol {

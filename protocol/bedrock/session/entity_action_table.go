@@ -36,7 +36,7 @@ type entityActionRow struct {
 
 // entityActionRows holds the actions whose packets entity_action_switch_gen.go
 // writes. The rest of the actions, those whose packets depend on more than a
-// field read, are the cases of tabledEntityAction. Run go generate to write
+// field read, are the cases of ViewEntityAction. Run go generate to write
 // the switch from this table: it fails for a row of a type that is no
 // world.EntityAction.
 //
