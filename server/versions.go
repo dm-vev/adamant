@@ -23,6 +23,11 @@ type gameVersioner interface {
 // listener that knows them reports. A server with no such listener speaks the
 // release it implements, version.Minecraft, and lists no other.
 func (srv *Server) GameVersions() (primary string, joinable []string) {
+	// A listener asks while New still creates the others, which add
+	// themselves to srv.listeners.
+	if srv.listenersPending.Load() {
+		return version.Minecraft, nil
+	}
 	for _, l := range srv.listeners {
 		if g, ok := l.(gameVersioner); ok {
 			return g.GameVersions()

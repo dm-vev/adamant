@@ -3,12 +3,13 @@ package javaadapter
 import (
 	"fmt"
 	"net"
+	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/config"
-	"github.com/df-mc/dragonfly/server/version"
 	"github.com/dm-vev/adamant/net/java"
 )
 
@@ -56,8 +57,52 @@ type Config struct {
 	Message string
 }
 
-// defaultMessage is what a client of Java Edition that joins is told.
-const defaultMessage = "This server is for Minecraft: Bedrock Edition " + version.Minecraft + ". Join it with Bedrock Edition."
+// maxVersionName bounds the version name of the status in bytes. Java
+// clients limit the whole status to 32767 characters and show the name in a
+// line of the server list; the name of an odd server is cut to leave the
+// message of the day its room.
+const maxVersionName = 256
+
+// bedrockVersions returns the versions of Bedrock Edition that may join a
+// server whose GameVersions are primary and joinable, as the server lists
+// them with the 1. of the release, such as "1.26.50–1.26.52, 1.26.60–1.26.61".
+// A server that lists no joinable version names its primary.
+func bedrockVersions(primary string, joinable []string) string {
+	if len(joinable) == 0 {
+		return primary
+	}
+	ranges := make([]string, len(joinable))
+	for i, j := range joinable {
+		ends := strings.Split(j, "–")
+		for k, e := range ends {
+			if strings.Count(e, ".") == 1 {
+				ends[k] = "1." + e
+			}
+		}
+		ranges[i] = strings.Join(ends, "–")
+	}
+	return strings.Join(ranges, ", ")
+}
+
+// versionName returns the name of the version the status shows: "Bedrock "
+// and the versions that may join, cut to maxVersionName.
+func versionName(primary string, joinable []string) string {
+	name := "Bedrock " + bedrockVersions(primary, joinable)
+	if len(name) <= maxVersionName {
+		return name
+	}
+	name = name[:maxVersionName-len("…")]
+	for !utf8.ValidString(name) {
+		name = name[:len(name)-1]
+	}
+	return name + "…"
+}
+
+// defaultMessage returns what a client of Java Edition that joins is told when the
+// Config sets none.
+func defaultMessage(primary string, joinable []string) string {
+	return "This server is for Minecraft: Bedrock Edition " + bedrockVersions(primary, joinable) + ". Join it with Bedrock Edition."
+}
 
 // Listener returns the listener of the adapter: a server.Listener for
 // server.Config.Listeners. It shows clients of Java Edition the status of
@@ -65,10 +110,6 @@ const defaultMessage = "This server is for Minecraft: Bedrock Edition " + versio
 // c.Message. Its Accept never yields a Join: it blocks until the listener
 // is closed.
 func (c Config) Listener(conf server.Config, host server.Host) (server.Listener, error) {
-	message := c.Message
-	if message == "" {
-		message = defaultMessage
-	}
 	jl, err := java.Listen(c.Address, func() java.Status {
 		st := host.Status()
 		maxPlayers := st.MaxPlayers
@@ -77,7 +118,8 @@ func (c Config) Listener(conf server.Config, host server.Host) (server.Listener,
 		}
 		// A protocol no client speaks lists the server as one of another
 		// version, which the name says.
-		return java.Status{Name: "Bedrock " + version.Minecraft, Protocol: -1, Description: st.Name, Online: st.PlayerCount, Max: maxPlayers}
+		primary, joinable := host.GameVersions()
+		return java.Status{Name: versionName(primary, joinable), Protocol: -1, Description: st.Name, Online: st.PlayerCount, Max: maxPlayers}
 	})
 	if err != nil {
 		return nil, fmt.Errorf("listen for Java Edition: %w", err)
@@ -89,6 +131,10 @@ func (c Config) Listener(conf server.Config, host server.Host) (server.Listener,
 			login, err := jl.Accept()
 			if err != nil {
 				return
+			}
+			message := c.Message
+			if message == "" {
+				message = defaultMessage(host.GameVersions())
 			}
 			go func() { _ = login.Disconnect(message) }()
 		}

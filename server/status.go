@@ -53,6 +53,10 @@ type Host interface {
 	World() *world.World
 	// WhitelistEnabled reports whether the whitelist is enforced.
 	WhitelistEnabled() bool
+	// GameVersions returns the version of the game the server speaks to its
+	// clients and the versions of the clients that may join, as
+	// Server.GameVersions does.
+	GameVersions() (primary string, joinable []string)
 }
 
 // Status returns the status of the server now: what Config.StatusProvider

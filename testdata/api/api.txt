@@ -493,7 +493,7 @@ server	type	HealthCheck	struct{Name string; OK bool; Detail string}
 server	type	HealthOptions	struct{LiveTimeout time.Duration; ReadyTickAge time.Duration}
 server	type	HealthReport	struct{OK bool; Checks []server.HealthCheck}
 server	type	HoldFile	struct{Path string; Size int64}
-server	type	Host	interface{PlayerNames() []string; Status() server.Status; WhitelistEnabled() bool; World() *server/world.World}
+server	type	Host	interface{GameVersions() (primary string, joinable []string); PlayerNames() []string; Status() server.Status; WhitelistEnabled() bool; World() *server/world.World}
 server	type	List	uint8
 server	type	Listener	interface{Accept() (server/client.Join, error); io.Closer}
 server	type	OnlinePlayer	struct{Name string; XUID string; UUID github.com/google/uuid.UUID; Handle *server/world.EntityHandle; Addr net.Addr}
@@ -502,7 +502,7 @@ server	type	PermissionConfig	struct{DefaultLevel server/cmd.Level; OperatorLevel
 server	type	PlayerLimitBypasser	interface{BypassesPlayerLimit(id server/client.Identity) bool}
 server	type	ReconnectPolicy	uint8
 server	type	SaveHold	struct{Held bool; Ready bool; Err error; Folder string; Files []server.HoldFile; Checkpoint server/world/mcdb.CheckpointRecord}
-server	type	Server	struct{conf server.Config; once sync.Once; started sync/atomic.Pointer[time.Time]; closing sync/atomic.Bool; clock func() time.Time; world *server/world.World; dimensions map[server/world.Dimension]*server/world.World; defaultDimension server/world.Dimension; whitelist *server.Whitelist; operators *server.operatorsList; bans *server.banList; roles *server.roleList; audit *server/audit.Log; commandLevels sync/atomic.Pointer[map[string]server/cmd.Level]; known *server.knownPlayers; idleTimeout sync/atomic.Int64; idleStop chan struct{}; listeners []server.Listener; services []server.Service; listening []sync/atomic.Bool; incoming chan server.incoming; metrics *github.com/dm-vev/adamant/net/metrics.Registry; stats server.serverStats; players server.players; playersSkipped sync/atomic.Bool; playersInWorld bool; checkpoints server.checkpointer; playerSaves server.playerSaves; backups server.backups; pwg sync.WaitGroup; wg sync.WaitGroup}
+server	type	Server	struct{conf server.Config; once sync.Once; started sync/atomic.Pointer[time.Time]; closing sync/atomic.Bool; clock func() time.Time; world *server/world.World; dimensions map[server/world.Dimension]*server/world.World; defaultDimension server/world.Dimension; whitelist *server.Whitelist; operators *server.operatorsList; bans *server.banList; roles *server.roleList; audit *server/audit.Log; commandLevels sync/atomic.Pointer[map[string]server/cmd.Level]; known *server.knownPlayers; idleTimeout sync/atomic.Int64; idleStop chan struct{}; listeners []server.Listener; listenersPending sync/atomic.Bool; services []server.Service; listening []sync/atomic.Bool; incoming chan server.incoming; metrics *github.com/dm-vev/adamant/net/metrics.Registry; stats server.serverStats; players server.players; playersSkipped sync/atomic.Bool; playersInWorld bool; checkpoints server.checkpointer; playerSaves server.playerSaves; backups server.backups; pwg sync.WaitGroup; wg sync.WaitGroup}
 server	type	Service	interface{Close() error; Start(srv *server.Server) error}
 server	type	Status	struct{Name string; SubName string; PlayerCount int; MaxPlayers int}
 server	type	StatusProvider	interface{ServerStatus(playerCount int, maxPlayers int) server.Status}

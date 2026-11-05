@@ -337,18 +337,7 @@ func (conf Config) New() *Server {
 	}
 	srv.openAudit()
 	srv.adoptLists()
-	for _, lf := range conf.Listeners {
-		l, err := lf(conf, srv)
-		if err != nil {
-			conf.Log.Error("create listener: " + err.Error())
-			continue
-		}
-		if l == nil {
-			conf.Log.Error("create listener: returned nil listener")
-			continue
-		}
-		srv.listeners = append(srv.listeners, l)
-	}
+	srv.createListeners(conf)
 	srv.listening = make([]atomic.Bool, len(srv.listeners))
 	srv.registerMetrics()
 
@@ -1220,3 +1209,22 @@ func creative_registerCreativeItems()
 //
 //go:linkname recipe_registerVanilla github.com/df-mc/dragonfly/server/item/recipe.registerVanilla
 func recipe_registerVanilla()
+
+// createListeners creates the listeners of the Config and adds them to the
+// server. A listener asked for GameVersions meanwhile sees the default.
+func (srv *Server) createListeners(conf Config) {
+	srv.listenersPending.Store(true)
+	defer srv.listenersPending.Store(false)
+	for _, lf := range conf.Listeners {
+		l, err := lf(conf, srv)
+		if err != nil {
+			conf.Log.Error("create listener: " + err.Error())
+			continue
+		}
+		if l == nil {
+			conf.Log.Error("create listener: returned nil listener")
+			continue
+		}
+		srv.listeners = append(srv.listeners, l)
+	}
+}

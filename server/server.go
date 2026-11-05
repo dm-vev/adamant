@@ -64,6 +64,10 @@ type Server struct {
 	idleTimeout atomic.Int64
 	idleStop    chan struct{}
 	listeners   []Listener
+	// listenersPending is set while New creates the listeners one after the
+	// other, so that the first, asked before the last exists, does not read
+	// srv.listeners.
+	listenersPending atomic.Bool
 	// services are the services of the Config that started.
 	services []Service
 	// listening holds, for each listener, whether its accept loop runs.
