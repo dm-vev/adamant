@@ -209,6 +209,15 @@ func (c *proxiedClient) read() proto.Packet {
 			slices.SortFunc(pk.Items, func(a, b v2193.ItemEntry) int { return strings.Compare(a.Name, b.Name) })
 			mark = true
 		}
+	// The packets a client of 2225 decodes are those of the model.
+	case *mc.StartGamePacket:
+		slices.SortFunc(pk.GameRules, func(a, b mc.GameRule) int { return strings.Compare(a.Name, b.Name) })
+		mark = true
+	case *mc.ItemRegistryPacket:
+		if len(pk.Items) > 1 {
+			slices.SortFunc(pk.Items, func(a, b mc.ItemEntry) int { return strings.Compare(a.Name, b.Name) })
+			mark = true
+		}
 	}
 	if mark {
 		fields = encode(pk)

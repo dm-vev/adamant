@@ -301,10 +301,13 @@ func newServerScenario(t *testing.T, name string, conf serverConfig) *serverScen
 	uc, bu := server.DefaultConfig(), bedrockadapter.DefaultConfig()
 	uc.Server.Name = serverName
 	bu.Server.AuthEnabled = false
-	// The goldens were recorded when the default config allowed 1.26.50
-	// alone and spoke it: the scenarios pin that setup, and those of
-	// primary 2225 say otherwise through conf.bedrock.
-	bu.Network.Protocols, bu.Network.PrimaryProtocol = []string{"1.26.50"}, "1.26.50"
+	// The goldens of testdata/golden were recorded when the default config
+	// allowed 1.26.50 alone and spoke it: the scenarios pin that setup. Those
+	// of primary 2225 keep the default config, which allows every protocol
+	// and speaks the newest.
+	if goldenPrimary == oldProtocol() {
+		bu.Network.Protocols, bu.Network.PrimaryProtocol = []string{"1.26.50"}, "1.26.50"
+	}
 	uc.World.SaveData = false
 	uc.World.Seed = goldenSeed
 	uc.World.DisableNether, uc.World.DisableEnd = true, true
