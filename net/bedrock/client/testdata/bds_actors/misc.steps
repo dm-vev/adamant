@@ -1,0 +1,50 @@
+gamemode creative
+time set day
+gamerule dodaylightcycle false
+tp @s 0 105 0
+wait 2
+fill -4 99 -4 30 99 30 stone
+fill -4 100 -4 30 104 30 air
+mark copper_replaceitem
+summon copper_golem 5 100 5
+wait 2
+replaceitem entity @e[type=copper_golem] slot.weapon.mainhand 0 apple
+wait 2
+mark copper_transport
+setblock 12 100 12 chest
+replaceitem block 12 100 12 slot.container 0 apple 8
+setblock 16 100 12 copper_chest
+summon copper_golem 14 100 14
+wait 2
+mark cows
+give @s wheat 20
+summon cow 20 100 20
+summon cow 21 100 20
+wait 3
+feed cow
+wait 6
+mark iron
+summon iron_golem 20 100 5
+summon villager 21 100 6
+wait 1
+mark others
+summon fox 25 100 5
+summon panda 25 100 8
+summon allay 25 100 11
+summon piglin 25 100 14
+summon zombie 25 100 17
+summon witch 25 100 20
+wait 1
+replaceitem entity @e[type=zombie] slot.weapon.mainhand 0 iron_sword
+replaceitem entity @e[type=piglin] slot.weapon.mainhand 0 golden_sword
+replaceitem entity @e[type=allay] slot.weapon.mainhand 0 diamond
+replaceitem entity @e[type=fox] slot.weapon.mainhand 0 apple
+replaceitem entity @e[type=panda] slot.weapon.mainhand 0 bamboo
+replaceitem entity @e[type=iron_golem] slot.weapon.mainhand 0 poppy
+wait 15
+mark away
+tp @s 0 105 500
+wait 8
+mark back
+tp @s 0 105 0
+wait 6

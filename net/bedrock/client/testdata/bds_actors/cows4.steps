@@ -1,0 +1,21 @@
+gamemode survival
+time set day
+gamerule dodaylightcycle false
+tp @s 0 105 0
+wait 2
+fill -4 99 -4 40 99 40 stone
+fill -4 100 -4 40 104 40 barrier
+fill -3 100 -3 39 104 39 air
+give @s wheat 20
+wait 1
+tp @s 20 100 17
+summon cow 20 100 19
+wait 3
+mark hit
+hit cow
+wait 2
+mark wheat
+use cow wheat
+wait 3
+use cow wheat
+wait 10

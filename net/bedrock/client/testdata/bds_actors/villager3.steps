@@ -1,0 +1,24 @@
+gamemode creative
+time set midnight
+gamerule dodaylightcycle false
+tp @s 0 105 0
+wait 2
+fill -4 99 -4 30 99 12 stone
+fill -4 100 -4 30 104 12 air
+mark beds
+setblock 3 100 3 bed ["direction"=0,"head_piece_bit"=false]
+setblock 10 100 3 bed ["direction"=1,"head_piece_bit"=false]
+setblock 17 100 3 bed ["direction"=2,"head_piece_bit"=false]
+setblock 24 100 3 bed ["direction"=3,"head_piece_bit"=false]
+mark summon
+summon villager 3 100 2
+summon villager 10 100 2
+summon villager 17 100 2
+summon villager 24 100 2
+wait 20
+mark away
+tp @s 0 105 500
+wait 8
+mark back
+tp @s 0 105 0
+wait 6
