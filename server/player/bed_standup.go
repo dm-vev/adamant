@@ -150,6 +150,13 @@ func (p *Player) standUpFromBed(tx *world.Tx, pos cube.Pos, facing cube.Directio
 	if !ok {
 		stand = pos.Vec3Middle().Add(mgl64.Vec3{0, 1.1, 0})
 	}
+	p.data.Pos, p.data.Rot = stand, bedStandUpRotation(pos, stand)
+}
+
+// bedStandUpRotation returns the rotation a player standing up at stand
+// from the bed at pos has: the yaw towards the bed, as Java's
+// Vec3.normalize and Mth.atan2 give it, and no pitch.
+func bedStandUpRotation(pos cube.Pos, stand mgl64.Vec3) cube.Rotation {
 	look := pos.Vec3Middle().Sub(stand)
 	if length := look.Len(); length >= float64(float32(1e-5)) {
 		look = mgl64.Vec3{look[0] / length, look[1] / length, look[2] / length}
@@ -164,5 +171,5 @@ func (p *Player) standUpFromBed(tx *world.Tx, pos cube.Pos, facing cube.Directio
 	if yaw < -180 {
 		yaw += 360
 	}
-	p.data.Pos, p.data.Rot = stand, cube.Rotation{float64(float32(yaw)), 0}
+	return cube.Rotation{float64(float32(yaw)), 0}
 }

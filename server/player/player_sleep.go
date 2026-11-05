@@ -19,6 +19,43 @@ type sleepState struct {
 	sleepTimer    int
 }
 
+// sleepBegin records that the player lies down on the bed at the position
+// passed, rested and with no ticks slept.
+func (s *sleepState) sleepBegin(pos cube.Pos) {
+	s.sleeping = true
+	s.timeSinceRest = 0
+	s.sleepTimer = 0
+	s.sleepPos = pos
+}
+
+// sleepEnd records that the player left its bed. The timers stay for the
+// player to read.
+func (s *sleepState) sleepEnd() {
+	s.sleeping = false
+	s.sleepPos = cube.Pos{}
+}
+
+// sleepTick counts a tick in the timers: the ticks slept, up to 100, as
+// Player.tick does, or the ticks awake.
+func (s *sleepState) sleepTick() {
+	if s.sleeping {
+		s.timeSinceRest = 0
+		// Player.tick counts the ticks slept up to 100.
+		s.sleepTimer = min(s.sleepTimer+1, 100)
+	} else if s.timeSinceRest < int32(^uint32(0)>>1) {
+		s.timeSinceRest++
+	}
+}
+
+// sleepingAt returns the position of the bed the player sleeps in and true,
+// or false if it does not sleep.
+func (s *sleepState) sleepingAt() (cube.Pos, bool) {
+	if !s.sleeping {
+		return cube.Pos{}, false
+	}
+	return s.sleepPos, true
+}
+
 // Sleep makes the player sleep at the given position. If the position does not map to a bed (specifically the head side),
 // the player will not sleep.
 func (p *Player) Sleep(pos cube.Pos) {
@@ -78,10 +115,7 @@ func (p *Player) sleepInTx(tx *world.Tx, pos cube.Pos) {
 
 	p.setPosition(pos.Vec3Middle().Add(mgl64.Vec3{0, height + 0.125}))
 	tx.SetBlock(pos, b, nil)
-	p.sleeping = true
-	p.timeSinceRest = 0
-	p.sleepTimer = 0
-	p.sleepPos = pos
+	p.sleepBegin(pos)
 	p.SetVelocity(mgl64.Vec3{})
 	p.data.Vel = mgl64.Vec3{}
 
@@ -131,8 +165,7 @@ func (p *Player) wakeInTx(tx *world.Tx) {
 		bed.StopSleeping(pos, tx)
 		p.standUpFromBed(tx, pos, bed.Facing)
 	}
-	p.sleeping = false
-	p.sleepPos = cube.Pos{}
+	p.sleepEnd()
 
 	tx.BroadcastSleepingIndicator()
 
@@ -148,10 +181,7 @@ func (p *Player) wakeInTx(tx *world.Tx) {
 // Sleeping returns true if the player is currently sleeping, along with the position of the bed the player is sleeping
 // on.
 func (p *Player) Sleeping() (cube.Pos, bool) {
-	if !p.sleeping {
-		return cube.Pos{}, false
-	}
-	return p.sleepPos, true
+	return p.sleepingAt()
 }
 
 // SleepTimer returns the ticks the player slept in its last sleep, up to

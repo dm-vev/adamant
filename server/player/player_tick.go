@@ -53,13 +53,7 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 			}
 		}
 	}
-	if p.sleeping {
-		p.timeSinceRest = 0
-		// Player.tick counts the ticks slept up to 100.
-		p.sleepTimer = min(p.sleepTimer+1, 100)
-	} else if p.timeSinceRest < int32(^uint32(0)>>1) {
-		p.timeSinceRest++
-	}
+	p.sleepTick()
 	blockName := ""
 	if b, loaded := p.tx.BlockLoaded(cube.PosFromVec3(p.Position())); loaded {
 		blockName, _ = b.EncodeBlock()
