@@ -396,6 +396,7 @@ const everyKeyChanged = `
     Decay = 0.5
     Enabled = false
     ExemptGameModes = ["creative"]
+    HitboxMargin = 0.7
     KickAt = 9.0
     KickMessage = "Bye."
     LineOfSight = false
@@ -866,7 +867,7 @@ var defaultAntiCheat = configMeaning{
 	"AntiCheat.BreakTime":       "on=true cancel act>0 kick=0 decay=1 exempt=[] msg=\"Kicked by the anti-cheat\" {Tolerance:0.7 Delay:false InstantPerSecond:20 InstantBurst:5}",
 	"AntiCheat.Place":           "on=true log act>0 kick=0 decay=1 exempt=[] msg=\"Kicked by the anti-cheat\" {PerSecond:20 Burst:10 FaceEpsilon:0.5 LineOfSight:false}",
 	"AntiCheat.Attack":          "on=true log act>0 kick=0 decay=1 exempt=[] msg=\"Attempted to attack an invalid entity\" {PerSecond:20 Burst:10 TargetsPerTick:1}",
-	"AntiCheat.AttackAim":       "on=true log act>0 kick=0 decay=1 exempt=[] msg=\"Attempted to attack an invalid entity\" {MinCos:0.85 LineOfSight:true}",
+	"AntiCheat.AttackAim":       "on=true log act>0 kick=0 decay=1 exempt=[] msg=\"Attempted to attack an invalid entity\" {MinCos:0.85 HitboxMargin:0.4 LineOfSight:true}",
 	"AntiCheat.FastUse":         "on=true log act>0 kick=0 decay=1 exempt=[] msg=\"Kicked by the anti-cheat\" {MinTicks:4 Burst:2}",
 	"AntiCheat.Timer":           "on=true throttle act>0 kick=0 decay=1 exempt=[] msg=\"Invalid move player packet received\" {Tolerance:10 MaxBalance:40 MaxQueue:40}",
 	"AntiCheat.Menu":            "on=true cancel act>0 kick=0 decay=1 exempt=[] msg=\"Kicked by the anti-cheat\" {Buffer:4 RequestsPerTick:64}",
@@ -886,7 +887,7 @@ var changedAntiCheat = configMeaning{
 	"AntiCheat.BreakTime":       "on=false log act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {Tolerance:0.9 Delay:true InstantPerSecond:10 InstantBurst:3}",
 	"AntiCheat.Place":           "on=false cancel act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {PerSecond:10 Burst:5 FaceEpsilon:0.25 LineOfSight:true}",
 	"AntiCheat.Attack":          "on=false cancel act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {PerSecond:15 Burst:5 TargetsPerTick:2}",
-	"AntiCheat.AttackAim":       "on=false cancel act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {MinCos:0.5 LineOfSight:false}",
+	"AntiCheat.AttackAim":       "on=false cancel act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {MinCos:0.5 HitboxMargin:0.7 LineOfSight:false}",
 	"AntiCheat.FastUse":         "on=false cancel act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {MinTicks:6 Burst:3}",
 	"AntiCheat.Timer":           "on=false setback act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {Tolerance:5 MaxBalance:20 MaxQueue:30}",
 	"AntiCheat.Menu":            "on=false log act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {Buffer:2 RequestsPerTick:32}",

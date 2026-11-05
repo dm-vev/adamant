@@ -26,7 +26,7 @@ plugins and the server, unchecked but for the reach they always checked. A playe
 | `BreakTime` | a break finished before 70% of its time; an instant break of a block that does not break in a tick, in survival | cancel: the block is resent | Java's 0.7; BDS's server-authoritative block breaking |
 | `Place` | places beyond 20 a second (a burst of 10); clicks on faces the eyes are behind; clicks outside the block, which are refused and no violation | log | Java's 1.0000001 bound of the point clicked |
 | `Attack` | attacks beyond 20 a second (a burst of 10); more than one living target in a tick | log | – |
-| `AttackAim` | an attack off the aim: a cosine below 0.85 to the box of the target; a target the eyes cannot see past full blocks | log | BDS's `player-movement-action-direction-threshold` |
+| `AttackAim` | an attack off every aim of the client (its look, its interaction ray, its camera) whose ray misses the box of the target and whose cosine to it is below 0.85; a target the eyes cannot see past full blocks | log | BDS's `player-movement-action-direction-threshold` |
 | `FastUse` | items without a cooldown, as snowballs, used more often than every 4 ticks (a burst of 2) | log | Java's right-click delay |
 | `Timer` | a client that runs its ticks faster than real time | throttle: its moves wait for a later tick | BDS's input tick policy |
 | `Menu` | a menu out of reach: the block within 4.5 + 4 blocks of the eyes (5 + 4 in creative), the entity within 3 + 4 (5 + 4); more than 64 menu requests in a tick | cancel: the menu is closed, the requests refused | Java's `stillValid` |
@@ -100,7 +100,7 @@ The settings of each check beyond the seven keys, with their defaults:
 | `BreakTime` | `Tolerance = 0.7`, `Delay = false` (break once the time is served instead of refusing, Java's delayed destroy), `InstantPerSecond = 20.0`, `InstantBurst = 5` |
 | `Place` | `PerSecond = 20.0`, `Burst = 10`, `FaceEpsilon = 0.5` blocks, `LineOfSight = false` |
 | `Attack` | `PerSecond = 20.0`, `Burst = 10`, `TargetsPerTick = 1` |
-| `AttackAim` | `MinCos = 0.85`, `LineOfSight = true` |
+| `AttackAim` | `MinCos = 0.85`, `HitboxMargin = 0.4` blocks, `LineOfSight = true` |
 | `FastUse` | `MinTicks = 4`, `Burst = 2` |
 | `Timer` | `Tolerance = 10` ticks ahead, `MaxBalance = 40` ticks a client may make up, `MaxQueue = 40` ticks a move may wait |
 | `Menu` | `Buffer = 4.0` blocks, `RequestsPerTick = 64` |

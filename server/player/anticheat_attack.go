@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/player/anticheat"
 	"github.com/df-mc/dragonfly/server/world"
@@ -17,8 +18,9 @@ type attackState struct {
 	tick    int64
 	targets []*world.EntityHandle
 	// aim is the direction the client last said it interacts in, zero for
-	// its look.
-	aim mgl64.Vec3
+	// its look, and camera the direction its camera looks in, zero if it
+	// did not say.
+	aim, camera mgl64.Vec3
 }
 
 // refuseAttack judges an attack on e the client of the player asks for,
@@ -62,20 +64,9 @@ func (p *Player) refuseAttack(ac *acState, e world.Entity) bool {
 	if p.checks(ac, anticheat.AttackAim) {
 		eyes := entity.EyePosition(p)
 		box := e.H().Type().BBox(e).Translate(e.Position())
-		var nearest mgl64.Vec3
-		for i := range 3 {
-			nearest[i] = max(box.Min()[i], min(eyes[i], box.Max()[i]))
-		}
-		to := nearest.Sub(eyes)
-		aim := ac.attack.aim
-		if aim.Len() < 1e-6 {
-			aim = p.Rotation().Vec3()
-		}
-		if dist := to.Len(); dist > 1 {
-			if c := aim.Normalize().Dot(to.Mul(1 / dist)); c < ac.conf.AttackAim.MinCos {
-				if p.violate(ac, anticheat.AttackAim, "aim", ac.conf.AttackAim.MinCos-c, fmt.Sprintf("cos %.2f < %.2f", c, ac.conf.AttackAim.MinCos)) != anticheat.Log {
-					return true
-				}
+		if cos, aimed := p.aimedAt(ac, eyes, box); !aimed {
+			if p.violate(ac, anticheat.AttackAim, "aim", ac.conf.AttackAim.MinCos-cos, fmt.Sprintf("cos %.2f < %.2f", cos, ac.conf.AttackAim.MinCos)) != anticheat.Log {
+				return true
 			}
 		}
 		if ac.conf.AttackAim.LineOfSight {
@@ -88,4 +79,40 @@ func (p *Player) refuseAttack(ac *acState, e world.Entity) bool {
 		}
 	}
 	return false
+}
+
+// aimedAt reports whether an attack of the client on the box passed, from
+// the eyes passed, is aimed at it, and the best cosine of the angle between
+// an aim and the direction to the nearest point of the box. The client may
+// aim along the look of the player; along the ray of its interaction, as a
+// tap on a touch screen or the crosshair of third person gives; or along
+// the look of its camera. An aim is true to the target if its ray passes
+// through the box, grown by AttackAim.HitboxMargin, or if its angle to the
+// nearest point of the box has a cosine of AttackAim.MinCos at least. A
+// target within a block is always aimed at. An attack on a target none of
+// the rays comes near, as one behind the player, is not.
+func (p *Player) aimedAt(ac *acState, eyes mgl64.Vec3, box cube.BBox) (cos float64, aimed bool) {
+	var nearest mgl64.Vec3
+	for i := range 3 {
+		nearest[i] = max(box.Min()[i], min(eyes[i], box.Max()[i]))
+	}
+	to := nearest.Sub(eyes)
+	dist := to.Len()
+	if dist <= 1 {
+		return 1, true
+	}
+	to = to.Mul(1 / dist)
+	conf := ac.conf.AttackAim
+	cos = -1
+	rays := [...]mgl64.Vec3{p.Rotation().Vec3(), ac.attack.aim, ac.attack.camera}
+	for _, ray := range rays {
+		if ray.Len() < 1e-6 {
+			continue
+		}
+		cos = max(cos, ray.Normalize().Dot(to))
+		if cos >= conf.MinCos || anticheat.RayHitsBox(eyes, ray, box, conf.HitboxMargin, dist+conf.HitboxMargin+box.Min().Sub(box.Max()).Len()) {
+			return cos, true
+		}
+	}
+	return cos, false
 }

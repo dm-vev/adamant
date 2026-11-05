@@ -159,8 +159,13 @@ type AttackSettings struct {
 // AttackAimSettings are the keys of AttackAim beyond its Rule.
 type AttackAimSettings struct {
 	// MinCos is the least cosine of the angle between the aim and the
-	// direction to the target: BDS's 0.85.
+	// direction to the target: BDS's 0.85. An aim whose ray hits the box of
+	// the target, grown by HitboxMargin, needs no cosine.
 	MinCos float64
+	// HitboxMargin is how far, in blocks, a ray of the client may pass from
+	// the box of the target and still hit it: the box the client saw is
+	// where the target was a round trip ago.
+	HitboxMargin float64
 	// LineOfSight refuses an attack on a target whose centre the eyes
 	// cannot see past full blocks.
 	LineOfSight bool
@@ -371,7 +376,7 @@ func DefaultUserConfig() UserConfig {
 		BreakTime:       BreakTimeTable{BreakTimeSettings: BreakTimeSettings{Tolerance: 0.7, InstantPerSecond: 20, InstantBurst: 5}},
 		Place:           PlaceTable{PlaceSettings: PlaceSettings{PerSecond: 20, Burst: 10, FaceEpsilon: 0.5}},
 		Attack:          AttackTable{AttackSettings: AttackSettings{PerSecond: 20, Burst: 10, TargetsPerTick: 1}},
-		AttackAim:       AttackAimTable{AttackAimSettings: AttackAimSettings{MinCos: 0.85, LineOfSight: true}},
+		AttackAim:       AttackAimTable{AttackAimSettings: AttackAimSettings{MinCos: 0.85, HitboxMargin: 0.4, LineOfSight: true}},
 		FastUse:         FastUseTable{FastUseSettings: FastUseSettings{MinTicks: 4, Burst: 2}},
 		Timer:           TimerTable{TimerSettings: TimerSettings{Tolerance: 10, MaxBalance: 40, MaxQueue: 40}},
 		Menu:            MenuTable{MenuSettings: MenuSettings{Buffer: 4, RequestsPerTick: 64}},
@@ -587,6 +592,7 @@ func (uc UserConfig) Config(log *slog.Logger) (*Config, error) {
 		positive("AntiCheat.Attack.Burst", float64(c.Attack.Burst)),
 		positive("AntiCheat.Attack.TargetsPerTick", float64(c.Attack.TargetsPerTick)),
 		within("AntiCheat.AttackAim.MinCos", c.AttackAim.MinCos, -1, 1, true),
+		nonNegative("AntiCheat.AttackAim.HitboxMargin", c.AttackAim.HitboxMargin),
 		nonNegative("AntiCheat.FastUse.MinTicks", float64(c.FastUse.MinTicks)),
 		positive("AntiCheat.FastUse.Burst", float64(c.FastUse.Burst)),
 		nonNegative("AntiCheat.Timer.Tolerance", float64(c.Timer.Tolerance)),

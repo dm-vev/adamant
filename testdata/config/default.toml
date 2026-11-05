@@ -37,6 +37,7 @@
     Decay = 1.0
     Enabled = true
     ExemptGameModes = []
+    HitboxMargin = 0.4
     KickAt = 0.0
     KickMessage = ""
     LineOfSight = true

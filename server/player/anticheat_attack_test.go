@@ -126,3 +126,63 @@ func TestAttackOff(t *testing.T) {
 		}
 	})
 }
+
+// aimAt returns the unit direction from the eyes of p to the point passed.
+func aimAt(p *Player, to mgl64.Vec3) mgl64.Vec3 {
+	return to.Sub(p.Position().Add(mgl64.Vec3{0, p.EyeHeight(), 0})).Normalize()
+}
+
+// TestAttackAimBedrockClients checks the aim of Bedrock clients: a tap on a
+// touch screen and the camera of third person, whose rays pass through the
+// hitbox of a target close by, where the angle from the look to the nearest
+// point of its box is wide; a client without a ray, looking away, is still
+// caught, and so is one whose rays point away from a target behind it.
+func TestAttackAimBedrockClients(t *testing.T) {
+	// The cow is 1.5 blocks to the side and 2 ahead of the look: its
+	// nearest point is at a cosine of 0.82 from the look.
+	for _, tc := range []struct {
+		name  string
+		aim   func(p *Player, cow world.Entity)
+		cow   mgl64.Vec3
+		wantV bool
+	}{
+		{"only the look, close and aside", func(*Player, world.Entity) {}, mgl64.Vec3{2.5, 100, 2}, true},
+		{"a tap on the cow", func(p *Player, cow world.Entity) {
+			p.anticheat().attack.aim = aimAt(p, cow.Position().Add(mgl64.Vec3{0, 0.7, 0}))
+		}, mgl64.Vec3{2.5, 100, 2}, false},
+		{"a tap on the edge of the cow", func(p *Player, cow world.Entity) {
+			p.anticheat().attack.aim = aimAt(p, cow.Position().Add(mgl64.Vec3{-0.4, 1.3, -0.4}))
+		}, mgl64.Vec3{2.5, 100, 2}, false},
+		{"a tap beside the cow, within the margin", func(p *Player, cow world.Entity) {
+			p.anticheat().attack.aim = aimAt(p, cow.Position().Add(mgl64.Vec3{0, 0.7, -0.45 - 0.3}))
+		}, mgl64.Vec3{2.5, 100, 2}, false},
+		{"a tap beside the cow, past the margin", func(p *Player, cow world.Entity) {
+			p.anticheat().attack.aim = aimAt(p, cow.Position().Add(mgl64.Vec3{0, 0.7, -0.45 - 1.2}))
+		}, mgl64.Vec3{2.5, 100, 2}, true},
+		{"the camera of third person on the cow", func(p *Player, cow world.Entity) {
+			p.anticheat().attack.camera = aimAt(p, cow.Position().Add(mgl64.Vec3{0, 0.7, 0}))
+		}, mgl64.Vec3{2.5, 100, 2}, false},
+		{"the camera looking the way of the look", func(p *Player, _ world.Entity) {
+			p.anticheat().attack.camera = mgl64.Vec3{1, 0, 0}
+		}, mgl64.Vec3{2.5, 100, 2}, true},
+		{"a cow behind, the look and the camera ahead", func(p *Player, _ world.Entity) {
+			p.anticheat().attack.camera = mgl64.Vec3{1, 0, 0}
+		}, mgl64.Vec3{-3.5, 100, 0.5}, true},
+		{"a cow behind, a tap ahead", func(p *Player, _ world.Entity) {
+			p.anticheat().attack.aim = mgl64.Vec3{1, 0, 0.2}.Normalize()
+		}, mgl64.Vec3{-3.5, 100, 0.5}, true},
+		{"a cow behind, a tap at it", func(p *Player, cow world.Entity) {
+			p.anticheat().attack.aim = aimAt(p, cow.Position().Add(mgl64.Vec3{0, 0.7, 0}))
+		}, mgl64.Vec3{-3.5, 100, 0.5}, false},
+	} {
+		withAttacker(t, anticheat.Default(), 3.5, func(tx *world.Tx, p *Player, _ world.Entity, h *violationRecorder) {
+			cow := tx.AddEntity(entity.NewCow(world.EntitySpawnOpts{Position: tc.cow}))
+			p.data.Rot = cube.Rotation{-90, 0}
+			tc.aim(p, cow)
+			p.AttackEntity(cow)
+			if got := h.kinds(anticheat.AttackAim)["aim"] > 0; got != tc.wantV {
+				t.Errorf("%s: violation %v, want %v: %+v", tc.name, got, tc.wantV, h.violations)
+			}
+		})
+	}
+}

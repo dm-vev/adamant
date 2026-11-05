@@ -115,6 +115,9 @@ func clientMove(pk *mc.PlayerAuthInputPacket, pos mgl64.Vec3, s *Session) client
 	if pk.InteractYaw != 0 || pk.InteractPitch != 0 {
 		m.Aim = cube.Rotation{float64(pk.InteractYaw), float64(pk.InteractPitch)}.Vec3()
 	}
+	if camera := vec32To64(pk.CameraOrientation); camera.Len() > 0.5 && camera.Len() < 1.5 {
+		m.Camera = camera.Normalize()
+	}
 	return m
 }
 

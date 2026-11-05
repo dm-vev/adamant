@@ -6158,7 +6158,7 @@ server/client	type	Listed	struct{Identity server/client.Identity; Handle *server
 server/client	type	Login	struct{Identity server/client.Identity; Profile server/client.Profile; Locale golang.org/x/text/language.Tag; Skin server/player/skin.Skin; Addr net.Addr}
 server/client	type	MapViewer	interface{ViewMapData(data server/world.MapData) error}
 server/client	type	Messenger	interface{RemoveBossBar(); RemoveBossBarID(id string); RemoveScoreboard(); SendActionBarMessage(t server/text.Text); SendBossBarID(id string, title server/text.Text, colour server/player/bossbar.Colour, health float64); SendCommandOutput(o server/client.CommandOutput); SendJukeboxPopup(t server/text.Text); SendMessage(t server/text.Text); SendPopup(t server/text.Text); SendScoreboard(sb *server/player/scoreboard.Scoreboard); SendSubtitle(t server/text.Text); SendTip(t server/text.Text); SendTitle(t server/text.Text); SendToast(title server/text.Text, message server/text.Text); SetTitleDurations(fadeIn time.Duration, remain time.Duration, fadeOut time.Duration)}
-server/client	type	Move	struct{Position github.com/go-gl/mathgl/mgl64.Vec3; Rotation server/block/cube.Rotation; HeadYaw float64; Aim github.com/go-gl/mathgl/mgl64.Vec3; Tick uint64; Arrived time.Time; Input github.com/go-gl/mathgl/mgl64.Vec2; ClientVelocity github.com/go-gl/mathgl/mgl64.Vec3; Sprinting bool; Sneaking bool; Jumping bool; Swimming bool; Crawling bool; Gliding bool; SpinAttack bool; ClaimsGround bool; Riding bool; AwaitingTeleport bool; Acknowledged bool; Loading bool}
+server/client	type	Move	struct{Position github.com/go-gl/mathgl/mgl64.Vec3; Rotation server/block/cube.Rotation; HeadYaw float64; Aim github.com/go-gl/mathgl/mgl64.Vec3; Camera github.com/go-gl/mathgl/mgl64.Vec3; Tick uint64; Arrived time.Time; Input github.com/go-gl/mathgl/mgl64.Vec2; ClientVelocity github.com/go-gl/mathgl/mgl64.Vec3; Sprinting bool; Sneaking bool; Jumping bool; Swimming bool; Crawling bool; Gliding bool; SpinAttack bool; ClaimsGround bool; Riding bool; AwaitingTeleport bool; Acknowledged bool; Loading bool}
 server/client	type	MoveResult	uint8
 server/client	type	NetStats	struct{Addr net.Addr; Latency time.Duration; Queued int; Inbox int; Transport []string}
 server/client	type	Nop	struct{server/world.NopViewer}
@@ -19916,6 +19916,7 @@ server/player/anticheat	func	GroundAcceleration	func(speed float64, f float64) f
 server/player/anticheat	func	HorizontalAllowance	func(s server/player/anticheat.State) float64
 server/player/anticheat	func	HoverLimit	func(ticks int, slowFalling bool) int
 server/player/anticheat	func	ParseGameMode	func(s string) (server/world.GameMode, bool)
+server/player/anticheat	func	RayHitsBox	func(origin github.com/go-gl/mathgl/mgl64.Vec3, dir github.com/go-gl/mathgl/mgl64.Vec3, box server/block/cube.BBox, margin float64, length float64) bool
 server/player/anticheat	func	VerticalAllowance	func(s server/player/anticheat.State) float64
 server/player/anticheat	method	Action.String	func() string
 server/player/anticheat	method	Bucket.Take	func(now time.Time, perSecond float64, burst int) bool
@@ -19940,7 +19941,7 @@ server/player/anticheat	method	UserConfig.Config	func(log *log/slog.Logger) (*se
 server/player/anticheat	type	Action	uint8
 server/player/anticheat	type	AscendSettings	struct{Epsilon float64; StepHeight float64; GroundMargin float64; GroundDepth float64}
 server/player/anticheat	type	AscendTable	struct{server/player/anticheat.Rule; server/player/anticheat.AscendSettings}
-server/player/anticheat	type	AttackAimSettings	struct{MinCos float64; LineOfSight bool}
+server/player/anticheat	type	AttackAimSettings	struct{MinCos float64; HitboxMargin float64; LineOfSight bool}
 server/player/anticheat	type	AttackAimTable	struct{server/player/anticheat.Rule; server/player/anticheat.AttackAimSettings}
 server/player/anticheat	type	AttackSettings	struct{PerSecond float64; Burst int; TargetsPerTick int}
 server/player/anticheat	type	AttackTable	struct{server/player/anticheat.Rule; server/player/anticheat.AttackSettings}

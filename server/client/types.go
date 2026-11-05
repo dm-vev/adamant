@@ -23,6 +23,10 @@ type Move struct {
 	// Aim is the direction the client interacts in, such as the ray of a
 	// tap on a touch screen; zero if it is the look.
 	Aim mgl64.Vec3
+	// Camera is the direction the camera of the client looks in, a unit
+	// vector, which differs from the look in third person; zero if the
+	// client did not say.
+	Camera mgl64.Vec3
 	// Tick is the tick of the client the move is of, 0 if unknown.
 	Tick uint64
 	// Arrived is when the move reached the server, before it waited for a
