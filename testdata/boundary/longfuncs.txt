@@ -33,7 +33,6 @@ protocol/bedrock/session/handler_item_stack_request.go ItemStackRequestHandler.h
 protocol/bedrock/session/self_hud.go debugShapeToProtocol 116
 protocol/bedrock/session/static.go newRecipeData 115
 protocol/bedrock/session/view_effects.go Session.particlePackets 266
-protocol/bedrock/session/view_effects.go Session.soundPackets 503
 protocol/bedrock/session/view_entity.go Session.ViewEntity 109
 protocol/bedrock/session/view_entity.go Session.ViewEntityAction 179
 server/block/explosion.go ExplosionConfig.Explode 140

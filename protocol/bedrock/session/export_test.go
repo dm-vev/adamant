@@ -82,16 +82,6 @@ func SoundPackets(pos mgl64.Vec3, t world.Sound) []proto.Packet {
 	return pks
 }
 
-// TabledSoundPackets is SoundPackets by the table of the sounds
-// (sound_table.go) and the cases of the rest, until the switch it replaces is
-// deleted.
-func TabledSoundPackets(pos mgl64.Vec3, t world.Sound) []proto.Packet {
-	s := &Session{br: world.DefaultBlockRegistry}
-	var pks []proto.Packet
-	s.tabledSoundPackets(pos, t, false, func(pk proto.Packet) { pks = append(pks, pk) })
-	return pks
-}
-
 // oldProtocol returns protocol 2193, the oldest the adapter speaks and the
 // primary the goldens of testdata/golden were recorded with.
 func oldProtocol() *versions.Protocol {

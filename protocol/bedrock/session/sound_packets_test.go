@@ -190,16 +190,13 @@ func soundPacketLines(label string, play func(pos mgl64.Vec3, t world.Sound) []p
 // TestSoundPacketsMatch plays every sound of soundSamples, which holds every
 // type of the sounds of the game, and compares the packets as each protocol
 // is sent them with testdata/sounds.golden, which was recorded from the
-// switch of Session.soundPackets before the sounds were encoded by a table.
-// Run with -update-sounds to write it again.
+// switch of Session.soundPackets before the sounds were encoded by a table:
+// the table and the cases that remain give the packets the switch gave.
+// Run with -update-sounds to write it again, and read the diff.
 func TestSoundPacketsMatch(t *testing.T) {
 	var got []string
 	for _, c := range soundSamples(t) {
-		lines := soundPacketLines(c.label, session.SoundPackets, c.sound)
-		if tabled := soundPacketLines(c.label, session.TabledSoundPackets, c.sound); strings.Join(tabled, "\n") != strings.Join(lines, "\n") {
-			t.Errorf("%s: the table gives\n%s\nthe switch gave\n%s", c.label, strings.Join(tabled, "\n"), strings.Join(lines, "\n"))
-		}
-		got = append(got, lines...)
+		got = append(got, soundPacketLines(c.label, session.SoundPackets, c.sound)...)
 	}
 	file := filepath.Join("testdata", "sounds.golden")
 	out := strings.Join(got, "\n") + "\n"

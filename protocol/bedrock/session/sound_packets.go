@@ -22,11 +22,10 @@ func levelSoundPacket(pos mgl64.Vec3, disableRelative bool) *mc.LevelSoundEventP
 	}
 }
 
-// tabledSoundPackets hands out the packets that play a sound at a position,
-// the same for every viewer: those of the sounds of sound_table.go by the
-// generated switch, and those of the rest here. It is soundPackets as it will
-// be once the switch of soundPackets is deleted.
-func (s *Session) tabledSoundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bool, out func(proto.Packet)) {
+// soundPackets hands out the packets that play a sound at a position, the
+// same for every viewer: those of the sounds of sound_table.go by the
+// generated switch, and those of the rest here.
+func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bool, out func(proto.Packet)) {
 	if s.literalSoundPacket(pos, t, disableRelative, out) {
 		return
 	}
@@ -266,3 +265,37 @@ func discSoundEvent(d sound.DiscType) (string, bool) {
 	}
 	return "", false
 }
+
+// tierToSoundEvent converts an item.ArmourTier to a sound event associated with equipping it.
+func tierToSoundEvent(tier item.ArmourTier) string {
+	switch tier.(type) {
+	case item.ArmourTierLeather:
+		return mc.SoundEventEquipLeather
+	case item.ArmourTierCopper:
+		return mc.SoundEventEquipCopper
+	case item.ArmourTierGold:
+		return mc.SoundEventEquipGold
+	case item.ArmourTierChain:
+		return mc.SoundEventEquipChain
+	case item.ArmourTierIron:
+		return mc.SoundEventEquipIron
+	case item.ArmourTierDiamond:
+		return mc.SoundEventEquipDiamond
+	case item.ArmourTierNetherite:
+		return mc.SoundEventEquipNetherite
+	}
+	return mc.SoundEventEquipGeneric
+}
+
+// entitylessEventTypes holds the entity type a sound.Event of no entity is
+// sent with where it is not "". The break of a straw bed has always been
+// sent with ":", the entity type of the typed sounds, and every other event
+// with "": the difference is kept as it was until a capture of BDS shows
+// which is right.
+var entitylessEventTypes = map[string]string{
+	"straw_bed.break_leave": ":",
+}
+
+// dispenserLaunchData is the EventData BDS 1.26.61.1 sends with the launch and
+// fireball events of a dispenser: a pitch of 1.2 as 16.16 fixed point.
+const dispenserLaunchData = 78642
