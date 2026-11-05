@@ -23,6 +23,63 @@ type airState struct {
 	maxAirSupplyTicks int
 }
 
+// airDrain takes a tick of air from a player that cannot breathe and reports
+// whether it has run out of it for good: at -20 the supply returns to 0 and
+// the player takes drowning damage.
+func (s *airState) airDrain() bool {
+	if s.airSupplyTicks -= 1; s.airSupplyTicks <= -20 {
+		s.airSupplyTicks = 0
+		return true
+	}
+	return false
+}
+
+// airRefillable reports whether the supply of a player that can breathe is
+// below its maximum and not yet back to it.
+func (s *airState) airRefillable() bool {
+	return !s.breathing && s.airSupplyTicks < s.maxAirSupplyTicks
+}
+
+// airRefill gives back 5 ticks of air, up to the maximum, and sets breathing
+// once the maximum is reached.
+func (s *airState) airRefill() {
+	s.airSupplyTicks = min(s.airSupplyTicks+5, s.maxAirSupplyTicks)
+	s.breathing = s.airSupplyTicks == s.maxAirSupplyTicks
+}
+
+// airLeft returns the remaining air supply.
+func (s *airState) airLeft() time.Duration {
+	return time.Duration(s.airSupplyTicks) * time.Second / 20
+}
+
+// airSetLeft sets the remaining air supply, in whole ticks.
+func (s *airState) airSetLeft(duration time.Duration) {
+	s.airSupplyTicks = int(duration.Milliseconds() / 50)
+}
+
+// airMax returns the maximum air supply.
+func (s *airState) airMax() time.Duration {
+	return time.Duration(s.maxAirSupplyTicks) * time.Second / 20
+}
+
+// airSetMax sets the maximum air supply, in whole ticks.
+func (s *airState) airSetMax(duration time.Duration) {
+	s.maxAirSupplyTicks = int(duration.Milliseconds() / 50)
+}
+
+// airNeedless reports whether a player needs no air from what it is and has
+// on it, before the water and the blocks around its head are read.
+func airNeedless(canTakeDamage, waterBreathing, conduitPower, nautilus bool) bool {
+	return !canTakeDamage || waterBreathing || conduitPower || nautilus
+}
+
+// airHeldByNautilus reports whether Breath of the Nautilus holds the supply
+// where it is: it does unless Water Breathing or Conduit Power refill it.
+// airFrozen asks it only underwater.
+func airHeldByNautilus(nautilus, waterBreathing, conduitPower bool) bool {
+	return nautilus && !waterBreathing && !conduitPower
+}
+
 // Splash is called when a water bottle splashes onto the player.
 func (p *Player) Splash(*world.Tx, mgl64.Vec3) {
 	if d := p.OnFireDuration(); d.Seconds() <= 0 {
@@ -124,38 +181,36 @@ func (p *Player) tickAirSupply() {
 			// respiration grants a chance to avoid drowning damage every tick.
 			return
 		}
-		if p.airSupplyTicks -= 1; p.airSupplyTicks <= -20 {
-			p.airSupplyTicks = 0
+		if p.airDrain() {
 			p.Hurt(2, entity.DrowningDamageSource{})
 		}
 		p.breathing = false
 		p.updateState()
-	} else if !p.breathing && p.airSupplyTicks < p.maxAirSupplyTicks && !p.airFrozen() {
-		p.airSupplyTicks = min(p.airSupplyTicks+5, p.maxAirSupplyTicks)
-		p.breathing = p.airSupplyTicks == p.maxAirSupplyTicks
+	} else if p.airRefillable() && !p.airFrozen() {
+		p.airRefill()
 		p.updateState()
 	}
 }
 
 // AirSupply returns the player's remaining air supply.
 func (p *Player) AirSupply() time.Duration {
-	return time.Duration(p.airSupplyTicks) * time.Second / 20
+	return p.airLeft()
 }
 
 // SetAirSupply sets the player's remaining air supply.
 func (p *Player) SetAirSupply(duration time.Duration) {
-	p.airSupplyTicks = int(duration.Milliseconds() / 50)
+	p.airSetLeft(duration)
 	p.updateState()
 }
 
 // MaxAirSupply returns the player's maximum air supply.
 func (p *Player) MaxAirSupply() time.Duration {
-	return time.Duration(p.maxAirSupplyTicks) * time.Second / 20
+	return p.airMax()
 }
 
 // SetMaxAirSupply sets the player's maximum air supply.
 func (p *Player) SetMaxAirSupply(duration time.Duration) {
-	p.maxAirSupplyTicks = int(duration.Milliseconds() / 50)
+	p.airSetMax(duration)
 	p.updateState()
 }
 
@@ -165,7 +220,7 @@ func (p *Player) canBreathe() bool {
 	_, waterBreathing := p.effects.Effect(effect.WaterBreathing)
 	_, conduitPower := p.effects.Effect(effect.ConduitPower)
 	_, nautilus := p.effects.Effect(effect.BreathOfTheNautilus)
-	return !canTakeDamage || waterBreathing || conduitPower || nautilus || (!p.insideOfWater() && !p.insideOfSolid())
+	return airNeedless(canTakeDamage, waterBreathing, conduitPower, nautilus) || (!p.insideOfWater() && !p.insideOfSolid())
 }
 
 // airFrozen ports MobEffectUtil.shouldEffectsRefillAirsupply: underwater,
@@ -175,7 +230,7 @@ func (p *Player) airFrozen() bool {
 	_, nautilus := p.effects.Effect(effect.BreathOfTheNautilus)
 	_, waterBreathing := p.effects.Effect(effect.WaterBreathing)
 	_, conduitPower := p.effects.Effect(effect.ConduitPower)
-	return nautilus && !waterBreathing && !conduitPower && p.insideOfWater()
+	return airHeldByNautilus(nautilus, waterBreathing, conduitPower) && p.insideOfWater()
 }
 
 // breathingDistanceBelowEyes is the lowest distance the player can be in water and still be able to breathe based on
