@@ -9,6 +9,18 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
+// acFields is the anti-cheat of the player: its configuration, the exemption
+// and what it keeps.
+type acFields struct {
+	// acConf and acExempt are the AntiCheat and AntiCheatExempt of the
+	// Config of the player.
+	acConf   *anticheat.Config
+	acExempt func(p *Player, c anticheat.Check) bool
+	// acState is what the anti-cheat keeps of the player, made as it is
+	// first needed; see anticheat.
+	acState *acState
+}
+
 // acState is what the anti-cheat keeps of a player with a client. A player
 // without a client, or whose Config has no AntiCheat, has none.
 type acState struct {

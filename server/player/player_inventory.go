@@ -2,6 +2,7 @@ package player
 
 import (
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -16,6 +17,33 @@ import (
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
+
+// cooldownState is the cooldowns of the items of the player.
+type cooldownState struct {
+	cooldowns map[string]time.Time
+	// cooldownsMu guards the cooldowns map, which is accessed from gameplay and
+	// network goroutines.
+	cooldownsMu sync.Mutex
+}
+
+// inventoryState is the inventories of the player and the menu it has open.
+type inventoryState struct {
+	// menu is the menu the player has open, nil if none. It is atomic as
+	// the slot functions of the inventories, which may run off the
+	// transaction, read it.
+	menu atomic.Pointer[menu.Menu]
+	// menuTx is set while a batch of BeginMenu runs.
+	menuTx atomic.Bool
+	// menuIgnoredAt is when a request to open a menu open already was last
+	// logged, and menuIgnoredCount how many were left out since.
+	menuIgnoredAt    time.Time
+	menuIgnoredCount int
+	// menuWorld is the world the menu of the player was opened in.
+	menuWorld                    *world.World
+	inv, offHand, enderChest, ui *inventory.Inventory
+	armour                       *inventory.Armour
+	heldSlot                     *uint32
+}
 
 // MoveItemsToInventory moves items kept in 'temporary' slots, such as the
 // crafting grid of slots in an enchantment table, to the player's inventory.

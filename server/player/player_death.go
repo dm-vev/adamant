@@ -8,6 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/player/anticheat"
 	"github.com/df-mc/dragonfly/server/player/chat"
@@ -15,6 +16,20 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
+
+// respawnState is where the player died and where it respawns.
+type respawnState struct {
+	deathPos       *mgl64.Vec3
+	deathDimension world.Dimension
+	// deathEffects are the effects the player died with. Like a Java
+	// ServerPlayer removed as killed, their on-death behaviour runs when
+	// the player respawns.
+	deathEffects     []effect.Effect
+	respawnDimension world.Dimension
+	respawnPosition  cube.Pos
+	respawnRotation  cube.Rotation
+	hasRespawnPoint  bool
+}
 
 // SetRespawnPosition updates the player's persistent respawn point and the client-visible destination.
 func (p *Player) SetRespawnPosition(pos cube.Pos, dim world.Dimension) {

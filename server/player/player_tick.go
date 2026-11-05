@@ -13,6 +13,18 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
+// javaRuntime is what the player keeps of Java's server player, and what its
+// ticks send.
+type javaRuntime struct {
+	javaState          map[string]any
+	wardenSpawnTracker *world.WardenSpawnTracker
+	// tickCount is Entity.tickCount, the ticks the player has existed in
+	// this session.
+	tickCount int64
+	// sentFood is the food state last sent to the client.
+	sentFood hungerSnapshot
+}
+
 // Tick ticks the entity, performing actions such as checking if the player is still breaking a block.
 func (p *Player) Tick(tx *world.Tx, current int64) {
 	p.bindTx(tx)

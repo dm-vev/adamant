@@ -8,6 +8,15 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
+// tagState is what the player shows about itself to others: its tags and the
+// last sidebar sent.
+type tagState struct {
+	// sidebar is the last scoreboard sidebar sent to the client.
+	sidebar           string
+	nameTag, scoreTag string
+	alwaysShowNameTag bool
+}
+
 // SetNameTag changes the name tag displayed over the player in-game. Changing the name tag does not change
 // the player's name in, for example, the player list or the chat.
 func (p *Player) SetNameTag(name string) {

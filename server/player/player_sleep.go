@@ -11,6 +11,14 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
+// sleepState is whether the player sleeps, where, and the timers of it.
+type sleepState struct {
+	sleeping      bool
+	sleepPos      cube.Pos
+	timeSinceRest int32
+	sleepTimer    int
+}
+
 // Sleep makes the player sleep at the given position. If the position does not map to a bed (specifically the head side),
 // the player will not sleep.
 func (p *Player) Sleep(pos cube.Pos) {

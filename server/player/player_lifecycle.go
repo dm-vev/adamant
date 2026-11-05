@@ -2,12 +2,25 @@ package player
 
 import (
 	"net"
+	"sync/atomic"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/world"
 )
+
+// lifecycleState is whether the player is leaving, and what runs when it has
+// left.
+type lifecycleState struct {
+	closing atomic.Bool
+	// left is set once the player left with its client (leave).
+	left atomic.Bool
+	// leftHook and quitMessage are the Left and QuitMessage of the Config
+	// of the player.
+	leftHook    func(tx *world.Tx, p *Player)
+	quitMessage chat.Translation
+}
 
 // Transfer transfers the player to a server at the address passed. If the address could not be resolved, an
 // error is returned. If it is returned, the player is closed and transferred to the server.

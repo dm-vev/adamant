@@ -11,6 +11,14 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
+// carriedState is what the player carries on its shoulders.
+type carriedState struct {
+	shoulderLeft, shoulderRight map[string]any
+	// shoulderSatTick is ServerPlayer.timeEntitySatOnShoulder, the tick an
+	// entity last sat on a shoulder.
+	shoulderSatTick int64
+}
+
 // SetEntityOnShoulder ports ServerPlayer.setEntityOnShoulder: a player on
 // the ground, out of water and powder snow and riding nothing seats the
 // entity saved as data on its left shoulder, or else its right one.

@@ -10,6 +10,12 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
+// raidState is the raid omen of the player and the recipes it has unlocked.
+type raidState struct {
+	unlockedRecipes  map[string]struct{}
+	raidOmenPosition *cube.Pos
+}
+
 func (p *Player) unlockedRecipeIDs() []string {
 	ids := make([]string, 0, len(p.unlockedRecipes))
 	for id := range p.unlockedRecipes {

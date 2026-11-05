@@ -19,6 +19,15 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
+// breakingState is the block the player is breaking.
+type breakingState struct {
+	breaking          bool
+	breakingPos       cube.Pos
+	breakingFace      cube.Face
+	lastBreakDuration time.Duration
+	breakCounter      uint32
+}
+
 // StartBreaking makes the player start breaking the block at the position passed using the item currently
 // held in its main hand.
 // If no block is present at the position, or if the block is out of range, StartBreaking will return

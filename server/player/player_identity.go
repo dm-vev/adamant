@@ -1,6 +1,7 @@
 package player
 
 import (
+	"log/slog"
 	"net"
 	"sync/atomic"
 	"time"
@@ -12,6 +13,23 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/text/language"
 )
+
+// identityState is who the player is: the identifiers it is kept by, its locale
+// and skin, the client that plays it, the handler and the logger.
+type identityState struct {
+	// dataUUID is the UUID the record and the spawn points of the player
+	// are kept by.
+	dataUUID uuid.UUID
+	xuid     string
+	locale   language.Tag
+	skin     skin.Skin
+	c        client.Client // The client of the player, nil if it has none.
+	h        Handler
+	// log is the logger of the player, never nil.
+	log *slog.Logger
+	// permissions is the Permissions of the Config of the player.
+	permissions func(p *Player) client.Permissions
+}
 
 // Name returns the username of the player. If the player is controlled by a client, it is the username of
 // the client. (Typically the XBOX Live name)
