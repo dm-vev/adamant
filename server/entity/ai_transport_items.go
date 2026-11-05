@@ -586,6 +586,8 @@ func transportHeld(m *Mob) item.Stack {
 func setTransportHeld(m *Mob, s item.Stack) {
 	if c, ok := m.Behaviour().(transportCarrier); ok {
 		c.setTransportHeld(s)
+		// Viewers see what the mob carries in its hand.
+		viewEquipment(m.tx, m.Self)
 	}
 }
 

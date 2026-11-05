@@ -213,6 +213,10 @@ func (c *CopperGolem) Waxed() bool { return c.b().waxed }
 // CarriedItem returns the single stack currently held for transfer.
 func (c *CopperGolem) CarriedItem() item.Stack { return c.b().carried }
 
+// HeldItems returns the item the golem carries, which it holds in its main
+// hand as BDS shows it with MobEquipment.
+func (c *CopperGolem) HeldItems() (item.Stack, item.Stack) { return c.b().carried, item.Stack{} }
+
 // Antenna returns the flower gifted to the golem by an iron golem, if any.
 func (c *CopperGolem) Antenna() item.Stack { return c.b().antenna }
 
@@ -422,6 +426,7 @@ func (c *CopperGolem) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) 
 		m := b.ai.Mob(c.Ent, c)
 		throwItemTowards(m, b.carried, u.Position(), mgl64.Vec3{float64(float32(.3)), float64(float32(.3)), float64(float32(.3))}, float64(float32(.3)))
 		b.carried = item.Stack{}
+		viewEquipment(tx, c)
 		return true
 	}
 	switch main.Item().(type) {

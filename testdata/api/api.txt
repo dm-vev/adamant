@@ -8430,6 +8430,7 @@ server/entity	method	CopperGolem.H	func() *server/world.EntityHandle
 server/entity	method	CopperGolem.HeadYaw	func() float64
 server/entity	method	CopperGolem.Heal	func(h float64, _ server/world.HealingSource) float64
 server/entity	method	CopperGolem.Health	func() float64
+server/entity	method	CopperGolem.HeldItems	func() (server/item.Stack, server/item.Stack)
 server/entity	method	CopperGolem.HolderLeashID	func() int64
 server/entity	method	CopperGolem.Hurt	func(d float64, s server/world.DamageSource) (float64, bool)
 server/entity	method	CopperGolem.HurtEntities	func(damagePerBlock float64, maxDamage float64)

@@ -4765,6 +4765,7 @@ server/entity.CopperGolem	server/entity.moveTracked	value
 server/entity.CopperGolem	server/entity.seatHolder	value
 server/entity.CopperGolem	server/entity.teleporter	*
 server/entity.CopperGolem	server/entity/effect.living	*
+server/entity.CopperGolem	server/item.Carrier	*
 server/entity.CopperGolem	server/item.chorusTeleporter	value
 server/entity.CopperGolem	server/world.Entity	value
 server/entity.CopperGolem	server/world.Prefetcher	value

@@ -518,11 +518,20 @@ func (u allayVibrationUser) VibrationParticle(destination mgl64.Vec3, travelTick
 }
 
 func (a *Allay) HeldItems() (item.Stack, item.Stack) { return a.b().held, item.Stack{} }
-func (a *Allay) SetHeldItems(main, off item.Stack)   { a.b().held = main; a.updateState() }
-func (a *Allay) Health() float64                     { return a.b().health.Health() }
-func (a *Allay) MaxHealth() float64                  { return a.b().health.MaxHealth() }
-func (a *Allay) SetMaxHealth(v float64)              { a.b().health.SetMaxHealth(v) }
-func (a *Allay) Dead() bool                          { return a.b().dead || a.Health() <= 0 }
+func (a *Allay) SetHeldItems(main, off item.Stack)   { a.setHeld(main) }
+
+// setHeld changes the item the allay holds and shows viewers, which see it
+// with MobEquipment as BDS sends it.
+func (a *Allay) setHeld(stack item.Stack) {
+	a.b().held = stack
+	a.updateState()
+	viewEquipment(a.tx, a)
+}
+
+func (a *Allay) Health() float64        { return a.b().health.Health() }
+func (a *Allay) MaxHealth() float64     { return a.b().health.MaxHealth() }
+func (a *Allay) SetMaxHealth(v float64) { a.b().health.SetMaxHealth(v) }
+func (a *Allay) Dead() bool             { return a.b().dead || a.Health() <= 0 }
 
 // Hurt ports Allay.hurtServer: the player an allay likes cannot hurt it.
 func (a *Allay) Hurt(d float64, s world.DamageSource) (float64, bool) {
@@ -627,17 +636,15 @@ func (a *Allay) AcceptItem(from world.Entity, tx *world.Tx, ctx *item.UseContext
 		return true
 	}
 	if b.held.Empty() && !stack.Empty() {
-		b.held = stack.Grow(1 - stack.Count())
 		ctx.SubtractFromCount(1)
 		tx.PlaySound(a.Position(), sound.Custom{Name: "entity.allay.item_given", Volume: 2, Pitch: 1})
 		b.br.set(memLikedPlayer, from.H().UUID())
-		a.updateState()
+		a.setHeld(stack.Grow(1 - stack.Count()))
 		return true
 	}
 	if !b.held.Empty() && !offHand && main.Empty() {
 		held := b.held
-		b.held = item.Stack{}
-		a.updateState()
+		a.setHeld(item.Stack{})
 		tx.PlaySound(a.Position(), sound.Custom{Name: "entity.allay.item_taken", Volume: 2, Pitch: 1})
 		a.viewAction(SwingArmAction{})
 		if !b.inventory.Empty() {
