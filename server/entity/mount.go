@@ -517,17 +517,43 @@ func (m *Mount) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) boo
 			b.makeMad(m)
 			return true
 		}
-		if _, chest := held.Item().(block.Chest); chest && !b.chested && (b.kind == mountDonkey || b.kind == mountMule || b.llama()) {
-			b.chested = true
-			b.chestItems = make([]item.Stack, b.chestSize())
-			b.chestInv = nil
+		if _, chest := held.Item().(block.Chest); chest && m.attachChest(tx) {
 			ctx.SubtractFromCount(1)
-			tx.PlaySound(m.Position(), sound.Custom{Name: "entity.horse.armor", Volume: 1, Pitch: 1})
-			m.updateState()
 			return true
 		}
 	}
 	return m.interactAbstractHorse(tx, user, ctx, held, sneaking)
+}
+
+// attachChest puts a chest on a donkey, mule or llama that has none, as
+// AbstractChestedHorse.mobInteract does, and reports whether it did.
+func (m *Mount) attachChest(tx *world.Tx) bool {
+	b := m.b()
+	if b.chested || b.kind != mountDonkey && b.kind != mountMule && !b.llama() {
+		return false
+	}
+	b.chested = true
+	b.chestItems = make([]item.Stack, b.chestSize())
+	b.chestInv = nil
+	tx.PlaySound(m.Position(), sound.Custom{Name: "entity.horse.armor", Volume: 1, Pitch: 1})
+	m.updateState()
+	return true
+}
+
+// dispenserEquip equips one item of the stack that a dispenser gives the
+// mount, as the dispenser behaviours of Java do. A tamed horse takes a saddle,
+// horse armour or a carpet by LivingEntity.canEquipWithDispenser and
+// AbstractHorse.canDispenserEquipIntoSlot, and a tamed donkey, mule or llama
+// without a chest takes the chest behaviour of Items.CHEST. It reports whether
+// the mount took the item.
+func (m *Mount) dispenserEquip(tx *world.Tx, stack item.Stack) bool {
+	if m.Dead() || !m.b().tamed {
+		return false
+	}
+	if _, chest := stack.Item().(block.Chest); chest {
+		return m.attachChest(tx)
+	}
+	return m.equip(tx, stack, &item.UseContext{})
 }
 
 // interactAbstractHorse ports AbstractHorse.mobInteract: a tamed adult opens

@@ -30,8 +30,9 @@ type dispenseSpawner func(conf *world.EntityRegistryConfig, opts world.EntitySpa
 
 // dispenseBehaviours holds the behaviour of each item type that has one, as
 // Java's DispenserBlock.DISPENSER_REGISTRY, filled by
-// DispenseItemBehavior.bootStrap. Items of other types are dropped
-// (dispenseDefault).
+// DispenseItemBehavior.bootStrap. Equippable items are worn by an entity in
+// front, as getDefaultDispenseMethod picks EquipmentDispenseItemBehavior for
+// them, and items of other types are dropped (dispenseDefault).
 var dispenseBehaviours = map[reflect.Type]dispenseBehaviour{
 	// ProjectileDispenseBehavior, registered by registerProjectileBehavior.
 	reflect.TypeFor[item.Egg]():                dispenseShot(defaultDispenseConfig, spawnDispensedEgg),
@@ -68,6 +69,17 @@ var dispenseBehaviours = map[reflect.Type]dispenseBehaviour{
 	// for equippable items: here the harness alone.
 	reflect.TypeFor[item.Harness](): dispenseHarness,
 
+	// The behaviours bootStrap registers for the items below.
+	reflect.TypeFor[Chest]():          dispenseChest,
+	reflect.TypeFor[Pumpkin]():        dispensePumpkin,
+	reflect.TypeFor[Skull]():          dispenseSkull,
+	reflect.TypeFor[ShulkerBox]():     dispenseShulkerBox,
+	reflect.TypeFor[Glowstone]():      dispenseGlowstone,
+	reflect.TypeFor[item.Shears]():    dispenseShears,
+	reflect.TypeFor[item.Brush]():     dispenseBrush,
+	reflect.TypeFor[item.Honeycomb](): dispenseHoneycomb,
+	reflect.TypeFor[item.Potion]():    dispensePotion,
+
 	// The bucket behaviours, which use the item on the block in front.
 	reflect.TypeFor[item.Bucket]():     dispenseBucket,
 	reflect.TypeFor[item.MobBucket]():  dispenseBucket,
@@ -85,6 +97,9 @@ var dispenseBehaviours = map[reflect.Type]dispenseBehaviour{
 func dispenseBehaviourOf(it world.Item) dispenseBehaviour {
 	if b, ok := dispenseBehaviours[reflect.TypeOf(it)]; ok {
 		return b
+	}
+	if equippableByDispenser(it) {
+		return dispenseEquip
 	}
 	return dispenseDefault
 }
@@ -326,8 +341,12 @@ func dispenseArmourStand(src dispenseSource) dispensed {
 }
 
 // dispenseTNT primes TNT in front, as the behaviour bootStrap registers for
-// Blocks.TNT, and drops it if the world has no primed TNT.
+// Blocks.TNT, and drops it if the world has no primed TNT. With the gamerule
+// tnt_explodes off, the behaviour keeps the TNT and the dispenser clicks.
 func dispenseTNT(src dispenseSource) dispensed {
+	if !src.tx.World().GameRuleBool("tnt_explodes") {
+		return src.failed()
+	}
 	create := src.tx.World().EntityRegistry().Config().TNT
 	if create == nil {
 		return dispenseDefault(src)

@@ -167,6 +167,7 @@ var conf = world.EntityRegistryConfig{
 		return NewOminousItemSpawner(opts, stack.(item.Stack), delay)
 	},
 	WitherPattern:      trySpawnWitherPattern,
+	EquipWithDispenser: equipWithDispenser,
 	TNT:                NewTNT,
 	Egg:                NewEgg,
 	EggVariant:         NewEggVariant,

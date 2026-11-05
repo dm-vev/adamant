@@ -71,6 +71,7 @@ damage.go core
 death_registry.go core
 destructible.go core
 direction.go core
+dispense_equip.go object
 dolphin_ai.go aquatic
 dragon.go dragon
 dragon_fight.go dragon

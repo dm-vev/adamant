@@ -952,7 +952,12 @@ type EntityRegistryConfig struct {
 	// carved pumpkin or jack-o'-lantern replaces a different block type.
 	GolemPattern func(tx *Tx, pos cube.Pos) bool
 	// WitherPattern attempts the source skull-and-soul-sand construction pattern.
-	WitherPattern      func(tx *Tx, pos cube.Pos) bool
+	WitherPattern func(tx *Tx, pos cube.Pos) bool
+	// EquipWithDispenser equips the item.Stack passed, of one item, onto the
+	// entity if a dispenser gives it to the entity, as Java's
+	// LivingEntity.canEquipWithDispenser and setItemSlot do for an armour
+	// stand, a horse and the like, and reports whether it did.
+	EquipWithDispenser func(tx *Tx, e Entity, stack any) bool
 	FallingBlock       func(opts EntitySpawnOpts, bl Block) *EntityHandle
 	TNT                func(opts EntitySpawnOpts, fuse time.Duration, owner Entity) *EntityHandle
 	Boat               func(opts EntitySpawnOpts, variant int) *EntityHandle

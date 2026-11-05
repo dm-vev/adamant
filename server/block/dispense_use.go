@@ -35,12 +35,6 @@ func entitiesInBlock(tx *world.Tx, pos cube.Pos) iter.Seq[world.Entity] {
 	}
 }
 
-// ignitable is a block that flint and steel lights: a campfire, a candle, a
-// cake with a candle and TNT.
-type ignitable interface {
-	Ignite(pos cube.Pos, tx *world.Tx, igniter world.Entity) bool
-}
-
 // dispenseFlintAndSteel ports FlintAndSteelDispenseItemBehavior: fire goes
 // into the air in front where it survives, a campfire, candle or cake there
 // is lit and TNT is primed; otherwise the dispenser clicks and keeps the item.
@@ -53,7 +47,10 @@ func dispenseFlintAndSteel(src dispenseSource) dispensed {
 			return src.failed()
 		}
 		tx.EmitGameEvent(world.GameEventBlockPlace, front.Vec3Centre(), world.GameEventContext{})
-	case ignitable:
+	case interface {
+		Ignite(pos cube.Pos, tx *world.Tx, igniter world.Entity) bool
+	}:
+		// A campfire, a candle, a cake with a candle or TNT.
 		if !b.Ignite(front, tx, nil) {
 			return src.failed()
 		}
@@ -61,12 +58,6 @@ func dispenseFlintAndSteel(src dispenseSource) dispensed {
 		return src.failed()
 	}
 	return dispensed{left: src.stack.Damage(1), effects: dispenseEffects{click: clickDone}}
-}
-
-// waterPlantGrower is a block, water, that bone meal grows seagrass and corals
-// in.
-type waterPlantGrower interface {
-	GrowWaterPlants(pos cube.Pos, face cube.Face, tx *world.Tx) bool
 }
 
 // dispenseBoneMeal ports the behaviour of Items.BONE_MEAL: BoneMealItem
@@ -82,7 +73,9 @@ func dispenseBoneMeal(src dispenseSource) dispensed {
 	}
 	if !grown {
 		// growWaterPlant without a clicked face: no fan on the wall.
-		if w, ok := tx.Block(front).(waterPlantGrower); ok && w.GrowWaterPlants(front, cube.FaceUp, tx) {
+		if w, ok := tx.Block(front).(interface {
+			GrowWaterPlants(pos cube.Pos, face cube.Face, tx *world.Tx) bool
+		}); ok && w.GrowWaterPlants(front, cube.FaceUp, tx) {
 			grown = true
 		}
 	}
