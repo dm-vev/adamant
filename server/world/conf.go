@@ -179,6 +179,53 @@ func componentLoggers(l *slog.Logger) (world, generation, save *slog.Logger) {
 // New creates a new World using the Config conf. The World returned will start
 // ticking as soon as a viewer is added to it and is otherwise ready for use.
 func (conf Config) New() *World {
+	conf.defaultTimings()
+	conf.defaultGenerator()
+	conf.defaultProvider()
+	conf.defaultBlocks()
+
+	providerUse := retainProvider(conf.Provider, !conf.ReadOnly)
+	constructed := false
+	var w *World
+	defer func() {
+		if constructed {
+			return
+		}
+		abandonWorld(w, providerUse, conf.Provider)
+	}()
+	loadProviderState(conf, providerUse)
+
+	s := conf.Provider.Settings()
+	conf.Seed = s.ResolveSeed(conf.Seed)
+	if conf.RandSource == nil {
+		conf.RandSource = newLevelRandomSource(uint32(conf.Seed))
+	}
+	s.Lock()
+	settingsLocked := true
+	defer func() {
+		if settingsLocked {
+			s.Unlock()
+		}
+	}()
+	w = newWorldState(conf, s, providerUse)
+	w.initSubsystems()
+	w.joinSettings()
+	s.Unlock()
+	settingsLocked = false
+	w.initRuntime()
+
+	t := ticker{interval: time.Second / 20}
+	w.startGeneratorWorkers()
+	w.firstTick(t)
+	w.startLoops(t)
+
+	constructed = true
+	return w
+}
+
+// defaultTimings fills the log, the dimension and the intervals of the
+// configuration that were left unset.
+func (conf *Config) defaultTimings() {
 	conf.Log = rootLogger(conf.Log)
 	if conf.Dim == nil {
 		conf.Dim = Overworld
@@ -192,6 +239,12 @@ func (conf Config) New() *World {
 	if conf.ChunkUnloadInterval <= 0 {
 		conf.ChunkUnloadInterval = time.Minute * 2
 	}
+}
+
+// defaultGenerator fills the generator of the configuration, resolves its
+// profile and workers, tunes a generator that can be tuned, and sizes the
+// queue of the generation.
+func (conf *Config) defaultGenerator() {
 	if conf.Generator == nil {
 		conf.Generator = NopGenerator{}
 	}
@@ -205,6 +258,11 @@ func (conf Config) New() *World {
 	if conf.GeneratorQueueSize <= 0 {
 		conf.GeneratorQueueSize = conf.GeneratorWorkers * 4
 	}
+}
+
+// defaultProvider fills the provider of the configuration, and the settings
+// of a provider that does not store any.
+func (conf *Config) defaultProvider() {
 	if conf.Provider == nil {
 		// If no provider is set, use the default settings and the default spawn position from the generator.
 		s := defaultSettings()
@@ -222,6 +280,11 @@ func (conf Config) New() *World {
 			provider.Set = defaultSettings()
 		}
 	}
+}
+
+// defaultBlocks fills the random tick speed and the block registry of the
+// configuration, and finalizes the registries.
+func (conf *Config) defaultBlocks() {
 	if conf.RandomTickSpeed == 0 {
 		conf.RandomTickSpeed = 3
 	}
@@ -233,25 +296,28 @@ func (conf Config) New() *World {
 	// is used in some vanilla paths.
 	conf.Blocks.Finalize()
 	DefaultBlockRegistry.Finalize()
-	providerUse := retainProvider(conf.Provider, !conf.ReadOnly)
-	constructed := false
-	var w *World
-	defer func() {
-		if constructed {
-			return
-		}
-		if w != nil {
-			w.closed.Store(true)
-			close(w.closeStarted)
-			w.generatorRunning.Wait()
-			w.set.Lock()
-			w.set.unregisterWorldLocked(w)
-			w.set.Unlock()
-		}
-		if releaseProvider(providerUse) {
-			_, _ = providerUse.closeProvider(conf.Provider)
-		}
-	}()
+}
+
+// abandonWorld undoes the construction of a world that panicked: a world made
+// so far is closed and unregistered, and the use of the provider is released.
+func abandonWorld(w *World, providerUse *providerRef, provider Provider) {
+	if w != nil {
+		w.closed.Store(true)
+		close(w.closeStarted)
+		w.generatorRunning.Wait()
+		w.set.Lock()
+		w.set.unregisterWorldLocked(w)
+		w.set.Unlock()
+	}
+	if releaseProvider(providerUse) {
+		_, _ = providerUse.closeProvider(provider)
+	}
+}
+
+// loadProviderState gives the provider the block registry and loads what the
+// provider keeps for the world: its position tracking and the state of its
+// generation.
+func loadProviderState(conf Config, providerUse *providerRef) {
 	if provider, ok := conf.Provider.(blockRegistrySetter); ok {
 		provider.SetBlockRegistry(conf.Blocks)
 	}
@@ -261,21 +327,13 @@ func (conf Config) New() *World {
 	if err := loadGenerationState(conf.Provider, conf.Generator, conf.Dim); err != nil {
 		panic(fmt.Errorf("load generation state: %w", err))
 	}
+}
 
-	s := conf.Provider.Settings()
-	conf.Seed = s.ResolveSeed(conf.Seed)
-	if conf.RandSource == nil {
-		conf.RandSource = newLevelRandomSource(uint32(conf.Seed))
-	}
-	s.Lock()
-	settingsLocked := true
-	defer func() {
-		if settingsLocked {
-			s.Unlock()
-		}
-	}()
+// newWorldState makes the world with its queues and maps, at the tick of the
+// settings s, which the caller holds locked.
+func newWorldState(conf Config, s *Settings, providerUse *providerRef) *World {
 	currentTick := s.CurrentTick
-	w = &World{
+	w := &World{
 		scheduledBlockTicks: newScheduledTickQueue(currentTick),
 		scheduledFluidTicks: newScheduledFluidTickQueue(currentTick),
 		redstone:            newRedstoneEngine(currentTick),
@@ -309,6 +367,14 @@ func (conf Config) New() *World {
 		activeColumnIndex:   make(map[ChunkPos]int),
 		entityColumnIndex:   make(map[ChunkPos]int),
 	}
+	return w
+}
+
+// initSubsystems gives the world its loggers, its background work, its border,
+// its saver, and what it loads from its provider: the loot sequences, the
+// village points of interest and the raids.
+func (w *World) initSubsystems() {
+	conf := w.conf
 	w.log, w.genLog, w.saveLog = componentLoggers(conf.Log)
 	w.scheduledBlockTicks.faults = &w.blockFaults
 	w.scheduledFluidTicks.faults = &w.blockFaults
@@ -322,6 +388,12 @@ func (conf Config) New() *World {
 	w.loadLootRandomSequences()
 	w.loadVillagePOIs()
 	w.loadRaids()
+}
+
+// joinSettings registers the world in its settings, which the caller holds
+// locked. The first world of the settings owns them and advances their time.
+func (w *World) joinSettings() {
+	s := w.set
 	if s.worlds == nil {
 		s.worlds = make(map[*World]struct{})
 	}
@@ -330,8 +402,11 @@ func (conf Config) New() *World {
 		w.advance = true
 	}
 	s.worlds[w] = struct{}{}
-	s.Unlock()
-	settingsLocked = false
+}
+
+// initRuntime loads the dragon fight and sets the weather, the handler and
+// the ticks per second of the world.
+func (w *World) initRuntime() {
 	if err := w.loadDragonFight(); err != nil {
 		panic(err)
 	}
@@ -339,8 +414,12 @@ func (conf Config) New() *World {
 	var h Handler = NopHandler{}
 	w.handler.Store(&h)
 	w.tps.Store(math.Float64bits(20))
+}
 
-	t := ticker{interval: time.Second / 20}
+// startGeneratorWorkers starts the workers of the generator, unless the world
+// is synchronous.
+func (w *World) startGeneratorWorkers() {
+	conf := w.conf
 	if !conf.Synchronous {
 		// The initial tick may generate the spawn column. Its readiness must not
 		// depend on workers that are only started after that tick returns.
@@ -350,15 +429,25 @@ func (conf Config) New() *World {
 			go w.generatorWorker()
 		}
 	}
-	// The first tick is not guarded as the others are: a panic of it is one
-	// of constructing the World, which New undoes and raises.
-	if conf.Synchronous {
+}
+
+// firstTick runs the first tick of the world. It is not guarded as the others
+// are: a panic of it is one of constructing the World, which New undoes and
+// raises.
+func (w *World) firstTick(t ticker) {
+	if w.conf.Synchronous {
 		<-w.execTick(t.tickWorld)
 	} else {
 		c := make(chan struct{})
 		normalTransaction{c: c, f: t.tickWorld, tick: true}.Run(w)
 	}
-	if !conf.Synchronous {
+}
+
+// startLoops starts the loops of the world: the tick, the save, the watch of
+// the ticks and the handling of the transactions, unless the world is
+// synchronous.
+func (w *World) startLoops(t ticker) {
+	if !w.conf.Synchronous {
 		w.queueing.Add(1)
 		w.running.Add(3)
 
@@ -367,9 +456,6 @@ func (conf Config) New() *World {
 		go w.watchTicks()
 		go w.handleTransactions()
 	}
-
-	constructed = true
-	return w
 }
 
 // initBackground makes what the world needs for the work it has done off its
