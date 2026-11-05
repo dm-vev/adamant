@@ -56,9 +56,11 @@ type SeaGrass struct {
 	Type SeaGrassType
 }
 
-// HasLiquidDrops ...
-func (SeaGrass) HasLiquidDrops() bool {
-	return true
+// SideClosed never closes a side. Together with sourceWaterDisplacer it makes
+// the seagrass a block that holds water, as SeagrassBlock.canPlaceLiquid is
+// false: no liquid flows into the cell of a seagrass and removes it.
+func (SeaGrass) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool {
+	return false
 }
 
 // NeighbourUpdateTick ...

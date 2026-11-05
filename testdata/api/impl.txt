@@ -2685,11 +2685,11 @@ server/block.SculkVein	server/world.redstoneLightDiffuser	value
 server/block.SculkVein	server/world.replaceableBlock	value
 server/block.SeaGrass	server/block.Breakable	value
 server/block.SeaGrass	server/block.LightDiffuser	value
-server/block.SeaGrass	server/block.LiquidRemovable	value
 server/block.SeaGrass	server/item.BoneMealAffected	value
 server/block.SeaGrass	server/item.UsableOnBlock	value
 server/block.SeaGrass	server/world.Block	value
 server/block.SeaGrass	server/world.Item	value
+server/block.SeaGrass	server/world.LiquidDisplacer	value
 server/block.SeaGrass	server/world.NeighbourUpdateTicker	value
 server/block.SeaGrass	server/world.lightDiffuser	value
 server/block.SeaGrass	server/world.redstoneLightDiffuser	value

@@ -4279,11 +4279,11 @@ server/block	method	SeaGrass.BreakInfo	func() server/block.BreakInfo
 server/block	method	SeaGrass.CanDisplace	func(b server/world.Liquid) bool
 server/block	method	SeaGrass.EncodeBlock	func() (name string, properties map[string]any)
 server/block	method	SeaGrass.EncodeItem	func() (name string, meta int16)
-server/block	method	SeaGrass.HasLiquidDrops	func() bool
 server/block	method	SeaGrass.Hash	func() (uint64, uint64)
 server/block	method	SeaGrass.LightDiffusionLevel	func() uint8
 server/block	method	SeaGrass.Model	func() server/world.BlockModel
 server/block	method	SeaGrass.NeighbourUpdateTick	func(pos server/block/cube.Pos, _ server/block/cube.Pos, tx *server/world.Tx)
+server/block	method	SeaGrass.SideClosed	func(server/block/cube.Pos, server/block/cube.Pos, *server/world.Tx) bool
 server/block	method	SeaGrass.UseOnBlock	func(pos server/block/cube.Pos, face server/block/cube.Face, _ github.com/go-gl/mathgl/mgl64.Vec3, tx *server/world.Tx, user server/item.User, ctx *server/item.UseContext) bool
 server/block	method	SeaGrassType.String	func() string
 server/block	method	SeaGrassType.Uint8	func() uint8
