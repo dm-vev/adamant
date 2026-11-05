@@ -15,6 +15,29 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
+// combatState is the combat memory of the player.
+type combatState struct {
+	absorptionHealth float64
+	// attackStrengthTicks counts the ticks since the player last attacked,
+	// punched the air or came to hold another item in its main hand, as
+	// Java's Player.attackStrengthTicker (tickAttackStrength), and
+	// lastMainHand is that item, by name and meta.
+	attackStrengthTicks int
+	lastMainHand        struct {
+		name string
+		meta int16
+	}
+	lastDamage  float64
+	immuneUntil time.Time
+	// The combat memory of the LivingEntity: the living entity that last
+	// hurt the player, the damage it last took and the living entity it
+	// last hurt, with the game ticks they happened at.
+	lastHurtBy, lastHurtMob         *world.EntityHandle
+	lastHurtByTick, lastHurtMobTick int64
+	lastDamageSource                world.DamageSource
+	lastDamageTick                  int64
+}
+
 // Health returns the current health of the player. It will always be lower than Player.MaxHealth().
 func (p *Player) Health() float64 {
 	return p.health.Health()

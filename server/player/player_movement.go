@@ -17,6 +17,28 @@ import (
 	"github.com/google/uuid"
 )
 
+// movementState is how the player moves: its flags, the movement computer, the
+// portal travel, the collisions and the move events.
+type movementState struct {
+	// frostWalkPos is the block Frost Walker last ran in.
+	frostWalkPos                                               cube.Pos
+	frostWalkPosSet                                            bool
+	scale                                                      float64
+	sneaking, sprinting, swimming, gliding, crawling, onGround bool
+	// moved marks a player whose viewers are yet to be shown where it moved,
+	// which they are with the next tick, and movedByServer one that the
+	// server moved, whose own client is shown the move too.
+	moved, movedByServer                     bool
+	glideTicks                               int64
+	moveEventDistance, nextMoveEventStep     float32
+	movementSupport                          cube.Pos
+	hasMovementSupport, onGroundNoBlocks     bool
+	mc                                       *entity.MovementComputer
+	portalTravel                             *entity.PortalTravelComputer
+	collidedVertically, collidedHorizontally bool
+	prevWorld                                *world.World
+}
+
 // StartSprinting makes a player start sprinting, increasing the speed of the player by 30% and making
 // particles show up under the feet. The player will only start sprinting if its food level is high enough.
 // If the player is sneaking when calling StartSprinting, it is stopped from sneaking.

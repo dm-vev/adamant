@@ -6,6 +6,19 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
+// abilityState is the abilities of the player: its game mode, speeds, flight
+// and visibility.
+type abilityState struct {
+	gameMode                    world.GameMode
+	flying, invisible, immobile bool
+	speed                       float64
+	flightSpeed                 float64
+	verticalFlightSpeed         float64
+	// spectating is the entity the camera of the player follows, as Java's
+	// ServerPlayer.camera when it is not the player itself.
+	spectating *world.EntityHandle
+}
+
 // SetSpeed sets the speed of the player. The value passed is the blocks/tick speed that the player will then
 // obtain.
 func (p *Player) SetSpeed(speed float64) {

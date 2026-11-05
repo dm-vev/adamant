@@ -18,6 +18,23 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
+// itemUseState is the item the player is using and the hook it fishes with.
+type itemUseState struct {
+	usingItem                bool
+	blockingDelayTicks       int64
+	usingSince               time.Time
+	usingTicks               int64
+	usingStack               item.Stack
+	kineticRecent            map[*world.EntityHandle]int64
+	usingSlot                uint32
+	itemUseTick              int64
+	itemUseCompleteTick      int64
+	itemUseCompletedStack    item.Stack
+	itemUseCompletedSlot     uint32
+	itemUseRecentlyCompleted bool
+	fishingHook              *world.EntityHandle
+}
+
 // IsFishing reports if the player currently has an active fishing hook.
 func (p *Player) IsFishing() bool {
 	if p.fishingHook == nil {

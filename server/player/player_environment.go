@@ -15,6 +15,14 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
+// airState is the air the player breathes and the fire that burns it.
+type airState struct {
+	fireTicks         int64
+	breathing         bool
+	airSupplyTicks    int
+	maxAirSupplyTicks int
+}
+
 // Splash is called when a water bottle splashes onto the player.
 func (p *Player) Splash(*world.Tx, mgl64.Vec3) {
 	if d := p.OnFireDuration(); d.Seconds() <= 0 {

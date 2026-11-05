@@ -10,6 +10,11 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
+// fallState is how far the player has fallen.
+type fallState struct {
+	fallDistance float64
+}
+
 // ResetFallDistance resets the player's fall distance.
 func (p *Player) ResetFallDistance() {
 	p.fallDistance = 0
