@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/audit"
@@ -247,29 +248,51 @@ func TestRequestPermissionsPacket(t *testing.T) {
 		t.Error("Mod is still an operator")
 	}
 
-	// Each request is in the audit log, as it ended.
+	// Each request is in the audit log, as it ended. A request is recorded
+	// off the goroutine of its client, after the role is shown, and the log
+	// drops what it is handed once it closes: so the test waits for every
+	// record before it closes the server. A refusal is shown as the player
+	// is, which an update of the step before may stand for: the records of
+	// two steps may come in either order.
+	want := []string{"Admin Admin refused", "Admin Member ok", "Admin Mod ok", "Admin Owner refused", "Mod Member denied", "Owner Member ok"}
+	path := filepath.Join(dir, "audit.log")
+	for deadline := time.Now().Add(10 * time.Second); len(roleRecords(t, path, false)) < len(want) && time.Now().Before(deadline); {
+		time.Sleep(10 * time.Millisecond)
+	}
 	if err := srv.Close(); err != nil {
 		t.Fatal(err)
 	}
-	data, err := os.ReadFile(filepath.Join(dir, "audit.log"))
+	results := roleRecords(t, path, true)
+	if slices.Sort(results); !slices.Equal(results, want) {
+		t.Errorf("audit records of roles: %q, want %q", results, want)
+	}
+}
+
+// roleRecords returns the requests of roles the audit log at path holds, as
+// "actor target result", in the order written. Strict, as the log is
+// closed, it fails the test on a file it cannot read or a line that is not
+// a record; else, as the log is still written, it skips them.
+func roleRecords(t *testing.T, path string, strict bool) []string {
+	t.Helper()
+	data, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatal(err)
+		if strict {
+			t.Fatal(err)
+		}
+		return nil
 	}
 	var results []string
 	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
 		var r audit.Record
 		if err := json.Unmarshal([]byte(line), &r); err != nil {
-			t.Fatal(err)
+			if strict {
+				t.Fatal(err)
+			}
+			continue
 		}
 		if r.Action == "role" {
 			results = append(results, r.Actor.Name+" "+r.Target+" "+string(r.Result))
 		}
 	}
-	// A refusal is shown as the player is, which an update of the step
-	// before may stand for: the records of two steps may come in either
-	// order.
-	want := []string{"Admin Admin refused", "Admin Member ok", "Admin Mod ok", "Admin Owner refused", "Mod Member denied", "Owner Member ok"}
-	if slices.Sort(results); !slices.Equal(results, want) {
-		t.Errorf("audit records of roles: %q, want %q", results, want)
-	}
+	return results
 }
