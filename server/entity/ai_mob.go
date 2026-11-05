@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
@@ -193,13 +192,30 @@ func (ai *MobAI) start(m *Mob) {
 	ai.nav.init(m)
 }
 
-// Random returns the random source of the mob, Java's Mob.getRandom.
-func (m *Mob) Random() *vanilla.Random {
-	if m.AI.random == nil {
-		r := vanilla.NewXoroshiroRandom(rand.Int64())
-		m.AI.random = &r
+// Random returns the random source of the mob, Java's Mob.getRandom. Like
+// Java's entity.random it is a stream of the mob alone, but its seed is drawn
+// from the Level.random of the world the mob is in the first time it is
+// needed, so that the same world seed makes the same mobs draw the same
+// numbers. The mob keeps the stream when it moves to another world.
+func (m *Mob) Random() *vanilla.Random { return m.AI.randomSource(m.tx, m.Ent) }
+
+// randomSource returns the random source of the AI, creating it on first use
+// with a seed drawn from the Level.random of the world of tx.
+func (ai *MobAI) randomSource(tx *world.Tx, e *Ent) *vanilla.Random {
+	if ai.random == nil {
+		var seed int64
+		if tx != nil {
+			seed = tx.RegionRandom().NextLong()
+		} else {
+			// The mob is not in a world yet and has no transaction to
+			// draw from; the stream of its own handle, seeded from its
+			// UUID, stands in.
+			seed = e.H().RegionRandom().NextLong()
+		}
+		r := vanilla.NewXoroshiroRandom(seed)
+		ai.random = &r
 	}
-	return m.AI.random
+	return ai.random
 }
 
 // Tx returns the transaction the mob ticks in.
