@@ -667,7 +667,11 @@ func liquidIn(tx *world.Tx, box cube.BBox) bool {
 }
 
 // spawnNoCollision ports Level.noCollision for a spawn box: no block and no
-// boat or shulker collides with it.
+// boat or shulker collides with it. Like BlockCollisions, which skips the
+// cells of chunks that are not loaded, it takes those for empty: the cells it
+// searches a block further than the box include those of the chunk beside the
+// one a mob spawns at the edge of, which a newly generated chunk may have no
+// neighbours loaded for.
 func spawnNoCollision(tx *world.Tx, box cube.BBox) bool {
 	for x := int(math.Floor(box.Min()[0])) - 1; x <= int(math.Ceil(box.Max()[0])); x++ {
 		for y := int(math.Floor(box.Min()[1])) - 1; y <= int(math.Ceil(box.Max()[1])); y++ {
@@ -675,7 +679,7 @@ func spawnNoCollision(tx *world.Tx, box cube.BBox) bool {
 				pos := cube.Pos{x, y, z}
 				b, ok := tx.BlockLoaded(pos)
 				if !ok {
-					return false
+					continue
 				}
 				for _, bb := range b.Model().BBox(pos, tx) {
 					if bb.Translate(pos.Vec3()).IntersectsWith(box) {
