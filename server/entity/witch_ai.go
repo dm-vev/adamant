@@ -83,7 +83,7 @@ func (b *WitchBehaviour) tickPotions(m *Mob) {
 	switch {
 	case r.NextFloat() < .15 && drownedUnderWater(m) && !mobHasEffect(m, effect.WaterBreathing):
 		drink = potion.WaterBreathing()
-	case r.NextFloat() < .15 && (m.OnFireDuration() > 0 || m.tx.CurrentTick()-b.lastFireDamage <= 40) && !mobHasEffect(m, effect.FireResistance):
+	case r.NextFloat() < .15 && (m.OnFireDuration() > 0 || b.lastFireDamage != 0 && m.tx.CurrentTick()+1-b.lastFireDamage <= 40) && !mobHasEffect(m, effect.FireResistance):
 		drink = potion.FireResistance()
 	case r.NextFloat() < .05 && b.health.Health() < b.health.MaxHealth():
 		drink = potion.Healing()

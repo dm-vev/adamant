@@ -117,7 +117,8 @@ type WitchBehaviour struct {
 	heal        *nearestHealableRaiderTargetGoal
 	attack      *NearestAttackableTargetGoal
 	attackAllow bool
-	// lastFireDamage is the world tick the witch last took fire damage.
+	// lastFireDamage is one more than the world tick the witch last took
+	// fire damage, or zero if it never did.
 	lastFireDamage int64
 }
 type Witch struct{ *Ent }
@@ -172,7 +173,7 @@ func (w *Witch) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	}
 	d = witchMagicAbsorb(w, d, s)
 	if s.Fire() {
-		b.lastFireDamage = w.tx.CurrentTick()
+		b.lastFireDamage = w.tx.CurrentTick() + 1
 	}
 	b.health.AddHealth(-d)
 	b.ai.Hurt(s)

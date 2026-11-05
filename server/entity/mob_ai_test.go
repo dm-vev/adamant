@@ -933,6 +933,52 @@ func TestWitchThrowsPotionsAtPlayers(t *testing.T) {
 	}
 }
 
+// TestWitchDrinksNothingWithoutReason checks Witch.aiStep: a witch that is not
+// on fire, has not taken fire damage, is not hurt and sees no player drinks
+// no potion, however young the world is. It drank fire resistance during the
+// first 40 ticks of a world, as if it had just taken fire damage, and so
+// missed its first throws.
+func TestWitchDrinksNothingWithoutReason(t *testing.T) {
+	t.Parallel()
+	w := aiTestWorld(t)
+	witch := addSpecies(w, entity.NewWitch(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
+	for range 120 {
+		stepWorld(t, w, 1)
+		<-w.Exec(func(tx *world.Tx) {
+			e, _ := witch.Entity(tx)
+			if effects := e.(entity.Living).Effects(); len(effects) != 0 {
+				t.Fatalf("witch drank %v at tick %d", effects, tx.CurrentTick())
+			}
+		})
+	}
+}
+
+// TestWitchDrinksSwiftnessOnlyOnce checks that Witch.aiStep asks hasEffect
+// before it drinks swiftness to catch up with a target more than 11 blocks
+// away: a witch that has the effect does not drink it again, which would
+// renew it and keep the witch from throwing.
+func TestWitchDrinksSwiftnessOnlyOnce(t *testing.T) {
+	t.Parallel()
+	w := aiTestWorld(t)
+	addAITestPlayer(w, mgl64.Vec3{13.5, 65, .5}, world.GameModeSurvival)
+	witch := addSpecies(w, entity.NewWitch(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
+	<-w.Exec(func(tx *world.Tx) {
+		e, _ := witch.Entity(tx)
+		e.(entity.Living).AddEffect(effect.New(effect.Speed, 1, time.Minute))
+	})
+	for range 200 {
+		stepWorld(t, w, 1)
+		<-w.Exec(func(tx *world.Tx) {
+			e, _ := witch.Entity(tx)
+			for _, eff := range e.(entity.Living).Effects() {
+				if eff.Type() == effect.Speed && eff.Duration() > time.Minute {
+					t.Fatalf("witch drank swiftness again at tick %d: %v left", tx.CurrentTick(), eff.Duration())
+				}
+			}
+		})
+	}
+}
+
 // TestWitchDrinksAndResistsMagic checks a burning witch drinks fire
 // resistance, and magic hurts it little.
 func TestWitchDrinksAndResistsMagic(t *testing.T) {

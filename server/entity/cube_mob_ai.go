@@ -285,12 +285,19 @@ func (g *cubeKeepOnJumpingGoal) Tick(m *Mob) { cubeOf(m).cube().move.setWantedMo
 
 // mobHasEffect reports if a mob has an effect of a type.
 func mobHasEffect(m *Mob, t effect.Type) bool {
-	l, ok := m.Self.(interface {
+	switch l := m.Self.(type) {
+	case interface {
 		Effect(effect.Type) (effect.Effect, bool)
-	})
-	if !ok {
-		return false
+	}:
+		_, has := l.Effect(t)
+		return has
+	case interface{ Effects() []effect.Effect }:
+		// Mobs with no lookup by type, such as the witch, only list theirs.
+		for _, e := range l.Effects() {
+			if e.Type() == t {
+				return true
+			}
+		}
 	}
-	_, has := l.Effect(t)
-	return has
+	return false
 }
