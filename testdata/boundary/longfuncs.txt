@@ -41,8 +41,6 @@ server/block/smelter.go smelter.tickSmelting 117
 server/block/vine.go Vines.RandomTick 116
 server/checkpoint.go checkpointer.checkpoint 105
 server/cmd/builtin/data_data.go dataCommand.Run 201
-server/cmd/builtin/data_execute.go legacyExecuteChain 270
-server/cmd/builtin/data_execute.go legacyExecuteCondition 142
 server/cmd/selector.go parseSelector 133
 server/conf.go Config.New 125
 server/conf.go UserConfig.Config 104

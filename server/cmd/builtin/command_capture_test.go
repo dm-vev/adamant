@@ -266,13 +266,7 @@ func checkGolden(t *testing.T, name, got string) {
 		t.Fatalf("read the golden file: %v (write it with: go test ./server/cmd/builtin/ -run %s -update-command-captures)", err, t.Name())
 	}
 	if got != string(want) {
-		gotLines, wantLines := strings.Split(got, "\n"), strings.Split(string(want), "\n")
-		for i := 0; i < len(gotLines) && i < len(wantLines); i++ {
-			if gotLines[i] != wantLines[i] {
-				t.Fatalf("%s differs from line %d:\n got: %s\nwant: %s\n(if the change is deliberate, rewrite it with -update-command-captures)", name, i+1, gotLines[i], wantLines[i])
-			}
-		}
-		t.Fatalf("%s differs in length: got %d lines, want %d", name, len(gotLines), len(wantLines))
+		checkEqualCaptures(t, string(want), got)
 	}
 }
 

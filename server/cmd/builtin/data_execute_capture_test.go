@@ -1,11 +1,6 @@
 package builtin
 
-import (
-	"testing"
-
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/world"
-)
+import "testing"
 
 // executeCaptureLines are the lines /execute is captured with: every modifier
 // and condition with the arguments that work and those that fail, in the
@@ -325,26 +320,4 @@ var executeCaptureLines = []string{
 // executeCaptureLines: the output of the command and its effects.
 func TestExecuteCapture(t *testing.T) {
 	checkGolden(t, "execute_capture.golden", runCapture(t, executeCaptureLines, "execute", executeCommand{}))
-}
-
-// executeViaTables is /execute with the table of modifiers and conditions
-// evaluating its chain.
-type executeViaTables struct {
-	gameMaster
-	Args cmd.Varargs
-}
-
-func (c executeViaTables) Run(src cmd.Source, out *cmd.Output, tx *world.Tx) {
-	executeCommand{Args: c.Args}.run(src, out, tx, executeChain)
-}
-
-// TestExecuteTablesMatchLegacy requires the table of modifiers and the table
-// of conditions to do exactly what the chain before them did, on every line
-// of the capture: the same output text and the same effects.
-func TestExecuteTablesMatchLegacy(t *testing.T) {
-	legacy := runCapture(t, executeCaptureLines, "execute", executeCommand{})
-	tables := runCapture(t, executeCaptureLines, "execute", executeViaTables{})
-	if legacy != tables {
-		checkEqualCaptures(t, legacy, tables)
-	}
 }
