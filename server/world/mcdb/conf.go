@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/mcdb/leveldat"
 	"github.com/df-mc/goleveldb/leveldb"
@@ -37,7 +38,7 @@ func (conf Config) Open(dir string) (*DB, error) {
 	if conf.Log == nil {
 		conf.Log = slog.Default()
 	}
-	conf.Log = conf.Log.With("provider", "mcdb")
+	conf.Log = logging.Sub(conf.Log, logging.Save).With("provider", "mcdb")
 	if conf.LDBOptions == nil {
 		conf.LDBOptions = new(opt.Options)
 	}
