@@ -85,27 +85,61 @@ func TestTamedCatsFollowTheirOwner(t *testing.T) {
 	}
 }
 
+// huntRabbit lets a stray cat hunt a rabbit in a pen for up to 30 seconds. It
+// reports whether the rabbit was hurt and whether the hunt stalled instead:
+// the cat and the rabbit stood still for the last five seconds within two
+// blocks of each other.
+//
+// OcelotAttackGoal scratches only within 1.2 blocks (twice the width of the
+// cat) of the middle of the target, while the cat's path ends in the block
+// next to the rabbit's, where the middle of the block may be up to 1.4 blocks
+// from a rabbit at the far side of its own. As in Java the cat then waits for
+// the rabbit to hop on, which the rabbit does about once in 120 ticks; in
+// about one hunt in a thousand it does not hop for the rest of the 30 seconds.
+func huntRabbit(t *testing.T) (hurt, stalled bool) {
+	t.Helper()
+	w := wolfTestWorld(t)
+	var rabbit, cat *world.EntityHandle
+	<-w.Exec(func(tx *world.Tx) {
+		pen(tx, 6)
+		cat = addCat(tx, mgl64.Vec3{-3.5, 64, .5}, entity.CatBehaviourConfig{})
+		rabbit = spawnAnimal(t, tx, "minecraft:rabbit", 3.5, nil)
+	})
+	var catPos, rabbitPos mgl64.Vec3
+	stillSince := 0
+	for tick := range 600 {
+		w.AdvanceTick()
+		<-w.Exec(func(tx *world.Tx) {
+			hurt = livingHealth(tx, rabbit) < 3
+			c, p := entityPos(tx, cat), entityPos(tx, rabbit)
+			if c.Sub(catPos).Len() > 1e-3 || p.Sub(rabbitPos).Len() > 1e-3 {
+				catPos, rabbitPos, stillSince = c, p, tick
+			}
+		})
+		if hurt {
+			return true, false
+		}
+	}
+	return false, catPos.Sub(rabbitPos).Len() < 2 && 600-stillSince >= 100
+}
+
 // TestStrayCatsHuntRabbits checks the NonTameRandomTargetGoal of cats and
 // OcelotAttackGoal: a stray cat stalks a rabbit and scratches it.
 func TestStrayCatsHuntRabbits(t *testing.T) {
 	t.Parallel()
-	w := wolfTestWorld(t)
-	var rabbit *world.EntityHandle
-	<-w.Exec(func(tx *world.Tx) {
-		pen(tx, 6)
-		addCat(tx, mgl64.Vec3{-3.5, 64, .5}, entity.CatBehaviourConfig{})
-		rabbit = spawnAnimal(t, tx, "minecraft:rabbit", 3.5, nil)
-	})
-	hurt := false
-	for range 600 {
-		w.AdvanceTick()
-		<-w.Exec(func(tx *world.Tx) { hurt = livingHealth(tx, rabbit) < 3 })
+	// A hunt that stalled is tried again, up to five times; one that did not
+	// and ended with an unhurt rabbit fails at once.
+	for attempt := 1; ; attempt++ {
+		hurt, stalled := huntRabbit(t)
 		if hurt {
-			break
+			return
 		}
-	}
-	if !hurt {
-		t.Fatal("stray cat did not attack a rabbit in 30 seconds")
+		if !stalled {
+			t.Fatal("stray cat did not attack a rabbit in 30 seconds")
+		}
+		if attempt == 5 {
+			t.Fatalf("stray cat stood by a rabbit out of reach in %d hunts in a row", attempt)
+		}
 	}
 }
 
