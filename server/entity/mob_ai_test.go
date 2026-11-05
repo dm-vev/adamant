@@ -920,14 +920,22 @@ func TestElderGuardianCursesPlayers(t *testing.T) {
 	}
 }
 
-// TestWitchThrowsPotionsAtPlayers checks a witch throws potions that slow
-// or poison a player.
-func TestWitchThrowsPotionsAtPlayers(t *testing.T) {
-	t.Parallel()
+// witchThrows lets a witch throw at a player six blocks away for 15 seconds.
+// It reports whether the player was slowed or poisoned and whether the witch
+// strayed instead: it ended up more than 16 blocks, the follow range, from the
+// player and lost it.
+//
+// Witch.performRangedAttack throws poison from six blocks (slowness from
+// eight, and once poisoned the player gets harming), after the witch picked
+// the player in a tenth of the ticks. A witch strolls, though, as often as a
+// RangedAttackGoal of the same priority leaves room for, up to ten blocks
+// away, and in about one in a thousand it walks off the follow range before
+// its first throw.
+func witchThrows(t *testing.T) (affected, strayed bool) {
+	t.Helper()
 	w := aiTestWorld(t)
 	p := addAITestPlayer(w, mgl64.Vec3{6.5, 65, .5}, world.GameModeSurvival)
-	addSpecies(w, entity.NewWitch(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
-	affected := false
+	witch := addSpecies(w, entity.NewWitch(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
 	lowestHealth(t, w, p, 300, func(tx *world.Tx) {
 		if e, ok := p.Entity(tx); ok {
 			for _, eff := range e.(*player.Player).Effects() {
@@ -935,8 +943,31 @@ func TestWitchThrowsPotionsAtPlayers(t *testing.T) {
 			}
 		}
 	})
-	if !affected {
-		t.Fatal("witch potions did not affect the player")
+	<-w.Exec(func(tx *world.Tx) {
+		e, _ := witch.Entity(tx)
+		pe, _ := p.Entity(tx)
+		strayed = e.Position().Sub(pe.Position()).Len() > 16
+	})
+	return affected, strayed
+}
+
+// TestWitchThrowsPotionsAtPlayers checks a witch throws potions that slow
+// or poison a player.
+func TestWitchThrowsPotionsAtPlayers(t *testing.T) {
+	t.Parallel()
+	// A witch that strayed out of range is tried again, up to five times; one
+	// that stayed in range and threw nothing that landed fails at once.
+	for attempt := 1; ; attempt++ {
+		affected, strayed := witchThrows(t)
+		if affected {
+			return
+		}
+		if !strayed {
+			t.Fatal("witch potions did not affect the player")
+		}
+		if attempt == 5 {
+			t.Fatalf("the witch strayed out of range in %d tries in a row", attempt)
+		}
 	}
 }
 
