@@ -191,17 +191,9 @@ type StackResult struct {
 	Packets []proto.Packet
 }
 
-// Request handles the request passed as the session does, by the table of
-// the actions if tabled is set, else by the switch, until the switch is
-// deleted.
-func (sc *StackScene) Request(req mc.ItemStackRequest, tabled bool) (res StackResult) {
-	var err error
-	if tabled {
-		err = sc.h.handleRequestTabled(req, sc.s, sc.tx, sc.c)
-	} else {
-		err = sc.h.handleRequest(req, sc.s, sc.tx, sc.c)
-	}
-	if err != nil {
+// Request handles the request passed as the session does.
+func (sc *StackScene) Request(req mc.ItemStackRequest) (res StackResult) {
+	if err := sc.h.handleRequest(req, sc.s, sc.tx, sc.c); err != nil {
 		res.Err = err.Error()
 	}
 	res.Packets = slices.Clone(sc.s.heldPackets)

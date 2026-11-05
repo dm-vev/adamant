@@ -397,11 +397,10 @@ func numberStackResponse(ids stackIDs, pks []proto.Packet) {
 	}
 }
 
-// runStackScenario runs the scenario in a world of its own, by the table of the
-// actions if tabled is set, and returns the lines of testdata/stack_requests.golden
+// runStackScenario runs the scenario in a world of its own and returns the lines of testdata/stack_requests.golden
 // that tell what each step did: the error, the packets as each protocol is
 // sent them, and what the inventories hold.
-func runStackScenario(t *testing.T, c stackScenario, tabled bool) (lines []string) {
+func runStackScenario(t *testing.T, c stackScenario) (lines []string) {
 	t.Helper()
 	world.DefaultBlockRegistry.Finalize()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
@@ -419,7 +418,7 @@ func runStackScenario(t *testing.T, c stackScenario, tabled bool) (lines []strin
 						res = session.StackResult{Err: fmt.Sprint("panic: ", r)}
 					}
 				}()
-				return sc.Request(s.build(sc), tabled)
+				return sc.Request(s.build(sc))
 			}()
 			numberStackResponse(ids, res.Packets)
 			lines = append(lines, "  error: "+ids.inText(res.Err))
@@ -438,31 +437,13 @@ func runStackScenario(t *testing.T, c stackScenario, tabled bool) (lines []strin
 // every type of action of stackActionTypes, and compares what the session did
 // with testdata/stack_requests.golden, which was recorded from the switch of
 // ItemStackRequestHandler.handleRequest before the actions were dispatched by a
-// table. Run with -update-stacks to write it again, and read the diff.
+// table: the table gives the outcomes the switch gave. Run with -update-stacks to write it again, and read the diff.
 func TestStackRequestActionsMatch(t *testing.T) {
 	var got []string
 	for _, c := range stackScenarios() {
-		got = append(got, runStackScenario(t, c, false)...)
+		got = append(got, runStackScenario(t, c)...)
 	}
 	checkTableGolden(t, filepath.Join("testdata", "stack_requests.golden"), *updateStacks, "stacks", got)
-}
-
-// TestStackRequestActionsTableMatchesSwitch runs the scenarios with the switch
-// and with the table of the actions, and requires the same outcome.
-func TestStackRequestActionsTableMatchesSwitch(t *testing.T) {
-	for _, c := range stackScenarios() {
-		t.Run(c.name, func(t *testing.T) {
-			old, tabled := runStackScenario(t, c, false), runStackScenario(t, c, true)
-			if strings.Join(old, "\n") != strings.Join(tabled, "\n") {
-				for i := 0; i < min(len(old), len(tabled)); i++ {
-					if old[i] != tabled[i] {
-						t.Fatalf("line %d differs:\nswitch: %s\ntable:  %s", i+1, old[i], tabled[i])
-					}
-				}
-				t.Fatalf("%d lines by the switch, %d by the table", len(old), len(tabled))
-			}
-		})
-	}
 }
 
 // TestStackRequestScenariosReachEveryAction requires that the scenarios send an
