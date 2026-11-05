@@ -1916,9 +1916,18 @@ func (s *Session) writeBroadcast(b *world.Broadcast, build func(out func(proto.P
 // a crafter. A lectern opens a window the session keeps no state for, as
 // the client sends no close for it.
 func (s *Session) OpenMenu(m *menu.Menu, tx *world.Tx) {
+	if s.closeWindow(false) {
+		// The player closes its menu before it opens another. A client
+		// told to open a window while it shows one would show both.
+		s.logWindow("menu closed by the server", "why", "another menu opens")
+	}
+	// A menu replaces the screen of the inventory, which the client then
+	// does not close by its own window.
+	s.resetInventory("a menu opens")
 	nextID := s.nextWindowID()
 	if m.Kind() != menu.Lectern {
 		s.menu.Store(m)
+		s.windows.menuAt = s.windows.stamp()
 	}
 	containerType := windowType(m, tx)
 	s.openedContainerID.Store(uint32(containerType))

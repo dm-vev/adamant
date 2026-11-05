@@ -27,6 +27,18 @@ func (s *Session) Inventories() (inv, offHand, enderChest, ui *inventory.Invento
 	return s.inv, s.offHand, s.enderChest, s.ui, s.armour
 }
 
+// WindowGraceTicks is how many ticks after a window was shown to the client
+// the session takes what the client does for what it did before it saw it.
+const WindowGraceTicks = 20
+
+// Idle reports whether the session has no packet left to write: those it
+// queued went to its connection.
+func (s *Session) Idle() bool {
+	s.packetsMu.Lock()
+	defer s.packetsMu.Unlock()
+	return len(s.pendingPackets)+len(s.heldPackets) == 0 && !s.flushing
+}
+
 // Window returns the menu the session shows open, and the ID and type of
 // its window.
 func (s *Session) Window() (m *menu.Menu, id, containerType uint32) {

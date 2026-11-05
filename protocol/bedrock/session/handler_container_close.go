@@ -19,19 +19,24 @@ func (h *ContainerCloseHandler) Handle(p proto.Packet, s *Session, tx *world.Tx,
 	switch pk.WindowID {
 	case 0:
 		// Closing of the normal inventory.
-		s.invOpened = false
+		s.windows.inventory = false
+		if s.menu.Load() != nil {
+			// The client shows no menu if it closes the inventory.
+			s.closeUnknown(c, 0)
+		}
 	case byte(s.openedWindowID.Load()):
 		containerType = byte(s.openedContainerID.Load())
 		c.CloseMenu(true)
 	case 0xff:
 		// Sent when an inventory/container is opened at the same time as chat.
-		s.invOpened = false
+		s.windows.inventory = false
 		if s.menu.Load() != nil {
 			c.CloseMenu(false)
 		}
 		return nil
 	default:
 		containerType = pk.ContainerType
+		s.closeUnknown(c, pk.WindowID)
 	}
 	s.writePacket(&mc.ContainerClosePacket{
 		WindowID:      pk.WindowID,

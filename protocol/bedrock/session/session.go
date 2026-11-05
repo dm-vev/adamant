@@ -175,7 +175,9 @@ type Session struct {
 	blobMu                sync.Mutex
 	blobs                 map[uint64][]byte
 	openChunkTransactions []map[uint64]struct{}
-	invOpened             bool
+	// windows is what the session keeps of the windows of the client that is
+	// not a menu: see windows.
+	windows windows
 
 	// subChunkQueue holds the sub-chunk requests of the client not answered
 	// yet, oldest first, and subChunkOffsets the offsets they ask for;
@@ -672,6 +674,7 @@ func (s *Session) Control(tx *world.Tx, e world.Entity) {
 	if !ok {
 		return
 	}
+	s.windows.tick()
 	packets, closed := s.takeInbox()
 	failed, left := s.handleInbox(packets, tx, c)
 	s.inboxSpare = packets[:0]
@@ -908,6 +911,7 @@ func (s *Session) handleWorldSwitch(w *world.World, tx *world.Tx, c Controllable
 // immediately.
 func (s *Session) changeDimension(dim int32, silent bool, c Controllable) {
 	s.changingDimension.Store(true)
+	s.resetInventory("dimension change")
 	h := s.handlers[mc.IDServerBoundLoadingScreen].(*ServerBoundLoadingScreenHandler)
 	id := h.currentID.Add(1)
 	h.expectedID.Store(id)

@@ -463,7 +463,7 @@ func (h *ItemStackRequestHandler) handleAutoCraft(a *mc.AutoCraftRecipeStackRequ
 		if s.openedContainerID.Load() != uint32(mc.ContainerTypeWorkbench) {
 			return fmt.Errorf("recipe with network id %v crafted outside a crafting screen", a.RecipeNetworkID)
 		}
-	} else if !s.invOpened {
+	} else if !s.windows.inventory {
 		return fmt.Errorf("recipe with network id %v crafted outside a crafting screen", a.RecipeNetworkID)
 	}
 	h.autoCraft = &autoCraft{batch: ac, id: a.RecipeNetworkID, consumed: make(map[mc.StackRequestSlotInfo]bool)}

@@ -1,0 +1,252 @@
+{
+	"version": "1.26.52.3",
+	"protocol": 2193,
+	"cases": [
+		{
+			"name": "setup: the position",
+			"sent": [
+				"/tp @s ~ ~ ~"
+			],
+			"got": null
+		},
+		{
+			"name": "inventory: open",
+			"sent": [
+				"Interact OpenInventory"
+			],
+			"got": [
+				"ContainerOpen window=2 type=255 pos=[0 71 0] entity=-1"
+			]
+		},
+		{
+			"name": "inventory: open again while open",
+			"sent": [
+				"Interact OpenInventory"
+			],
+			"got": null
+		},
+		{
+			"name": "inventory: close with window 0",
+			"sent": [
+				"ContainerClose window=0 type=255"
+			],
+			"got": [
+				"ContainerClose window=2 type=247 serverSide=false"
+			]
+		},
+		{
+			"name": "inventory: close with window 0 again, nothing open",
+			"sent": [
+				"ContainerClose window=0 type=255"
+			],
+			"got": [
+				"ContainerClose window=2 type=247 serverSide=false"
+			]
+		},
+		{
+			"name": "inventory: close with window 0xff, nothing open",
+			"sent": [
+				"ContainerClose window=255 type=255"
+			],
+			"got": [
+				"ContainerClose window=2 type=247 serverSide=false"
+			]
+		},
+		{
+			"name": "inventory: close with window 7, nothing open",
+			"sent": [
+				"ContainerClose window=7 type=0"
+			],
+			"got": [
+				"ContainerClose window=2 type=247 serverSide=false"
+			]
+		},
+		{
+			"name": "inventory: open after the stale closes",
+			"sent": [
+				"Interact OpenInventory"
+			],
+			"got": [
+				"ContainerOpen window=3 type=255 pos=[0 71 0] entity=-1"
+			]
+		},
+		{
+			"name": "inventory: close with window 0xff while open",
+			"sent": [
+				"ContainerClose window=255 type=255"
+			],
+			"got": [
+				"ContainerClose window=3 type=247 serverSide=false"
+			]
+		},
+		{
+			"name": "inventory: open after closing with 0xff",
+			"sent": [
+				"Interact OpenInventory"
+			],
+			"got": [
+				"ContainerOpen window=4 type=255 pos=[0 71 0] entity=-1"
+			]
+		},
+		{
+			"name": "inventory: close with window 7 while open",
+			"sent": [
+				"ContainerClose window=7 type=0"
+			],
+			"got": [
+				"ContainerClose window=4 type=247 serverSide=false"
+			]
+		},
+		{
+			"name": "inventory: open after closing with window 7",
+			"sent": [
+				"Interact OpenInventory"
+			],
+			"got": [
+				"ContainerOpen window=5 type=255 pos=[0 71 0] entity=-1"
+			]
+		},
+		{
+			"name": "inventory: close with window 0",
+			"sent": [
+				"ContainerClose window=0 type=255"
+			],
+			"got": [
+				"ContainerClose window=5 type=247 serverSide=false"
+			]
+		},
+		{
+			"name": "inventory: close with window 0 once more",
+			"sent": [
+				"ContainerClose window=0 type=255"
+			],
+			"got": [
+				"ContainerClose window=5 type=247 serverSide=false"
+			]
+		},
+		{
+			"name": "teleport: open the inventory",
+			"sent": [
+				"Interact OpenInventory"
+			],
+			"got": [
+				"ContainerOpen window=6 type=255 pos=[0 71 0] entity=-1"
+			]
+		},
+		{
+			"name": "teleport: far away",
+			"sent": [
+				"/tp @s ~ ~ ~40"
+			],
+			"got": [
+				"MovePlayer teleport to [0.5 71.62001 40.5]",
+				"CommandOutput success=true commands.tp.success.coordinates"
+			]
+		},
+		{
+			"name": "teleport: open the inventory again",
+			"sent": [
+				"Interact OpenInventory"
+			],
+			"got": null
+		},
+		{
+			"name": "teleport: close it",
+			"sent": [
+				"ContainerClose window=0 type=255"
+			],
+			"got": [
+				"ContainerClose window=6 type=247 serverSide=false"
+			]
+		},
+		{
+			"name": "dimension: open the inventory",
+			"sent": [
+				"Interact OpenInventory"
+			],
+			"got": [
+				"ContainerOpen window=7 type=255 pos=[0 71 40] entity=-1"
+			]
+		},
+		{
+			"name": "dimension: to the nether",
+			"sent": [
+				"/execute in nether run tp @s 0 100 0"
+			],
+			"got": [
+				"ChangeDimension dimension=1",
+				"CommandOutput success=true commands.tp.success.coordinates"
+			]
+		},
+		{
+			"name": "dimension: open the inventory again",
+			"sent": [
+				"Interact OpenInventory"
+			],
+			"got": null
+		},
+		{
+			"name": "dimension: to the overworld",
+			"sent": [
+				"/execute in overworld run tp @s 0 140 0"
+			],
+			"got": [
+				"ChangeDimension dimension=0",
+				"CommandOutput success=true commands.tp.success.coordinates"
+			]
+		},
+		{
+			"name": "dimension: open the inventory again",
+			"sent": [
+				"Interact OpenInventory"
+			],
+			"got": null
+		},
+		{
+			"name": "dimension: close",
+			"sent": [
+				"ContainerClose window=0 type=255"
+			],
+			"got": [
+				"ContainerClose window=7 type=247 serverSide=false"
+			]
+		},
+		{
+			"name": "dimension: open the inventory after closing",
+			"sent": [
+				"Interact OpenInventory"
+			],
+			"got": [
+				"ContainerOpen window=8 type=255 pos=[0 141 0] entity=-1"
+			]
+		},
+		{
+			"name": "dimension: close",
+			"sent": [
+				"ContainerClose window=0 type=255"
+			],
+			"got": [
+				"ContainerClose window=8 type=247 serverSide=false"
+			]
+		},
+		{
+			"name": "death: open the inventory",
+			"sent": [
+				"Interact OpenInventory"
+			],
+			"got": [
+				"ContainerOpen window=9 type=255 pos=[0 141 0] entity=-1"
+			]
+		},
+		{
+			"name": "death: killed",
+			"sent": [
+				"/kill @s"
+			],
+			"got": [
+				"CommandOutput success=true commands.kill.successful",
+				"Respawn state=0"
+			]
+		}
+	]
+}

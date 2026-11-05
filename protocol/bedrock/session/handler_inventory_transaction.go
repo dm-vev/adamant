@@ -162,6 +162,7 @@ func (h *InventoryTransactionHandler) handleUseItemOnEntityTransaction(data *mc.
 	}
 	switch data.ActionType {
 	case mc.UseItemOnEntityActionInteract:
+		s.clientActs(c)
 		c.UseItemOnEntity(e)
 	case mc.UseItemOnEntityActionAttack:
 		c.AttackEntity(e)
@@ -188,6 +189,7 @@ func (h *InventoryTransactionHandler) handleUseItemTransaction(data *mc.UseItemT
 		if err != nil {
 			return err
 		}
+		s.clientActs(c)
 		c.UseItemOnBlock(pos, face, vec32To64(data.ClickedPosition))
 	case mc.UseItemActionClickAir:
 		c.UseItem()

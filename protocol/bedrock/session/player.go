@@ -69,6 +69,7 @@ func (s *Session) StartShowingEntity(e world.Entity) {
 
 // SendRespawn spawns the Controllable entity of the session client-side in the world, provided it has died.
 func (s *Session) SendRespawn(pos mgl64.Vec3, c Controllable) {
+	s.resetInventory("respawn")
 	s.writePacket(&mc.RespawnPacket{
 		Position:        vec64To32(entityNetworkPosition(c, pos)),
 		State:           mc.RespawnStateReadyToSpawn,
@@ -633,6 +634,9 @@ func (s *Session) abilityData(c Controllable, uniqueID int64) mc.AbilityData {
 
 // SendHealth sends the health and max health to the player.
 func (s *Session) SendHealth(health, max, absorption float64) {
+	if health <= 0 {
+		s.resetInventory("death")
+	}
 	s.writePacket(&mc.UpdateAttributesPacket{
 		EntityRuntimeID: selfEntityRuntimeID,
 		Attributes: []mc.Attribute{{

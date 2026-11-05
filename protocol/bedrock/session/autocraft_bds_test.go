@@ -103,7 +103,7 @@ func replayAutoCraft(t *testing.T, craft recipe.Recipe, id uint32, c autoCraftCa
 	screen, _, _ := strings.Cut(c.Name, "/")
 	switch screen {
 	case "inventory":
-		s.invOpened = true
+		s.windows.inventory = true
 	case "table":
 		openTestMenu(t, s, block.CraftingTable{})
 		s.openedContainerID.Store(uint32(mc.ContainerTypeWorkbench))
