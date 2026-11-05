@@ -338,3 +338,30 @@ func TestSelectorRefusesWhatJavaRefuses(t *testing.T) {
 		}
 	}
 }
+
+// TestSelectorRefusesUnknownEntityTypes checks that type= names an entity type
+// of Java's registry, as argument.entity.options.type.invalid words it, and
+// that a type tag Java does not register is accepted, as Java does: it holds
+// no entity.
+func TestSelectorRefusesUnknownEntityTypes(t *testing.T) {
+	for _, c := range []struct{ selector, want string }{
+		{"@e[type=pigg]", "Invalid or unknown entity type 'minecraft:pigg'"},
+		{"@e[type=!pigg]", "Invalid or unknown entity type 'minecraft:pigg'"},
+		{"@e[type=minecraft:nothing]", "Invalid or unknown entity type 'minecraft:nothing'"},
+		{"@e[type=other:pig]", "Invalid or unknown entity type 'other:pig'"},
+		{"@e[type=pig,type=pigg]", "Option 'type' isn't applicable here"},
+	} {
+		_, err := parseSelector(c.selector, testSource{}, nil)
+		if err == nil || err.Error() != c.want {
+			t.Errorf("%s: error %v, want %q", c.selector, err, c.want)
+		}
+	}
+	for _, accepted := range []string{
+		"@e[type=pig]", "@e[type=minecraft:pig]", "@e[type=!minecraft:zombified_piglin]", "@e[type=player]",
+		"@e[type=#no_such_tag]", "@e[type=!#no:such_tag]", "@e[type=minecraft:villager]", "@e[type=!armor_stand]",
+	} {
+		if _, err := parseSelector(accepted, testSource{}, nil); err != nil {
+			t.Errorf("%s: %v", accepted, err)
+		}
+	}
+}

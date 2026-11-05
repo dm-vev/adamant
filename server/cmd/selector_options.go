@@ -180,7 +180,9 @@ func (s *entitySelector) gameModeFilter(opts *selectorOptions, value string, neg
 }
 
 // typeFilter adds the type option: an entity type, or a tag of them, which
-// only excludes and may not repeat.
+// only excludes and may not repeat. Java refuses an entity type it does not
+// register; a tag it does not register is accepted and holds no entity, as
+// TagKey.create does not look it up.
 func (s *entitySelector) typeFilter(opts *selectorOptions, value string, negate bool) error {
 	isTag := strings.HasPrefix(value, "#")
 	id := strings.TrimPrefix(value, "#")
@@ -192,6 +194,9 @@ func (s *entitySelector) typeFilter(opts *selectorOptions, value string, negate 
 		return selectorInapplicable("type")
 	}
 	if !isTag {
+		if _, ok := javaEntityTypes[id]; !ok {
+			return selectorError(fmt.Sprintf("Invalid or unknown entity type '%s'", id))
+		}
 		set.markElement(negate)
 	}
 	s.filter(negate, func(t Target) bool {

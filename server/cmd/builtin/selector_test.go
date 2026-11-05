@@ -60,9 +60,9 @@ func TestSelectorJavaOptions(t *testing.T) {
 				}
 			}
 		}
-		// Java type IDs match entities whose Bedrock actor ID differs.
+		// Java type IDs match entities whose Bedrock actor ID differs; the legacy
+		// minecraft:zombie_pigman is no Java type and is refused.
 		check("@e[type=zombified_piglin]", piglin)
-		check("@e[type=minecraft:zombie_pigman]", piglin)
 		check("@e[type=spruce_boat]", boat)
 		check("@e[type=#minecraft:undead]", zombie, piglin)
 		check("@e[type=!#undead,type=!#boat]", cow)
