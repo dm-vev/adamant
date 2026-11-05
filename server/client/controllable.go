@@ -1,13 +1,10 @@
 package client
 
 import (
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
-	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/debug"
 	"github.com/df-mc/dragonfly/server/player/dialogue"
@@ -16,7 +13,6 @@ import (
 	"github.com/df-mc/dragonfly/server/player/input"
 	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 	"golang.org/x/text/language"
 )
@@ -29,6 +25,12 @@ import (
 // The game checks what a client asks: ClientMove and DestroyBlock may
 // refuse, and the other actions refuse as they refuse a plugin out of
 // reach.
+//
+// The role interfaces embedded in it, Mover, Breaker, ItemUser, Editor,
+// MenuUser, Speaker and Respawner, group the methods of one concern. What
+// stays declared in Controllable has no such concern in common: the identity,
+// the game mode, the vitals, the inventories and the diagnostics of the
+// player, and Leave.
 type Controllable interface {
 	Name() string
 	world.Entity
@@ -41,117 +43,31 @@ type Controllable interface {
 	debug.Renderer
 	input.Restricter
 
+	Mover
+	Breaker
+	ItemUser
+	Editor
+	MenuUser
+	Speaker
+	Respawner
+
 	Locale() language.Tag
 
-	SetHeldItems(right, left item.Stack)
-	SetHeldSlot(slot int) error
-
-	// ClientMove moves the player as its client moved it in a tick, unless
-	// the game refuses the move, and reports what it made of it.
-	ClientMove(m Move) MoveResult
-
-	Speed() float64
-	FlightSpeed() float64
-	VerticalFlightSpeed() float64
-
-	Sleep(pos cube.Pos)
-	Wake()
-
-	Chat(msg ...any)
-	ExecuteCommand(commandLine string)
 	GameMode() world.GameMode
 	SetGameMode(mode world.GameMode)
 	Effects() []effect.Effect
-
-	UseItem()
-	ReleaseItem()
-	UseItemOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec3)
-	UseItemOnEntity(e world.Entity) bool
-	// DestroyBlock breaks the block at pos at once, as the client did:
-	// in creative, or a block that breaks in a tick.
-	DestroyBlock(pos cube.Pos)
-	PickBlock(pos cube.Pos)
-	AttackEntity(e world.Entity) bool
-	Drop(s item.Stack) (n int)
-	DropFromInventory(slot, count int) error
-	SwingArm()
-	PunchAir()
-	Emote(emote uuid.UUID)
 
 	Health() float64
 	MaxHealth() float64
 	Absorption() float64
 	Food() int
+	Exhaust(points float64)
 
 	ExperienceLevel() int
 	ExperienceProgress() float64
 
-	Respawn() *world.EntityHandle
-	Dead() bool
-
-	StartSneaking()
-	Sneaking() bool
-	StopSneaking()
-	StartSprinting()
-	Sprinting() bool
-	StopSprinting()
-	StartSwimming()
-	Swimming() bool
-	StopSwimming()
-	StartCrawling()
-	Crawling() bool
-	StopCrawling()
-	StartFlying()
-	Flying() bool
-	StopFlying()
-	StartGliding()
-	Gliding() bool
-	StopGliding()
-	Jump()
-
-	SteerVehicle(strafe, forward float64, jumping bool) (riding bool)
-	DashVehicle() bool
-	RideJump() bool
-	DismountVehicle() bool
-	LeaveVehicle(e world.Entity)
-
-	StartBreaking(pos cube.Pos, face cube.Face)
-	ContinueBreaking(face cube.Face)
-	FinishBreaking()
-	AbortBreaking()
-
-	Exhaust(points float64)
-
-	OpenSign(pos cube.Pos, frontSide bool)
-	CanReach(pos mgl64.Vec3) bool
-	CanUseGameMasterBlocks() bool
-
-	EditSign(pos cube.Pos, hanging bool, frontText, backText string) error
-	TurnLecternPage(pos cube.Pos, page int) error
-	EditJigsaw(pos cube.Pos, edited block.Jigsaw) error
-	EditCommandBlock(pos cube.Pos, edit block.CommandBlockEdit) error
-	EditCommandMinecart(e world.Entity, edit block.CommandBlockEdit) error
-	EditStructureBlock(pos cube.Pos, edit block.StructureBlockEdit, trigger bool) error
-	SetCrafterSlotDisabled(pos cube.Pos, slot int, disabled bool) error
-
-	EditBook(slot int, edit item.BookEdit) error
-
-	ExploreMap(id int64) (world.MapData, error)
-
 	EnderChestInventory() *inventory.Inventory
 	Inventory() *inventory.Inventory
-	MoveItemsToInventory()
-
-	// Menu returns the menu the player has open, nil if none.
-	Menu() *menu.Menu
-	// BeginMenu starts a batch of operations on the inventories of the
-	// player and its open menu, whose slots n names as the client's
-	// protocol does.
-	BeginMenu(n menu.Namer) *menu.Tx
-	// CloseMenu closes the menu the player has open, if any: as its client
-	// closed it, or, when clientRequested is false, as the server closes it,
-	// which the client is shown.
-	CloseMenu(clientRequested bool)
 
 	// UUID returns the UUID of the controllable. It must be unique for all controllable entities present in
 	// the server.

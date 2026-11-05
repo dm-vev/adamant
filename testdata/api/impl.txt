@@ -10470,7 +10470,14 @@ server/player.Player	server/block.livingEntity	*
 server/player.Player	server/block.portalTraveller	*
 server/player.Player	server/block.trialOmenHolder	*
 server/player.Player	server/block.velocityEntity	*
+server/player.Player	server/client.Breaker	*
 server/player.Player	server/client.Controllable	*
+server/player.Player	server/client.Editor	*
+server/player.Player	server/client.ItemUser	*
+server/player.Player	server/client.MenuUser	*
+server/player.Player	server/client.Mover	*
+server/player.Player	server/client.Respawner	*
+server/player.Player	server/client.Speaker	*
 server/player.Player	server/cmd.Leveled	*
 server/player.Player	server/cmd.NamedTarget	*
 server/player.Player	server/cmd.Source	*
