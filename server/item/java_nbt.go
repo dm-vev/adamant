@@ -7,6 +7,7 @@ import (
 	"maps"
 	"strings"
 
+	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 )
@@ -227,6 +228,7 @@ func StackToStructureNBT(stack Stack) (map[string]any, error) {
 		}
 	}
 	writeJavaStackState(components, stack)
+	writeJavaPotionContents(components, stack)
 	data := map[string]any{"id": name, "count": int32(stack.Count())}
 	if len(components) != 0 {
 		data["components"] = components
@@ -287,6 +289,54 @@ func writeJavaStackState(components map[string]any, stack Stack) {
 		levels[JavaEnchantmentID(enchantment.Type())] = int32(enchantment.Level())
 	}
 	components[component] = levels
+}
+
+// javaPotionOf returns the potion of a potion, a splash or lingering potion or
+// a tipped arrow, and whether the item is one.
+func javaPotionOf(it world.Item) (potion.Potion, bool) {
+	switch it := it.(type) {
+	case Potion:
+		return it.Type, true
+	case SplashPotion:
+		return it.Type, true
+	case LingeringPotion:
+		return it.Type, true
+	case Arrow:
+		return it.Tip, true
+	}
+	return potion.Potion{}, false
+}
+
+// writeJavaPotionContents writes the potion_contents component of a stack
+// from its potion as it is now, as PotionContents does: the potion
+// identifier, beside the custom_color, custom_effects and custom_name the
+// stack was imported with, which the server does not model. A potion brewed
+// or given in game has no retained component and so gets the type alone.
+// Left as they came are a potion the server has no type of, a plain arrow,
+// whose potion Water means none, and a potion of custom effects only.
+func writeJavaPotionContents(components map[string]any, stack Stack) {
+	p, ok := javaPotionOf(stack.Item())
+	if !ok {
+		return
+	}
+	contents, _ := components["minecraft:potion_contents"].(map[string]any)
+	if id, isString := components["minecraft:potion_contents"].(string); isString {
+		contents = map[string]any{"potion": id}
+	}
+	id, hasID := contents["potion"].(string)
+	if hasID {
+		if _, known := potion.FromJavaID(id); !known {
+			return
+		}
+	}
+	_, arrow := stack.Item().(Arrow)
+	if p == potion.Water() && (arrow || !hasID && len(contents) != 0) {
+		return
+	}
+	out := make(map[string]any, len(contents)+1)
+	maps.Copy(out, contents)
+	out["potion"] = p.JavaID()
+	components["minecraft:potion_contents"] = out
 }
 
 // javaComponentKey returns the ID of a component as Java parses it, an
