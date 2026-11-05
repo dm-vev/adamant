@@ -713,9 +713,20 @@ func TestVerifyDetectsCorruption(t *testing.T) {
 		t.Fatal("no journal")
 	}
 	slices.Sort(journals)
-	// The journal the manifest names is the oldest left; the newest has
-	// the last writes.
-	oldest, newest := filepath.Base(journals[0]), filepath.Base(journals[len(journals)-1])
+	// LevelDB deletes the journals a flush made obsolete in the background,
+	// so the oldest one left may be one no manifest names, which VerifyBackup
+	// rightly ignores. The one to delete is the journal the manifest names,
+	// the first that opening the world replays; the newest has the last
+	// writes.
+	var state manifestState
+	if err := scanWhole(filepath.Join(base, "db", manifest), -1, state.apply); err != nil {
+		t.Fatal(err)
+	}
+	named := fmt.Sprintf("%06d.log", state.journal)
+	newest := filepath.Base(journals[len(journals)-1])
+	if !slices.Contains(journals, filepath.Join(base, "db", named)) {
+		t.Fatalf("the journal %v that %v names is not in %v", named, manifest, journals)
+	}
 
 	for _, tc := range []struct {
 		name    string
@@ -743,8 +754,8 @@ func TestVerifyDetectsCorruption(t *testing.T) {
 			return flipByte(filepath.Join(dir, "db", manifest), 20)
 		}, "checksum"},
 		{"deleted journal", false, func(dir string) error {
-			return os.Remove(filepath.Join(dir, "db", oldest))
-		}, "is missing"},
+			return os.Remove(filepath.Join(dir, "db", named))
+		}, "the journal " + named + " that " + manifest + " names is missing"},
 		{"flipped byte in a journal", false, func(dir string) error {
 			return flipByte(filepath.Join(dir, "db", newest), 20)
 		}, "checksum"},
@@ -768,6 +779,29 @@ func TestVerifyDetectsCorruption(t *testing.T) {
 			}
 		})
 	}
+	// A journal older than the one the manifest names is one LevelDB has yet
+	// to delete, which opening the world never replays. VerifyBackup ignores
+	// it, so deleting the oldest journal left says nothing about it: that
+	// is why "deleted journal" above deletes the journal the manifest names.
+	t.Run("obsolete journal", func(t *testing.T) {
+		dir := filepath.Join(t.TempDir(), "world")
+		if err := os.CopyFS(dir, os.DirFS(base)); err != nil {
+			t.Fatal(err)
+		}
+		obsolete := filepath.Join(dir, "db", fmt.Sprintf("%06d.log", state.journal-1))
+		if err := os.WriteFile(obsolete, []byte("not a journal"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := VerifyBackup(dir, true); err != nil {
+			t.Fatalf("VerifyBackup with an obsolete journal: %v", err)
+		}
+		if err := os.Remove(obsolete); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := VerifyBackup(dir, true); err != nil {
+			t.Fatalf("VerifyBackup without it: %v", err)
+		}
+	})
 	t.Run("no checkpoint", func(t *testing.T) {
 		dir := t.TempDir()
 		db := openChurn(t, dir)
