@@ -131,8 +131,7 @@ func TestTamedWolvesAttackWhatTheirOwnerHits(t *testing.T) {
 	<-w.Exec(func(tx *world.Tx) {
 		// The cow panics, but cannot run out of the pen.
 		pen(tx, 8)
-		// The owner stands aside: the wolf would not get past it, as entities
-		// push each other apart.
+		// The owner stands aside to hit the cow from.
 		p := addSurvivalPlayer(tx, mgl64.Vec3{3.5, 64, -2.5})
 		owner = p.H()
 		addWolf(tx, mgl64.Vec3{.5, 64, 2.5}, entity.WolfBehaviourConfig{Tamed: true, OwnerUUID: p.UUID().String()})
@@ -145,6 +144,14 @@ func TestTamedWolvesAttackWhatTheirOwnerHits(t *testing.T) {
 		if !p.(*player.Player).AttackEntity(c) {
 			t.Fatal("owner could not hit the cow")
 		}
+		// Then the owner steps behind the wolf. The wolf would not get past
+		// an owner on the way to the cow, as entities push each other apart
+		// and the path goes straight through the owner: where the cow runs
+		// is random, and in one run of a thousand the wolf stood against
+		// the owner for the whole time. The owner stays within 12 blocks of
+		// the whole pen, or the wolf would teleport to it
+		// (TamableAnimal.shouldTryTeleportToOwner).
+		p.(*player.Player).Teleport(mgl64.Vec3{-1.5, 64, .5})
 	})
 	var afterHit float64
 	<-w.Exec(func(tx *world.Tx) { afterHit = livingHealth(tx, cow) })
