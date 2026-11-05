@@ -101,32 +101,62 @@ func TestOozingReleasesTwoSlimesLimitedByCramming(t *testing.T) {
 	}
 }
 
+// TestWeavingSpreadsCobwebsUnlessMobGriefingIsOff checks the cobwebs of
+// WeavingMobEffect.spawnCobwebsRandomlyAround over many deaths. Java tries 15
+// random positions of the 3x3x3 cube around the mob and keeps the first 2 or
+// 3 distinct ones that are replaceable above a sturdy floor. On a stone floor
+// that is 9 of 27 positions, so about 3% of the deaths leave fewer than two
+// cobwebs in Java too, and the test checks the distribution, not one death.
 func TestWeavingSpreadsCobwebsUnlessMobGriefingIsOff(t *testing.T) {
 	t.Parallel()
+	const deaths = 300
 	for _, griefing := range []bool{true, false} {
 		w := newDeathTestWorld(t)
 		if err := w.SetGameRule("mob_griefing", griefing); err != nil {
 			t.Fatal(err)
 		}
-		killWith(t, w, effect.Weaving)
-		<-w.Exec(func(tx *world.Tx) {
-			webs := 0
-			for x := -1; x <= 1; x++ {
-				for y := 63; y <= 65; y++ {
-					for z := -1; z <= 1; z++ {
-						if _, ok := tx.Block(cube.Pos{x, y, z}).(block.Cobweb); ok {
+		// perWebs[n] counts the deaths that left n cobwebs.
+		var perWebs [10]int
+		for range deaths {
+			killWith(t, w, effect.Weaving)
+			<-w.Exec(func(tx *world.Tx) {
+				webs := 0
+				for x := -1; x <= 1; x++ {
+					for y := 63; y <= 65; y++ {
+						for z := -1; z <= 1; z++ {
+							pos := cube.Pos{x, y, z}
+							if _, ok := tx.Block(pos).(block.Cobweb); !ok {
+								continue
+							}
 							if y != 64 {
-								t.Fatalf("cobweb at %v without a floor below", cube.Pos{x, y, z})
+								t.Fatalf("cobweb at %v without a floor below", pos)
 							}
 							webs++
+							tx.SetBlock(pos, block.Air{}, nil)
 						}
 					}
 				}
+				perWebs[webs]++
+			})
+		}
+		if !griefing {
+			if perWebs[0] != deaths {
+				t.Fatalf("mob griefing off: deaths by cobwebs left %v, want no cobwebs at all", perWebs)
 			}
-			if griefing && (webs < 2 || webs > 3) || !griefing && webs != 0 {
-				t.Fatalf("mob griefing %v: %d cobwebs", griefing, webs)
-			}
-		})
+			continue
+		}
+		// At most 3 cobwebs, 2 or 3 in about 97% of the deaths, and both
+		// numbers show up, as the maximum is 2 + nextInt(2). The slack
+		// leaves a miss with a probability far below one in a billion.
+		if over := deaths - perWebs[0] - perWebs[1] - perWebs[2] - perWebs[3]; over != 0 {
+			t.Fatalf("mob griefing on: %d deaths left more than 3 cobwebs: %v", over, perWebs)
+		}
+		if enough := perWebs[2] + perWebs[3]; enough < deaths*9/10 {
+			t.Fatalf("mob griefing on: only %d of %d deaths left 2 or 3 cobwebs: %v", enough, deaths, perWebs)
+		}
+		if perWebs[2] == 0 || perWebs[3] == 0 {
+			t.Fatalf("mob griefing on: no death left exactly 2 or exactly 3 cobwebs: %v", perWebs)
+		}
 	}
 }
 
