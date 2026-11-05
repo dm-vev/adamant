@@ -54,7 +54,11 @@ func (s statusCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	if mem.LastGC != 0 {
 		lastGC = fmt.Sprintf("%s ago", time.Since(time.Unix(0, int64(mem.LastGC))).Round(time.Second))
 	}
-	o.Printf("Memory: %.2f MiB heap used / %.2f MiB reserved", heapAlloc, heapSys)
+	if live, ok := readRuntimeMetric(heapLiveMetric); ok {
+		o.Printf("Memory: %.2f MiB heap used, %.2f MiB of it live after the last GC / %.2f MiB reserved", heapAlloc, bytesToMiB(uint64(live)), heapSys)
+	} else {
+		o.Printf("Memory: %.2f MiB heap used / %.2f MiB reserved", heapAlloc, heapSys)
+	}
 	o.Printf("Goroutines: %d | GOMAXPROCS: %d | GC cycles: %d | Last GC: %s", runtime.NumGoroutine(), runtime.GOMAXPROCS(0), mem.NumGC, lastGC)
 }
 
@@ -76,6 +80,10 @@ const (
 )
 
 const (
+	// heapLiveMetric is the heap the last garbage collection found
+	// reachable. The heap used includes garbage that is yet to be collected,
+	// which makes it up to twice as much between two collections.
+	heapLiveMetric  = "/gc/heap/live:bytes"
 	cpuMetricTotal  = "/cpu/classes/total:cpu-seconds"
 	cpuMetricIdle   = "/cpu/classes/idle:cpu-seconds"
 	cpuMetricLegacy = "/sched/cpu_seconds_total"
