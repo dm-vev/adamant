@@ -1004,9 +1004,38 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	s.soundPackets(pos, t, disableRelative, out)
 }
 
+// dispenserLaunchData is the EventData BDS 1.26.61.1 sends with the launch and
+// fireball events of a dispenser: a pitch of 1.2 as 16.16 fixed point.
+const dispenserLaunchData = 78642
+
+// levelEventSound returns the level event, and its data, that plays a sound
+// of the world that Bedrock Edition plays with a level event rather than a
+// level sound event.
+func levelEventSound(t world.Sound) (event, data int32, ok bool) {
+	switch t.(type) {
+	case sound.Click:
+		return mc.LevelEventSoundClick, 0, true
+	case sound.FireCharge:
+		return mc.LevelEventSoundBlazeFireball, 0, true
+	case sound.GhastWarning:
+		return mc.LevelEventSoundGhastWarning, 0, true
+	case sound.GhastShoot:
+		return mc.LevelEventSoundGhastFireball, 0, true
+	case sound.DispenserLaunch:
+		return mc.LevelEventSoundLaunch, dispenserLaunchData, true
+	case sound.DispenserFireball:
+		return mc.LevelEventSoundGhastFireball, dispenserLaunchData, true
+	}
+	return 0, 0, false
+}
+
 // soundPackets hands out the packets that play a sound at a position, the
 // same for every viewer.
 func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bool, out func(proto.Packet)) {
+	if event, data, ok := levelEventSound(t); ok {
+		out(&mc.LevelEventPacket{EventType: event, Position: vec64To32(pos), EventData: data})
+		return
+	}
 	pk := &mc.LevelSoundEventPacket{
 		Position:              vec64To32(pos),
 		EntityType:            ":",
@@ -1061,12 +1090,6 @@ func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bo
 		pk.SoundType = mc.SoundEventExplode
 	case sound.Thunder:
 		pk.SoundType, pk.EntityType = mc.SoundEventThunder, "minecraft:lightning_bolt"
-	case sound.Click:
-		out(&mc.LevelEventPacket{
-			EventType: mc.LevelEventSoundClick,
-			Position:  vec64To32(pos),
-		})
-		return
 	case sound.SignWaxed:
 		out(&mc.LevelEventPacket{
 			EventType: mc.LevelEventWaxOn,
@@ -1122,18 +1145,6 @@ func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bo
 	case sound.HangingBreak:
 		out(&mc.LevelEventPacket{
 			EventType: mc.LevelEventSoundItemFrameBreak,
-			Position:  vec64To32(pos),
-		})
-		return
-	case sound.GhastWarning:
-		out(&mc.LevelEventPacket{
-			EventType: mc.LevelEventSoundGhastWarning,
-			Position:  vec64To32(pos),
-		})
-		return
-	case sound.GhastShoot:
-		out(&mc.LevelEventPacket{
-			EventType: mc.LevelEventSoundGhastFireball,
 			Position:  vec64To32(pos),
 		})
 		return
@@ -1430,12 +1441,6 @@ func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bo
 		}
 	case sound.MusicDiscEnd:
 		pk.SoundType = mc.SoundEventRecordNull
-	case sound.FireCharge:
-		out(&mc.LevelEventPacket{
-			EventType: mc.LevelEventSoundBlazeFireball,
-			Position:  vec64To32(pos),
-		})
-		return
 	case sound.ConduitAttack:
 		pk.SoundType = mc.SoundEventConduitAttack
 	case sound.ComposterEmpty:

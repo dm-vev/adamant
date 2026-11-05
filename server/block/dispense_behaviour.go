@@ -8,6 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -21,9 +22,8 @@ type dispenseSource struct {
 }
 
 // dispenseBehaviour is a DispenseItemBehavior of Java: it dispenses the stack
-// of src and returns the stack its slot holds afterwards. With ok false, the
-// slot is left as it was and comparators are not told.
-type dispenseBehaviour func(src dispenseSource) (left item.Stack, ok bool)
+// of src and returns what became of its slot and what the clients see.
+type dispenseBehaviour func(src dispenseSource) dispensed
 
 // dispenseSpawner creates the entity a behaviour spawns for the item it.
 type dispenseSpawner func(conf *world.EntityRegistryConfig, opts world.EntitySpawnOpts, it world.Item) *world.EntityHandle
@@ -36,9 +36,9 @@ var dispenseBehaviours = map[reflect.Type]dispenseBehaviour{
 	// ProjectileDispenseBehavior, registered by registerProjectileBehavior.
 	reflect.TypeFor[item.Egg]():                dispenseShot(defaultDispenseConfig, spawnDispensedEgg),
 	reflect.TypeFor[item.Snowball]():           dispenseShot(defaultDispenseConfig, spawnDispensedSnowball),
-	reflect.TypeFor[item.FireCharge]():         dispenseShot(chargeDispenseConfig, spawnDispensedFireCharge),
-	reflect.TypeFor[item.WindCharge]():         dispenseShot(chargeDispenseConfig, spawnDispensedWindCharge),
-	reflect.TypeFor[item.Arrow]():              dispenseShot(defaultDispenseConfig, spawnDispensedArrow),
+	reflect.TypeFor[item.FireCharge]():         dispenseShot(fireChargeDispenseConfig, spawnDispensedFireCharge),
+	reflect.TypeFor[item.WindCharge]():         dispenseShot(windChargeDispenseConfig, spawnDispensedWindCharge),
+	reflect.TypeFor[item.Arrow]():              dispenseShot(arrowDispenseConfig, spawnDispensedArrow),
 	reflect.TypeFor[item.BottleOfEnchanting](): dispenseShot(thrownDispenseConfig, spawnDispensedBottleOfEnchanting),
 	reflect.TypeFor[item.SplashPotion]():       dispenseShot(thrownDispenseConfig, spawnDispensedSplashPotion),
 	reflect.TypeFor[item.LingeringPotion]():    dispenseShot(thrownDispenseConfig, spawnDispensedLingeringPotion),
@@ -102,15 +102,11 @@ func (src dispenseSource) launch() world.EntitySpawnOpts {
 	return world.EntitySpawnOpts{Position: src.pos.Vec3Centre().Add(direction.Mul(0.7)), Velocity: direction.Mul(1.1)}
 }
 
-// consume returns the stack with the dispensed item gone, as
-// ItemStack.shrink(1).
-func (src dispenseSource) consume() (item.Stack, bool) { return src.stack.Grow(-1), true }
-
 // dispenseDefault drops one item of the stack in front of the dispenser, as
 // DefaultDispenseItemBehavior.
-func dispenseDefault(src dispenseSource) (item.Stack, bool) {
-	src.d.eject(src.tx, src.pos, src.stack.Grow(1-src.stack.Count()))
-	return src.consume()
+func dispenseDefault(src dispenseSource) dispensed {
+	ejectContainerItem(src.pos, src.d.Facing, src.tx, src.stack.Grow(1-src.stack.Count()))
+	return dispensed{left: src.stack.Grow(-1), effects: dispenseEffects{click: clickEjected}}
 }
 
 // dispenseConfig is ProjectileItem.DispenseConfig: where a projectile leaves
@@ -121,26 +117,47 @@ type dispenseConfig struct {
 	offset, lift float64
 	// uncertainty and power are the arguments of Projectile.shoot.
 	uncertainty, power float64
+	// effects are what the clients see and hear besides the smoke: the
+	// level event of the config (overrideDispenseEvent) and the click BDS
+	// plays for the item.
+	effects dispenseEffects
 }
 
 var (
 	// defaultDispenseConfig is ProjectileItem.DispenseConfig.DEFAULT: 0.7
-	// blocks out and 0.1 up, uncertainty 6 and power 1.1.
-	defaultDispenseConfig = dispenseConfig{offset: 0.7, lift: 0.1, uncertainty: 6, power: 1.1}
+	// blocks out and 0.1 up, uncertainty 6 and power 1.1. BDS shoots eggs and
+	// snowballs with the launch sound and no click.
+	defaultDispenseConfig = dispenseConfig{offset: 0.7, lift: 0.1, uncertainty: 6, power: 1.1,
+		effects: dispenseEffects{launch: sound.DispenserLaunch{}, click: clickSilent}}
+	// arrowDispenseConfig is the default config of the arrow, which BDS also
+	// clicks for.
+	arrowDispenseConfig = dispenseConfig{offset: 0.7, lift: 0.1, uncertainty: 6, power: 1.1,
+		effects: dispenseEffects{launch: sound.DispenserLaunch{}, click: clickDone}}
 	// thrownDispenseConfig is the DispenseConfig of ExperienceBottleItem and
 	// ThrowablePotionItem: the default with half its uncertainty and 1.25
 	// times its power.
-	thrownDispenseConfig = dispenseConfig{offset: 0.7, lift: 0.1, uncertainty: 3, power: 1.375}
-	// chargeDispenseConfig is the DispenseConfig of FireChargeItem and
-	// WindChargeItem: 1.0 block out with no lift, uncertainty 6.6666665 and
-	// power 1.0. Their shoot override is not called by
-	// ProjectileDispenseBehavior, which calls Projectile.shoot itself, so
-	// the config is applied to them as to any projectile.
-	chargeDispenseConfig = dispenseConfig{offset: 1, uncertainty: float64(float32(6.6666665)), power: 1}
-	// fireworkDispenseConfig is the DispenseConfig of FireworkRocketItem: just
-	// outside the dispenser (getEntityJustOutsideOfBlockPos, 0.5000099999997474
-	// blocks from its centre), uncertainty 1 and power 0.5.
-	fireworkDispenseConfig = dispenseConfig{offset: 0.5000099999997474, uncertainty: 1, power: 0.5}
+	thrownDispenseConfig = dispenseConfig{offset: 0.7, lift: 0.1, uncertainty: 3, power: 1.375,
+		effects: dispenseEffects{launch: sound.DispenserLaunch{}, click: clickSilent}}
+	// fireChargeDispenseConfig is the DispenseConfig of FireChargeItem (dispense
+	// event 1018): 1.0 block out with no lift, uncertainty 6.6666665 and
+	// power 1.0. FireChargeItem and WindChargeItem override
+	// ProjectileItem.shoot with an empty body, but nothing calls it:
+	// ProjectileDispenseBehavior calls the static
+	// Projectile.spawnProjectileUsingShoot, which calls Projectile.shoot on the
+	// projectile itself, so the config applies to them as to any projectile.
+	fireChargeDispenseConfig = dispenseConfig{offset: 1, uncertainty: float64(float32(6.6666665)), power: 1,
+		effects: dispenseEffects{launch: sound.DispenserFireball{}, click: clickSilent}}
+	// windChargeDispenseConfig is the DispenseConfig of WindChargeItem (dispense
+	// event 1051), the same as the fire charge but for the sound.
+	windChargeDispenseConfig = dispenseConfig{offset: 1, uncertainty: float64(float32(6.6666665)), power: 1,
+		effects: dispenseEffects{launch: sound.DispenserLaunch{}, click: clickDone}}
+	// fireworkDispenseConfig is the DispenseConfig of FireworkRocketItem
+	// (dispense event 1004): just outside the dispenser
+	// (getEntityJustOutsideOfBlockPos, 0.5000099999997474 blocks from its
+	// centre), uncertainty 1 and power 0.5. BDS sends no launch event for it:
+	// the rocket makes its own launch sound.
+	fireworkDispenseConfig = dispenseConfig{offset: 0.5000099999997474, uncertainty: 1, power: 0.5,
+		effects: dispenseEffects{click: clickDone}}
 )
 
 // launch returns where a projectile spawns and the velocity Projectile.shoot
@@ -159,9 +176,9 @@ func (c dispenseConfig) launch(src dispenseSource) world.EntitySpawnOpts {
 // dispenseShot shoots the item as ProjectileDispenseBehavior does with the
 // DispenseConfig given.
 func dispenseShot(conf dispenseConfig, spawn dispenseSpawner) dispenseBehaviour {
-	return func(src dispenseSource) (item.Stack, bool) {
+	return func(src dispenseSource) dispensed {
 		src.tx.AddEntity(spawn(src.tx.World().EntityRegistry().Config(), conf.launch(src), src.stack.Item()))
-		return src.consume()
+		return dispensed{left: src.stack.Grow(-1), effects: conf.effects}
 	}
 }
 
@@ -204,7 +221,7 @@ func spawnDispensedFirework(conf *world.EntityRegistryConfig, opts world.EntityS
 // dispenseBoat places the boat spawn creates on the water in front, or on
 // the air above it, as BoatDispenseItemBehavior, and drops it otherwise.
 func dispenseBoat(spawn dispenseSpawner) dispenseBehaviour {
-	return func(src dispenseSource) (item.Stack, bool) {
+	return func(src dispenseSource) dispensed {
 		tx, front := src.tx, src.front()
 		frontLiquid, frontWater := tx.Liquid(front)
 		belowLiquid, waterBelow := tx.Liquid(front.Side(cube.FaceDown))
@@ -220,7 +237,7 @@ func dispenseBoat(spawn dispenseSpawner) dispenseBehaviour {
 		opts.Rotation = cube.Rotation{math.Atan2(direction[2], direction[0])*180/math.Pi + 90, 0}
 		opts.Velocity = direction.Mul(0.1)
 		tx.AddEntity(spawn(tx.World().EntityRegistry().Config(), opts, src.stack.Item()))
-		return src.consume()
+		return src.done()
 	}
 }
 
@@ -236,7 +253,7 @@ func spawnDispensedChestBoat(conf *world.EntityRegistryConfig, opts world.Entity
 // or on the rail below the air in front, as MinecartDispenseItemBehavior,
 // and drops it otherwise.
 func dispenseMinecart(spawn dispenseSpawner) dispenseBehaviour {
-	return func(src dispenseSource) (item.Stack, bool) {
+	return func(src dispenseSource) dispensed {
 		tx, pos, front := src.tx, src.pos, src.front()
 		railPos := front
 		if _, air := tx.Block(front).(Air); air {
@@ -267,7 +284,7 @@ func dispenseMinecart(spawn dispenseSpawner) dispenseBehaviour {
 		if owner, ok := tx.EntityChunk(spawned); ok && owner[0] >= int32(pos[0]>>4) && owner[1] >= int32(pos[2]>>4) {
 			tx.QueueEntityTick(spawned)
 		}
-		return src.consume()
+		return src.done()
 	}
 }
 
@@ -294,7 +311,7 @@ func spawnDispensedMinecartCommandBlock(conf *world.EntityRegistryConfig, opts w
 // dispenseArmourStand stands an armour stand in front, facing away from the
 // dispenser, as the behaviour bootStrap registers for Items.ARMOR_STAND, and
 // drops it if the world has no armour stands.
-func dispenseArmourStand(src dispenseSource) (item.Stack, bool) {
+func dispenseArmourStand(src dispenseSource) dispensed {
 	create := src.tx.World().EntityRegistry().Config().ArmourStand
 	if create == nil {
 		return dispenseDefault(src)
@@ -304,39 +321,43 @@ func dispenseArmourStand(src dispenseSource) (item.Stack, bool) {
 	opts.Position = src.front().Vec3Middle()
 	opts.Rotation = cube.Rotation{math.Atan2(direction[2], direction[0])*180/math.Pi + 90, 0}
 	src.tx.AddEntity(create(opts))
-	return src.consume()
+	return src.done()
 }
 
 // dispenseTNT primes TNT in front, as the behaviour bootStrap registers for
 // Blocks.TNT, and drops it if the world has no primed TNT.
-func dispenseTNT(src dispenseSource) (item.Stack, bool) {
+func dispenseTNT(src dispenseSource) dispensed {
 	create := src.tx.World().EntityRegistry().Config().TNT
 	if create == nil {
 		return dispenseDefault(src)
 	}
 	src.tx.AddEntity(create(world.EntitySpawnOpts{Position: src.front().Vec3Middle()}, 4*time.Second, nil))
-	return src.consume()
+	// level.playSound(TNT_PRIMED); BDS plays the fuse at the launch point.
+	src.tx.PlaySound(src.launchPoint(), sound.TNT{})
+	return src.done()
 }
 
 // dispenseSpawnEgg spawns the mob of the egg in front, as
 // SpawnEggItemBehavior, and leaves the egg if it can't.
-func dispenseSpawnEgg(src dispenseSource) (item.Stack, bool) {
+func dispenseSpawnEgg(src dispenseSource) dispensed {
 	if !src.stack.Item().(item.SpawnEgg).Dispense(src.tx, src.pos, src.d.Facing) {
-		return src.stack, false
+		// The egg stays; the behaviour is not an optional one, so the
+		// dispenser clicks as for any dispense.
+		return dispensed{left: src.stack, unchanged: true, effects: dispenseEffects{click: clickDone}}
 	}
-	return src.consume()
+	return src.done()
 }
 
 // dispenseHarness puts the harness on the first mob in front that takes it,
 // as EquipmentDispenseItemBehavior, and drops it if none does.
-func dispenseHarness(src dispenseSource) (item.Stack, bool) {
+func dispenseHarness(src dispenseSource) dispensed {
 	front := src.front()
 	box := cube.Box(float64(front.X()), float64(front.Y()), float64(front.Z()), float64(front.X()+1), float64(front.Y()+1), float64(front.Z()+1))
 	harness := src.stack.Item().(item.Harness)
 	for e := range src.tx.EntitiesWithin(box) {
 		ctx := &item.UseContext{}
 		if harness.UseOnEntity(e, src.tx, nil, ctx) {
-			return src.used(ctx), true
+			return src.used(ctx)
 		}
 	}
 	return dispenseDefault(src)
@@ -345,29 +366,31 @@ func dispenseHarness(src dispenseSource) (item.Stack, bool) {
 // dispenseUseOnBlock uses the item on the block in front, as a player using
 // it on the face of that block that the dispenser looks at, and drops it if
 // that does nothing.
-func dispenseUseOnBlock(src dispenseSource) (item.Stack, bool) {
+func dispenseUseOnBlock(src dispenseSource) dispensed {
 	usable := src.stack.Item().(interface {
 		UseOnBlock(cube.Pos, cube.Face, mgl64.Vec3, *world.Tx, item.User, *item.UseContext) bool
 	})
 	front := src.front()
 	ctx := &item.UseContext{}
 	if usable.UseOnBlock(front, src.d.Facing, front.Vec3Centre(), src.tx, nil, ctx) {
-		return src.used(ctx), true
+		return src.used(ctx)
 	}
 	return dispenseDefault(src)
 }
 
-// used returns the stack left after the item was used with ctx: damaged,
-// with the items used gone, and the item the use made in their place, or
-// dropped if the stack is not empty.
-func (src dispenseSource) used(ctx *item.UseContext) item.Stack {
+// used returns what became of the slot after the item was used with ctx:
+// damaged, with the items used gone, and the item the use made in the place of
+// the last item or, if the stack is not empty, to be put into the dispenser
+// or dropped.
+func (src dispenseSource) used(ctx *item.UseContext) dispensed {
 	left := src.stack.Damage(ctx.Damage).Grow(-ctx.CountSub)
+	res := dispensed{left: left, effects: dispenseEffects{click: clickDone}}
 	if !ctx.NewItem.Empty() {
 		if left.Empty() {
-			left = ctx.NewItem
+			res.left = ctx.NewItem
 		} else {
-			src.d.eject(src.tx, src.pos, ctx.NewItem)
+			res.insert = ctx.NewItem
 		}
 	}
-	return left
+	return res
 }

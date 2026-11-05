@@ -146,15 +146,10 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 		return
 	}
 	stack, _ := d.inventory.Item(slot)
-	if left, ok := dispenseBehaviourOf(stack.Item())(dispenseSource{d: d, pos: pos, tx: tx, stack: stack}); ok {
-		_ = d.inventory.SetItem(slot, left)
-		notifyComparatorUpdate(pos, tx)
-	}
-}
-
-func (d Dispenser) eject(tx *world.Tx, pos cube.Pos, stack item.Stack) {
-	ejectContainerItem(pos, d.Facing, tx, stack)
-	playItemEjectionEffects(pos, d.Facing, tx)
+	src := dispenseSource{d: d, pos: pos, tx: tx, stack: stack}
+	res := dispenseBehaviourOf(stack.Item())(src)
+	src.store(slot, res)
+	src.play(res.effects)
 }
 
 func (Dispenser) EncodeItem() (string, int16) { return "minecraft:dispenser", 0 }

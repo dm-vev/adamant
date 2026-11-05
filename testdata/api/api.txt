@@ -22933,6 +22933,8 @@ server/world/sound	method	DiscType.Author	func() string
 server/world/sound	method	DiscType.DisplayName	func() string
 server/world/sound	method	DiscType.String	func() string
 server/world/sound	method	DiscType.Uint8	func() uint8
+server/world/sound	method	DispenserFireball.Play	func(*server/world.World, github.com/go-gl/mathgl/mgl64.Vec3)
+server/world/sound	method	DispenserLaunch.Play	func(*server/world.World, github.com/go-gl/mathgl/mgl64.Vec3)
 server/world/sound	method	DoorClose.Play	func(*server/world.World, github.com/go-gl/mathgl/mgl64.Vec3)
 server/world/sound	method	DoorCrash.Play	func(*server/world.World, github.com/go-gl/mathgl/mgl64.Vec3)
 server/world/sound	method	DoorOpen.Play	func(*server/world.World, github.com/go-gl/mathgl/mgl64.Vec3)
@@ -23056,6 +23058,8 @@ server/world/sound	type	DecoratedPotInsertFailed	struct{server/world/sound.sound
 server/world/sound	type	DecoratedPotInserted	struct{server/world/sound.sound; Progress float64}
 server/world/sound	type	Deny	struct{server/world/sound.sound}
 server/world/sound	type	DiscType	struct{server/world/sound.disc}
+server/world/sound	type	DispenserFireball	struct{server/world/sound.sound}
+server/world/sound	type	DispenserLaunch	struct{server/world/sound.sound}
 server/world/sound	type	DoorClose	struct{Block server/world.Block; server/world/sound.sound}
 server/world/sound	type	DoorCrash	struct{server/world/sound.sound}
 server/world/sound	type	DoorOpen	struct{Block server/world.Block; server/world/sound.sound}

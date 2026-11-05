@@ -10956,6 +10956,8 @@ server/world/sound.Custom	server/world.Sound	value
 server/world/sound.DecoratedPotInsertFailed	server/world.Sound	value
 server/world/sound.DecoratedPotInserted	server/world.Sound	value
 server/world/sound.Deny	server/world.Sound	value
+server/world/sound.DispenserFireball	server/world.Sound	value
+server/world/sound.DispenserLaunch	server/world.Sound	value
 server/world/sound.DoorClose	server/world.Sound	value
 server/world/sound.DoorCrash	server/world.Sound	value
 server/world/sound.DoorOpen	server/world.Sound	value

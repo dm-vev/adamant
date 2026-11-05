@@ -180,6 +180,14 @@ type DoorCrash struct{ sound }
 // Click is a clicking sound.
 type Click struct{ sound }
 
+// DispenserLaunch is the sound of a dispenser shooting a projectile: Java's
+// dispense event 1002.
+type DispenserLaunch struct{ sound }
+
+// DispenserFireball is the sound of a dispenser shooting a fire charge, which
+// is Java's dispense event 1018, heard as a fireball.
+type DispenserFireball struct{ sound }
+
 // Ignite is a sound played when using a flint & steel.
 type Ignite struct{ sound }
 

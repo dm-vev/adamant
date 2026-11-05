@@ -30,7 +30,9 @@ var updateDispenseGolden = flag.Bool("update-dispense", false, "rewrite testdata
 // updateDispenseItems, with -update-dispense, limits the rewrite to the items
 // whose description starts with one of its comma-separated prefixes, such as
 // "minecraft:arrow:": the lines of the other items and the default lines are
-// kept, so that the rest of the registered items need not be dispensed.
+// kept, so that the rest of the registered items need not be dispensed. The
+// prefix "@behaviours" stands for every item a dispenser has a behaviour of
+// its own for.
 var updateDispenseItems = flag.String("update-dispense-items", "", "with -update-dispense, rewrite only the golden lines of the items starting with these comma-separated prefixes")
 
 // dispenseTick runs a scheduled tick of the dispenser at pos.
@@ -607,7 +609,7 @@ func dispenseDomain() []world.Item {
 		var chosen []world.Item
 		for _, it := range items {
 			for _, p := range strings.Split(prefixes, ",") {
-				if strings.HasPrefix(describeValue(it), p) {
+				if p == "@behaviours" && block.HasDispenseBehaviour(it) || strings.HasPrefix(describeValue(it), p) {
 					chosen = append(chosen, it)
 					break
 				}
