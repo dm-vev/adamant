@@ -3,19 +3,15 @@ package session_test
 import (
 	"flag"
 	"fmt"
-	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/protocol/bedrock/session"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/go-gl/mathgl/mgl64"
 )
 
 var updateSounds = flag.Bool("update-sounds", false, "rewrite testdata/sounds.golden, the packets of every sound")
@@ -144,49 +140,6 @@ func soundSamples(t testing.TB) []soundSample {
 	return samples
 }
 
-// soundProtocols are the protocols the packets of a sound are encoded for:
-// that of the model the session is compiled against, and 2193, whose clients
-// are sent what protocol/bedrock/internal/versions converts them to.
-func soundProtocols() []*versions.Protocol {
-	return []*versions.Protocol{versions.Model(), oldProtocol()}
-}
-
-// encodeSoundPackets returns the lines that tell the packets passed as each
-// of the protocols is sent them: the ID and the bytes of each, or none.
-func encodeSoundPackets(pks []proto.Packet) []string {
-	var lines []string
-	for _, p := range soundProtocols() {
-		var out []proto.Packet
-		for _, pk := range pks {
-			if p.Converts() {
-				out = append(out, p.Out(pk)...)
-			} else {
-				out = append(out, pk)
-			}
-		}
-		if len(out) == 0 {
-			lines = append(lines, fmt.Sprintf("  v%d none", p.Number))
-		}
-		for _, pk := range out {
-			lines = append(lines, fmt.Sprintf("  v%d id=%d %x", p.Number, pk.ID(), encode(pk)))
-		}
-	}
-	return lines
-}
-
-// soundPacketLines returns the lines of testdata/sounds.golden of one sound
-// played with play, a panic of the play written as one.
-func soundPacketLines(label string, play func(pos mgl64.Vec3, t world.Sound) []proto.Packet, s world.Sound) (lines []string) {
-	lines = []string{label}
-	defer func() {
-		if r := recover(); r != nil {
-			lines = append(lines, fmt.Sprint("  panic: ", r))
-		}
-	}()
-	lines = append(lines, encodeSoundPackets(play(eventSoundPos, s))...)
-	return lines
-}
-
 // TestSoundPacketsMatch plays every sound of soundSamples, which holds every
 // type of the sounds of the game, and compares the packets as each protocol
 // is sent them with testdata/sounds.golden, which was recorded from the
@@ -196,28 +149,7 @@ func soundPacketLines(label string, play func(pos mgl64.Vec3, t world.Sound) []p
 func TestSoundPacketsMatch(t *testing.T) {
 	var got []string
 	for _, c := range soundSamples(t) {
-		got = append(got, soundPacketLines(c.label, session.SoundPackets, c.sound)...)
+		got = append(got, tablePacketLines(c.label, func() []proto.Packet { return session.SoundPackets(eventSoundPos, c.sound) })...)
 	}
-	file := filepath.Join("testdata", "sounds.golden")
-	out := strings.Join(got, "\n") + "\n"
-	if *updateSounds {
-		if err := os.WriteFile(file, []byte(out), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		return
-	}
-	want, err := os.ReadFile(file)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(want) != out {
-		t.Errorf("the packets of the sounds differ from %s (run with -update-sounds to see the change as a diff)", file)
-		wl, gl := strings.Split(string(want), "\n"), strings.Split(out, "\n")
-		for i := 0; i < min(len(wl), len(gl)); i++ {
-			if wl[i] != gl[i] {
-				t.Fatalf("first difference at line %d:\ngolden: %s\ngot:    %s", i+1, wl[i], gl[i])
-			}
-		}
-		t.Fatalf("golden has %d lines, got %d", len(wl), len(gl))
-	}
+	checkTableGolden(t, filepath.Join("testdata", "sounds.golden"), *updateSounds, "sounds", got)
 }

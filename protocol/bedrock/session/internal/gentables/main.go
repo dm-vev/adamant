@@ -1,22 +1,24 @@
 // Command gentables writes the type switches that the tables of the session
-// hold the literal cases of: of the sounds the game plays (sound_table.go).
+// hold the literal cases of: of the sounds the game plays (sound_table.go)
+// and of the particles it shows (particle_table.go).
 //
 // A table lists, as composite literals of plain strings and numbers, the
-// types of server/world/sound whose packets are the same whatever the value
-// of the type is, bar a field a row names. This command reads the rows from
-// the Go file of the table, checks every row against the types of the package
-// it names, and writes:
+// types of server/world/sound or server/world/particle whose packets are the
+// same whatever the value of the type is, bar a field a row names. This
+// command reads the rows from the Go file of the table, checks every row
+// against the types of the package it names, and writes:
 //
-//   - the file of the switch (sound_switch_gen.go): a method of Session that
-//     switches over the type of the value and writes its packets, and reports
-//     whether the type was one of the table's;
-//   - the test file of the types (sound_types_gen_test.go): a value of every
-//     type of the package that implements the interface of the game, taken
-//     from go/types, so that no type is forgotten by the tests that compare
-//     the packets of every type.
+//   - the file of the switch (sound_switch_gen.go, particle_switch_gen.go): a
+//     method of Session that switches over the type of the value, writes its
+//     packets, and reports whether the type was one of the table's;
+//   - the test file of the types (sound_types_gen_test.go,
+//     particle_types_gen_test.go): the zero value of every type of the package
+//     that implements the interface of the game, taken from go/types, so that
+//     no type is forgotten by the tests that compare the packets of every
+//     type.
 //
-// It runs in the directory of the session, from the go:generate directive of
-// the table.
+// It runs in the directory of the session, from the go:generate directives of
+// the tables.
 package main
 
 import (
@@ -47,6 +49,8 @@ func main() {
 	switch *kind {
 	case "sound":
 		k = soundKind
+	case "particle":
+		k = particleKind
 	default:
 		log.Fatalf("gentables: unknown kind %q", *kind)
 	}
