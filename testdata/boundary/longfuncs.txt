@@ -32,10 +32,10 @@ protocol/bedrock/session/command.go BuildAvailableCommands 137
 protocol/bedrock/session/handler_item_stack_request.go ItemStackRequestHandler.handleRequest 106
 protocol/bedrock/session/player.go debugShapeToProtocol 116
 protocol/bedrock/session/static.go newRecipeData 115
-protocol/bedrock/session/world.go Session.ViewEntity 109
-protocol/bedrock/session/world.go Session.ViewEntityAction 179
-protocol/bedrock/session/world.go Session.particlePackets 266
-protocol/bedrock/session/world.go Session.soundPackets 503
+protocol/bedrock/session/view_effects.go Session.particlePackets 266
+protocol/bedrock/session/view_effects.go Session.soundPackets 503
+protocol/bedrock/session/view_entity.go Session.ViewEntity 109
+protocol/bedrock/session/view_entity.go Session.ViewEntityAction 179
 server/block/explosion.go ExplosionConfig.Explode 140
 server/block/smelter.go smelter.tickSmelting 117
 server/block/vine.go Vines.RandomTick 116
@@ -67,7 +67,7 @@ server/world/checkpoint.go CaptureAllInto 111
 server/world/conf.go Config.New 193
 server/world/game_event.go Tx.EmitGameEvent 101
 server/world/generator/advanced/internal/structure/jigsaw_graph.go JigsawStart.Build 203 port
-server/world/generator/advanced/internal/structure/nbt_adapter.go BlockEntityPayload 232 port
+server/world/generator/advanced/internal/structure/nbt_adapter.go BlockEntityPayload 225 port
 server/world/generator/advanced/internal/structure/nbt_adapter_structure.go convertStructureBlock 110 port
 server/world/generator/advanced/internal/structure/nbt_decode.go nbtReader.readPayload 112 port
 server/world/generator/advanced/nether/material.go Nether.applyNetherMaterial 123 port
