@@ -224,6 +224,8 @@ Labelled `dimension` (`overworld`, `nether`, `end`).
 | `adamant_world_ticks_skipped_total` | counter | ticks a world too far behind skipped |
 | `adamant_world_tps` | gauge | ticks a second over the last 20 |
 | `adamant_world_mspt` | gauge | mean time of the last 100 ticks, in seconds |
+| `adamant_world_owner_busy_nanoseconds_total` | counter | nanoseconds the owner of the world ran transactions (ticks, the work of players and loaders); its rate over a second divided by 1e9 is the share of the owner in use, which the ticks alone do not tell |
+| `adamant_world_transactions_queued` | gauge | transactions waiting for the owner; a player's actions answer only once those before them ran |
 | `adamant_world_frozen` | gauge | 1 while `/tick freeze` holds the world |
 | `adamant_world_entities`, `adamant_world_chunks_loaded` | gauge | entities, columns loaded |
 | `adamant_world_chunks_read_total`, `_chunk_load_errors_total`, `_chunks_unloaded_total`, `_chunks_written_total` | counter | columns read from the provider, failed to read, unloaded, written |

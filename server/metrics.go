@@ -181,6 +181,8 @@ func (srv *Server) registerWorldMetrics(r *metrics.Registry) {
 	worldCounter("adamant_world_chunk_load_errors_total", "Columns the world provider failed to read.", func(w *world.World) uint64 { return w.Stats().ChunkLoadErrors.Load() })
 	worldCounter("adamant_world_chunks_unloaded_total", "Columns unloaded.", func(w *world.World) uint64 { return w.Stats().ChunksUnloaded.Load() })
 	worldCounter("adamant_world_chunks_written_total", "Columns written to the world provider.", func(w *world.World) uint64 { return w.Stats().ChunksWritten.Load() })
+	worldCounter("adamant_world_owner_busy_nanoseconds_total", "Nanoseconds the owner of the world ran transactions: ticks, the work of players and loaders, and the rest.", func(w *world.World) uint64 { return w.Stats().OwnerBusy.Load() })
+	worldGauge("adamant_world_transactions_queued", "Transactions waiting for the owner of the world.", func(w *world.World) float64 { return float64(w.QueuedTransactions()) })
 	worldGauge("adamant_world_generation_queue", "Columns waiting for a generator worker.", func(w *world.World) float64 { return float64(w.GenerationQueueLength()) })
 	worldGauge("adamant_world_generation_workers_busy", "Generator workers generating a column.", func(w *world.World) float64 { return float64(w.Stats().GenerationBusy.Load()) })
 	worldHistogram("adamant_world_generation_seconds", "Time the generation of a column took.", func(s *world.Stats) *metrics.Histogram { return s.Generation })

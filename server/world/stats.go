@@ -32,6 +32,10 @@ type Stats struct {
 	Generation         *metrics.Histogram
 	GenerationBusy     metrics.Gauge
 	GenerationFailures metrics.Counter
+	// OwnerBusy counts the nanoseconds the owner of the world spent running
+	// transactions: ticks, the work of players and loaders, and the rest.
+	// Against the time that passed it tells how much of the owner is left.
+	OwnerBusy metrics.Counter
 }
 
 // newStats returns the Stats of a new world.
@@ -54,6 +58,17 @@ func (w *World) GenerationQueueLength() int {
 		return 0
 	}
 	return int(w.generatorQueue.length.Load())
+}
+
+// QueuedTransactions returns the number of transactions waiting for the
+// owner of the world: the queue and its overflow.
+func (w *World) QueuedTransactions() int {
+	if w == nil {
+		return 0
+	}
+	w.queueMu.Lock()
+	defer w.queueMu.Unlock()
+	return len(w.queue) + len(w.queueOverflow)
 }
 
 // GeneratorBacklogs returns how many times columns were queued for

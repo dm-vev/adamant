@@ -21291,6 +21291,7 @@ server/world	method	World.PortalDisabledMessage	func(dim server/world.Dimension)
 server/world	method	World.PositionTrackingHandleAt	func(pos server/block/cube.Pos) int32
 server/world	method	World.Quarantined	func() []server/world.Fault
 server/world	method	World.QuarantinedCount	func() int
+server/world	method	World.QueuedTransactions	func() int
 server/world	method	World.Range	func() server/block/cube.Range
 server/world	method	World.RecordStructureAt	func(structureTag string, position server/block/cube.Pos) (bool, error)
 server/world	method	World.RecordStructureReference	func(location server/world.StructureLocation) error
@@ -21532,7 +21533,7 @@ server/world	type	Sound	interface{Play(w *server/world.World, pos github.com/go-
 server/world	type	SpawnStructureFinder	interface{SpawnStructures(pos server/world.ChunkPos) []server/world.StructureArea}
 server/world	type	SpectatingViewer	interface{Spectating(tx *server/world.Tx) bool; server/world.Viewer}
 server/world	type	Staging	struct{mu sync.Mutex; seq uint64; cur *server/world.stagedWrites; taken []*server/world.stagedWrites; writeMu sync.Mutex; written map[string]uint64}
-server/world	type	Stats	struct{Ticks *github.com/dm-vev/adamant/net/metrics.Histogram; TicksSkipped github.com/dm-vev/adamant/net/metrics.Counter; ChunksRead github.com/dm-vev/adamant/net/metrics.Counter; ChunkLoadErrors github.com/dm-vev/adamant/net/metrics.Counter; ChunksUnloaded github.com/dm-vev/adamant/net/metrics.Counter; ChunksWritten github.com/dm-vev/adamant/net/metrics.Counter; Generation *github.com/dm-vev/adamant/net/metrics.Histogram; GenerationBusy github.com/dm-vev/adamant/net/metrics.Gauge; GenerationFailures github.com/dm-vev/adamant/net/metrics.Counter}
+server/world	type	Stats	struct{Ticks *github.com/dm-vev/adamant/net/metrics.Histogram; TicksSkipped github.com/dm-vev/adamant/net/metrics.Counter; ChunksRead github.com/dm-vev/adamant/net/metrics.Counter; ChunkLoadErrors github.com/dm-vev/adamant/net/metrics.Counter; ChunksUnloaded github.com/dm-vev/adamant/net/metrics.Counter; ChunksWritten github.com/dm-vev/adamant/net/metrics.Counter; Generation *github.com/dm-vev/adamant/net/metrics.Histogram; GenerationBusy github.com/dm-vev/adamant/net/metrics.Gauge; GenerationFailures github.com/dm-vev/adamant/net/metrics.Counter; OwnerBusy github.com/dm-vev/adamant/net/metrics.Counter}
 server/world	type	Structure	interface{At(x int, y int, z int, blockAt func(x int, y int, z int) server/world.Block) (server/world.Block, server/world.Liquid); Dimensions() [3]int}
 server/world	type	StructureAnimation	uint8
 server/world	type	StructureArea	struct{ID string; Box [2]server/block/cube.Pos; Pieces [][2]server/block/cube.Pos}

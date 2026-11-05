@@ -668,10 +668,12 @@ func (w *World) handleTransactions() {
 // keeps a tick from first spreading the light of every chunk generated
 // since the last one, as Java lights chunks off its main thread.
 func (w *World) runTransaction(tx transaction) {
+	start := time.Now()
 	tx.Run(w)
 	if len(w.pendingSpreads) > 0 {
 		w.flushSpreads()
 	}
+	w.stats.OwnerBusy.Add(uint64(time.Since(start)))
 }
 
 // EntityRegistry returns the EntityRegistry that was passed to the World's
