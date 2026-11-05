@@ -84,9 +84,9 @@ func newEntitySelector(text string, src Source) (*entitySelector, error) {
 	return s, nil
 }
 
-// parseSelectorTable parses a selector such as @e[type=cow,limit=1] by the
-// table of the parsers of its options.
-func parseSelectorTable(text string, src Source, tx *world.Tx) (*entitySelector, error) {
+// parseSelector parses a selector such as @e[type=cow,limit=1] by the table of
+// the parsers of its options.
+func parseSelector(text string, src Source, tx *world.Tx) (*entitySelector, error) {
 	s, err := newEntitySelector(text, src)
 	if err != nil {
 		return nil, err

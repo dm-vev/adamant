@@ -246,16 +246,6 @@ func (c *selectorCandidates) write(b *strings.Builder, text string, src Source, 
 	fmt.Fprintf(b, "selected: %s\n", strings.Join(labels, ","))
 }
 
-// TestSelectorTableMatchesLegacy requires the table of selector options to do
-// exactly what parseSelector did before it, on every selector of the capture:
-// the same error texts, the same fields and the same filters.
-func TestSelectorTableMatchesLegacy(t *testing.T) {
-	legacy, table := runSelectorCapture(t, parseSelector), runSelectorCapture(t, parseSelectorTable)
-	if legacy != table {
-		reportCaptureDifference(t, legacy, table)
-	}
-}
-
 // TestSelectorCapture writes down what parseSelector does for every selector
 // of selectorCaptureLines.
 func TestSelectorCapture(t *testing.T) {

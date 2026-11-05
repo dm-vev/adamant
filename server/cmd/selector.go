@@ -2,17 +2,14 @@ package cmd
 
 import (
 	"cmp"
-	"errors"
 	"fmt"
 	"math"
 	"math/rand/v2"
 	"reflect"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javanbt"
 	"github.com/df-mc/dragonfly/server/scoreboard"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -288,140 +285,6 @@ type entitySelector struct {
 	limit    int
 	sort     string
 	filters  []func(Target) bool
-}
-
-func parseSelector(text string, src Source, tx *world.Tx) (*entitySelector, error) {
-	s := &entitySelector{kind: text[1], origin: src.Position(), sort: "arbitrary", limit: math.MaxInt}
-	switch s.kind {
-	case 'p':
-		s.sort, s.limit = "nearest", 1
-	case 'r':
-		s.sort, s.limit = "random", 1
-	case 'n':
-		s.sort, s.limit = "nearest", 1
-	case 'a', 'e', 's':
-	default:
-		return nil, MessageParameterInvalid.F(text)
-	}
-	body := text[2:]
-	if body == "" {
-		return s, nil
-	}
-	if !strings.HasPrefix(body, "[") || !strings.HasSuffix(body, "]") {
-		return nil, MessageParameterInvalid.F(text)
-	}
-	var dx, dy, dz *float64
-	opts := newSelectorOptions()
-	for _, option := range splitSelectorOptions(body[1 : len(body)-1]) {
-		key, value, ok := strings.Cut(option, "=")
-		if !ok {
-			return nil, MessageParameterInvalid.F(option)
-		}
-		key, value = strings.TrimSpace(key), strings.TrimSpace(value)
-		negate := strings.HasPrefix(value, "!")
-		value = strings.TrimPrefix(value, "!")
-		if negate && !slices.Contains([]string{"type", "name", "tag", "team", "gamemode", "nbt"}, key) {
-			return nil, MessageParameterInvalid.F(option)
-		}
-		if err := opts.check(s.kind, key); err != nil {
-			return nil, err
-		}
-		var err error
-		switch key {
-		case "x", "y", "z":
-			v, perr := ParseNumber(value, 64)
-			if perr != nil {
-				return nil, MessageNumberInvalid.F(value)
-			}
-			s.origin[key[0]-'x'] = v
-		case "dx", "dy", "dz":
-			v, perr := ParseNumber(value, 64)
-			if perr != nil {
-				return nil, MessageNumberInvalid.F(value)
-			}
-			switch key {
-			case "dx":
-				dx = &v
-			case "dy":
-				dy = &v
-			default:
-				dz = &v
-			}
-		case "distance":
-			s.distance, err = parseSelectorRange(value)
-			if err == nil && s.distance.swapped() {
-				err = fmt.Errorf("invalid distance")
-			}
-			if err == nil && s.distance.negative() {
-				return nil, selectorError("Distance cannot be negative")
-			}
-		case "level":
-			s.level, err = parseIntRange(value)
-			if err == nil && s.level.negative() {
-				return nil, selectorError("Level shouldn't be negative")
-			}
-		case "x_rotation", "y_rotation":
-			var r selectorRange
-			if r, err = parseSelectorRange(value); err == nil {
-				s.filters = append(s.filters, rotationFilter(r, key == "x_rotation"))
-			}
-		case "scores":
-			var expected map[string]selectorRange
-			if expected, err = parseSelectorScores(value); err == nil && len(expected) > 0 {
-				s.scoresFilter(expected, tx)
-			}
-		case "team":
-			err = opts.element(key, negate)
-			s.teamFilter(value, negate, tx)
-		case "nbt":
-			expected, end, perr := javanbt.ParseCompoundArgument(value, 0)
-			if perr != nil || strings.TrimSpace(value[end:]) != "" {
-				return nil, MessageParameterInvalid.F(option)
-			}
-			s.filter(negate, func(t Target) bool {
-				e, ok := t.(world.Entity)
-				return ok && nbtContains(expected, e.H().NBT(tx))
-			})
-		case "limit":
-			s.limit, err = strconv.Atoi(value)
-			if err == nil && s.limit < 1 {
-				return nil, selectorError("The minimum number allowed is 1")
-			}
-		case "sort":
-			if !slices.Contains([]string{"nearest", "furthest", "random", "arbitrary"}, value) {
-				return nil, selectorError(fmt.Sprintf("Invalid or unknown sort type '%s'", value))
-			}
-			s.sort = value
-		case "type":
-			err = s.typeFilter(opts, value, negate)
-		case "name":
-			err = opts.element(key, negate)
-			s.filter(negate, func(t Target) bool { return selectorName(t) == strings.Trim(value, `"`) })
-		case "tag":
-			s.tagFilter(value, negate)
-		case "gamemode":
-			err = s.gameModeFilter(opts, value, negate)
-		default:
-			// A Java option this server has no data for: predicate, advancements.
-			return nil, MessageParameterInvalid.F(key)
-		}
-		if selectorErr := (selectorError("")); errors.As(err, &selectorErr) {
-			return nil, err
-		}
-		if err != nil {
-			return nil, MessageParameterInvalid.F(option)
-		}
-	}
-	if dx != nil || dy != nil || dz != nil {
-		v := mgl64.Vec3{}
-		for i, d := range []*float64{dx, dy, dz} {
-			if d != nil {
-				v[i] = *d
-			}
-		}
-		s.volume = &v
-	}
-	return s, nil
 }
 
 func (s *entitySelector) filter(negate bool, f func(Target) bool) {
