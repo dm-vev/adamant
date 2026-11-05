@@ -76,7 +76,7 @@ func dispensePotion(src dispenseSource) dispensed {
 	if p.Type != potion.Water() || !convertibleToMud(tx.Block(front)) {
 		return dispenseDefault(src)
 	}
-	tx.PlaySound(src.pos.Vec3(), sound.Event{Name: "bottle.empty"})
+	tx.PlaySound(src.pos.Vec3Centre(), sound.Custom{Name: "item.bottle.empty", Volume: 1, Pitch: 1})
 	tx.EmitGameEvent(world.GameEventFluidPlace, src.pos.Vec3Centre(), world.GameEventContext{})
 	tx.SetBlock(front, Mud{}, nil)
 	return src.withRemainder(item.NewStack(item.GlassBottle{}, 1))
