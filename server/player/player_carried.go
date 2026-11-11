@@ -114,7 +114,7 @@ func (p *Player) tickCarriedMapStack(stack item.Stack, current int64, seen *[64]
 		seen[*seenCount] = mapID
 		*seenCount++
 	}
-	data, err := p.tx.UpdateMap(mapID, cube.PosFromVec3(p.Position()))
+	data, err := p.tx.Maps().Update(mapID, cube.PosFromVec3(p.Position()))
 	if err != nil {
 		return
 	}
@@ -144,7 +144,7 @@ func (p *Player) tickMapFrames(current int64) {
 	if current%5 != 0 || !p.updatesMapFrames() {
 		return
 	}
-	p.tx.ForEachMapFrame(func(pos cube.Pos, frame world.MapFrameInfo) {
+	p.tx.Maps().ForEachFrame(func(pos cube.Pos, frame world.MapFrameInfo) {
 		mapID, ok := resolveMapID(p.tx, frame.NativeID, frame.HasNativeID, frame.JavaID, frame.HasJavaID)
 		if !ok {
 			return
@@ -183,7 +183,7 @@ func (p *Player) trackedMapObjects(mapID int64) []world.MapTrackedObject {
 			objects = append(objects, world.MapTrackedObject{Entity: entity.H()})
 		}
 	}
-	p.tx.ForEachMapFrame(func(pos cube.Pos, frame world.MapFrameInfo) {
+	p.tx.Maps().ForEachFrame(func(pos cube.Pos, frame world.MapFrameInfo) {
 		if frameMapID, ok := resolveMapID(p.tx, frame.NativeID, frame.HasNativeID, frame.JavaID, frame.HasJavaID); ok && frameMapID == mapID {
 			framePos := pos
 			objects = append(objects, world.MapTrackedObject{Block: &framePos})

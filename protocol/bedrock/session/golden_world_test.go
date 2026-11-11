@@ -138,7 +138,7 @@ func TestGoldenWorld(t *testing.T) {
 
 	var mapID int64
 	s.step("a map is made and held", func(tx *world.Tx, p *player.Player) {
-		data, err := tx.CreateMap(cube.Pos{0, -60, 0}, 0)
+		data, err := tx.Maps().Create(cube.Pos{0, -60, 0}, 0)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -131,7 +131,7 @@ func TestSidecarWritesWaitForTheNextSave(t *testing.T) {
 				}
 				w.SetPlayerSpawn(steve, spawn)
 				var err error
-				if m, err = tx.CreateMap(cube.Pos{}, 0); err != nil {
+				if m, err = tx.Maps().Create(cube.Pos{}, 0); err != nil {
 					t.Errorf("create a map: %v", err)
 				}
 			})

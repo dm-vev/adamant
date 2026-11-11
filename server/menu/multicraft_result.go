@@ -274,9 +274,9 @@ func changedMapResult(source item.Stack, operation string, tx *world.Tx) (item.S
 	var err error
 	switch operation {
 	case mapExtendingMultiRecipe, mapExtendingCartographyMultiRecipe:
-		data, err = tx.ScaleMap(mapID)
+		data, err = tx.Maps().Scale(mapID)
 	case mapLockingMultiRecipe:
-		data, err = tx.LockMap(mapID)
+		data, err = tx.Maps().Lock(mapID)
 	default:
 		return item.Stack{}, fmt.Errorf("unsupported map operation %v", operation)
 	}

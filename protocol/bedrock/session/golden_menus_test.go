@@ -245,7 +245,7 @@ func (s *scenario) specialRecipeSteps() {
 	const grid = mc.ContainerCraftingInput
 	var source item.Stack
 	s.step("a map is made of the land around", func(tx *world.Tx, _ *player.Player) {
-		data, err := tx.CreateMap(cube.Pos{0, -60, 0}, 0)
+		data, err := tx.Maps().Create(cube.Pos{0, -60, 0}, 0)
 		if err != nil {
 			s.t.Fatal(err)
 		}

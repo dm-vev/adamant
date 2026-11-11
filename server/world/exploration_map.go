@@ -72,17 +72,17 @@ func (tx *Tx) CreateExplorationMap(origin cube.Pos, destination string, decorati
 	if err != nil || !found {
 		return MapData{}, false, err
 	}
-	if data, err = tx.CreateMap(location.Position, zoom); err != nil {
+	if data, err = tx.Maps().Create(location.Position, zoom); err != nil {
 		return MapData{}, false, err
 	}
 	data.UnlimitedTracking = true
 	if err = w.StoreMapData(data); err != nil {
 		return MapData{}, false, err
 	}
-	if data, err = tx.RenderMapBiomePreview(data.ID); err != nil {
+	if data, err = tx.Maps().RenderBiomePreview(data.ID); err != nil {
 		return MapData{}, false, err
 	}
-	if err = tx.AddMapDecorationAt(data.ID, decoration, 8, 1, location.Position, "+"); err != nil {
+	if err = tx.Maps().AddDecorationAt(data.ID, decoration, 8, 1, location.Position, "+"); err != nil {
 		return MapData{}, false, err
 	}
 	if err = w.RecordStructureReference(location); err != nil {

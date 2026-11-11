@@ -69,6 +69,7 @@ func adapterPackage(pkgPath string) bool {
 // handle moves here too.
 var worldReads = map[string][]string{
 	"Context":                  {"Cancelled"},
+	"MapTransaction":           {"ForEachFrame"},
 	"RedstoneTorchTransaction": {"BurnoutStatus"},
 	"RedstoneTransaction": {
 		"CircuitDirection", "CircuitStrength", "ConsumerPower", "ObservedPower", "ProducerStrength", "Torch",
@@ -77,9 +78,9 @@ var worldReads = map[string][]string{
 		"Biome", "Block", "BlockFaceSturdy", "BlockLight", "BlockLoaded", "BlockStateID", "CaptureStructure",
 		"ChunkLoaded", "ChunkReadySignal", "ChunkState", "ColumnBlockVersion", "CurrentTick", "Defer", "DeferErr",
 		"Entities", "EntitiesOfType", "EntitiesOfTypesWithin", "EntitiesWithin", "EntityByUUID", "EntityByUniqueID",
-		"EntityChunk", "EntityTicking", "Features", "ForEachMapFrame", "HasScheduledBlockUpdate", "HighestBlock",
+		"EntityChunk", "EntityTicking", "Features", "HasScheduledBlockUpdate", "HighestBlock",
 		"HighestLightBlocker", "IsDarkOutside", "IsVillage", "Light", "LightBlockedInto", "Liquid",
-		"LoadedBlockEntities", "LocalDifficulty", "MayContainLiquid", "MovementBlockProperties", "NativeState", "POI",
+		"LoadedBlockEntities", "LocalDifficulty", "Maps", "MayContainLiquid", "MovementBlockProperties", "NativeState", "POI",
 		"PlayerSpawnPosition", "Players", "PlayersNear", "Raids", "Raining", "RainingAt", "Range", "RawBrightness",
 		"Redstone", "RedstoneConductivePower", "RedstoneDirectPower", "RedstoneDirectPowerFrom", "RedstonePower",
 		"RedstonePowerFrom", "RedstoneStrongPower", "RedstoneStrongPowerFrom", "ReleaseViewers", "SkyDarken",

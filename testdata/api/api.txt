@@ -19411,8 +19411,6 @@ server/player	func	NewRef	func(h *server/world.EntityHandle) server/player.Ref
 server/player	method	Config.Apply	func(data *server/world.EntityData)
 server/player	method	Context.ActOn	func(e server/world.Entity, f func()) (ok bool)
 server/player	method	Context.AddEntity	func(e *server/world.EntityHandle) server/world.Entity
-server/player	method	Context.AddMapDecoration	func(id int64, decoration server/world.MapDecoration) error
-server/player	method	Context.AddMapDecorationAt	func(id int64, typ byte, rotation byte, keyType int32, target server/block/cube.Pos, label string) error
 server/player	method	Context.AddParticle	func(pos github.com/go-gl/mathgl/mgl64.Vec3, p server/world.Particle)
 server/player	method	Context.Biome	func(pos server/block/cube.Pos) server/world.Biome
 server/player	method	Context.Block	func(pos server/block/cube.Pos) server/world.Block
@@ -19436,7 +19434,6 @@ server/player	method	Context.ClaimPOI	func(pos server/block/cube.Pos, owner gith
 server/player	method	Context.ClearForcedChunks	func() error
 server/player	method	Context.ColumnBlockVersion	func(pos server/world.ChunkPos) (uint64, bool)
 server/player	method	Context.CreateExplorationMap	func(origin server/block/cube.Pos, destination string, decoration byte, zoom uint8, searchRadius int, skipKnown bool) (data server/world.MapData, ok bool, err error)
-server/player	method	Context.CreateMap	func(pos server/block/cube.Pos, scale uint8) (server/world.MapData, error)
 server/player	method	Context.CurrentTick	func() int64
 server/player	method	Context.Defer	func(f func(ctx *server/player.Context)) *server/world.Task
 server/player	method	Context.DeferErr	func(f func(ctx *server/player.Context) error) *server/world.Task
@@ -19456,7 +19453,6 @@ server/player	method	Context.EntityTicking	func(pos server/world.ChunkPos) bool
 server/player	method	Context.Event	func() *server/world.Context
 server/player	method	Context.Features	func() (server/world.RuntimeFeatures, bool)
 server/player	method	Context.FindNearestPOIByType	func(origin server/block/cube.Pos, name string, radius int) (server/block/cube.Pos, server/world.POI, bool)
-server/player	method	Context.ForEachMapFrame	func(fn func(server/block/cube.Pos, server/world.MapFrameInfo))
 server/player	method	Context.ForceChunk	func(pos server/world.ChunkPos, force bool) error
 server/player	method	Context.ForceScheduleVibration	func(listenerPos server/block/cube.Pos, event server/world.GameEvent, context server/world.GameEventContext, origin github.com/go-gl/mathgl/mgl64.Vec3)
 server/player	method	Context.HasScheduledBlockUpdate	func(pos server/block/cube.Pos, b server/world.Block) bool
@@ -19476,8 +19472,8 @@ server/player	method	Context.LoadDragonArena	func(active bool) bool
 server/player	method	Context.LoadedBlockEntities	func(pos server/world.ChunkPos) iter.Seq2[server/block/cube.Pos, server/world.Block]
 server/player	method	Context.Local	func(key any, newValue func() any) any
 server/player	method	Context.LocalDifficulty	func(pos server/block/cube.Pos) server/world.LocalDifficulty
-server/player	method	Context.LockMap	func(id int64) (server/world.MapData, error)
 server/player	method	Context.LootRandomSequence	func(sequence string, seed int64) *server/internal/vanilla.Random
+server/player	method	Context.Maps	func() server/world.MapTransaction
 server/player	method	Context.MayContainLiquid	func(lo server/block/cube.Pos, hi server/block/cube.Pos) bool
 server/player	method	Context.MovementBlockProperties	func(block server/world.Block) (climbable bool, highSupport bool)
 server/player	method	Context.NativeLiquidBoundaryOpen	func(from server/block/cube.Pos, to server/block/cube.Pos) bool
@@ -19520,10 +19516,8 @@ server/player	method	Context.RegionRandom	func() *server/internal/vanilla.Random
 server/player	method	Context.ReleasePOI	func(pos server/block/cube.Pos, owner github.com/google/uuid.UUID) bool
 server/player	method	Context.ReleaseViewers	func(viewers []server/world.Viewer)
 server/player	method	Context.RemoveEntity	func(e server/world.Entity) *server/world.EntityHandle
-server/player	method	Context.RenderMapBiomePreview	func(id int64) (server/world.MapData, error)
 server/player	method	Context.ResendChunk	func(pos server/world.ChunkPos)
 server/player	method	Context.SaveWorld	func()
-server/player	method	Context.ScaleMap	func(id int64) (server/world.MapData, error)
 server/player	method	Context.ScheduleBlockUpdate	func(pos server/block/cube.Pos, b server/world.Block, delay time.Duration)
 server/player	method	Context.SetBiome	func(pos server/block/cube.Pos, b server/world.Biome)
 server/player	method	Context.SetBlock	func(pos server/block/cube.Pos, b server/world.Block, opts *server/world.SetOpts)
@@ -19544,7 +19538,6 @@ server/player	method	Context.Thundering	func() bool
 server/player	method	Context.ThunderingAt	func(pos server/block/cube.Pos) bool
 server/player	method	Context.TickingEntities	func() iter.Seq[server/world.Entity]
 server/player	method	Context.TryWarnWarden	func(pos server/block/cube.Pos, trigger server/world.Entity) (int, bool)
-server/player	method	Context.UpdateMap	func(id int64, player server/block/cube.Pos) (server/world.MapData, error)
 server/player	method	Context.Viewers	func(pos github.com/go-gl/mathgl/mgl64.Vec3) []server/world.Viewer
 server/player	method	Context.VillageDistance	func(pos server/block/cube.Pos) int
 server/player	method	Context.VillageSections	func(pos server/block/cube.Pos, radius int) []server/block/cube.Pos
@@ -20747,8 +20740,6 @@ server/world	method	ColumnCache.CachedNetworkSubChunkPayload	func(ind int16) ([]
 server/world	method	Config.New	func() *server/world.World
 server/world	method	Context.ActOn	func(e server/world.Entity, f func()) (ok bool)
 server/world	method	Context.AddEntity	func(e *server/world.EntityHandle) server/world.Entity
-server/world	method	Context.AddMapDecoration	func(id int64, decoration server/world.MapDecoration) error
-server/world	method	Context.AddMapDecorationAt	func(id int64, typ byte, rotation byte, keyType int32, target server/block/cube.Pos, label string) error
 server/world	method	Context.AddParticle	func(pos github.com/go-gl/mathgl/mgl64.Vec3, p server/world.Particle)
 server/world	method	Context.Biome	func(pos server/block/cube.Pos) server/world.Biome
 server/world	method	Context.Block	func(pos server/block/cube.Pos) server/world.Block
@@ -20772,7 +20763,6 @@ server/world	method	Context.ClaimPOI	func(pos server/block/cube.Pos, owner githu
 server/world	method	Context.ClearForcedChunks	func() error
 server/world	method	Context.ColumnBlockVersion	func(pos server/world.ChunkPos) (uint64, bool)
 server/world	method	Context.CreateExplorationMap	func(origin server/block/cube.Pos, destination string, decoration byte, zoom uint8, searchRadius int, skipKnown bool) (data server/world.MapData, ok bool, err error)
-server/world	method	Context.CreateMap	func(pos server/block/cube.Pos, scale uint8) (server/world.MapData, error)
 server/world	method	Context.CurrentTick	func() int64
 server/world	method	Context.Defer	func(f func(tx *server/world.Tx)) *server/world.Task
 server/world	method	Context.DeferErr	func(f func(tx *server/world.Tx) error) *server/world.Task
@@ -20792,7 +20782,6 @@ server/world	method	Context.EntityTicking	func(pos server/world.ChunkPos) bool
 server/world	method	Context.Event	func() *server/world.Context
 server/world	method	Context.Features	func() (server/world.RuntimeFeatures, bool)
 server/world	method	Context.FindNearestPOIByType	func(origin server/block/cube.Pos, name string, radius int) (server/block/cube.Pos, server/world.POI, bool)
-server/world	method	Context.ForEachMapFrame	func(fn func(server/block/cube.Pos, server/world.MapFrameInfo))
 server/world	method	Context.ForceChunk	func(pos server/world.ChunkPos, force bool) error
 server/world	method	Context.ForceScheduleVibration	func(listenerPos server/block/cube.Pos, event server/world.GameEvent, context server/world.GameEventContext, origin github.com/go-gl/mathgl/mgl64.Vec3)
 server/world	method	Context.HasScheduledBlockUpdate	func(pos server/block/cube.Pos, b server/world.Block) bool
@@ -20812,8 +20801,8 @@ server/world	method	Context.LoadDragonArena	func(active bool) bool
 server/world	method	Context.LoadedBlockEntities	func(pos server/world.ChunkPos) iter.Seq2[server/block/cube.Pos, server/world.Block]
 server/world	method	Context.Local	func(key any, newValue func() any) any
 server/world	method	Context.LocalDifficulty	func(pos server/block/cube.Pos) server/world.LocalDifficulty
-server/world	method	Context.LockMap	func(id int64) (server/world.MapData, error)
 server/world	method	Context.LootRandomSequence	func(sequence string, seed int64) *server/internal/vanilla.Random
+server/world	method	Context.Maps	func() server/world.MapTransaction
 server/world	method	Context.MayContainLiquid	func(lo server/block/cube.Pos, hi server/block/cube.Pos) bool
 server/world	method	Context.MovementBlockProperties	func(block server/world.Block) (climbable bool, highSupport bool)
 server/world	method	Context.NativeLiquidBoundaryOpen	func(from server/block/cube.Pos, to server/block/cube.Pos) bool
@@ -20855,10 +20844,8 @@ server/world	method	Context.RegionRandom	func() *server/internal/vanilla.Random
 server/world	method	Context.ReleasePOI	func(pos server/block/cube.Pos, owner github.com/google/uuid.UUID) bool
 server/world	method	Context.ReleaseViewers	func(viewers []server/world.Viewer)
 server/world	method	Context.RemoveEntity	func(e server/world.Entity) *server/world.EntityHandle
-server/world	method	Context.RenderMapBiomePreview	func(id int64) (server/world.MapData, error)
 server/world	method	Context.ResendChunk	func(pos server/world.ChunkPos)
 server/world	method	Context.SaveWorld	func()
-server/world	method	Context.ScaleMap	func(id int64) (server/world.MapData, error)
 server/world	method	Context.ScheduleBlockUpdate	func(pos server/block/cube.Pos, b server/world.Block, delay time.Duration)
 server/world	method	Context.SetBiome	func(pos server/block/cube.Pos, b server/world.Biome)
 server/world	method	Context.SetBlock	func(pos server/block/cube.Pos, b server/world.Block, opts *server/world.SetOpts)
@@ -20879,7 +20866,6 @@ server/world	method	Context.Thundering	func() bool
 server/world	method	Context.ThunderingAt	func(pos server/block/cube.Pos) bool
 server/world	method	Context.TickingEntities	func() iter.Seq[server/world.Entity]
 server/world	method	Context.TryWarnWarden	func(pos server/block/cube.Pos, trigger server/world.Entity) (int, bool)
-server/world	method	Context.UpdateMap	func(id int64, player server/block/cube.Pos) (server/world.MapData, error)
 server/world	method	Context.Viewers	func(pos github.com/go-gl/mathgl/mgl64.Vec3) []server/world.Viewer
 server/world	method	Context.VillageDistance	func(pos server/block/cube.Pos) int
 server/world	method	Context.VillageSections	func(pos server/block/cube.Pos, radius int) []server/block/cube.Pos
@@ -20937,6 +20923,14 @@ server/world	method	Loader.Load	func(tx *server/world.Tx, n int)
 server/world	method	Loader.Move	func(tx *server/world.Tx, pos github.com/go-gl/mathgl/mgl64.Vec3)
 server/world	method	Loader.World	func() *server/world.World
 server/world	method	LocalDifficulty.SpecialMultiplier	func() float32
+server/world	method	MapTransaction.AddDecoration	func(id int64, decoration server/world.MapDecoration) error
+server/world	method	MapTransaction.AddDecorationAt	func(id int64, typ byte, rotation byte, keyType int32, target server/block/cube.Pos, label string) error
+server/world	method	MapTransaction.Create	func(pos server/block/cube.Pos, scale uint8) (server/world.MapData, error)
+server/world	method	MapTransaction.ForEachFrame	func(fn func(server/block/cube.Pos, server/world.MapFrameInfo))
+server/world	method	MapTransaction.Lock	func(id int64) (server/world.MapData, error)
+server/world	method	MapTransaction.RenderBiomePreview	func(id int64) (server/world.MapData, error)
+server/world	method	MapTransaction.Scale	func(id int64) (server/world.MapData, error)
+server/world	method	MapTransaction.Update	func(id int64, player server/block/cube.Pos) (server/world.MapData, error)
 server/world	method	MoveTracker.Move	func(pos github.com/go-gl/mathgl/mgl64.Vec3, rot server/block/cube.Rotation, headYaw float64, vel github.com/go-gl/mathgl/mgl64.Vec3, onGround bool, moving bool, interval int) (move *server/world.EntityMove, teleport bool)
 server/world	method	MoveTracker.Shown	func(pos github.com/go-gl/mathgl/mgl64.Vec3, rot server/block/cube.Rotation, headYaw float64, onGround bool)
 server/world	method	NativeState.CanonicalID	func(registry server/world/chunk.BlockRegistry) uint32
@@ -21077,8 +21071,6 @@ server/world	method	Transfer.Cancel	func()
 server/world	method	Transfer.Remove	func(tx *server/world.Tx, e server/world.Entity) *server/world.EntityHandle
 server/world	method	Tx.ActOn	func(e server/world.Entity, f func()) (ok bool)
 server/world	method	Tx.AddEntity	func(e *server/world.EntityHandle) server/world.Entity
-server/world	method	Tx.AddMapDecoration	func(id int64, decoration server/world.MapDecoration) error
-server/world	method	Tx.AddMapDecorationAt	func(id int64, typ byte, rotation byte, keyType int32, target server/block/cube.Pos, label string) error
 server/world	method	Tx.AddParticle	func(pos github.com/go-gl/mathgl/mgl64.Vec3, p server/world.Particle)
 server/world	method	Tx.Biome	func(pos server/block/cube.Pos) server/world.Biome
 server/world	method	Tx.Block	func(pos server/block/cube.Pos) server/world.Block
@@ -21100,7 +21092,6 @@ server/world	method	Tx.ClaimPOI	func(pos server/block/cube.Pos, owner github.com
 server/world	method	Tx.ClearForcedChunks	func() error
 server/world	method	Tx.ColumnBlockVersion	func(pos server/world.ChunkPos) (uint64, bool)
 server/world	method	Tx.CreateExplorationMap	func(origin server/block/cube.Pos, destination string, decoration byte, zoom uint8, searchRadius int, skipKnown bool) (data server/world.MapData, ok bool, err error)
-server/world	method	Tx.CreateMap	func(pos server/block/cube.Pos, scale uint8) (server/world.MapData, error)
 server/world	method	Tx.CurrentTick	func() int64
 server/world	method	Tx.Defer	func(f func(tx *server/world.Tx)) *server/world.Task
 server/world	method	Tx.DeferErr	func(f func(tx *server/world.Tx) error) *server/world.Task
@@ -21120,7 +21111,6 @@ server/world	method	Tx.EntityTicking	func(pos server/world.ChunkPos) bool
 server/world	method	Tx.Event	func() *server/world.Context
 server/world	method	Tx.Features	func() (server/world.RuntimeFeatures, bool)
 server/world	method	Tx.FindNearestPOIByType	func(origin server/block/cube.Pos, name string, radius int) (server/block/cube.Pos, server/world.POI, bool)
-server/world	method	Tx.ForEachMapFrame	func(fn func(server/block/cube.Pos, server/world.MapFrameInfo))
 server/world	method	Tx.ForceChunk	func(pos server/world.ChunkPos, force bool) error
 server/world	method	Tx.ForceScheduleVibration	func(listenerPos server/block/cube.Pos, event server/world.GameEvent, context server/world.GameEventContext, origin github.com/go-gl/mathgl/mgl64.Vec3)
 server/world	method	Tx.HasScheduledBlockUpdate	func(pos server/block/cube.Pos, b server/world.Block) bool
@@ -21140,8 +21130,8 @@ server/world	method	Tx.LoadDragonArena	func(active bool) bool
 server/world	method	Tx.LoadedBlockEntities	func(pos server/world.ChunkPos) iter.Seq2[server/block/cube.Pos, server/world.Block]
 server/world	method	Tx.Local	func(key any, newValue func() any) any
 server/world	method	Tx.LocalDifficulty	func(pos server/block/cube.Pos) server/world.LocalDifficulty
-server/world	method	Tx.LockMap	func(id int64) (server/world.MapData, error)
 server/world	method	Tx.LootRandomSequence	func(sequence string, seed int64) *server/internal/vanilla.Random
+server/world	method	Tx.Maps	func() server/world.MapTransaction
 server/world	method	Tx.MayContainLiquid	func(lo server/block/cube.Pos, hi server/block/cube.Pos) bool
 server/world	method	Tx.MovementBlockProperties	func(block server/world.Block) (climbable bool, highSupport bool)
 server/world	method	Tx.NativeLiquidBoundaryOpen	func(from server/block/cube.Pos, to server/block/cube.Pos) bool
@@ -21183,10 +21173,8 @@ server/world	method	Tx.RegionRandom	func() *server/internal/vanilla.Random
 server/world	method	Tx.ReleasePOI	func(pos server/block/cube.Pos, owner github.com/google/uuid.UUID) bool
 server/world	method	Tx.ReleaseViewers	func(viewers []server/world.Viewer)
 server/world	method	Tx.RemoveEntity	func(e server/world.Entity) *server/world.EntityHandle
-server/world	method	Tx.RenderMapBiomePreview	func(id int64) (server/world.MapData, error)
 server/world	method	Tx.ResendChunk	func(pos server/world.ChunkPos)
 server/world	method	Tx.SaveWorld	func()
-server/world	method	Tx.ScaleMap	func(id int64) (server/world.MapData, error)
 server/world	method	Tx.ScheduleBlockUpdate	func(pos server/block/cube.Pos, b server/world.Block, delay time.Duration)
 server/world	method	Tx.SetBiome	func(pos server/block/cube.Pos, b server/world.Biome)
 server/world	method	Tx.SetBlock	func(pos server/block/cube.Pos, b server/world.Block, opts *server/world.SetOpts)
@@ -21207,7 +21195,6 @@ server/world	method	Tx.Thundering	func() bool
 server/world	method	Tx.ThunderingAt	func(pos server/block/cube.Pos) bool
 server/world	method	Tx.TickingEntities	func() iter.Seq[server/world.Entity]
 server/world	method	Tx.TryWarnWarden	func(pos server/block/cube.Pos, trigger server/world.Entity) (int, bool)
-server/world	method	Tx.UpdateMap	func(id int64, player server/block/cube.Pos) (server/world.MapData, error)
 server/world	method	Tx.Viewers	func(pos github.com/go-gl/mathgl/mgl64.Vec3) []server/world.Viewer
 server/world	method	Tx.VillageDistance	func(pos server/block/cube.Pos) int
 server/world	method	Tx.VillageSections	func(pos server/block/cube.Pos, radius int) []server/block/cube.Pos
@@ -21457,6 +21444,7 @@ server/world	type	MapDecoration	struct{Type byte; Rotation byte; X int8; Z int8;
 server/world	type	MapFrameInfo	struct{NativeID int64; HasNativeID bool; JavaID int32; HasJavaID bool}
 server/world	type	MapPixelPatch	struct{X int; Y int; Width int; Height int; Colors []byte}
 server/world	type	MapTrackedObject	struct{Entity *server/world.EntityHandle; Block *server/block/cube.Pos}
+server/world	type	MapTransaction	struct{tx *server/world.Tx}
 server/world	type	MissingStateReconstructor	interface{ReconstructMissingState(pos server/block/cube.Pos, missing []string, blocks server/world.BlockSource) server/world.Block; ReconstructionOrder() int}
 server/world	type	MoveParts	uint8
 server/world	type	MoveTracker	struct{shown bool; pos github.com/go-gl/mathgl/mgl64.Vec3; pitch uint8; yaw uint8; head uint8; onGround bool; vel github.com/go-gl/mathgl/mgl64.Vec3; since int; moving bool; full bool}

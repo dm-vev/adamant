@@ -71,8 +71,9 @@ type mapFrameProvider interface {
 	MapFrameData() (MapFrameInfo, bool)
 }
 
-// ForEachMapFrame visits map-bearing block entities in currently loaded chunks.
-func (tx *Tx) ForEachMapFrame(fn func(cube.Pos, MapFrameInfo)) {
+// ForEachFrame visits map-bearing block entities in currently loaded chunks.
+func (h MapTransaction) ForEachFrame(fn func(cube.Pos, MapFrameInfo)) {
+	tx := h.tx
 	if fn == nil {
 		return
 	}
@@ -268,15 +269,16 @@ func (w *World) MapDataByJavaID(javaID int32) (MapData, error) {
 func (w *World) CreateMap(pos cube.Pos, scale uint8) (MapData, error) {
 	var data MapData
 	var createErr error
-	task := w.Do(func(tx *Tx) { data, createErr = tx.CreateMap(pos, scale) })
+	task := w.Do(func(tx *Tx) { data, createErr = tx.Maps().Create(pos, scale) })
 	if err := task.Wait(context.Background()); err != nil {
 		return MapData{}, err
 	}
 	return data, createErr
 }
 
-// CreateMap allocates and persists a map from within an existing world transaction.
-func (tx *Tx) CreateMap(pos cube.Pos, scale uint8) (MapData, error) {
+// Create allocates and persists a map from within an existing world transaction.
+func (h MapTransaction) Create(pos cube.Pos, scale uint8) (MapData, error) {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	w := tx.World()
@@ -331,7 +333,7 @@ func (w *World) ScaleMap(id int64) (MapData, error) {
 	}
 	var data MapData
 	var scaleErr error
-	task := w.Do(func(tx *Tx) { data, scaleErr = tx.ScaleMap(id) })
+	task := w.Do(func(tx *Tx) { data, scaleErr = tx.Maps().Scale(id) })
 	if err := task.Wait(context.Background()); err != nil {
 		return MapData{}, err
 	}
@@ -345,7 +347,7 @@ func (w *World) LockMap(id int64) (MapData, error) {
 	}
 	var data MapData
 	var lockErr error
-	task := w.Do(func(tx *Tx) { data, lockErr = tx.LockMap(id) })
+	task := w.Do(func(tx *Tx) { data, lockErr = tx.Maps().Lock(id) })
 	if err := task.Wait(context.Background()); err != nil {
 		return MapData{}, err
 	}
@@ -362,8 +364,9 @@ func (w *World) CloneMap(id int64) (MapData, error) {
 	return w.storeNewMap(data)
 }
 
-// ScaleMap creates a new map at the next coarser scale within a world transaction.
-func (tx *Tx) ScaleMap(id int64) (MapData, error) {
+// Scale creates a new map at the next coarser scale within a world transaction.
+func (h MapTransaction) Scale(id int64) (MapData, error) {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	source, err := tx.World().MapData(id)
@@ -385,8 +388,9 @@ func (tx *Tx) ScaleMap(id int64) (MapData, error) {
 	return tx.World().storeNewMap(child)
 }
 
-// LockMap stores a locked, independent copy within a world transaction.
-func (tx *Tx) LockMap(id int64) (MapData, error) {
+// Lock stores a locked, independent copy within a world transaction.
+func (h MapTransaction) Lock(id int64) (MapData, error) {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	w := tx.World()
@@ -411,8 +415,9 @@ func (w *World) AddMapDecoration(id int64, decoration MapDecoration) error {
 	return addMapDecoration(w, data, decoration)
 }
 
-// AddMapDecoration adds a fixed icon to an existing map inside a world transaction.
-func (tx *Tx) AddMapDecoration(id int64, decoration MapDecoration) error {
+// AddDecoration adds a fixed icon to an existing map inside a world transaction.
+func (h MapTransaction) AddDecoration(id int64, decoration MapDecoration) error {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	data, err := tx.World().MapData(id)
@@ -434,8 +439,9 @@ func addMapDecoration(w *World, data MapData, decoration MapDecoration) error {
 	return w.StoreMapData(data)
 }
 
-// AddMapDecorationAt persists a Java map icon and its native key at an absolute target position.
-func (tx *Tx) AddMapDecorationAt(id int64, typ, rotation byte, keyType int32, target cube.Pos, label string) error {
+// AddDecorationAt persists a Java map icon and its native key at an absolute target position.
+func (h MapTransaction) AddDecorationAt(id int64, typ, rotation byte, keyType int32, target cube.Pos, label string) error {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	data, err := tx.World().MapData(id)
@@ -465,15 +471,16 @@ func mapDecorationCoordinate(delta float64) int8 {
 func (w *World) UpdateMap(id int64, player cube.Pos) (MapData, error) {
 	var data MapData
 	var updateErr error
-	task := w.Do(func(tx *Tx) { data, updateErr = tx.UpdateMap(id, player) })
+	task := w.Do(func(tx *Tx) { data, updateErr = tx.Maps().Update(id, player) })
 	if err := task.Wait(context.Background()); err != nil {
 		return MapData{}, err
 	}
 	return data, updateErr
 }
 
-// UpdateMap explores the Java map renderer's current player-centered scan stripe.
-func (tx *Tx) UpdateMap(id int64, player cube.Pos) (MapData, error) {
+// Update explores the Java map renderer's current player-centered scan stripe.
+func (h MapTransaction) Update(id int64, player cube.Pos) (MapData, error) {
+	tx := h.tx
 	w := tx.World()
 	tx.lockShared()
 	defer tx.unlockShared()
@@ -555,8 +562,9 @@ func (tx *Tx) UpdateMap(id int64, player cube.Pos) (MapData, error) {
 	return data, nil
 }
 
-// RenderMapBiomePreview applies Java's WATER_ON_MAP_OUTLINES preview to a new explorer map.
-func (tx *Tx) RenderMapBiomePreview(id int64) (MapData, error) {
+// RenderBiomePreview applies Java's WATER_ON_MAP_OUTLINES preview to a new explorer map.
+func (h MapTransaction) RenderBiomePreview(id int64) (MapData, error) {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	w := tx.World()
@@ -640,7 +648,7 @@ func (tx *Tx) RenderMapBiomePreview(id int64) (MapData, error) {
 func (w *World) RenderMapBiomePreview(id int64) (MapData, error) {
 	var data MapData
 	var updateErr error
-	task := w.Do(func(tx *Tx) { data, updateErr = tx.RenderMapBiomePreview(id) })
+	task := w.Do(func(tx *Tx) { data, updateErr = tx.Maps().RenderBiomePreview(id) })
 	if err := task.Wait(context.Background()); err != nil {
 		return MapData{}, err
 	}

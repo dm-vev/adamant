@@ -17,7 +17,7 @@ type EmptyMap struct {
 // Use ports EmptyMapItem.use: one map is consumed for a filled map of scale 0
 // covering the user's position.
 func (m EmptyMap) Use(tx *world.Tx, user User, ctx *UseContext) bool {
-	data, err := tx.CreateMap(cube.PosFromVec3(user.Position()), 0)
+	data, err := tx.Maps().Create(cube.PosFromVec3(user.Position()), 0)
 	if err != nil {
 		return false
 	}

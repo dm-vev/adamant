@@ -47,7 +47,7 @@ func TestPlayerExploreMap(t *testing.T) {
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Log: slog.New(slog.DiscardHandler), Entities: entity.DefaultRegistry, Provider: &mapProvider{maps: map[int64]world.MapData{}}}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	withClientPlayer(t, w, nil, func(tx *world.Tx, p *Player) {
-		created, err := tx.CreateMap(cube.Pos{0, 100, 0}, 0)
+		created, err := tx.Maps().Create(cube.Pos{0, 100, 0}, 0)
 		if err != nil {
 			t.Fatalf("CreateMap: %v", err)
 		}

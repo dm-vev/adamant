@@ -9,5 +9,5 @@ import (
 // is in, as a map the player holds is explored, and returns its data. It
 // fails if no map of the ID exists.
 func (p *Player) ExploreMap(id int64) (world.MapData, error) {
-	return p.tx.UpdateMap(id, cube.PosFromVec3(p.Position()))
+	return p.tx.Maps().Update(id, cube.PosFromVec3(p.Position()))
 }
