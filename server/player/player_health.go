@@ -91,28 +91,7 @@ func (p *Player) Heal(health float64, source world.HealingSource) float64 {
 // final damage dealt to the Player and if the Player was vulnerable to this
 // kind of damage.
 func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
-	w := p.tx.World()
-	if !w.GameRuleBool("fire_damage") && src.Fire() {
-		return 0, false
-	}
-	if !w.GameRuleBool("drowning_damage") {
-		if _, ok := src.(entity.DrowningDamageSource); ok {
-			return 0, false
-		}
-	}
-	// Player.isInvulnerableTo: the is_fall and is_freezing damage types.
-	switch src.(type) {
-	case entity.FallDamageSource, block.StalagmiteDamageSource:
-		if !w.GameRuleBool("fall_damage") {
-			return 0, false
-		}
-	case entity.FreezeDamageSource:
-		if !w.GameRuleBool("freeze_damage") {
-			return 0, false
-		}
-	}
-	_, fireResistant := p.Effect(effect.FireResistance)
-	if p.frostWalkerProtectsFrom(src) || (fireResistant && src.Fire()) || p.Dead() || !p.GameMode().AllowsTakingDamage() || dmg < 0 {
+	if p.isInvulnerableTo(dmg, src) {
 		return 0, false
 	}
 	totalDamage := p.FinalDamageFrom(dmg, src)
@@ -121,13 +100,9 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 			return 0, false
 		}
 	}
-	damageLeft := totalDamage
-
-	immune := time.Now().Before(p.immuneUntil)
-	if immune {
-		if damageLeft -= p.lastDamage; damageLeft <= 0 {
-			return 0, false
-		}
+	damageLeft, immune, hurt := p.damageAfterImmunity(totalDamage)
+	if !hurt {
+		return 0, false
 	}
 
 	immunity := time.Second / 2
@@ -137,11 +112,85 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 	}
 	p.ReleaseShoulderParrots()
 	p.setAttackImmunity(immunity, totalDamage)
+	p.setLastHurtBy(src)
+
+	damageLeft = p.getDamageAfterAbsorb(damageLeft)
+	if p.checkTotemDeathProtection(src, damageLeft) {
+		return 0, false
+	}
+
+	p.addHealth(-damageLeft)
+	if damageLeft > 0 {
+		p.emitGameEvent(world.GameEventEntityDamage, p.Position(), nil)
+	}
+	if src.ReducedByArmour() {
+		p.hurtArmor(dmg, src)
+	}
+	p.showHurt(src)
+
+	p.Wake()
+	entity.TriggerHurtEffects(p.tx, p, p.Effects())
+
+	if p.Dead() {
+		p.kill(src)
+	}
+	return totalDamage, true
+}
+
+// isInvulnerableTo returns true if a hit of dmg damage by src does not hurt the player (Player.isInvulnerableTo
+// and LivingEntity.hurtServer): the game rules of fire, drowning, fall and freezing damage, Fire Resistance
+// and Frost Walker, and a player that is dead, cannot take damage, or is hit for less than 0.
+func (p *Player) isInvulnerableTo(dmg float64, src world.DamageSource) bool {
+	w := p.tx.World()
+	if !w.GameRuleBool("fire_damage") && src.Fire() {
+		return true
+	}
+	if !w.GameRuleBool("drowning_damage") {
+		if _, ok := src.(entity.DrowningDamageSource); ok {
+			return true
+		}
+	}
+	// Player.isInvulnerableTo: the is_fall and is_freezing damage types.
+	switch src.(type) {
+	case entity.FallDamageSource, block.StalagmiteDamageSource:
+		if !w.GameRuleBool("fall_damage") {
+			return true
+		}
+	case entity.FreezeDamageSource:
+		if !w.GameRuleBool("freeze_damage") {
+			return true
+		}
+	}
+	_, fireResistant := p.Effect(effect.FireResistance)
+	return p.frostWalkerProtectsFrom(src) || (fireResistant && src.Fire()) || p.Dead() || !p.GameMode().AllowsTakingDamage() || dmg < 0
+}
+
+// damageAfterImmunity returns the damage of a hit of totalDamage that is left while the player is immune from
+// an earlier hit (LivingEntity.invulnerableTime): the part over the damage of that hit. immune is true while the
+// player is immune, and hurt is false if nothing is left.
+func (p *Player) damageAfterImmunity(totalDamage float64) (damageLeft float64, immune, hurt bool) {
+	damageLeft = totalDamage
+	immune = time.Now().Before(p.immuneUntil)
+	if immune {
+		if damageLeft -= p.lastDamage; damageLeft <= 0 {
+			return 0, immune, false
+		}
+	}
+	return damageLeft, immune, true
+}
+
+// setLastHurtBy remembers the source of the last hit, and the living entity that made it, with the tick
+// (LivingEntity.setLastHurtByMob).
+func (p *Player) setLastHurtBy(src world.DamageSource) {
 	p.lastDamageSource, p.lastDamageTick = src, p.tx.CurrentTick()
 	if attacker, ok := entity.DamageAttacker(src).(entity.Living); ok {
 		p.lastHurtBy, p.lastHurtByTick = attacker.H(), p.tx.CurrentTick()
 	}
+}
 
+// getDamageAfterAbsorb takes damageLeft from the absorption of the player first and returns what is left of it
+// (LivingEntity.getDamageAfterAbsorb), removing the Absorption effect when it is used up.
+func (p *Player) getDamageAfterAbsorb(damageLeft float64) float64 {
 	if a := p.Absorption(); a > 0 {
 		remaining := a - damageLeft
 		p.SetAbsorption(remaining)
@@ -150,42 +199,49 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 			p.RemoveEffect(effect.Absorption)
 		}
 	}
+	return damageLeft
+}
 
+// checkTotemDeathProtection spends a Totem of Undying, from the off hand first, if damageLeft would kill the
+// player, and returns true if it did (LivingEntity.checkTotemDeathProtection).
+func (p *Player) checkTotemDeathProtection(src world.DamageSource, damageLeft float64) bool {
 	if p.Health()-damageLeft <= mgl64.Epsilon && !src.IgnoreTotem() {
 		hand, offHand := p.HeldItems()
 		if _, ok := offHand.Item().(item.Totem); ok {
 			p.applyTotemEffects()
 			p.SetHeldItems(hand, offHand.Grow(-1))
-			return 0, false
+			return true
 		} else if _, ok := hand.Item().(item.Totem); ok {
 			p.applyTotemEffects()
 			p.SetHeldItems(hand.Grow(-1), offHand)
-			return 0, false
+			return true
 		}
 	}
+	return false
+}
 
-	p.addHealth(-damageLeft)
-	if damageLeft > 0 {
-		p.emitGameEvent(world.GameEventEntityDamage, p.Position(), nil)
+// hurtArmor tires the player and wears its armour by a hit of dmg of src, which armour reduces
+// (LivingEntity.hurtArmor), then hurts the entity that hit it back with the Thorns of its armour.
+func (p *Player) hurtArmor(dmg float64, src world.DamageSource) {
+	p.Exhaust(0.1)
+	p.Armour().Damage(dmg, src.Fire(), p.damageItem)
+
+	var origin world.Entity
+	if s, ok := src.(entity.AttackDamageSource); ok {
+		origin = s.Attacker
+	} else if s, ok := src.(entity.ProjectileDamageSource); ok {
+		origin = s.Owner
 	}
-
-	if src.ReducedByArmour() {
-		p.Exhaust(0.1)
-		p.Armour().Damage(dmg, src.Fire(), p.damageItem)
-
-		var origin world.Entity
-		if s, ok := src.(entity.AttackDamageSource); ok {
-			origin = s.Attacker
-		} else if s, ok := src.(entity.ProjectileDamageSource); ok {
-			origin = s.Owner
-		}
-		if l, ok := origin.(entity.Living); ok {
-			if thornsDmg := p.Armour().ThornsDamage(p.damageItem); thornsDmg > 0 {
-				l.Hurt(thornsDmg, enchantment.ThornsDamageSource{Owner: p})
-			}
+	if l, ok := origin.(entity.Living); ok {
+		if thornsDmg := p.Armour().ThornsDamage(p.damageItem); thornsDmg > 0 {
+			l.Hurt(thornsDmg, enchantment.ThornsDamageSource{Owner: p})
 		}
 	}
+}
 
+// showHurt shows the viewers that the player was hurt, and plays the sound of fire or drowning for a hit of
+// either.
+func (p *Player) showHurt(src world.DamageSource) {
 	pos := p.Position()
 	viewers, release := p.viewers()
 	for _, viewer := range viewers {
@@ -197,14 +253,6 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 	} else if _, ok := src.(entity.DrowningDamageSource); ok {
 		p.tx.PlaySound(pos, sound.Drowning{})
 	}
-
-	p.Wake()
-	entity.TriggerHurtEffects(p.tx, p, p.Effects())
-
-	if p.Dead() {
-		p.kill(src)
-	}
-	return totalDamage, true
 }
 
 // LastHurtByMob returns the living entity that hurt the player in the last
