@@ -1,0 +1,256 @@
+== place stone on the floor
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(2,-61,0) face=up click=(0.5000 0.5000 0.5000)
+event BlockPlace pos=(2,-60,0) block.Stone
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*15(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+inventory  0:minecraft:stone/0*15(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:stonemap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== place stone creative
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(2,-61,0) face=up click=(0.5000 0.5000 0.5000)
+event BlockPlace pos=(2,-60,0) block.Stone
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+inventory  0:minecraft:stone/0*16(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:stonemap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== place stone last of the stack
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*1(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(2,-61,0) face=up click=(0.5000 0.5000 0.5000)
+event BlockPlace pos=(2,-60,0) block.Stone
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+inventory 
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:stonemap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== place stone twice
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(2,-61,0) face=up click=(0.5000 0.5000 0.5000)
+event BlockPlace pos=(2,-60,0) block.Stone
+event ItemUseOnBlock pos=(2,-61,0) face=up click=(0.5000 0.5000 0.5000)
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*15(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+inventory  0:minecraft:stone/0*15(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:stonemap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== place stone side
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(2,-61,0) face=north click=(0.5000 0.5000 0.5000)
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+inventory  0:minecraft:stone/0*16(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== place stone in the player
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(0,-61,0) face=up click=(0.5000 0.5000 0.5000)
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+inventory  0:minecraft:stone/0*16(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== place stone into the world's top
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+client ChunkRadius()
+client ViewBlockUpdate(cube.Pos(2,319,0), block.Stone{solid:{} bassDrum:{} Smooth:false}, 0)
+client ChunkRadius()
+client ViewBlockUpdate(cube.Pos(2,320,0), block.Air{empty:{} replaceable:{} transparent:{}}, 0)
+inventory  0:minecraft:stone/0*16(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== place on replaceable
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(2,-60,0) face=up click=(0.5000 0.5000 0.5000)
+event BlockPlace pos=(2,-60,0) block.Stone
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*15(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+inventory  0:minecraft:stone/0*15(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:stonemap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== place event cancelled
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(2,-61,0) face=up click=(0.5000 0.5000 0.5000)
+event BlockPlace pos=(2,-60,0) block.Stone
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+client ChunkRadius()
+client ViewBlockUpdate(cube.Pos(2,-60,0), block.Air{empty:{} replaceable:{} transparent:{}}, 0)
+client ChunkRadius()
+client ViewBlockUpdate(cube.Pos(2,-61,0), block.Grass{solid:{}}, 0)
+client ChunkRadius()
+client ViewBlockUpdate(cube.Pos(2,-59,0), block.Air{empty:{} replaceable:{} transparent:{}}, 0)
+client ChunkRadius()
+client ChunkRadius()
+client ViewBlockUpdate(cube.Pos(3,-60,0), block.Air{empty:{} replaceable:{} transparent:{}}, 0)
+client ChunkRadius()
+client ViewBlockUpdate(cube.Pos(2,-60,1), block.Air{empty:{} replaceable:{} transparent:{}}, 0)
+client ChunkRadius()
+client ViewBlockUpdate(cube.Pos(1,-60,0), block.Air{empty:{} replaceable:{} transparent:{}}, 0)
+inventory  0:minecraft:stone/0*16(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== use event cancelled
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(2,-61,0) face=up click=(0.5000 0.5000 0.5000)
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+client ChunkRadius()
+client ViewBlockUpdate(cube.Pos(2,-61,0), block.Grass{solid:{}}, 0)
+client ChunkRadius()
+client ViewBlockUpdate(cube.Pos(2,-60,0), block.Air{empty:{} replaceable:{} transparent:{}}, 0)
+inventory  0:minecraft:stone/0*16(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== air
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+client ChunkRadius()
+client ViewBlockUpdate(cube.Pos(2,-55,0), block.Air{empty:{} replaceable:{} transparent:{}}, 0)
+client ChunkRadius()
+client ViewBlockUpdate(cube.Pos(2,-54,0), block.Air{empty:{} replaceable:{} transparent:{}}, 0)
+inventory  0:minecraft:stone/0*16(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== out of reach
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+client ChunkRadius()
+client ChunkRadius()
+inventory  0:minecraft:stone/0*16(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== open chest
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(2,-60,0) face=west click=(0.5000 0.5000 0.5000)
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client OpenMenu(*menu.Menu, tx)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+inventory  0:minecraft:stone/0*16(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:chestmap[minecraft:cardinal_direction:north] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== open chest empty hand
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(2,-60,0) face=west click=(0.5000 0.5000 0.5000)
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client OpenMenu(*menu.Menu, tx)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+inventory 
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:chestmap[minecraft:cardinal_direction:north] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== sneak place against chest
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=true fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(2,-60,0) face=west click=(0.5000 0.5000 0.5000)
+event BlockPlace pos=(1,-60,0) block.Stone
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=true fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*15(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+inventory  0:minecraft:stone/0*15(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:chestmap[minecraft:cardinal_direction:north] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== lever
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(2,-60,0) face=west click=(0.5000 0.5000 0.5000)
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+inventory  0:minecraft:stone/0*16(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:levermap[lever_direction:west open_bit:true] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== door
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(2,-60,0) face=west click=(0.5000 0.5000 0.5000)
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+inventory 
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:wooden_doormap[door_hinge_bit:false minecraft:cardinal_direction:east open_bit:true upper_block_bit:false] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== bell
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(2,-60,0) face=west click=(0.5000 0.5000 0.5000)
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+inventory 
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:bellmap[attachment:standing direction:2 toggle_bit:1] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== hoe on grass
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:iron_hoe/0*1(250) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(0,-61,0) face=up click=(0.5000 0.5000 0.5000)
+event ItemDamage item.Hoe damage=1
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:iron_hoe/0*1(249) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+inventory  0:minecraft:iron_hoe/0*1(249)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:farmlandmap[moisturized_amount:0] liquid=<nil>
+== shovel on grass
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:iron_shovel/0*1(250) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(0,-61,0) face=up click=(0.5000 0.5000 0.5000)
+event ItemDamage item.Shovel damage=1
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:iron_shovel/0*1(249) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+inventory  0:minecraft:iron_shovel/0*1(249)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_pathmap[] liquid=<nil>
+== flint and steel
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:flint_and_steel/0*1(64) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(0,-61,0) face=up click=(0.5000 0.5000 0.5000)
+event ItemDamage item.FlintAndSteel damage=1
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:flint_and_steel/0*1(63) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+inventory  0:minecraft:flint_and_steel/0*1(63)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== water bucket
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:water_bucket/0*1(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(0,-61,0) face=up click=(0.5000 0.5000 0.5000)
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:water_bucket/0*1(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+inventory  0:minecraft:water_bucket/0*1(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== empty bucket on water
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bucket/0*1(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(2,-60,0) face=up click=(0.5000 0.5000 0.5000)
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bucket/0*1(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+inventory  0:minecraft:bucket/0*1(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:watermap[liquid_depth:0] liquid=block.Water
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== adventure
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUseOnBlock pos=(2,-61,0) face=up click=(0.5000 0.5000 0.5000)
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:stone/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+client ChunkRadius()
+client ViewBlockUpdate(cube.Pos(2,-60,0), block.Air{empty:{} replaceable:{} transparent:{}}, 0)
+client ChunkRadius()
+client ViewBlockUpdate(cube.Pos(2,-61,0), block.Grass{solid:{}}, 0)
+client ChunkRadius()
+client ViewBlockUpdate(cube.Pos(2,-59,0), block.Air{empty:{} replaceable:{} transparent:{}}, 0)
+client ChunkRadius()
+client ChunkRadius()
+client ViewBlockUpdate(cube.Pos(3,-60,0), block.Air{empty:{} replaceable:{} transparent:{}}, 0)
+client ChunkRadius()
+client ViewBlockUpdate(cube.Pos(2,-60,1), block.Air{empty:{} replaceable:{} transparent:{}}, 0)
+client ChunkRadius()
+client ViewBlockUpdate(cube.Pos(1,-60,0), block.Air{empty:{} replaceable:{} transparent:{}}, 0)
+inventory  0:minecraft:stone/0*16(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>

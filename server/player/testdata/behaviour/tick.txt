@@ -892,6 +892,7 @@ tick 13 pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.
 client SendDebugShapes(world.overworldOverworld)
 client SendHudUpdates()
 == drawing a bow
+event ItemUse 
 start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bow/0*1(384) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=62 mode={}
 tick 0 pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bow/0*1(384) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=0 mode={}
 client SendDebugShapes(world.overworldOverworld)
@@ -984,6 +985,7 @@ tick 29 pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.
 client SendDebugShapes(world.overworldOverworld)
 client SendHudUpdates()
 == eating
+event ItemUse 
 start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=10 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bread/0*3(-1) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=62 mode={}
 tick 0 pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=10 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bread/0*3(-1) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=0 mode={}
 client SendFood(10, 5.0000, 0.0000)
@@ -1090,6 +1092,7 @@ client SendHudUpdates()
 tick 31 pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=10 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bread/0*3(-1) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=31 mode={}
 client SendDebugShapes(world.overworldOverworld)
 client SendHudUpdates()
+event ItemConsume item.Bread
 tick 32 pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=15 sat=11.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bread/0*2(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=32 mode={}
 client SendFood(15, 11.0000, 0.0000)
 client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))

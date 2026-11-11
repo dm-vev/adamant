@@ -1,0 +1,944 @@
+== empty hand
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=64 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory 
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== bow
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bow/0*1(384) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bow/0*1(384) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=62 mode={}
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bow/0*1(384) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=29 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:bow/0*1(384) 1:minecraft:arrow/0*64(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== bow repeated
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bow/0*1(384) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bow/0*1(384) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=62 mode={}
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bow/0*1(384) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=9 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:bow/0*1(384) 1:minecraft:arrow/0*64(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== bow without arrows
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bow/0*1(384) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bow/0*1(384) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bow/0*1(384) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=3 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:bow/0*1(384)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== crossbow
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:crossbow/0*1(465) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:crossbow/0*1(465) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=62 mode={}
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:crossbow/0*1(465) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=39 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendChargeItemComplete()
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:crossbow/0*1(465) 1:minecraft:arrow/0*63(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== crossbow loaded
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:crossbow/0*1(465) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+event ItemDamage item.Crossbow damage=1
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:crossbow/0*1(464) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:crossbow/0*1(464) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=3 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:crossbow/0*1(464)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== snowball
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:snowball/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:snowball/0*15(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:snowball/0*15(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=4 strength=1 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:snowball/0*15(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== snowball twice
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:snowball/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:snowball/0*14(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:snowball/0*14(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=4 strength=1 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:snowball/0*14(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== ender pearl
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:ender_pearl/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:ender_pearl/0*15(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client ViewItemCooldown(item.EnderPearl{}, 1s)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:ender_pearl/0*15(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=4 strength=1 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:ender_pearl/0*15(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== egg creative
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:egg/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:egg/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:egg/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=4 strength=1 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:egg/0*16(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== bread
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=8 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bread/0*4(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=8 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bread/0*4(-1) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=62 mode={}
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+event ItemConsume item.Bread
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=13 sat=11.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bread/0*3(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=39 mode={}
+client SendFood(8, 5.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendFood(13, 11.0000, 0.0000)
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:bread/0*3(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== bread full
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bread/0*4(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bread/0*4(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bread/0*4(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=3 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:bread/0*4(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== potion
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:potion/14*1(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:potion/14*1(-1) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=62 mode={}
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+event ItemConsume item.Potion
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[effect.speed:1:2m59.65s] held=minecraft:glass_bottle/0*1(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=7 mode={}
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendSpeed(0.1200)
+client SendEffect(effect.Effect{t:{nopLasting:{}} d:180000000000 lvl:1 potency:0 ambient:false particlesHidden:false infinite:false tick:0})
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:glass_bottle/0*1(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== splash potion
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:splash_potion/14*1(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=4 strength=64 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory 
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== milk bucket
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[effect.speed:1:1m0s] held=minecraft:milk_bucket/0*1(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[effect.speed:1:1m0s] held=minecraft:milk_bucket/0*1(-1) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=62 mode={}
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+event ItemConsume item.Bucket
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bucket/0*1(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=7 mode={}
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.EatAction{action:{}})
+client SendSpeed(0.1000)
+client SendEffectRemoval(effect.speed{nopLasting:{}})
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:bucket/0*1(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== water bucket in the air
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:water_bucket/0*1(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:water_bucket/0*1(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:water_bucket/0*1(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=1 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:water_bucket/0*1(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== fishing rod
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:fishing_rod/0*1(64) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:fishing_rod/0*1(64) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+viewer ViewLayer()
+viewer ViewLayer()
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:fishing_rod/0*1(64) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=3 strength=2 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:fishing_rod/0*1(64)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== spear
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:iron_spear/0*1(250) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:iron_spear/0*1(250) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=62 mode={}
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+client PlaySound(sound.Custom{Name:item.spear.use Volume:1 Pitch:1 sound:{}}, (0.5000 -58.3800 0.5000))
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:iron_spear/0*1(250) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=19 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:iron_spear/0*1(250)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== wooden spear
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:wooden_spear/0*1(59) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:wooden_spear/0*1(59) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=62 mode={}
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+client PlaySound(sound.Custom{Name:item.spear_wood.use Volume:1 Pitch:1 sound:{}}, (0.5000 -58.3800 0.5000))
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:wooden_spear/0*1(59) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=2 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:wooden_spear/0*1(59)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== trident
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:trident/0*1(250) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:trident/0*1(250) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=62 mode={}
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:trident/0*1(250) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=29 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:trident/0*1(250)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== shield
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:shield/0*1(336) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:shield/0*1(336) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=62 mode={}
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:shield/0*1(336) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=2 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:shield/0*1(336)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== sword
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:iron_sword/0*1(250) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:iron_sword/0*1(250) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:iron_sword/0*1(250) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=2 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:iron_sword/0*1(250)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== event cancelled
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:snowball/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:snowball/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:snowball/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=2 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:snowball/0*16(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== cooldown
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:ender_pearl/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:ender_pearl/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:ender_pearl/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=2 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:ender_pearl/0*16(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== adventure
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:snowball/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:snowball/0*15(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:snowball/0*15(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=3 strength=2 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:snowball/0*15(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== spectator
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:snowball/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:snowball/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=62 mode={}
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:snowball/0*16(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=2 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:snowball/0*16(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== switch while using
+event ItemUse 
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bow/0*1(384) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=62 mode={}
+event ItemUse 
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:snowball/0*15(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=6 strength=62 mode={}
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.SwingArmAction{action:{}})
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:snowball/0*15(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=2 strength=3 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:snowball/0*15(-1) 1:minecraft:arrow/0*64(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+== release
+event ItemUse 
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bow/0*1(384) off=- armour=-1/-1/-1/-1 using=true breaking=false blockdelay=0 strength=24 mode={}
+event ItemRelease item.Bow duration=1.25s
+event ItemDamage item.Bow damage=1
+acted pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bow/0*1(383) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=24 mode={}
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+ticked pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[0 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=true sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bow/0*1(383) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=28 mode={}
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+client SendDebugShapes(world.overworldOverworld)
+client SendHudUpdates()
+inventory  0:minecraft:bow/0*1(383) 1:minecraft:arrow/0*63(-1)
+block (2,-61,0) minecraft:grass_blockmap[] liquid=<nil>
+block (2,-60,0) minecraft:airmap[] liquid=<nil>
+block (0,-61,0) minecraft:grass_blockmap[] liquid=<nil>

@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/client/clienttest"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -57,6 +59,12 @@ func describeArg(a any) string {
 		return fmt.Sprint(v)
 	case *world.Tx:
 		return "tx"
+	case *world.EntityMove:
+		return fmt.Sprintf("*world.EntityMove&%+v", *v)
+	}
+	if reflect.TypeOf(a).Kind() == reflect.Pointer {
+		// A pointer prints its address, which differs from run to run.
+		return fmt.Sprintf("%T", a)
 	}
 	return fmt.Sprintf("%T%+v", a, a)
 }
@@ -183,4 +191,22 @@ func describeStack(s item.Stack) string {
 	}
 	name, meta := s.Item().EncodeItem()
 	return fmt.Sprintf("%s/%d*%d(%d)", name, meta, s.Count(), s.Durability())
+}
+
+func (h *traceHandler) HandleItemUse(ctx *Context) { h.event(ctx, "ItemUse", "") }
+
+func (h *traceHandler) HandleItemUseOnBlock(ctx *Context, pos cube.Pos, face cube.Face, clickPos mgl64.Vec3) {
+	h.event(ctx, "ItemUseOnBlock", "pos=%v face=%v click=%s", pos, face, describeArg(clickPos))
+}
+
+func (h *traceHandler) HandleItemRelease(ctx *Context, i item.Stack, d time.Duration) {
+	h.event(ctx, "ItemRelease", "%T duration=%v", i.Item(), d)
+}
+
+func (h *traceHandler) HandleItemConsume(ctx *Context, i item.Stack) {
+	h.event(ctx, "ItemConsume", "%T", i.Item())
+}
+
+func (h *traceHandler) HandleBlockPlace(ctx *Context, pos cube.Pos, b world.Block) {
+	h.event(ctx, "BlockPlace", "pos=%v %T", pos, b)
 }
