@@ -501,75 +501,92 @@ func (p *Player) UseItemOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec
 	}
 	i, left := p.HeldItems()
 	b := p.tx.Block(pos)
-	// Hit-dependent blocks are given the exact packet click position before ordinary
-	// activation or item use, so they can choose a precise slot.
-	hitAct, hitDependent := b.(block.HitActivatable)
-	if hitDependent || !p.Sneaking() || i.Empty() {
-		useCtx := p.useContext()
-		activated := false
-		p.tx.WithBlockInteraction(func() {
-			if hitDependent {
-				activated = hitAct.ActivateAt(pos, face, clickPos, p.tx, p, useCtx)
-			} else if act, ok := b.(block.Activatable); ok {
-				activated = act.Activate(pos, face, p.tx, p, useCtx)
-			}
-		})
-		if activated {
-			p.SwingArm()
-			if useCtx.HeldItemSet {
-				return
-			}
-			if useCtx.ReplaceHeldItem && !useCtx.NewItem.Empty() {
-				p.SetHeldItems(useCtx.NewItem, left)
-				return
-			}
-			p.SetHeldItems(p.subtractItem(p.damageItem(i, useCtx.Damage), useCtx.CountSub), left)
-			p.addNewItem(useCtx)
-			return
-		}
-		if bell, ok := b.(block.Bell); ok {
-			p.client().ViewBlockAction(pos, block.BellUseRejectedAction{Bell: bell})
-		}
-	}
-	if i.Empty() {
+	if p.activateBlock(pos, face, clickPos, b, i, left) || i.Empty() {
 		return
 	}
 	switch ib := i.Item().(type) {
 	case item.UsableOnBlock:
-		// The item does something when used on a block.
-		useCtx := p.useContext()
-		if !ib.UseOnBlock(pos, face, clickPos, p.tx, p, useCtx) {
-			return
+		p.useOnBlock(pos, face, clickPos, i, left, ib)
+	case world.Block:
+		p.placeHeldBlock(pos, face, b, i, left, ib)
+	}
+}
+
+// activateBlock activates the block b at pos that the player clicked with the item i of its main hand, as
+// Block.useItemOn does, and returns true if it was activated. left is the item of the off hand. A sneaking
+// player holding an item does not activate the block, unless it depends on the hit.
+func (p *Player) activateBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec3, b world.Block, i, left item.Stack) bool {
+	// Hit-dependent blocks are given the exact packet click position before ordinary
+	// activation or item use, so they can choose a precise slot.
+	hitAct, hitDependent := b.(block.HitActivatable)
+	if !hitDependent && p.Sneaking() && !i.Empty() {
+		return false
+	}
+	useCtx := p.useContext()
+	activated := false
+	p.tx.WithBlockInteraction(func() {
+		if hitDependent {
+			activated = hitAct.ActivateAt(pos, face, clickPos, p.tx, p, useCtx)
+		} else if act, ok := b.(block.Activatable); ok {
+			activated = act.Activate(pos, face, p.tx, p, useCtx)
 		}
-		if _, ok := i.Item().(item.BoneMeal); ok {
-			p.emitGameEvent(world.GameEventItemInteractFinish, p.Position(), nil)
-		}
+	})
+	if activated {
 		p.SwingArm()
+		if useCtx.HeldItemSet {
+			return true
+		}
+		if useCtx.ReplaceHeldItem && !useCtx.NewItem.Empty() {
+			p.SetHeldItems(useCtx.NewItem, left)
+			return true
+		}
 		p.SetHeldItems(p.subtractItem(p.damageItem(i, useCtx.Damage), useCtx.CountSub), left)
 		p.addNewItem(useCtx)
-	case world.Block:
-		// The item IS a block, meaning it is being placed.
-		replacedPos := pos
-		if replaceable, ok := b.(block.Replaceable); !ok || !replaceable.ReplaceableBy(ib) {
-			// The block clicked was either not replaceable, or not replaceable using the block passed.
-			replacedPos = pos.Side(face)
-		}
-		if replaceable, ok := p.tx.Block(replacedPos).(block.Replaceable); !ok || !replaceable.ReplaceableBy(ib) || replacedPos.OutOfBounds(p.tx.Range()) {
-			return
-		}
-		if p.refusePlaceRate(replacedPos) {
-			p.resendNearbyBlocks(replacedPos, cube.Faces()...)
-			return
-		}
-		if !p.placeBlock(replacedPos, ib, false) {
-			return
-		}
-		p.emitGameEvent(world.GameEventBlockPlace, replacedPos.Vec3Centre(), p.tx.Block(replacedPos))
-		if p.GameMode().CreativeInventory() {
-			return
-		}
-		p.SetHeldItems(p.subtractItem(i, 1), left)
+		return true
 	}
+	if bell, ok := b.(block.Bell); ok {
+		p.client().ViewBlockAction(pos, block.BellUseRejectedAction{Bell: bell})
+	}
+	return false
+}
+
+// useOnBlock uses an item i that does something when used on a block, such as a hoe, on the block at pos.
+func (p *Player) useOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec3, i, left item.Stack, ib item.UsableOnBlock) {
+	useCtx := p.useContext()
+	if !ib.UseOnBlock(pos, face, clickPos, p.tx, p, useCtx) {
+		return
+	}
+	if _, ok := i.Item().(item.BoneMeal); ok {
+		p.emitGameEvent(world.GameEventItemInteractFinish, p.Position(), nil)
+	}
+	p.SwingArm()
+	p.SetHeldItems(p.subtractItem(p.damageItem(i, useCtx.Damage), useCtx.CountSub), left)
+	p.addNewItem(useCtx)
+}
+
+// placeHeldBlock places the block ib, which is the item i, against the block b at pos, in the replaceable
+// block there or the one at its face.
+func (p *Player) placeHeldBlock(pos cube.Pos, face cube.Face, b world.Block, i, left item.Stack, ib world.Block) {
+	replacedPos := pos
+	if replaceable, ok := b.(block.Replaceable); !ok || !replaceable.ReplaceableBy(ib) {
+		// The block clicked was either not replaceable, or not replaceable using the block passed.
+		replacedPos = pos.Side(face)
+	}
+	if replaceable, ok := p.tx.Block(replacedPos).(block.Replaceable); !ok || !replaceable.ReplaceableBy(ib) || replacedPos.OutOfBounds(p.tx.Range()) {
+		return
+	}
+	if p.refusePlaceRate(replacedPos) {
+		p.resendNearbyBlocks(replacedPos, cube.Faces()...)
+		return
+	}
+	if !p.placeBlock(replacedPos, ib, false) {
+		return
+	}
+	p.emitGameEvent(world.GameEventBlockPlace, replacedPos.Vec3Centre(), p.tx.Block(replacedPos))
+	if p.GameMode().CreativeInventory() {
+		return
+	}
+	p.SetHeldItems(p.subtractItem(i, 1), left)
 }
 
 // UseItemOnEntity uses the item held in the main hand of the player on the entity passed, provided it is
