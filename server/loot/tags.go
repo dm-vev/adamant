@@ -6,6 +6,9 @@ import (
 	"io/fs"
 	"slices"
 	"strings"
+	"sync"
+
+	"github.com/df-mc/dragonfly/server/item"
 )
 
 type itemTag struct {
@@ -187,5 +190,45 @@ func enchantmentTagMembers(tagID string) (map[string]struct{}, error) {
 
 func enchantmentKnown(id string) bool {
 	_, ok := registeredEnchantments[normalize(id)]
+	return ok
+}
+
+// itemTagSets caches the Bedrock items of the Java item tags looked up.
+var itemTagSets struct {
+	sync.Mutex
+	sets map[string]map[itemKey]struct{}
+}
+
+// itemKey is the name and metadata an item encodes as.
+type itemKey struct {
+	name string
+	meta int16
+}
+
+// StackInItemTag reports if the item of the stack is one of the Java item tag
+// passed: an item the tag lists, or lists through another tag, that has a
+// Bedrock counterpart. An empty stack is in no tag.
+func StackInItemTag(stack item.Stack, tag string) bool {
+	if stack.Empty() {
+		return false
+	}
+	itemTagSets.Lock()
+	set, ok := itemTagSets.sets[tag]
+	if !ok {
+		set = make(map[itemKey]struct{})
+		for _, id := range ItemTagMembers(tag) {
+			if it, ok := item.JavaItem(id); ok {
+				name, meta := it.EncodeItem()
+				set[itemKey{name, meta}] = struct{}{}
+			}
+		}
+		if itemTagSets.sets == nil {
+			itemTagSets.sets = make(map[string]map[itemKey]struct{})
+		}
+		itemTagSets.sets[tag] = set
+	}
+	itemTagSets.Unlock()
+	name, meta := stack.Item().EncodeItem()
+	_, ok = set[itemKey{name, meta}]
 	return ok
 }

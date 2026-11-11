@@ -176,11 +176,11 @@ func canSpawnWither(tx *world.Tx, head cube.Pos) bool {
 // the air in front if that makes the base of a golem a golem (the golem is
 // summoned as the pumpkin is placed), and otherwise worn by a mob in front;
 // without one the dispenser clicks and keeps it. A pumpkin that is not carved
-// is ejected.
+// goes to a sulfur cube in front, or is ejected: it has no behaviour of its own.
 func dispensePumpkin(src dispenseSource) dispensed {
 	tx, front := src.tx, src.front()
 	if !src.stack.Item().(Pumpkin).Carved {
-		return dispenseDefault(src)
+		return dispenseSulfurCube(src)
 	}
 	if _, air := tx.Block(front).(Air); air && canSpawnGolem(tx, front) {
 		tx.SetBlock(front, Pumpkin{Carved: true}, nil)

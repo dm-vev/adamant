@@ -15112,6 +15112,7 @@ server/entity	method	SulfurCube.Displace	func(deltaPos github.com/go-gl/mathgl/m
 server/entity	method	SulfurCube.Effects	func() []server/entity/effect.Effect
 server/entity	method	SulfurCube.EnterPowderSnow	func()
 server/entity	method	SulfurCube.EquipBodyArmor	func(_ *server/world.Tx, _ server/world.Entity, stack server/world.Item) bool
+server/entity	method	SulfurCube.EquipItem	func(stack server/item.Stack) bool
 server/entity	method	SulfurCube.Explode	func(src server/world.ExplosionSource, impact float64)
 server/entity	method	SulfurCube.Extinguish	func()
 server/entity	method	SulfurCube.FallDistance	func() float64
@@ -19256,6 +19257,7 @@ server/loot	func	ItemInTag	func(itemID string, tagID string) bool
 server/loot	func	ItemTagMembers	func(tagID string) []string
 server/loot	func	JavaTableKey	func(name string) string
 server/loot	func	RandomSequence	func(id string) (string, error)
+server/loot	func	StackInItemTag	func(stack server/item.Stack, tag string) bool
 server/loot	type	Context	struct{Random *server/internal/vanilla.Random; Tool server/world.Item; ToolStack server/item.Stack; Luck float64; Looting int; PlayerKilled bool; EnchantmentLevel int; ExplosionRadius float64; Block string; Entity string; OpenWater bool; Player server/world.Entity; Origin github.com/go-gl/mathgl/mgl64.Vec3; ThisEntity server/world.Entity; SourceEntity server/world.Entity; EntityProperties map[string]any; DirectEntity server/world.Entity; DamageTags map[string]bool; EntityNBT map[string]any; SourceEntityType string; Contents []server/item.Stack; Tx *server/world.Tx; BlockState server/world.Block; Damage server/world.DamageSource; RandomSequence func(sequence string, seed int64) *server/internal/vanilla.Random; Biome string}
 server/loot	type	LootComponentHolder	interface{LootComponents() map[string]any}
 server/menu	const	Anvil	server/menu.Kind = 11

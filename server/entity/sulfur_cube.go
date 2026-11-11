@@ -334,9 +334,9 @@ func (s *SulfurCube) setBodyItem(stack item.Stack) {
 	}
 }
 
-// equipItem ports SulfurCube.equipItem: an adult cube swallows a block,
+// EquipItem ports SulfurCube.equipItem: an adult cube swallows a block,
 // spitting out the one it held unless it is the same.
-func (s *SulfurCube) equipItem(stack item.Stack) bool {
+func (s *SulfurCube) EquipItem(stack item.Stack) bool {
 	b := s.b()
 	if b.age < 0 || !sulfurCubeSwallowable(stack) {
 		return false
@@ -355,7 +355,7 @@ func (s *SulfurCube) CanEquipBodyArmor(_ world.Entity) bool {
 	return s.b().bodyItem.Empty() && s.b().age >= 0
 }
 func (s *SulfurCube) EquipBodyArmor(_ *world.Tx, _ world.Entity, stack world.Item) bool {
-	return s.equipItem(item.NewStack(stack, 1))
+	return s.EquipItem(item.NewStack(stack, 1))
 }
 func (s *SulfurCube) BodyItem() item.Stack { return s.b().bodyItem }
 
@@ -376,7 +376,7 @@ func (s *SulfurCube) AcceptItem(from world.Entity, tx *world.Tx, ctx *item.UseCo
 		return false
 	}
 	held, _ := carrier.HeldItems()
-	if !s.equipItem(held) {
+	if !s.EquipItem(held) {
 		return false
 	}
 	ctx.SubtractFromCount(1)
@@ -461,7 +461,7 @@ func (s *SulfurCube) Interact(tx *world.Tx, user item.User, ctx *item.UseContext
 		ctx.DamageItem(1)
 		return true
 	}
-	if s.equipItem(held) {
+	if s.EquipItem(held) {
 		ctx.SubtractFromCount(1)
 		return true
 	}

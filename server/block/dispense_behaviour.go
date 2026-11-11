@@ -32,7 +32,8 @@ type dispenseSpawner func(conf *world.EntityRegistryConfig, opts world.EntitySpa
 // Java's DispenserBlock.DISPENSER_REGISTRY, filled by
 // DispenseItemBehavior.bootStrap. Equippable items are worn by an entity in
 // front, as getDefaultDispenseMethod picks EquipmentDispenseItemBehavior for
-// them, and items of other types are dropped (dispenseDefault).
+// them, then SulfurCubeBlockDispenseItemBehavior for the blocks a sulfur cube
+// swallows, and items of other types are dropped (dispenseDefault).
 var dispenseBehaviours = map[reflect.Type]dispenseBehaviour{
 	// ProjectileDispenseBehavior, registered by registerProjectileBehavior.
 	reflect.TypeFor[item.Egg]():                dispenseShot(defaultDispenseConfig, spawnDispensedEgg),
@@ -100,6 +101,9 @@ func dispenseBehaviourOf(it world.Item) dispenseBehaviour {
 	}
 	if equippableByDispenser(it) {
 		return dispenseEquip
+	}
+	if sulfurCubeSwallowable(it) {
+		return dispenseSulfurCube
 	}
 	return dispenseDefault
 }
@@ -346,6 +350,11 @@ func dispenseArmourStand(src dispenseSource) dispensed {
 func dispenseTNT(src dispenseSource) dispensed {
 	if !src.tx.World().GameRuleBool("tnt_explodes") {
 		return src.failed()
+	}
+	// SulfurCubeBlockDispenseItemBehavior.dispenseBlock comes first: a cube
+	// in front swallows the TNT as a block of the explosive archetype.
+	if dispenseToSulfurCube(src) {
+		return src.done()
 	}
 	create := src.tx.World().EntityRegistry().Config().TNT
 	if create == nil {

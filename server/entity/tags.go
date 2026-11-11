@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"sync"
-
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
@@ -33,44 +31,9 @@ func blockInTag(b world.Block, tag string) bool {
 	return in
 }
 
-// itemTagSets caches the Bedrock items of the Java item tags looked up.
-var itemTagSets struct {
-	sync.Mutex
-	sets map[string]map[itemKey]struct{}
-}
-
-// itemKey is the name and metadata an item encodes as.
-type itemKey struct {
-	name string
-	meta int16
-}
-
 // inItemTag reports if the item of the stack is one of the Java item tag
 // passed.
-func inItemTag(stack item.Stack, tag string) bool {
-	if stack.Empty() {
-		return false
-	}
-	itemTagSets.Lock()
-	set, ok := itemTagSets.sets[tag]
-	if !ok {
-		set = make(map[itemKey]struct{})
-		for _, id := range loot.ItemTagMembers(tag) {
-			if it, ok := item.JavaItem(id); ok {
-				name, meta := it.EncodeItem()
-				set[itemKey{name, meta}] = struct{}{}
-			}
-		}
-		if itemTagSets.sets == nil {
-			itemTagSets.sets = make(map[string]map[itemKey]struct{})
-		}
-		itemTagSets.sets[tag] = set
-	}
-	itemTagSets.Unlock()
-	name, meta := stack.Item().EncodeItem()
-	_, ok = set[itemKey{name, meta}]
-	return ok
-}
+func inItemTag(stack item.Stack, tag string) bool { return loot.StackInItemTag(stack, tag) }
 
 // entityTypeInTag reports if the type of an entity is in a vanilla entity
 // type tag.
