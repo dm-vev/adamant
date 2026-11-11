@@ -54,7 +54,6 @@ server/menu/multicraft_result.go deriveMultiCraftResult 167
 server/menu/repair.go Tx.Repair 147
 server/menu/trade.go Tx.TakeTrade 115
 server/player/player_health.go Player.Hurt 116
-server/player/player_tick.go Player.Tick 134
 server/world/checkpoint.go CaptureAllInto 111
 server/world/game_event.go Tx.EmitGameEvent 101
 server/world/generator/advanced/internal/structure/jigsaw_graph.go JigsawStart.Build 203 port
