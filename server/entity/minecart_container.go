@@ -1,7 +1,7 @@
 package entity
 
 import (
-	"log"
+	"log/slog"
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -177,14 +177,14 @@ func (m *MinecartContainer) generateLoot(tx *world.Tx, user item.User) {
 	if err != nil {
 		panic(err)
 	}
-	fillMinecartInventory(b.inv, stacks, random)
+	fillMinecartInventory(tx.World().Log(), b.inv, stacks, random)
 	b.lootTable, b.lootSeed = "", 0
 	delete(m.Ent.data.NativeNBT, "LootTable")
 	delete(m.Ent.data.NativeNBT, "LootTableSeed")
 	delete(m.Ent.data.NativeNBT, "Items")
 }
 
-func fillMinecartInventory(inv *inventory.Inventory, stacks []item.Stack, random *vanilla.Random) {
+func fillMinecartInventory(log *slog.Logger, inv *inventory.Inventory, stacks []item.Stack, random *vanilla.Random) {
 	free := make([]int, 0, inv.Size())
 	for slot, stack := range inv.Slots() {
 		if stack.Empty() {
@@ -233,7 +233,7 @@ func fillMinecartInventory(inv *inventory.Inventory, stacks []item.Stack, random
 	shuffleMinecartLoot(items, random)
 	for i, stack := range items {
 		if i >= len(free) {
-			log.Printf("loot table tried to over-fill a minecart container")
+			log.Warn("loot table tried to over-fill a minecart container")
 			return
 		}
 		_ = inv.SetItem(free[len(free)-i-1], stack)

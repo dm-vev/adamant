@@ -1,11 +1,17 @@
 package entity
 
 import (
+	"bytes"
+	"encoding/json"
+	"log/slog"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -169,5 +175,28 @@ func TestVehicleContainerKinds(t *testing.T) {
 		if c.got != c.want {
 			t.Errorf("%s: ContainerKind() = %d, want %d", c.name, c.got, c.want)
 		}
+	}
+}
+
+// TestMinecartLootOverfillWarns fills a container minecart with more loot than
+// it has room for: the rest is dropped and a warning is logged as the world
+// component, not to the standard logger.
+func TestMinecartLootOverfillWarns(t *testing.T) {
+	var out bytes.Buffer
+	set := logging.New(logging.Options{Format: logging.JSON, Output: &out, Level: slog.LevelDebug})
+	w := world.Config{Synchronous: true, Log: set.Logger(logging.Server)}.New()
+	defer w.Close()
+
+	inv := inventory.New(1, nil)
+	stacks := []item.Stack{item.NewStack(block.Stone{}, 1), item.NewStack(block.Dirt{}, 1)}
+	random := vanilla.NewLegacyRandom(1)
+	fillMinecartInventory(w.Log(), inv, stacks, &random)
+
+	var rec struct{ Level, Msg, Component string }
+	if err := json.Unmarshal(bytes.TrimSpace(out.Bytes()), &rec); err != nil {
+		t.Fatalf("log output %q is not one JSON line: %v", out.String(), err)
+	}
+	if rec.Level != "WARN" || rec.Component != logging.World || rec.Msg != "loot table tried to over-fill a minecart container" {
+		t.Fatalf("logged %+v, want a warning of the world component", rec)
 	}
 }
