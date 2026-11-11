@@ -199,3 +199,78 @@ func TestLightSpreadsWaitFarFromTickingColumns(t *testing.T) {
 		checkLight(tx, next)
 	})
 }
+
+// TestReadingLightFarOutSpreadsItNearby generates chunks far from the
+// columns ticking, whose light around waits to spread, reads light in one of
+// them, as a chunk spawning its first mobs does, and checks the light read
+// is the light computed from scratch while the light around chunks further
+// out still waits: the spreads the read undeferred do not run on across the
+// whole view.
+func TestReadingLightFarOutSpreadsItNearby(t *testing.T) {
+	w := Config{Generator: stoneTestGenerator{}, GeneratorWorkers: 2, RandomTickSpeed: -1, Provider: NopProvider{}}.New()
+	defer w.Close()
+	w.SetTickRange(1)
+	loader := NewLoader(14, w, NopViewer{})
+	<-w.Exec(func(tx *Tx) { loader.Move(tx, mgl64.Vec3{8, 80, 8}) })
+	// far is a chunk nine chunks out whose light around waits to spread,
+	// with the light around chunks five and more further out waiting too.
+	far, found := ChunkPos{}, false
+	for deadline := time.Now().Add(time.Minute); !found && time.Now().Before(deadline); time.Sleep(5 * time.Millisecond) {
+		<-w.Exec(func(tx *Tx) {
+			loader.Load(tx, 128)
+			for pos := range w.deferredSpreads {
+				if max(abs32(pos[0]), abs32(pos[1])) != 9 {
+					continue
+				}
+				beyond := 0
+				for other := range w.deferredSpreads {
+					if max(abs32(other[0]-pos[0]), abs32(other[1]-pos[1])) > lightReadRadius+1 {
+						beyond++
+					}
+				}
+				if _, ok := w.deferredSpreads[ChunkPos{pos[0] + 1, pos[1]}]; ok && beyond >= 50 {
+					far, found = pos, true
+					return
+				}
+			}
+		})
+	}
+	if !found {
+		t.Fatal("no light waited to spread far from the columns ticking")
+	}
+	<-w.Exec(func(tx *Tx) {
+		var beyond []ChunkPos
+		for pos := range w.deferredSpreads {
+			if max(abs32(pos[0]-far[0]), abs32(pos[1]-far[1])) > lightReadRadius+1 {
+				beyond = append(beyond, pos)
+			}
+		}
+		centre := cube.Pos{int(far[0])<<4 + 8, 60, int(far[1])<<4 + 8}
+		fresh := tx.FreshLight(centre)
+		for x := centre[0] - 8; x < centre[0]+8; x++ {
+			for z := centre[2] - 8; z < centre[2]+8; z++ {
+				for y := 20; y < 70; y++ {
+					p := cube.Pos{x, y, z}
+					sky, bl := fresh(p)
+					if got := tx.SkyLight(p); got != sky {
+						t.Errorf("skylight at %v = %d, want %d as computed from scratch", p, got, sky)
+						return
+					}
+					if got := tx.BlockLight(p); got != bl {
+						t.Errorf("block light at %v = %d, want %d as computed from scratch", p, got, bl)
+						return
+					}
+				}
+			}
+		}
+		spread := 0
+		for _, pos := range beyond {
+			if _, ok := w.deferredSpreads[pos]; !ok {
+				spread++
+			}
+		}
+		if spread != 0 {
+			t.Errorf("reading light at %v spread the light around %d of the %d chunks waiting more than %d chunks from it", far, spread, len(beyond), lightReadRadius+1)
+		}
+	})
+}

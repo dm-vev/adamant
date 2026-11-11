@@ -127,6 +127,7 @@ func (w *World) spreadFar(pos ChunkPos) bool {
 // undeferSpreadsNear queues the spreads of light deferred around the chunks
 // within three chunks of pos to be done with the others.
 func (w *World) undeferSpreadsNear(pos ChunkPos) {
+	w.lightReadNear = append(w.lightReadNear, pos)
 	for dx := int32(-3); dx <= 3; dx++ {
 		for dz := int32(-3); dz <= 3; dz++ {
 			p := ChunkPos{pos[0] + dx, pos[1] + dz}
@@ -145,7 +146,15 @@ func (w *World) undeferSpreadsNear(pos ChunkPos) {
 // ready in. In each round, spreads whose middle chunks lie at the same
 // coordinates modulo 3 share no chunk, so each such class is spread on all
 // cores while the owner waits.
+//
+// Light spreading on into chunks far from every column ticking and from
+// where light was read waits there, deferred as the spreads that became
+// possible there wait: else a read of light far out, as of a chunk
+// spawning its first mobs, spread the light of every chunk deferred around
+// it, across the whole view, before it returned.
 func (w *World) flushSpreads() {
+	readNear := w.lightReadNear
+	w.lightReadNear = w.lightReadNear[:0]
 	if len(w.pendingSpreads) == 0 {
 		return
 	}
@@ -200,11 +209,51 @@ func (w *World) flushSpreads() {
 		for pos := range changed {
 			for x := int32(-1); x <= 1; x++ {
 				for z := int32(-1); z <= 1; z++ {
-					queued[ChunkPos{pos[0] + x, pos[1] + z}] = struct{}{}
+					p := ChunkPos{pos[0] + x, pos[1] + z}
+					if _, ok := queued[p]; ok {
+						continue
+					}
+					if w.spreadFar(p) && !chunkNear(readNear, p, lightReadRadius) {
+						w.deferSpread(p)
+						continue
+					}
+					queued[p] = struct{}{}
 				}
 			}
 		}
 	}
+}
+
+// lightReadRadius is how far, in chunks, from a chunk whose light is read
+// the spreads of light around chunks are done before it is read, as
+// undeferSpreadsNear undefers them: light reaches 15 blocks, so no spread
+// further out changes it.
+const lightReadRadius = 3
+
+// chunkNear reports whether pos lies within r chunks of one of near.
+func chunkNear(near []ChunkPos, pos ChunkPos, r int32) bool {
+	for _, n := range near {
+		if dx, dz := n[0]-pos[0], n[1]-pos[1]; dx >= -r && dx <= r && dz >= -r && dz <= r {
+			return true
+		}
+	}
+	return false
+}
+
+// deferSpread defers the spread of the light around the chunk at pos, if
+// the chunks around it are all lit, until a column near it comes to tick or
+// light near it is read.
+func (w *World) deferSpread(pos ChunkPos) {
+	chunks, ok := w.spreadArea(pos)
+	if !ok {
+		// A chunk around it is yet to be lit: its light is spread once it
+		// is, by calculateLight.
+		return
+	}
+	if w.deferredSpreads == nil {
+		w.deferredSpreads = make(map[ChunkPos]pendingSpread)
+	}
+	w.deferredSpreads[pos] = pendingSpread{pos: pos, chunks: chunks}
 }
 
 // maxSpreadRounds bounds the rounds of flushSpreads. Light settles within a

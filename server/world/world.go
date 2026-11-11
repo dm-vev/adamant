@@ -37,6 +37,11 @@ type World struct {
 	// light far from every column whose entities tick, which wait until a
 	// column near them comes to tick or light near them is read.
 	deferredSpreads map[ChunkPos]pendingSpread
+	// lightReadNear holds the chunks undeferSpreadsNear undeferred the
+	// spreads around since light was last spread: light spreading on from
+	// them is spread as far as light near them reads it, and waits further
+	// out.
+	lightReadNear []ChunkPos
 	// blockUpdates holds the columns whose viewers are yet to be shown
 	// changes of their blocks.
 	blockUpdates blockUpdateQueue
