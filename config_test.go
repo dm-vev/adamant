@@ -230,7 +230,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 				"failures=3 tokens=remote-tokens.txt proxies=[10.0.0.0/8 192.0.2.1]",
 			"Permissions": "default=1 op=3 blocks=0 roles=4 role=visitor console=false remote=false commands=map[kick:2 teleport:3]",
 			"Audit":       "<nil>",
-			"Bans":        "Banned: Gone. Why: griefing, by Console\nBack on " + time.Date(2026, 11, 11, 14, 20, 31, 0, time.UTC).Local().Format("2006-01-02") + " | Address gone. Why: Rules., by (Unknown)",
+			"Bans":        "Banned: Gone. Why: griefing, by Console\nBack on " + time.Date(2126, 11, 11, 14, 20, 31, 0, time.UTC).Local().Format("2006-01-02") + " | Address gone. Why: Rules., by (Unknown)",
 		})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -785,12 +785,14 @@ func remoteMeaning(f fileConfig) string {
 // meaningBans is the banned-players.json of the directory the files of
 // TestConfigFileKeepsItsMeaning are read in: Banned, by the console, for
 // griefing, until meaningBanEnd, and the address 192.0.2.7, for no reason.
-const meaningBans = `{"players":[{"name":"Banned","reason":"griefing","source":"Console","expires":"2026-11-11T14:20:31Z"}],` +
+// The ban ends a century ahead: a ban that has run out refuses no one, and
+// one that ended on the day the test was written broke it from that day.
+const meaningBans = `{"players":[{"name":"Banned","reason":"griefing","source":"Console","expires":"2126-11-11T14:20:31Z"}],` +
 	`"ips":[{"ip":"192.0.2.7"}]}`
 
 // meaningBanEnd is when the ban of Banned of meaningBans ends, as [Bans]
 // TimeFormat writes it by default, in the time zone of the test.
-var meaningBanEnd = time.Date(2026, 11, 11, 14, 20, 31, 0, time.UTC).Local().Format("2006-01-02 at 15:04:05 MST")
+var meaningBanEnd = time.Date(2126, 11, 11, 14, 20, 31, 0, time.UTC).Local().Format("2006-01-02 at 15:04:05 MST")
 
 // bansMeaning returns the meaning of [Bans] of a Config: the texts Banned
 // of meaningBans, and a player from its address, are refused with.
