@@ -24,7 +24,7 @@ var tickBenchmarkGround = float64(world.Overworld.Range().Min() + 4)
 
 // tickBenchmarkWorld returns a synchronous flat world of grass on dirt and bedrock, with the chunks within five of
 // the origin loaded.
-func tickBenchmarkWorld(b *testing.B) *world.World {
+func tickBenchmarkWorld(b testing.TB) *world.World {
 	b.Helper()
 	world.DefaultBlockRegistry.Finalize()
 	w := world.Config{

@@ -160,3 +160,27 @@ func (h *traceHandler) HandlePunchAir(ctx *Context) { h.event(ctx, "PunchAir", "
 func (h *traceHandler) HandleSleep(ctx *Context, sendReminder *bool) {
 	h.event(ctx, "Sleep", "reminder=%v", *sendReminder)
 }
+
+// digest describes the state of a player that a tick changes, on one line.
+func digest(p *Player) string {
+	var effects []string
+	for _, e := range p.Effects() {
+		effects = append(effects, fmt.Sprintf("%T:%d:%v", e.Type(), e.Level(), e.Duration()))
+	}
+	held, off := p.HeldItems()
+	armour := p.Armour()
+	return fmt.Sprintf("pos=%s vel=%s rot=%v hp=%.4f abs=%.4f food=%d sat=%.4f exh=%.4f ground=%v sleeping=%v gliding=%v swimming=%v sprint=%v sneak=%v fall=%.4f fire=%v air=%v dead=%v effects=%v held=%s off=%s armour=%d/%d/%d/%d using=%v breaking=%v blockdelay=%d strength=%d mode=%v",
+		describeArg(p.Position()), describeArg(p.Velocity()), p.Rotation(), p.Health(), p.Absorption(), p.Food(), p.hunger.saturationLevel, p.hunger.exhaustionLevel,
+		p.OnGround(), p.sleeping, p.Gliding(), p.Swimming(), p.Sprinting(), p.Sneaking(), p.fallDistance, p.OnFireDuration(), p.AirSupply(), p.Dead(), effects,
+		describeStack(held), describeStack(off), armour.Helmet().Durability(), armour.Chestplate().Durability(), armour.Leggings().Durability(), armour.Boots().Durability(),
+		p.usingItem, p.breaking, p.blockingDelayTicks, p.attackStrengthTicks, p.GameMode())
+}
+
+// describeStack describes an item stack by its name, count and durability.
+func describeStack(s item.Stack) string {
+	if s.Empty() {
+		return "-"
+	}
+	name, meta := s.Item().EncodeItem()
+	return fmt.Sprintf("%s/%d*%d(%d)", name, meta, s.Count(), s.Durability())
+}
