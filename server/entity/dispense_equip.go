@@ -61,3 +61,50 @@ func (a *ArmourStandBehaviour) dispenserEquip(e *Ent, tx *world.Tx, stack item.S
 	tx.PlaySound(e.Position(), sound.EquipItem{Item: stack.Item()})
 	return true
 }
+
+// dispenserEquip ports LivingEntity.canEquipWithDispenser and
+// Pig.canDispenserEquipIntoSlot: an adult pig takes a saddle, which it does not
+// wear yet, whether tame or not.
+func (p *Pig) dispenserEquip(_ *world.Tx, stack item.Stack) bool {
+	_, saddle := stack.Item().(item.Saddle)
+	return saddle && p.Saddle()
+}
+
+// dispenserEquip ports LivingEntity.canEquipWithDispenser and
+// Strider.canDispenserEquipIntoSlot: an adult strider takes a saddle, which it
+// does not wear yet.
+func (s *Strider) dispenserEquip(_ *world.Tx, stack item.Stack) bool {
+	b := s.b()
+	if _, saddle := stack.Item().(item.Saddle); !saddle || b.saddled || b.age < 0 || s.Dead() {
+		return false
+	}
+	b.saddled = true
+	return true
+}
+
+// dispenserEquip ports LivingEntity.canEquipWithDispenser and
+// AbstractNautilus.canDispenserEquipIntoSlot: a tamed adult nautilus takes a
+// saddle and nautilus armour in the slots that are free.
+func (m *oceanMob) dispenserEquip(tx *world.Tx, stack item.Stack) bool {
+	b := m.b()
+	if (b.kind != oceanNautilus && b.kind != oceanZombieNautilus) || !b.tamed || b.age < 0 || m.Dead() {
+		return false
+	}
+	switch it := stack.Item().(type) {
+	case item.Saddle:
+		if b.saddle {
+			return false
+		}
+		b.saddle = true
+		tx.PlaySound(m.Position(), sound.Custom{Name: "item.nautilus_saddle_equip", Volume: 1, Pitch: 1})
+		return true
+	case item.NautilusArmor:
+		if b.bodyArmorMaterial >= 0 {
+			return false
+		}
+		b.bodyArmorMaterial = int(it.Material)
+		tx.PlaySound(m.Position(), sound.Custom{Name: "item.armor.equip_nautilus", Volume: 1, Pitch: 1})
+		return true
+	}
+	return false
+}

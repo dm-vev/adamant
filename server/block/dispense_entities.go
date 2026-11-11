@@ -32,7 +32,7 @@ func equippableByDispenser(it world.Item) bool {
 		}
 	}
 	switch it.(type) {
-	case item.Saddle, Carpet,
+	case item.Saddle, Carpet, item.WolfArmor, item.NautilusArmor,
 		item.LeatherHorseArmour, item.CopperHorseArmour, item.IronHorseArmour,
 		item.GoldenHorseArmour, item.DiamondHorseArmour, item.NetheriteHorseArmour:
 		return true

@@ -207,3 +207,55 @@ func TestDispenserEquipsTamedHorse(t *testing.T) {
 		})
 	}
 }
+
+// TestDispenserSaddlesPigsAndStriders checks Pig.canDispenserEquipIntoSlot and
+// Strider.canDispenserEquipIntoSlot: an adult pig or strider in front takes a
+// saddle it does not wear yet, tame or not, and a second one is ejected; a
+// baby takes none.
+func TestDispenserSaddlesPigsAndStriders(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name  string
+		spawn func(world.EntitySpawnOpts) *world.EntityHandle
+		baby  bool
+	}{
+		{"pig", entity.NewPig, false},
+		{"strider", entity.NewStrider, false},
+		{"baby strider", func(o world.EntitySpawnOpts) *world.EntityHandle {
+			return o.New(entity.StriderType, entity.StriderConfig{Age: -24000})
+		}, true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			w, _ := dispenserWorld(t)
+			<-w.Exec(func(tx *world.Tx) {
+				var mob world.Entity
+				pos := dispenseOnce(tx, item.NewStack(item.Saddle{}, 1), func(front cube.Pos) {
+					mob = tx.AddEntity(c.spawn(world.EntitySpawnOpts{Position: front.Vec3Middle()}))
+				})
+				if saddled := mob.(interface{ Saddled() bool }).Saddled(); saddled == c.baby {
+					t.Fatalf("saddled=%v, want %v", saddled, !c.baby)
+				}
+				wantItems := 0
+				if c.baby {
+					wantItems = 1
+				}
+				if left := slotOf(tx, pos); !left.Empty() {
+					t.Errorf("dispenser holds %v, want it used or ejected", left)
+				}
+				if items := entitiesOfType(tx, entity.ItemType); len(items) != wantItems {
+					t.Errorf("%d items dropped, want %d", len(items), wantItems)
+				}
+				if c.baby {
+					return
+				}
+				// The second saddle does not fit: it is ejected.
+				_ = tx.Block(pos).(block.Dispenser).Inventory(tx, pos).SetItem(0, item.NewStack(item.Saddle{}, 1))
+				tx.Block(pos).(block.Dispenser).ScheduledTick(pos, tx, nil)
+				if items := entitiesOfType(tx, entity.ItemType); len(items) != 1 {
+					t.Errorf("%d items dropped, want the second saddle", len(items))
+				}
+			})
+		})
+	}
+}
