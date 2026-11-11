@@ -202,7 +202,13 @@ func dispenseShot(conf dispenseConfig, spawn dispenseSpawner) dispenseBehaviour 
 	}
 }
 
-func spawnDispensedEgg(conf *world.EntityRegistryConfig, opts world.EntitySpawnOpts, _ world.Item) *world.EntityHandle {
+// spawnDispensedEgg throws the egg of the item, which keeps the climate of its
+// chicken: Items.BLUE_EGG and Items.BROWN_EGG have a ProjectileDispenseBehavior
+// of their own that makes a ThrownBlueEgg or ThrownBrownEgg.
+func spawnDispensedEgg(conf *world.EntityRegistryConfig, opts world.EntitySpawnOpts, it world.Item) *world.EntityHandle {
+	if variant := it.(item.Egg).Variant; variant != item.EggTemperate && conf.EggVariant != nil {
+		return conf.EggVariant(opts, nil, int(variant))
+	}
 	return conf.Egg(opts, nil)
 }
 
