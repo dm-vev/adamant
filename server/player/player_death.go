@@ -7,6 +7,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
@@ -170,13 +171,7 @@ func (p *Player) respawn(f func(p *Player)) {
 	position, w, spawnObstructed, previousDimension, worldSpawn := p.spawnLocation()
 	transfer, ok := world.BeginTransfer(p.tx)
 	if !ok && f == nil {
-		if p.Dead() && p.hasClient() {
-			p.H().DoAfter(transferRetryDelay, func(_ *world.Tx, e world.Entity) {
-				if p, ok := e.(*Player); ok {
-					p.respawn(nil)
-				}
-			})
-		}
+		p.retryRespawn()
 		return
 	}
 	if spawnObstructed {
@@ -195,11 +190,7 @@ func (p *Player) respawn(f func(p *Player)) {
 		return
 	}
 
-	p.addHealth(p.MaxHealth())
-	p.hunger.Reset()
-	p.sendFood()
-	p.Extinguish()
-	p.ResetFallDistance()
+	p.restoreAfterDeath()
 
 	p.Handler().HandleRespawn(p, &pos, &w)
 
@@ -221,24 +212,7 @@ func (p *Player) respawn(f func(p *Player)) {
 		}
 		np.quit(text.Literal("respawn failed"))
 	}
-	task := w.Do(func(tx *world.Tx) {
-		np := tx.AddEntity(handle).(*Player)
-		if bl, ok := tx.Block(position).(block.RespawnBlock); ok {
-			bl.RespawnOn(position, p, tx)
-		}
-		// Without a respawn block, PlayerSpawnFinder picks a safe position
-		// within respawn_radius unless a handler chose another position.
-		if worldSpawn && pos == position.Vec3Middle() {
-			pos = tx.PlayerSpawnPosition(position)
-		}
-		np.Teleport(pos)
-		np.client().SendRespawn(pos, p)
-		np.SetVisible()
-		np.startGrace(np.graceOf(func(g anticheat.Grace) int { return g.Respawn }))
-		if f != nil {
-			f(np)
-		}
-	})
+	task := w.Do(func(tx *world.Tx) { p.arriveAtRespawn(tx, handle, position, pos, worldSpawn, f) })
 	if errors.Is(task.Err(), world.ErrWorldClosed) {
 		// The destination refused synchronously: re-add through the still-open
 		// source context. This also keeps synchronous worlds fully inline.
@@ -251,19 +225,69 @@ func (p *Player) respawn(f func(p *Player)) {
 		if !errors.Is(err, world.ErrWorldClosed) {
 			return
 		}
-		// Fall back to the source world so the normal quit path still runs.
-		src.Do(restore).OnDone(func(err error) {
-			if err == nil || errors.Is(err, world.ErrTaskPanicked) {
-				return
+		p.respawnInSource(src, handle, c, restore)
+	})
+}
+
+// retryRespawn tries to respawn a dead player again later, when the transfer it needs is not available now
+// (ServerPlayer.respawn, once the level can take the player).
+func (p *Player) retryRespawn() {
+	if p.Dead() && p.hasClient() {
+		p.H().DoAfter(transferRetryDelay, func(_ *world.Tx, e world.Entity) {
+			if p, ok := e.(*Player); ok {
+				p.respawn(nil)
 			}
-			// The source world is gone too; the handle is orphaned. Close
-			// it, free the connection and leave without a world, so that the
-			// Left hook still runs.
-			_ = handle.Close()
-			c.Disconnect(text.Literal("respawn failed"))
-			c.CloseConnection()
-			p.leave(nil)
 		})
+	}
+}
+
+// restoreAfterDeath gives a dead player that respawns its health and food back, and puts out its fire and its
+// fall (ServerPlayer.restoreFrom).
+func (p *Player) restoreAfterDeath() {
+	p.addHealth(p.MaxHealth())
+	p.hunger.Reset()
+	p.sendFood()
+	p.Extinguish()
+	p.ResetFallDistance()
+}
+
+// arriveAtRespawn adds the player, as the handle passed, to the world tx that it respawns in, uses the respawn
+// block at position, and puts the player at pos, or at the spawn the world finds for it when it has no spawn of
+// its own, and tells the client (PlayerList.respawn). f is called with the player that arrived.
+func (p *Player) arriveAtRespawn(tx *world.Tx, handle *world.EntityHandle, position cube.Pos, pos mgl64.Vec3, worldSpawn bool, f func(p *Player)) {
+	np := tx.AddEntity(handle).(*Player)
+	if bl, ok := tx.Block(position).(block.RespawnBlock); ok {
+		bl.RespawnOn(position, p, tx)
+	}
+	// Without a respawn block, PlayerSpawnFinder picks a safe position
+	// within respawn_radius unless a handler chose another position.
+	if worldSpawn && pos == position.Vec3Middle() {
+		pos = tx.PlayerSpawnPosition(position)
+	}
+	np.Teleport(pos)
+	np.client().SendRespawn(pos, p)
+	np.SetVisible()
+	np.startGrace(np.graceOf(func(g anticheat.Grace) int { return g.Respawn }))
+	if f != nil {
+		f(np)
+	}
+}
+
+// respawnInSource falls back to the source world src when the destination of a respawn closed, so that the
+// normal quit path still runs through restore. If src is gone too, the handle is orphaned: it closes it, frees
+// the connection c and leaves without a world, so that the Left hook still runs.
+func (p *Player) respawnInSource(src *world.World, handle *world.EntityHandle, c client.Client, restore func(tx *world.Tx)) {
+	src.Do(restore).OnDone(func(err error) {
+		if err == nil || errors.Is(err, world.ErrTaskPanicked) {
+			return
+		}
+		// The source world is gone too; the handle is orphaned. Close
+		// it, free the connection and leave without a world, so that the
+		// Left hook still runs.
+		_ = handle.Close()
+		c.Disconnect(text.Literal("respawn failed"))
+		c.CloseConnection()
+		p.leave(nil)
 	})
 }
 
