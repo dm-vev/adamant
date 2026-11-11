@@ -79,8 +79,16 @@ func (k Kelp) NeighbourUpdateTick(pos, changedNeighbour cube.Pos, tx *world.Tx) 
 		return
 	}
 	if changedNeighbour[1]-1 == pos.Y() {
-		// When a kelp block is broken above, the kelp block underneath it gets a new random age.
-		tx.SetBlock(pos, k.withRandomAge(), nil)
+		// When a kelp block is broken above, the kelp block underneath it
+		// becomes the head and gets a new random age, as in
+		// GrowingPlantBodyBlock.updateShape. Kelp that grew above, or that
+		// is above still, leaves it alone: Java then turns the head into a
+		// body, which changes nothing under it. A new age here would
+		// update the cell below in turn, and so on down the column to its
+		// floor, where gravel over water would fall and break the column.
+		if _, kelp := tx.Block(changedNeighbour).(Kelp); !kelp {
+			tx.SetBlock(pos, k.withRandomAge(), nil)
+		}
 	}
 
 	below := pos.Side(cube.FaceDown)

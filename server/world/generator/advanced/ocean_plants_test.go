@@ -48,7 +48,10 @@ func oceanPlantCells(tx *world.Tx, centre world.ChunkPos, radius int) map[cube.P
 // seagrass and runs the world over it. Java does not update the neighbours of
 // anything it generates, and ticks only the fluids of the positions it marks,
 // which find nothing to flow into around a plant: the plants stay, and no item
-// of a broken plant, nor a block fallen from under one, floats up.
+// of a broken plant, nor a block fallen from under one, floats up. Random
+// ticks run fast, so that kelp grows: a kelp head that grows changes nothing
+// under it, and the gravel floor of a column, which an aquifer may leave over
+// water, stays.
 func TestOceanPlantsSurviveGeneration(t *testing.T) {
 	world.DefaultBlockRegistry.Finalize()
 	// A synchronous world generates the chunks it is asked for and those
@@ -57,7 +60,7 @@ func TestOceanPlantsSurviveGeneration(t *testing.T) {
 	w := world.Config{
 		Generator:       NewOverworld(oceanPlantsSeed),
 		Entities:        entity.DefaultRegistry,
-		RandomTickSpeed: -1,
+		RandomTickSpeed: 300,
 		Synchronous:     true,
 	}.New()
 	t.Cleanup(func() { _ = w.Close() })
