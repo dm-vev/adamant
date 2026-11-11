@@ -10,6 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -217,5 +218,48 @@ func TestDispenserEffectsFollowBDS(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestDispenserWaterBottleOnDirtShowsJavaEffects checks what DispenseItemBehavior
+// sends for a bottle of water that turns the dirt in front into mud: five
+// splashes at random places over the top of the dispenser (one block up, within
+// the block's width), the sound of an emptied bottle at the centre of the
+// dispenser, then the click and the smoke of the dispense.
+func TestDispenserWaterBottleOnDirtShowsJavaEffects(t *testing.T) {
+	t.Parallel()
+	dt := newDispenserTest(t, cube.FaceEast)
+	dt.dispense(func(tx *world.Tx, front cube.Pos) { tx.SetBlock(front, block.Dirt{}, nil) },
+		item.NewStack(item.Potion{Type: potion.Water()}, 1))
+	<-dt.w.Exec(func(tx *world.Tx) {
+		if _, ok := tx.Block(dt.front()).(block.Mud); !ok {
+			t.Fatalf("front is %T, want mud", tx.Block(dt.front()))
+		}
+	})
+	var splashes []mgl64.Vec3
+	for _, p := range dt.recorder.particles {
+		if _, ok := p.p.(particle.WaterSplash); ok {
+			splashes = append(splashes, p.pos)
+		}
+	}
+	if len(splashes) != 5 {
+		t.Fatalf("%d splashes, want 5", len(splashes))
+	}
+	for _, at := range splashes {
+		if at[0] < 0 || at[0] >= 1 || at[1] != 65 || at[2] < 0 || at[2] >= 1 {
+			t.Errorf("splash at %v, want one block over the dispenser at 0 64 0, within its width", at)
+		}
+	}
+	var bottle *recordedSound
+	for i, s := range dt.recorder.sounds {
+		if c, ok := s.s.(sound.Custom); ok && c.Name == "item.bottle.empty" {
+			bottle = &dt.recorder.sounds[i]
+		}
+	}
+	if bottle == nil || bottle.pos != (mgl64.Vec3{0.5, 64.5, 0.5}) {
+		t.Fatalf("bottle sound %v, want it at the centre of the dispenser", bottle)
+	}
+	if got := dt.recorder.order; got[0] != "particle" || got[4] != "particle" {
+		t.Errorf("effects in order %v, want the splashes first", got)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -68,13 +69,22 @@ func convertibleToMud(b world.Block) bool {
 }
 
 // dispensePotion ports the behaviour of Items.POTION: a water bottle turns the
-// dirt in front into mud, the bottle it leaves replacing it or going into the
-// dispenser, and any other potion is ejected.
+// dirt in front into mud, with five splashes over the dispenser and the sound
+// of an emptied bottle there, the bottle it leaves replacing it or going into
+// the dispenser, and any other potion is ejected.
 func dispensePotion(src dispenseSource) dispensed {
 	tx, front := src.tx, src.front()
 	p := src.stack.Item().(item.Potion)
 	if p.Type != potion.Water() || !convertibleToMud(tx.Block(front)) {
 		return dispenseDefault(src)
+	}
+	// Five splashes over the top of the dispenser (level.sendParticles of
+	// ParticleTypes.SPLASH), drawn from the random of the level, then the
+	// sound of the bottle at the centre of the dispenser.
+	random := tx.RegionRandom()
+	for range 5 {
+		x := random.NextDouble()
+		tx.AddParticle(src.pos.Vec3().Add(mgl64.Vec3{x, 1, random.NextDouble()}), particle.WaterSplash{})
 	}
 	tx.PlaySound(src.pos.Vec3Centre(), sound.Custom{Name: "item.bottle.empty", Volume: 1, Pitch: 1})
 	tx.EmitGameEvent(world.GameEventFluidPlace, src.pos.Vec3Centre(), world.GameEventContext{})

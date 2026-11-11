@@ -45,6 +45,8 @@ func (s *Session) literalParticlePacket(pos mgl64.Vec3, p world.Particle, out fu
 		out(&mc.LevelEventPacket{EventType: mc.LevelEventParticleLegacyEvent | 33, Position: vec64To32(pos), EventData: int32FromRGBA(pa.Colour)})
 	case particle.WaterDrip:
 		out(&mc.LevelEventPacket{EventType: mc.LevelEventParticleLegacyEvent | 28, Position: vec64To32(pos)})
+	case particle.WaterSplash:
+		out(&mc.LevelEventPacket{EventType: mc.LevelEventParticleLegacyEvent | mc.ParticleTypeWaterSplash, Position: vec64To32(pos)})
 	case particle.LavaDrip:
 		out(&mc.LevelEventPacket{EventType: mc.LevelEventParticleLegacyEvent | 29, Position: vec64To32(pos)})
 	case particle.Lava:

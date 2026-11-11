@@ -53,5 +53,6 @@ var particleTypes = []world.Particle{
 	particle.VaultEjectItem{},
 	particle.VibrationSignal{},
 	particle.WaterDrip{},
+	particle.WaterSplash{},
 	particle.WindBurst{},
 }

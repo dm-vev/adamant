@@ -83,6 +83,11 @@ type DragonEggTeleport struct {
 	Diff cube.Pos
 }
 
+// WaterSplash is the splash of water, as Java Edition's ParticleTypes.SPLASH:
+// a drop that jumps from the water, such as those of a dispenser that pours a
+// bottle of water.
+type WaterSplash struct{ particle }
+
 // Evaporate is a particle that shows up when a water block evaporates
 type Evaporate struct{ particle }
 

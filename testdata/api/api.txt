@@ -22803,6 +22803,7 @@ server/world/particle	method	VaultDeactivate.Spawn	func(*server/world.World, git
 server/world/particle	method	VaultEjectItem.Spawn	func(*server/world.World, github.com/go-gl/mathgl/mgl64.Vec3)
 server/world/particle	method	VibrationSignal.Spawn	func(*server/world.World, github.com/go-gl/mathgl/mgl64.Vec3)
 server/world/particle	method	WaterDrip.Spawn	func(*server/world.World, github.com/go-gl/mathgl/mgl64.Vec3)
+server/world/particle	method	WaterSplash.Spawn	func(*server/world.World, github.com/go-gl/mathgl/mgl64.Vec3)
 server/world/particle	method	WindBurst.Spawn	func(*server/world.World, github.com/go-gl/mathgl/mgl64.Vec3)
 server/world/particle	type	BlockBreak	struct{server/world/particle.particle; Block server/world.Block}
 server/world/particle	type	BlockForceField	struct{server/world/particle.particle}
@@ -22848,6 +22849,7 @@ server/world/particle	type	VaultDeactivate	struct{server/world/particle.particle
 server/world/particle	type	VaultEjectItem	struct{server/world/particle.particle}
 server/world/particle	type	VibrationSignal	struct{Destination github.com/go-gl/mathgl/mgl64.Vec3; TravelTicks int; server/world/particle.particle}
 server/world/particle	type	WaterDrip	struct{server/world/particle.particle}
+server/world/particle	type	WaterSplash	struct{server/world/particle.particle}
 server/world/particle	type	WindBurst	struct{server/world/particle.particle}
 server/world/portal	func	ActivateEndPortal	func(tx *server/world.Tx, framePos server/block/cube.Pos) bool
 server/world/portal	func	ActivateNetherPortal	func(tx *server/world.Tx, pos server/block/cube.Pos) bool

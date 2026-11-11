@@ -53,6 +53,7 @@ var particleRows = []particleRow{
 	{Particle: "EntityFlame", Legacy: "19"},
 	{Particle: "Dust", Legacy: "33", RGBA: "Colour"},
 	{Particle: "WaterDrip", Legacy: "28"},
+	{Particle: "WaterSplash", Legacy: "ParticleTypeWaterSplash"},
 	{Particle: "LavaDrip", Legacy: "29"},
 	{Particle: "Lava", Legacy: "10"},
 	{Particle: "DustPlume", Legacy: "88"},

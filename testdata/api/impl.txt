@@ -10928,6 +10928,7 @@ server/world/particle.VaultDeactivate	server/world.Particle	value
 server/world/particle.VaultEjectItem	server/world.Particle	value
 server/world/particle.VibrationSignal	server/world.Particle	value
 server/world/particle.WaterDrip	server/world.Particle	value
+server/world/particle.WaterSplash	server/world.Particle	value
 server/world/particle.WindBurst	server/world.Particle	value
 server/world/particle.particle	server/world.Particle	value
 server/world/sound.AnvilBreak	server/world.Sound	value
