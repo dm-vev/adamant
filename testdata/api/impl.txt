@@ -8910,6 +8910,7 @@ server/entity.hostileConfig	server/world.EntityConfig	value
 server/entity.hostileMobType	server/world.EntityType	value
 server/entity.hostileNBTConfig	server/world.EntityConfig	value
 server/entity.hostileState	server/entity.Behaviour	*
+server/entity.hostileState	server/entity.dispenserWearer	*
 server/entity.hostileState	server/entity.effectHolder	*
 server/entity.hostileState	server/entity.equipmentHolder	*
 server/entity.hostileState	server/entity.lootPicker	*
@@ -8960,6 +8961,7 @@ server/entity.lookControl	server/entity.mobMoveControl	*
 server/entity.magmaCubeType	server/world.EntityType	value
 server/entity.minecartType	protocol/bedrock/session.OffsetEntity	value
 server/entity.minecartType	server/world.EntityType	value
+server/entity.mobGear	server/entity.dispenserWearer	*
 server/entity.mobGear	server/entity.equipmentHolder	*
 server/entity.mobGear	server/entity.lootPicker	*
 server/entity.mobSensor	server/entity.sensor	value
@@ -9014,6 +9016,7 @@ server/entity.obtainRaidLeaderBannerGoal	server/entity.goalStarter	*
 server/entity.obtainRaidLeaderBannerGoal	server/entity.goalStopper	*
 server/entity.obtainRaidLeaderBannerGoal	server/entity.goalTicker	*
 server/entity.oceanBehaviour	server/entity.Behaviour	*
+server/entity.oceanBehaviour	server/entity.dispenserWearer	*
 server/entity.oceanBehaviour	server/entity.effectHolder	*
 server/entity.oceanBehaviour	server/entity.equipmentHolder	*
 server/entity.oceanBehaviour	server/entity.lootPicker	*
@@ -9241,6 +9244,7 @@ server/entity.piglinBruteSpecificSensor	server/entity.sensor	value
 server/entity.piglinConfig	server/world.EntityConfig	value
 server/entity.piglinSpecificSensor	server/entity.sensor	value
 server/entity.piglinState	server/entity.Behaviour	*
+server/entity.piglinState	server/entity.dispenserWearer	*
 server/entity.piglinState	server/entity.effectHolder	*
 server/entity.piglinState	server/entity.equipmentHolder	*
 server/entity.piglinState	server/entity.mobAIBehaviour	*
@@ -9636,6 +9640,7 @@ server/entity.zombieAttackGoal	server/entity.goalTicker	value
 server/entity.zombieNautilusType	server/world.EntityType	value
 server/entity.zombifiedPiglinConfig	server/world.EntityConfig	value
 server/entity.zombifiedPiglinState	server/entity.Behaviour	*
+server/entity.zombifiedPiglinState	server/entity.dispenserWearer	*
 server/entity.zombifiedPiglinState	server/entity.effectHolder	*
 server/entity.zombifiedPiglinState	server/entity.equipmentHolder	*
 server/entity.zombifiedPiglinState	server/entity.lootPicker	*

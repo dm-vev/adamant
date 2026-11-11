@@ -37,7 +37,10 @@ type piglinState struct {
 	// guaranteedMain and guaranteedOff are set for items the piglin picked
 	// up, which it drops on death, as Mob.setGuaranteedDrop.
 	guaranteedMain, guaranteedOff bool
-	speed                         float64
+	// guaranteedArmour is set for armour a dispenser gave the piglin, indexed
+	// like armor.
+	guaranteedArmour [4]bool
+	speed            float64
 }
 type Piglin struct{ *Ent }
 type piglinConfig struct {
@@ -307,8 +310,8 @@ func (p *Piglin) dropCustomDeathLoot(killedByPlayer bool, looting int) {
 	}
 	dropMobEquipment(p.tx, p, s.main, chance(s.guaranteedMain), killedByPlayer, looting)
 	dropMobEquipment(p.tx, p, s.off, chance(s.guaranteedOff), killedByPlayer, looting)
-	for _, a := range s.armor {
-		dropMobEquipment(p.tx, p, a, .085, killedByPlayer, looting)
+	for i, a := range s.armor {
+		dropMobEquipment(p.tx, p, a, chance(s.guaranteedArmour[i]), killedByPlayer, looting)
 	}
 	for i, st := range s.inventory {
 		if !st.Empty() {
@@ -474,9 +477,14 @@ func (s *piglinState) equipment(slot int) *item.Stack {
 	return [...]*item.Stack{&s.main, &s.off, &s.armor[3], &s.armor[2], &s.armor[1], &s.armor[0]}[slot]
 }
 
+// canPickUpLoot is AbstractPiglin's setCanPickUpLoot(true): a piglin always
+// may.
+func (s *piglinState) canPickUpLoot() bool { return true }
+
 func (s *piglinState) dropChance(slot int) float32 {
 	switch {
-	case slot == slotMainhand && s.guaranteedMain, slot == slotOffhand && s.guaranteedOff:
+	case slot == slotMainhand && s.guaranteedMain, slot == slotOffhand && s.guaranteedOff,
+		slot >= slotFeet && s.guaranteedArmour[slotHead-slot]:
 		return 2
 	}
 	return defaultDropChance
@@ -488,5 +496,7 @@ func (s *piglinState) setDropChance(slot int, chance float32) {
 		s.guaranteedMain = chance > 1
 	case slotOffhand:
 		s.guaranteedOff = chance > 1
+	default:
+		s.guaranteedArmour[slotHead-slot] = chance > 1
 	}
 }

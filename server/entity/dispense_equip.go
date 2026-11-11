@@ -9,7 +9,9 @@ import (
 // equipWithDispenser is the EquipWithDispenser of the default registry. It
 // equips the item.Stack passed onto an entity that wears it from a dispenser: an
 // armour stand takes armour in a free slot, a tamed horse a saddle, horse armour
-// or a carpet, and a donkey, mule or llama a chest. Other entities take nothing.
+// or a carpet, and a donkey, mule or llama a chest. A mob that keeps six
+// equipment slots takes the rest if it may pick up loot; other entities take
+// nothing.
 func equipWithDispenser(tx *world.Tx, e world.Entity, v any) bool {
 	stack, ok := v.(item.Stack)
 	if !ok {
@@ -25,7 +27,63 @@ func equipWithDispenser(tx *world.Tx, e world.Entity, v any) bool {
 			return b.dispenserEquip(e, tx, stack)
 		}
 	}
-	return false
+	return dispenserEquipGear(tx, e, stack)
+}
+
+// dispenserWearer is implemented by the states of mobs that keep Java's six
+// equipment slots and know whether they may pick up loot.
+type dispenserWearer interface {
+	equipmentHolder
+	canPickUpLoot() bool
+}
+
+// dispenserSlot ports LivingEntity.getEquipmentSlotForItem for the items a
+// dispenser equips: the Equippable component of armour, a skull, a carved
+// pumpkin, an elytra and a shield, which is for the off hand.
+func dispenserSlot(stack item.Stack) (int, bool) {
+	switch it := stack.Item().(type) {
+	case item.Shield:
+		return slotOffhand, true
+	case item.HelmetType:
+		return slotHead, it.Helmet()
+	case item.ChestplateType:
+		return slotChest, it.Chestplate()
+	case item.LeggingsType:
+		return slotLegs, it.Leggings()
+	case item.BootsType:
+		return slotFeet, it.Boots()
+	}
+	return 0, false
+}
+
+// dispenserEquipGear ports LivingEntity.canEquipWithDispenser,
+// Mob.canDispenserEquipIntoSlot and EquipmentDispenseItemBehavior.dispenseEquipment
+// for a mob that keeps six equipment slots: it takes an Equippable item into
+// its empty slot if it may pick up loot, and the item is then sure to drop and
+// the mob stays in the world. A mob whose hands keep only a main-hand item has
+// no slot for a shield and takes nothing.
+func dispenserEquipGear(tx *world.Tx, e world.Entity, stack item.Stack) bool {
+	if dead, ok := e.(interface{ Dead() bool }); ok && dead.Dead() {
+		return false
+	}
+	ent, ok := entOf(e)
+	if !ok {
+		return false
+	}
+	wearer, ok := ent.Behaviour().(dispenserWearer)
+	if !ok || !wearer.canPickUpLoot() {
+		return false
+	}
+	slot, ok := dispenserSlot(stack)
+	if !ok || !wearer.equipment(slot).Empty() {
+		return false
+	}
+	*wearer.equipment(slot) = stack
+	wearer.setDropChance(slot, 2)
+	ent.SetPersistenceRequired(true)
+	viewEquipment(tx, e)
+	tx.PlaySound(e.Position(), sound.EquipItem{Item: stack.Item()})
+	return true
 }
 
 // dispenserEquip ports LivingEntity.canEquipWithDispenser and setItemSlot for an
@@ -93,10 +151,16 @@ func (s *Strider) dispenserEquip(_ *world.Tx, stack item.Stack) bool {
 
 // dispenserEquip ports LivingEntity.canEquipWithDispenser and
 // AbstractNautilus.canDispenserEquipIntoSlot: a tamed adult nautilus takes a
-// saddle and nautilus armour in the slots that are free.
+// saddle and nautilus armour in the slots that are free. The other ocean mobs
+// take armour like any mob that picks up loot.
 func (m *oceanMob) dispenserEquip(tx *world.Tx, stack item.Stack) bool {
 	b := m.b()
-	if (b.kind != oceanNautilus && b.kind != oceanZombieNautilus) || !b.tamed || b.age < 0 || m.Dead() {
+	if b.kind != oceanNautilus && b.kind != oceanZombieNautilus {
+		// A drowned wears what it may pick up like a zombie, and a guardian
+		// the same if it were allowed to.
+		return dispenserEquipGear(tx, m, stack)
+	}
+	if !b.tamed || b.age < 0 || m.Dead() {
 		return false
 	}
 	switch it := stack.Item().(type) {
