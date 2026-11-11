@@ -1,0 +1,526 @@
+== attack
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=5.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 0 dmg=5.0000 dealt=5.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=15.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=5.0000 lastHurtBy=true dead=false
+client SendHealth(15.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== attack twice
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=5.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 0 dmg=5.0000 dealt=5.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=15.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=5.0000 lastHurtBy=true dead=false
+client SendHealth(15.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event Hurt damage=2.0000 immune=true immunity=500ms src=entity.AttackDamageSource
+hit 1 dmg=7.0000 dealt=7.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=13.0000 abs=0.0000 food=20 sat=5.0000 exh=0.2000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=7.0000 lastHurtBy=true dead=false
+client SendHealth(13.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+hit 2 dmg=3.0000 dealt=0.0000 vulnerable=false
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=13.0000 abs=0.0000 food=20 sat=5.0000 exh=0.2000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=7.0000 lastHurtBy=true dead=false
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== attack twice not immune
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=5.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 0 dmg=5.0000 dealt=5.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=15.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=5.0000 lastHurtBy=true dead=false
+client SendHealth(15.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event Hurt damage=5.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 1 dmg=5.0000 dealt=5.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=10.0000 abs=0.0000 food=20 sat=5.0000 exh=0.2000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=5.0000 lastHurtBy=true dead=false
+client SendHealth(10.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== negative
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+hit 0 dmg=-3.0000 dealt=0.0000 vulnerable=false
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=0.0000 lastHurtBy=false dead=false
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== zero
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=0.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 0 dmg=0.0000 dealt=0.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=0.0000 lastHurtBy=true dead=false
+client SendHealth(20.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== armour
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=165/240/225/195 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=4.4800 immune=false immunity=500ms src=entity.AttackDamageSource
+event ItemDamage item.Helmet damage=2
+event ItemDamage item.Chestplate damage=2
+event ItemDamage item.Leggings damage=2
+event ItemDamage item.Boots damage=2
+hit 0 dmg=8.0000 dealt=4.4800 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=15.5200 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=163/238/223/193 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=4.4800 lastHurtBy=true dead=false
+client SendHealth(15.5200, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== armour fire
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=165/240/225/195 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=1.3800 immune=false immunity=500ms src=block.FireDamageSource
+event ItemDamage item.Helmet damage=1
+event ItemDamage item.Chestplate damage=1
+event ItemDamage item.Leggings damage=1
+event ItemDamage item.Boots damage=1
+hit 0 dmg=3.0000 dealt=1.3800 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=18.6200 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=164/239/224/194 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=1.3800 lastHurtBy=false dead=false
+client SendHealth(18.6200, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== armour and protection
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=165/240/225/195 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=2.7679 immune=false immunity=500ms src=entity.AttackDamageSource
+event ItemDamage item.Helmet damage=2
+event ItemDamage item.Chestplate damage=2
+event ItemDamage item.Leggings damage=2
+event ItemDamage item.Boots damage=2
+hit 0 dmg=8.0000 dealt=2.7679 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=17.2321 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=163/238/223/193 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=2.7679 lastHurtBy=true dead=false
+client SendHealth(17.2321, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== armour thorns
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=165/240/225/195 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=0.8800 immune=false immunity=500ms src=entity.AttackDamageSource
+event ItemDamage item.Helmet damage=1
+event ItemDamage item.Chestplate damage=1
+event ItemDamage item.Leggings damage=1
+event ItemDamage item.Boots damage=1
+event ItemDamage item.Chestplate damage=2
+hit 0 dmg=2.0000 dealt=0.8800 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=19.1200 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=164/237/224/194 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=0.8800 lastHurtBy=true dead=false
+viewer ViewLayer()
+viewer ViewLayer()
+client SendHealth(19.1200, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=0.0000 velocity=(0.0000 0.0000 0.0000)
+== armour ignored by void
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=165/240/225/195 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=4.0000 immune=false immunity=500ms src=entity.VoidDamageSource
+hit 0 dmg=4.0000 dealt=4.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=16.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=165/240/225/195 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=4.0000 lastHurtBy=false dead=false
+client SendHealth(16.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== resistance
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[effect.resistance:2:1m0s] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=6.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 0 dmg=10.0000 dealt=6.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=14.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[effect.resistance:2:1m0s] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=6.0000 lastHurtBy=true dead=false
+client SendHealth(14.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== fire resistance fire
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[effect.fireResistance:1:1m0s] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+hit 0 dmg=2.0000 dealt=0.0000 vulnerable=false
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[effect.fireResistance:1:1m0s] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=0.0000 lastHurtBy=false dead=false
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+hit 1 dmg=2.0000 dealt=0.0000 vulnerable=false
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[effect.fireResistance:1:1m0s] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=0.0000 lastHurtBy=false dead=false
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event Hurt damage=2.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 2 dmg=2.0000 dealt=2.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=18.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[effect.fireResistance:1:1m0s] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=2.0000 lastHurtBy=true dead=false
+client SendHealth(18.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== fire off
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+hit 0 dmg=2.0000 dealt=0.0000 vulnerable=false
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=0.0000 lastHurtBy=false dead=false
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event Hurt damage=2.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 1 dmg=2.0000 dealt=2.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=18.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=2.0000 lastHurtBy=true dead=false
+client SendHealth(18.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== drowning off
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+hit 0 dmg=2.0000 dealt=0.0000 vulnerable=false
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=0.0000 lastHurtBy=false dead=false
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event Hurt damage=2.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 1 dmg=2.0000 dealt=2.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=18.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=2.0000 lastHurtBy=true dead=false
+client SendHealth(18.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== fall off
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+hit 0 dmg=2.0000 dealt=0.0000 vulnerable=false
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=0.0000 lastHurtBy=false dead=false
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+hit 1 dmg=2.0000 dealt=0.0000 vulnerable=false
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=0.0000 lastHurtBy=false dead=false
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event Hurt damage=2.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 2 dmg=2.0000 dealt=2.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=18.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=2.0000 lastHurtBy=true dead=false
+client SendHealth(18.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== freeze off
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+hit 0 dmg=2.0000 dealt=0.0000 vulnerable=false
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=0.0000 lastHurtBy=false dead=false
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event Hurt damage=2.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 1 dmg=2.0000 dealt=2.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=18.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=2.0000 lastHurtBy=true dead=false
+client SendHealth(18.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== fall
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=6.0000 immune=false immunity=500ms src=entity.FallDamageSource
+hit 0 dmg=6.0000 dealt=6.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=14.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=6.0000 lastHurtBy=false dead=false
+client SendHealth(14.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== fire
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=1.0000 immune=false immunity=500ms src=block.FireDamageSource
+hit 0 dmg=1.0000 dealt=1.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=19.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=1.0000 lastHurtBy=false dead=false
+client SendHealth(19.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== drowning
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=2.0000 immune=false immunity=500ms src=entity.DrowningDamageSource
+hit 0 dmg=2.0000 dealt=2.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=18.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=2.0000 lastHurtBy=false dead=false
+client SendHealth(18.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== projectile
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=6.0000 immune=false immunity=500ms src=entity.ProjectileDamageSource
+hit 0 dmg=6.0000 dealt=6.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=14.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=6.0000 lastHurtBy=true dead=false
+client SendHealth(14.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== frost walker magma
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/195 using=false breaking=false blockdelay=0 strength=0 mode={}
+hit 0 dmg=1.0000 dealt=0.0000 vulnerable=false
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/195 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=0.0000 lastHurtBy=false dead=false
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event Hurt damage=0.9400 immune=false immunity=500ms src=entity.AttackDamageSource
+event ItemDamage item.Boots damage=1
+hit 1 dmg=1.0000 dealt=0.9400 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=19.0600 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/194 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=0.9400 lastHurtBy=true dead=false
+client SendHealth(19.0600, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== creative
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+hit 0 dmg=5.0000 dealt=0.0000 vulnerable=false
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=0.0000 lastHurtBy=false dead=false
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== event cancelled
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=5.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 0 dmg=5.0000 dealt=0.0000 vulnerable=false
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=0.0000 lastHurtBy=false dead=false
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event Hurt damage=5.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 1 dmg=5.0000 dealt=0.0000 vulnerable=false
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=0.0000 lastHurtBy=false dead=false
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== event scales
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=8.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 0 dmg=8.0000 dealt=8.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=16.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=8.0000 lastHurtBy=true dead=false
+client SendHealth(16.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== absorption
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=4.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=3.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 0 dmg=3.0000 dealt=3.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=1.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=3.0000 lastHurtBy=true dead=false
+client SendHealth(20.0000, 20.0000, 1.0000)
+client SendHealth(20.0000, 20.0000, 1.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event Hurt damage=6.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 1 dmg=6.0000 dealt=6.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=15.0000 abs=0.0000 food=20 sat=5.0000 exh=0.2000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=6.0000 lastHurtBy=true dead=false
+client SendHealth(20.0000, 20.0000, 0.0000)
+client SendHealth(15.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== absorption effect
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=4.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[effect.absorption:1:1m0s] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=3.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 0 dmg=3.0000 dealt=3.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=1.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[effect.absorption:1:1m0s] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=3.0000 lastHurtBy=true dead=false
+client SendHealth(20.0000, 20.0000, 1.0000)
+client SendHealth(20.0000, 20.0000, 1.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event Hurt damage=3.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 1 dmg=3.0000 dealt=3.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=18.0000 abs=0.0000 food=20 sat=5.0000 exh=0.2000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=3.0000 lastHurtBy=true dead=false
+client SendHealth(20.0000, 20.0000, 0.0000)
+client SendHealth(20.0000, 20.0000, 0.0000)
+client SendEffectRemoval(effect.absorption{nopLasting:{}})
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+client SendHealth(18.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event Hurt damage=3.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 2 dmg=3.0000 dealt=3.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=15.0000 abs=0.0000 food=20 sat=5.0000 exh=0.3000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=3.0000 lastHurtBy=true dead=false
+client SendHealth(15.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== shield
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=true fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:shield/0*1(336) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+hit 0 dmg=2.0000 dealt=0.0000 vulnerable=false
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=true fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:shield/0*1(336) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=5 strength=0 mode={} lastDamage=0.0000 lastHurtBy=false dead=false
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+attacker health=10.0000 velocity=(0.5000 0.0000 0.0000)
+event Hurt damage=4.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 1 dmg=4.0000 dealt=4.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=16.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=true fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:shield/0*1(336) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=5 strength=0 mode={} lastDamage=4.0000 lastHurtBy=true dead=false
+client SendHealth(16.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.5000 0.0000 0.0000)
+== shield behind
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=true fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:shield/0*1(336) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=4.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 0 dmg=4.0000 dealt=4.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[90 0] hp=16.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=true fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:shield/0*1(336) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=4.0000 lastHurtBy=true dead=false
+client SendHealth(16.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== shield not sneaking
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:shield/0*1(336) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=4.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 0 dmg=4.0000 dealt=4.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=16.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:shield/0*1(336) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=4.0000 lastHurtBy=true dead=false
+client SendHealth(16.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== shield offhand
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=true fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=minecraft:shield/0*1(336) armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event ItemDamage item.Shield damage=6
+hit 0 dmg=6.0000 dealt=0.0000 vulnerable=false
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=true fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=minecraft:shield/0*1(330) armour=-1/-1/-1/-1 using=false breaking=false blockdelay=5 strength=0 mode={} lastDamage=0.0000 lastHurtBy=false dead=false
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+attacker health=10.0000 velocity=(0.5000 0.0000 0.0000)
+== shield and fall
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=true fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:shield/0*1(336) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=4.0000 immune=false immunity=500ms src=entity.FallDamageSource
+hit 0 dmg=4.0000 dealt=4.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=16.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=true fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:shield/0*1(336) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=4.0000 lastHurtBy=false dead=false
+client SendHealth(16.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== shield and projectile
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=true fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:shield/0*1(336) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event ItemDamage item.Shield damage=4
+hit 0 dmg=4.0000 dealt=0.0000 vulnerable=false
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=true fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:shield/0*1(332) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=5 strength=0 mode={} lastDamage=0.0000 lastHurtBy=false dead=false
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== totem offhand
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:iron_sword/0*1(250) off=minecraft:totem_of_undying/0*1(-1) armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=30.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 0 dmg=30.0000 dealt=0.0000 vulnerable=false
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=2.0000 abs=8.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[effect.regeneration:2:40s effect.fireResistance:1:40s effect.absorption:2:5s] held=minecraft:iron_sword/0*1(250) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=30.0000 lastHurtBy=true dead=false
+client SendHealth(2.0000, 20.0000, 0.0000)
+client SendEffect(effect.Effect{t:{nopLasting:{}} d:40000000000 lvl:2 potency:0 ambient:false particlesHidden:false infinite:false tick:0})
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+client SendEffect(effect.Effect{t:{nopLasting:{}} d:40000000000 lvl:1 potency:0 ambient:false particlesHidden:false infinite:false tick:0})
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+client SendHealth(2.0000, 20.0000, 8.0000)
+client SendEffect(effect.Effect{t:{nopLasting:{}} d:5000000000 lvl:2 potency:0 ambient:false particlesHidden:false infinite:false tick:0})
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.TotemUseAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== totem main hand
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:totem_of_undying/0*1(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=30.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 0 dmg=30.0000 dealt=0.0000 vulnerable=false
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=2.0000 abs=8.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[effect.regeneration:2:40s effect.fireResistance:1:40s effect.absorption:2:5s] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=30.0000 lastHurtBy=true dead=false
+client SendHealth(2.0000, 20.0000, 0.0000)
+client SendEffect(effect.Effect{t:{nopLasting:{}} d:40000000000 lvl:2 potency:0 ambient:false particlesHidden:false infinite:false tick:0})
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+client SendEffect(effect.Effect{t:{nopLasting:{}} d:40000000000 lvl:1 potency:0 ambient:false particlesHidden:false infinite:false tick:0})
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+client SendHealth(2.0000, 20.0000, 8.0000)
+client SendEffect(effect.Effect{t:{nopLasting:{}} d:5000000000 lvl:2 potency:0 ambient:false particlesHidden:false infinite:false tick:0})
+client ViewEntityState(minecraft:player@(0.5000 -60.0000 0.5000))
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.TotemUseAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== totem and void
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=minecraft:totem_of_undying/0*1(-1) armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=30.0000 immune=false immunity=500ms src=entity.VoidDamageSource
+event Death src=entity.VoidDamageSource keepInv=false
+hit 0 dmg=30.0000 dealt=30.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=0.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=true effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=30.0000 lastHurtBy=false dead=true
+client SendHealth(0.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.DeathAction{action:{}})
+client SendHealth(0.0000, 20.0000, 0.0000)
+client SendMessage(text.Textvictim fell out of the world)
+client SendExperience(0, 0.0000)
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event SetOnFire duration=0s
+== totem not needed
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=minecraft:totem_of_undying/0*1(-1) armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=5.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 0 dmg=5.0000 dealt=5.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=15.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=minecraft:totem_of_undying/0*1(-1) armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=5.0000 lastHurtBy=true dead=false
+client SendHealth(15.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== kill
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=30.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+event Death src=entity.AttackDamageSource keepInv=false
+hit 0 dmg=30.0000 dealt=30.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=0.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=true effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=30.0000 lastHurtBy=true dead=true
+client SendHealth(0.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.DeathAction{action:{}})
+client SendHealth(0.0000, 20.0000, 0.0000)
+client SendMessage(text.Textvictim was slain by Cow)
+client SendExperience(0, 0.0000)
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event SetOnFire duration=0s
+== kill by fall
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=30.0000 immune=false immunity=500ms src=entity.FallDamageSource
+event Death src=entity.FallDamageSource keepInv=false
+hit 0 dmg=30.0000 dealt=30.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=0.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=true effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=30.0000 lastHurtBy=false dead=true
+client SendHealth(0.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.DeathAction{action:{}})
+client SendHealth(0.0000, 20.0000, 0.0000)
+client SendMessage(text.Textvictim hit the ground too hard)
+client SendExperience(0, 0.0000)
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event SetOnFire duration=0s
+== kill exact
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=20.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+event Death src=entity.AttackDamageSource keepInv=false
+hit 0 dmg=20.0000 dealt=20.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=0.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=true effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=20.0000 lastHurtBy=true dead=true
+client SendHealth(0.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.DeathAction{action:{}})
+client SendHealth(0.0000, 20.0000, 0.0000)
+client SendMessage(text.Textvictim was slain by Cow)
+client SendExperience(0, 0.0000)
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event SetOnFire duration=0s
+== kill and hurt dead
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=30.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+event Death src=entity.AttackDamageSource keepInv=false
+hit 0 dmg=30.0000 dealt=30.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=0.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=true effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=30.0000 lastHurtBy=true dead=true
+client SendHealth(0.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.DeathAction{action:{}})
+client SendHealth(0.0000, 20.0000, 0.0000)
+client SendMessage(text.Textvictim was slain by Cow)
+client SendExperience(0, 0.0000)
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+hit 1 dmg=1.0000 dealt=0.0000 vulnerable=false
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=0.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=true effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=30.0000 lastHurtBy=true dead=true
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event SetOnFire duration=0s
+== kill in several hits
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=6.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=3.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 0 dmg=3.0000 dealt=3.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=3.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=3.0000 lastHurtBy=true dead=false
+client SendHealth(3.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event Hurt damage=3.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+event Death src=entity.AttackDamageSource keepInv=false
+hit 1 dmg=3.0000 dealt=3.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=0.0000 abs=0.0000 food=20 sat=5.0000 exh=0.2000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=true effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=3.0000 lastHurtBy=true dead=true
+client SendHealth(0.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.DeathAction{action:{}})
+client SendHealth(0.0000, 20.0000, 0.0000)
+client SendMessage(text.Textvictim was slain by Cow)
+client SendExperience(0, 0.0000)
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event SetOnFire duration=0s
+== kill keeping inventory
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bread/0*3(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=30.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+event Death src=entity.AttackDamageSource keepInv=false
+hit 0 dmg=30.0000 dealt=30.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=0.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=true effects=[] held=minecraft:bread/0*3(-1) off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=30.0000 lastHurtBy=true dead=true
+client SendHealth(0.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.DeathAction{action:{}})
+client SendHealth(0.0000, 20.0000, 0.0000)
+client SendMessage(text.Textvictim was slain by Cow)
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event SetOnFire duration=0s
+== kill with items
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=minecraft:bread/0*3(-1) off=- armour=165/240/225/195 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=26.4000 immune=false immunity=500ms src=entity.AttackDamageSource
+event ItemDamage item.Helmet damage=7
+event ItemDamage item.Chestplate damage=7
+event ItemDamage item.Leggings damage=7
+event ItemDamage item.Boots damage=7
+event Death src=entity.AttackDamageSource keepInv=false
+hit 0 dmg=30.0000 dealt=26.4000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=0.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=true effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=26.4000 lastHurtBy=true dead=true
+client SendHealth(0.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.DeathAction{action:{}})
+client SendHealth(0.0000, 20.0000, 0.0000)
+client SendMessage(text.Textvictim was slain by Cow)
+client SendExperience(0, 0.0000)
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event SetOnFire duration=0s
+== sleeping
+event Sleep reminder=true
+start pos=(3.5000 -59.3125 -0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=true gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=2.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 0 dmg=2.0000 dealt=2.0000 vulnerable=true
+after pos=(2.5000 -60.0000 -0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=18.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=2.0000 lastHurtBy=true dead=false
+client SendHealth(18.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(2.5000 -60.0000 -0.5000), entity.HurtAction{action:{}})
+client ViewSleepingPlayers(0, 1)
+client ViewEntityWake(minecraft:player@(2.5000 -60.0000 -0.5000))
+client ViewEntityState(minecraft:player@(2.5000 -60.0000 -0.5000))
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+== exhaustion
+start pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=20.0000 abs=0.0000 food=20 sat=5.0000 exh=0.0000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={}
+event Hurt damage=2.0000 immune=false immunity=500ms src=entity.AttackDamageSource
+hit 0 dmg=2.0000 dealt=2.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=18.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=2.0000 lastHurtBy=true dead=false
+client SendHealth(18.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
+event Hurt damage=2.0000 immune=false immunity=500ms src=entity.VoidDamageSource
+hit 1 dmg=2.0000 dealt=2.0000 vulnerable=true
+after pos=(0.5000 -60.0000 0.5000) vel=(0.0000 0.0000 0.0000) rot=[-90 0] hp=16.0000 abs=0.0000 food=20 sat=5.0000 exh=0.1000 ground=false sleeping=false gliding=false swimming=false sprint=false sneak=false fall=0.0000 fire=0s air=15s dead=false effects=[] held=- off=- armour=-1/-1/-1/-1 using=false breaking=false blockdelay=0 strength=0 mode={} lastDamage=2.0000 lastHurtBy=true dead=false
+client SendHealth(16.0000, 20.0000, 0.0000)
+client ViewEntityAction(minecraft:player@(0.5000 -60.0000 0.5000), entity.HurtAction{action:{}})
+attacker health=10.0000 velocity=(0.0000 0.0000 0.0000)
