@@ -377,42 +377,23 @@ func (p *Player) SetBlockingDelay(duration time.Duration) {
 // The damage dealt to the entity will depend on the item held by the player and any effects the player may
 // have.
 // If the player cannot reach the target or a dragon part along the look ray, the method returns immediately.
+//
+// It follows Player.attack: cannotAttack, then the event and the swing, the damage the item and the effects
+// make of the hit, the hurt, and what the hit leaves behind (the item, the sound, the sweep, the effects shown
+// and the knock-back).
 func (p *Player) AttackEntity(e world.Entity) bool {
 	ac, end := p.beginAction()
 	defer end()
 	held, _ := p.HeldItems()
 	_, piercing := held.Item().(item.PiercingWeapon)
-	reach := 8.0
-	if p.GameMode().CreativeInventory() || piercing {
-		reach = 14
-	}
-	if target, ok := e.(interface {
-		PartHitFrom(mgl64.Vec3, mgl64.Vec3, float64) (string, mgl64.Vec3, bool)
-	}); ok {
-		_, hitPos, hit := target.PartHitFrom(entity.EyePosition(p), p.Rotation().Vec3(), reach)
-		if !hit || (!piercing && !p.canReachEntity(ac, e, &hitPos)) {
-			return false
-		}
-	} else if !piercing && !p.canReachEntity(ac, e, nil) {
+	if p.cannotAttack(ac, e, piercing) {
 		return false
 	}
-	if _, isPlayer := e.(*Player); isPlayer && !p.tx.World().GameRuleBool("pvp") {
-		return false
-	}
-
 	living, isLiving := e.(entity.Living)
-	if isLiving && living.Dead() {
-		return false
-	}
-	if p.refuseAttack(ac, e) {
-		return false
-	}
 
 	var (
-		force, height  = 0.45, 0.3608
-		_, slowFalling = p.Effect(effect.SlowFalling)
-		_, blind       = p.Effect(effect.Blindness)
-		critical       = !p.Sprinting() && !p.Flying() && p.FallDistance() > 0 && !slowFalling && !blind
+		force, height = 0.45, 0.3608
+		critical      = p.canCriticalAttack()
 	)
 
 	if piercing, ok := held.Item().(item.PiercingWeapon); ok {
@@ -444,113 +425,22 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 		attackable.Attack(p, p.tx)
 	}
 	if !isLiving {
-		if isAttackable && !isDestructible {
-			if durable, ok := i.Item().(item.Durable); ok {
-				p.SetHeldItems(p.damageItem(i, durable.DurabilityInfo().AttackDurability), left)
-			}
-			p.Exhaust(0.1)
-			return true
-		}
-
-		src := world.DamageSource(entity.AttackDamageSource{Attacker: p})
-		if !destructible.Destroy(p.tx, src, p) {
-			return false
-		}
-		if durable, ok := i.Item().(item.Durable); ok {
-			p.SetHeldItems(p.damageItem(i, durable.DurabilityInfo().AttackDurability), left)
-		}
-		p.Exhaust(0.1)
-		return true
+		return p.attackNonLiving(i, left, destructible, isAttackable)
 	}
 
-	dmg := i.AttackDamage()
-	mace, maceHeld := i.Item().(item.Mace)
-	fallDistance := p.FallDistance()
-	smashDistance := 0.0
-	smashBonus := 0.0
-	smashReady := false
-	windLevel := 0
-	breachLevel := 0
-	if maceHeld {
-		if b, ok := i.Enchantment(enchantment.Breach); ok {
-			breachLevel = b.Level()
-		}
-		if w, ok := i.Enchantment(enchantment.WindBurst); ok {
-			windLevel = w.Level()
-		}
-		effective := mace.EffectiveFallDistance(fallDistance)
-		// MaceItem.canSmashAttack: falling more than 1.5 blocks, not gliding.
-		if effective > mace.SmashThreshold() && !p.Gliding() {
-			smashDistance = effective
-			smashBonus = mace.SmashBonus(smashDistance)
-			if dens, ok := i.Enchantment(enchantment.Density); ok {
-				smashBonus += enchantment.Density.AdditionalDamage(dens.Level(), smashDistance)
-			}
-			if smashBonus > 0 {
-				smashReady = true
-			}
-		}
-	}
-
-	if smashReady {
-		dmg += smashBonus
-	}
-	if strength, ok := p.Effect(effect.Strength); ok {
-		dmg += dmg * effect.Strength.Multiplier(strength.Level())
-	}
-	if weakness, ok := p.Effect(effect.Weakness); ok {
-		dmg -= dmg * effect.Weakness.Multiplier(weakness.Level())
-	}
-	base := dmg
-	if s, ok := i.Enchantment(enchantment.Sharpness); ok {
-		dmg += enchantment.Sharpness.Addend(s.Level())
-		viewers, release := borrowViewers(p.tx, living.Position())
-		// Enchanted hit particles trigger frequently; reuse the pooled buffer so multiple players swinging simultaneously doesn't allocate.
-		for _, v := range viewers {
-			v.ViewEntityAction(living, entity.EnchantedHitAction{})
-		}
-		releaseBorrowedViewers(p.tx, viewers, release)
-	}
-	target := living.H().Type().EncodeEntity()
-	dmg += java26MobDamageBonus(i, target)
-	if imp, ok := i.Enchantment(enchantment.Impaling); ok {
-		if bonus := enchantment.Impaling.Damage(imp.Level(), living, p.tx); bonus > 0 {
-			dmg += bonus
-		}
-	}
-	if critical {
-		dmg *= 1.5
-	}
-
-	src := world.DamageSource(entity.AttackDamageSource{Attacker: p})
-	if smashReady && breachLevel > 0 {
-		if armourMultiplier := enchantment.Breach.ArmourMultiplier(breachLevel); armourMultiplier != 1 {
-			src = world.DamageSource(entity.MaceSmashDamageSource{AttackDamageSource: entity.AttackDamageSource{Attacker: p}, ArmourMultiplier: armourMultiplier})
-		}
-	}
-	n, vulnerable := living.Hurt(dmg, src)
+	smash := p.maceSmash(i)
+	dmg, base := p.attackDamage(i, living, smash, critical)
+	n, vulnerable := living.Hurt(dmg, p.createAttackSource(smash))
 	if vulnerable {
 		p.SetLastHurtMob(e)
 	}
 	i, left = p.HeldItems()
 
-	if durable, ok := i.Item().(item.Durable); ok {
-		p.SetHeldItems(p.damageItem(i, durable.DurabilityInfo().AttackDurability), left)
-	}
+	p.itemHurtEnemy(i, left)
 
 	p.tx.PlaySound(entity.EyePosition(e), sound.Attack{Damage: !mgl64.FloatEqual(n, 0)})
-	if smashReady && vulnerable {
-		// MaceItem.hurtEnemy: the attacker stops falling and the entities
-		// around its target are thrown away, then Wind Burst launches the
-		// attacker back up before MaceItem.postHurtEnemy resets its fall.
-		velocity := p.Velocity()
-		velocity[1] = float64(float32(.01))
-		p.SetVelocity(velocity)
-		entity.MaceSmashKnockback(p.tx, p, e, fallDistance)
-		if windLevel > 0 {
-			entity.WindBurst(p.tx, p, windLevel)
-		}
-		p.ResetFallDistance()
+	if smash.ready && vulnerable {
+		p.maceHurtEnemy(e, smash)
 	}
 	if !vulnerable {
 		return true
@@ -562,6 +452,189 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 		// longer have a runtime ID for subsequent hit effects or metadata.
 		return true
 	}
+	p.attackVisualEffects(living, critical)
+
+	living.KnockBack(p.Position(), force, height)
+	p.postAttackEffects(i, living)
+	return true
+}
+
+// cannotAttack returns true if the player may not attack e (Player.cannotAttack): the target, or a dragon part
+// along the look ray, is out of reach, it is a player while pvp is off, it is dead, or the anti-cheat refuses the
+// attack. A piercing weapon does not need the target to be in reach.
+func (p *Player) cannotAttack(ac *acState, e world.Entity, piercing bool) bool {
+	reach := 8.0
+	if p.GameMode().CreativeInventory() || piercing {
+		reach = 14
+	}
+	if target, ok := e.(interface {
+		PartHitFrom(mgl64.Vec3, mgl64.Vec3, float64) (string, mgl64.Vec3, bool)
+	}); ok {
+		_, hitPos, hit := target.PartHitFrom(entity.EyePosition(p), p.Rotation().Vec3(), reach)
+		if !hit || (!piercing && !p.canReachEntity(ac, e, &hitPos)) {
+			return true
+		}
+	} else if !piercing && !p.canReachEntity(ac, e, nil) {
+		return true
+	}
+	if _, isPlayer := e.(*Player); isPlayer && !p.tx.World().GameRuleBool("pvp") {
+		return true
+	}
+
+	if living, isLiving := e.(entity.Living); isLiving && living.Dead() {
+		return true
+	}
+	return p.refuseAttack(ac, e)
+}
+
+// canCriticalAttack returns true if a hit of the player is critical (Player.canCriticalAttack): it is falling,
+// neither sprinting nor flying, and has neither Slow Falling nor Blindness.
+func (p *Player) canCriticalAttack() bool {
+	_, slowFalling := p.Effect(effect.SlowFalling)
+	_, blind := p.Effect(effect.Blindness)
+	return !p.Sprinting() && !p.Flying() && p.FallDistance() > 0 && !slowFalling && !blind
+}
+
+// attackNonLiving finishes an attack of a target that is not a living entity, after it was told of it: a
+// target that can only be attacked is done with, and a destructible one is destroyed. The item i of the main
+// hand, with the one in the off hand, takes the damage of an attack when the target took the hit.
+func (p *Player) attackNonLiving(i, left item.Stack, destructible entity.Destructible, isAttackable bool) bool {
+	if isAttackable && destructible == nil {
+		p.itemHurtEnemy(i, left)
+		p.Exhaust(0.1)
+		return true
+	}
+
+	src := world.DamageSource(entity.AttackDamageSource{Attacker: p})
+	if !destructible.Destroy(p.tx, src, p) {
+		return false
+	}
+	p.itemHurtEnemy(i, left)
+	p.Exhaust(0.1)
+	return true
+}
+
+// itemHurtEnemy damages the item i of the main hand by what an attack costs it (ItemStack.hurtEnemy), if it
+// has a durability. left is the item of the off hand.
+func (p *Player) itemHurtEnemy(i, left item.Stack) {
+	if durable, ok := i.Item().(item.Durable); ok {
+		p.SetHeldItems(p.damageItem(i, durable.DurabilityInfo().AttackDurability), left)
+	}
+}
+
+// maceSmash is what the fall of the player makes of a hit with a mace (MaceItem.canSmashAttack and
+// getAttackDamageBonus).
+type maceSmash struct {
+	// ready is true if the hit smashes: the player holds a mace, has fallen far enough, is not gliding, and
+	// the fall adds damage.
+	ready bool
+	// bonus is the damage the smash adds, with Density.
+	bonus float64
+	// fallDistance is how far the player has fallen.
+	fallDistance float64
+	// breachLevel and windLevel are the levels of Breach and Wind Burst on the mace.
+	breachLevel, windLevel int
+}
+
+// maceSmash returns the smash of a hit with the item i of the main hand.
+func (p *Player) maceSmash(i item.Stack) (s maceSmash) {
+	s.fallDistance = p.FallDistance()
+	mace, ok := i.Item().(item.Mace)
+	if !ok {
+		return s
+	}
+	if b, ok := i.Enchantment(enchantment.Breach); ok {
+		s.breachLevel = b.Level()
+	}
+	if w, ok := i.Enchantment(enchantment.WindBurst); ok {
+		s.windLevel = w.Level()
+	}
+	effective := mace.EffectiveFallDistance(s.fallDistance)
+	// MaceItem.canSmashAttack: falling more than 1.5 blocks, not gliding.
+	if effective > mace.SmashThreshold() && !p.Gliding() {
+		smashDistance := effective
+		s.bonus = mace.SmashBonus(smashDistance)
+		if dens, ok := i.Enchantment(enchantment.Density); ok {
+			s.bonus += enchantment.Density.AdditionalDamage(dens.Level(), smashDistance)
+		}
+		if s.bonus > 0 {
+			s.ready = true
+		}
+	}
+	return s
+}
+
+// attackDamage returns the damage of a hit of living with the item i of the main hand (Player.attack):
+// the damage of the item, the smash, Strength and Weakness, the enchantments and the bonuses against the
+// mob, and a critical hit's half more. base is the damage before the enchantments, as the sweep scales it.
+func (p *Player) attackDamage(i item.Stack, living entity.Living, smash maceSmash, critical bool) (dmg, base float64) {
+	dmg = i.AttackDamage()
+	if smash.ready {
+		dmg += smash.bonus
+	}
+	if strength, ok := p.Effect(effect.Strength); ok {
+		dmg += dmg * effect.Strength.Multiplier(strength.Level())
+	}
+	if weakness, ok := p.Effect(effect.Weakness); ok {
+		dmg -= dmg * effect.Weakness.Multiplier(weakness.Level())
+	}
+	base = dmg
+	if s, ok := i.Enchantment(enchantment.Sharpness); ok {
+		dmg += enchantment.Sharpness.Addend(s.Level())
+		p.magicCrit(living)
+	}
+	target := living.H().Type().EncodeEntity()
+	dmg += java26MobDamageBonus(i, target)
+	if imp, ok := i.Enchantment(enchantment.Impaling); ok {
+		if bonus := enchantment.Impaling.Damage(imp.Level(), living, p.tx); bonus > 0 {
+			dmg += bonus
+		}
+	}
+	if critical {
+		dmg *= 1.5
+	}
+	return dmg, base
+}
+
+// createAttackSource returns the damage source of a hit with the smash passed (ItemStack.getDamageSource): a
+// smash with Breach ignores part of the armour.
+func (p *Player) createAttackSource(smash maceSmash) world.DamageSource {
+	src := world.DamageSource(entity.AttackDamageSource{Attacker: p})
+	if smash.ready && smash.breachLevel > 0 {
+		if armourMultiplier := enchantment.Breach.ArmourMultiplier(smash.breachLevel); armourMultiplier != 1 {
+			src = world.DamageSource(entity.MaceSmashDamageSource{AttackDamageSource: entity.AttackDamageSource{Attacker: p}, ArmourMultiplier: armourMultiplier})
+		}
+	}
+	return src
+}
+
+// maceHurtEnemy applies a smash that hurt e (MaceItem.hurtEnemy): the attacker stops falling and the entities
+// around its target are thrown away, then Wind Burst launches the attacker back up before
+// MaceItem.postHurtEnemy resets its fall.
+func (p *Player) maceHurtEnemy(e world.Entity, smash maceSmash) {
+	velocity := p.Velocity()
+	velocity[1] = float64(float32(.01))
+	p.SetVelocity(velocity)
+	entity.MaceSmashKnockback(p.tx, p, e, smash.fallDistance)
+	if smash.windLevel > 0 {
+		entity.WindBurst(p.tx, p, smash.windLevel)
+	}
+	p.ResetFallDistance()
+}
+
+// magicCrit shows the enchanted hit on living (Player.magicCrit).
+func (p *Player) magicCrit(living entity.Living) {
+	viewers, release := borrowViewers(p.tx, living.Position())
+	// Enchanted hit particles trigger frequently; reuse the pooled buffer so multiple players swinging simultaneously doesn't allocate.
+	for _, v := range viewers {
+		v.ViewEntityAction(living, entity.EnchantedHitAction{})
+	}
+	releaseBorrowedViewers(p.tx, viewers, release)
+}
+
+// attackVisualEffects shows the others what a hit of living leaves to see (Player.attackVisualEffects): a
+// critical hit's stars.
+func (p *Player) attackVisualEffects(living entity.Living, critical bool) {
 	if critical {
 		viewers, release := borrowViewers(p.tx, living.Position())
 		// Critical hit notifications follow the same pooling strategy to avoid churning slices during sustained
@@ -571,10 +644,6 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 		}
 		releaseBorrowedViewers(p.tx, viewers, release)
 	}
-
-	living.KnockBack(p.Position(), force, height)
-	p.postAttackEffects(i, living)
-	return true
 }
 
 // SwingArm makes the player swing its arm.
