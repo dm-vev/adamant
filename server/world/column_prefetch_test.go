@@ -102,6 +102,56 @@ func TestColumnsAreReadAheadOfTheOwner(t *testing.T) {
 	}
 }
 
+// TestLoaderDoesNotWaitForColumnsBeingRead checks that a loader of more
+// columns than are read ahead at once leaves the columns still being read for
+// a later tick instead of having the owner wait for the reads, or read them
+// itself, and loads each once read.
+func TestLoaderDoesNotWaitForColumnsBeingRead(t *testing.T) {
+	const (
+		delay  = 100 * time.Millisecond
+		radius = 8
+	)
+	p := &slowProvider{NopProvider: NopProvider{Set: defaultSettings()}, delay: delay, positions: map[ChunkPos]int{}}
+	w := Config{Provider: p}.New()
+	defer w.Close()
+	w.readSlots = make(chan struct{}, 64)
+	if len(chunksAround(radius)) <= maxPrefetched {
+		t.Fatalf("a loader of radius %d loads no more columns than are read ahead at once", radius)
+	}
+	l := NewLoader(radius, w, NopViewer{})
+	var longest time.Duration
+	deadline := time.Now().Add(20 * time.Second)
+	for time.Now().Before(deadline) {
+		<-w.Exec(func(tx *Tx) {
+			start := time.Now()
+			l.Move(tx, mgl64.Vec3{8, 64, 8})
+			l.Load(tx, 4)
+			longest = max(longest, time.Since(start))
+		})
+		l.mu.RLock()
+		loaded := len(l.loaded)
+		l.mu.RUnlock()
+		if loaded >= len(chunksAround(radius)) {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if got, want := len(l.loaded), len(chunksAround(radius)); got != want {
+		t.Fatalf("%d columns loaded, want %d", got, want)
+	}
+	if longest >= delay/2 {
+		t.Errorf("a load took %v of the owner with columns taking %v to read", longest, delay)
+	}
+	if on := p.onOwner.Load(); on != 0 {
+		t.Errorf("%d columns read on the owner", on)
+	}
+	for pos, n := range p.positions {
+		if n != 1 {
+			t.Errorf("column %v read %d times", pos, n)
+		}
+	}
+}
+
 // chunksAround returns the positions of the chunks a loader of the radius
 // loads around the origin.
 func chunksAround(radius int) []ChunkPos {

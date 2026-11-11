@@ -148,19 +148,26 @@ func (l *Loader) Load(tx *Tx, n int) {
 			break
 		}
 		pos := l.loadQueue[0]
-		l.loadQueue = l.loadQueue[1:]
 		if _, pending := l.pending[pos]; pending {
-			l.loadQueue = append(l.loadQueue, pos)
+			l.loadQueue = append(l.loadQueue[1:], pos)
 			l.mu.Unlock()
 			continue
 		}
 		w := l.w
-		if _, loaded := w.chunks[pos]; ignored && !loaded {
+		_, loaded := w.chunks[pos]
+		if ignored && !loaded {
 			// The viewer waits for something else to load the chunk.
-			l.loadQueue = append(l.loadQueue, pos)
+			l.loadQueue = append(l.loadQueue[1:], pos)
 			l.mu.Unlock()
 			continue
 		}
+		if !loaded && w.columnReading(pos) {
+			// The column stays first in line, and is loaded once read, at
+			// a later tick: the owner does not wait for the read.
+			l.mu.Unlock()
+			break
+		}
+		l.loadQueue = l.loadQueue[1:]
 		l.pending[pos] = struct{}{}
 		l.loadQueue = append(l.loadQueue, pos)
 		l.mu.Unlock()

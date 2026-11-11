@@ -96,6 +96,26 @@ func (w *World) prefetchColumn(pos ChunkPos) {
 	}()
 }
 
+// columnReading reports whether the column at pos is being read ahead and
+// the read has not ended, starting to read it ahead if it may be. A loader
+// leaves such a column for a later tick instead of having the owner wait for
+// the read: the owner keeps ticking while the provider reads, as Java's main
+// thread does while its IO worker reads chunks. It must be called from the
+// owner.
+func (w *World) columnReading(pos ChunkPos) bool {
+	w.prefetchColumn(pos)
+	r := w.prefetched[pos]
+	if r == nil || time.Since(r.at) > prefetchLife {
+		return false
+	}
+	select {
+	case <-r.done:
+		return false
+	default:
+		return true
+	}
+}
+
 // takePrefetched takes the column read ahead at pos, waiting for the read to
 // end, and reports whether there was one to take. It must be called from the
 // owner, once the saver is known to hold nothing of pos.
