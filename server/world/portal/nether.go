@@ -151,7 +151,7 @@ func NearestNetherPortal(tx *world.Tx, pos cube.Pos, radius int) (cube.Pos, bool
 // within radius of pos on both horizontal axes, nearest first, then lowest.
 func netherPortalCandidates(tx *world.Tx, pos cube.Pos, radius int) []cube.Pos {
 	var candidates []cube.Pos
-	for candidate := range tx.POIsInSquare(pos, radius, "minecraft:nether_portal") {
+	for candidate := range tx.POIs().InSquare(pos, radius, "minecraft:nether_portal") {
 		candidates = append(candidates, candidate)
 	}
 	distance := func(p cube.Pos) int {

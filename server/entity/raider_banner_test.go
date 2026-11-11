@@ -32,7 +32,7 @@ func TestRaidersTakeTheCaptainsBanner(t *testing.T) {
 		head := cube.Pos{0, 64, -6}
 		tx.SetBlock(head.Side(cube.FaceSouth), block.Bed{Facing: cube.North}, nil)
 		tx.SetBlock(head, block.Bed{Facing: cube.North, Head: true}, nil)
-		tx.ClaimPOI(head, uuid.New())
+		tx.POIs().Claim(head, uuid.New())
 		pl, _ := p.Entity(tx)
 		if !tx.Raids().TryApplyRaidOmen(omenHolder{Entity: pl, pos: head}) {
 			t.Fatal("no raid started at a village")

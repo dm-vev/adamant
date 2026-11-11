@@ -231,7 +231,7 @@ func (g *moveTowardsTargetGoal) Start(m *Mob) {
 type moveBackToVillageGoal struct{ *RandomStrollGoal }
 
 func (g moveBackToVillageGoal) CanUse(m *Mob) bool {
-	return !m.tx.IsVillage(m.BlockPos()) && g.RandomStrollGoal.CanUse(m)
+	return !m.tx.POIs().IsVillage(m.BlockPos()) && g.RandomStrollGoal.CanUse(m)
 }
 
 // moveBackToVillagePosition ports MoveBackToVillageGoal.getPosition with
@@ -239,13 +239,13 @@ func (g moveBackToVillageGoal) CanUse(m *Mob) bool {
 func moveBackToVillagePosition(m *Mob) (mgl64.Vec3, bool) {
 	pos := m.BlockPos()
 	section := cube.Pos{pos[0] >> 4, pos[1] >> 4, pos[2] >> 4}
-	best, bestDistance := section, m.tx.VillageDistance(pos)
+	best, bestDistance := section, m.tx.POIs().VillageDistance(pos)
 	closest := bestDistance
 	for x := -2; x <= 2; x++ {
 		for y := -2; y <= 2; y++ {
 			for z := -2; z <= 2; z++ {
 				s := section.Add(cube.Pos{x, y, z})
-				if d := m.tx.VillageDistance(cube.Pos{s[0] << 4, s[1] << 4, s[2] << 4}); d < closest && d < bestDistance {
+				if d := m.tx.POIs().VillageDistance(cube.Pos{s[0] << 4, s[1] << 4, s[2] << 4}); d < closest && d < bestDistance {
 					best, bestDistance = s, d
 				}
 			}
@@ -298,14 +298,14 @@ func golemTowardsVillager(m *Mob) (mgl64.Vec3, bool) {
 // golemTowardsPOI ports getPositionTowardsPoi: an occupied POI within eight
 // blocks of the centre of a random village section within two sections.
 func golemTowardsPOI(m *Mob) (mgl64.Vec3, bool) {
-	sections := m.tx.VillageSections(m.BlockPos(), 2)
+	sections := m.tx.POIs().VillageSections(m.BlockPos(), 2)
 	if len(sections) == 0 {
 		return mgl64.Vec3{}, false
 	}
 	r := m.Random()
 	centre := sections[r.NextInt(int32(len(sections)))].Add(cube.Pos{8, 8, 8})
 	var pois []cube.Pos
-	for pos, poi := range m.tx.POIsInRange(centre, 8) {
+	for pos, poi := range m.tx.POIs().InRange(centre, 8) {
 		if len(poi.Owners) > 0 || poi.HasOwner {
 			pois = append(pois, pos)
 		}

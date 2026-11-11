@@ -243,13 +243,13 @@ func (h RaidTransaction) TryApplyBadOmen(player Entity, pos cube.Pos, amplifier 
 	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
-	if !tx.World().GameRuleBool("raids") || player == nil || amplifier < 0 || amplifier >= 5 || tx.World().Difficulty() == DifficultyPeaceful || !tx.IsVillage(pos) {
+	if !tx.World().GameRuleBool("raids") || player == nil || amplifier < 0 || amplifier >= 5 || tx.World().Difficulty() == DifficultyPeaceful || !tx.POIs().IsVillage(pos) {
 		return false
 	}
 	if p, ok := player.(interface{ IsSpectator() bool }); ok && p.IsSpectator() {
 		return false
 	}
-	_, _, ok := tx.NearestPOI(pos, Home, raidVillageRadius, func(p POI) bool { return p.HasOwner })
+	_, _, ok := tx.POIs().Nearest(pos, Home, raidVillageRadius, func(p POI) bool { return p.HasOwner })
 	return ok
 }
 
@@ -272,10 +272,10 @@ func (h RaidTransaction) TryApplyRaidOmen(player Entity) bool {
 		return false
 	}
 	pos := positioned.RaidOmenPosition()
-	if !tx.IsVillage(pos) {
+	if !tx.POIs().IsVillage(pos) {
 		return false
 	}
-	center, _, ok := tx.NearestPOI(pos, Home, raidVillageRadius, func(p POI) bool { return p.HasOwner })
+	center, _, ok := tx.POIs().Nearest(pos, Home, raidVillageRadius, func(p POI) bool { return p.HasOwner })
 	if !ok {
 		return false
 	}
@@ -341,8 +341,8 @@ func (tx *Tx) tickRaids() {
 			tx.hideRaidBar(r)
 			continue
 		}
-		if !tx.IsVillage(r.center) {
-			sections := tx.VillageSections(r.center, 2)
+		if !tx.POIs().IsVillage(r.center) {
+			sections := tx.POIs().VillageSections(r.center, 2)
 			if len(sections) > 0 {
 				r.center = cube.Pos{sections[0][0] + 8, sections[0][1] + 8, sections[0][2] + 8}
 			} else if r.groupsSpawned == 0 {
@@ -548,7 +548,7 @@ func (tx *Tx) raidSpawnPosition(r *Raid) (cube.Pos, bool) {
 		candidate := cube.Pos{x, y, z}
 		airPos := candidate.Side(cube.FaceUp)
 		headPos := airPos.Side(cube.FaceUp)
-		if absInt(y-r.center[1]) <= raidVillageRadius && (!tx.IsVillage(candidate) || seconds <= 7) && tx.Block(candidate).Model().FaceSolid(candidate, cube.FaceUp, tx) && len(tx.Block(airPos).Model().BBox(airPos, tx)) == 0 && len(tx.Block(headPos).Model().BBox(headPos, tx)) == 0 {
+		if absInt(y-r.center[1]) <= raidVillageRadius && (!tx.POIs().IsVillage(candidate) || seconds <= 7) && tx.Block(candidate).Model().FaceSolid(candidate, cube.FaceUp, tx) && len(tx.Block(airPos).Model().BBox(airPos, tx)) == 0 && len(tx.Block(headPos).Model().BBox(headPos, tx)) == 0 {
 			return airPos, true
 		}
 	}

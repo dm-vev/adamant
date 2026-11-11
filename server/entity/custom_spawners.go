@@ -94,9 +94,9 @@ func catSpawnTick(tx *world.Tx, r *vanilla.Random) {
 	if !spawnPositionOk(tx, "minecraft:cat", pos) {
 		return
 	}
-	if tx.VillageDistance(pos) <= 2 {
+	if tx.POIs().VillageDistance(pos) <= 2 {
 		homes := 0
-		for p, poi := range tx.POIsInRange(pos, 48) {
+		for p, poi := range tx.POIs().InRange(pos, 48) {
 			if poi.Kind == world.Home && len(poi.Owners) > 0 && p.Vec3().Sub(pos.Vec3()).LenSqr() <= 48*48 {
 				homes++
 			}
@@ -193,7 +193,7 @@ func (s *customSpawnerState) setUpSiege(tx *world.Tx, r *vanilla.Random) bool {
 			continue
 		}
 		centre := cube.PosFromVec3(p.Position())
-		if !tx.IsVillage(centre) || biomeHasTag(tx, centre, "without_zombie_sieges") {
+		if !tx.POIs().IsVillage(centre) || biomeHasTag(tx, centre, "without_zombie_sieges") {
 			continue
 		}
 		for range 10 {
@@ -217,7 +217,7 @@ func (s *customSpawnerState) siegeSpawnPos(tx *world.Tx, pos cube.Pos, r *vanill
 	for range 10 {
 		x, z := pos[0]+int(r.NextInt(16))-8, pos[2]+int(r.NextInt(16))-8
 		at := cube.Pos{x, tx.HighestBlock(x, z) + 1, z}
-		if tx.IsVillage(at) && checkMonsterSpawnRules(tx, "minecraft:zombie", at, r) {
+		if tx.POIs().IsVillage(at) && checkMonsterSpawnRules(tx, "minecraft:zombie", at, r) {
 			return at.Vec3Middle(), true
 		}
 	}

@@ -616,7 +616,7 @@ func (g *beeLocateHiveGoal) Start(m *Mob) {
 	b.hiveCooldown = 200
 	beePos := m.BlockPos()
 	var hives []cube.Pos
-	for pos, poi := range m.tx.POIsInRange(beePos, 20) {
+	for pos, poi := range m.tx.POIs().InRange(beePos, 20) {
 		if poi.Type != "minecraft:beehive" && poi.Type != "minecraft:bee_nest" {
 			continue
 		}

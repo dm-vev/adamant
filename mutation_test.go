@@ -70,6 +70,7 @@ func adapterPackage(pkgPath string) bool {
 var worldReads = map[string][]string{
 	"Context":                  {"Cancelled"},
 	"MapTransaction":           {"ForEachFrame"},
+	"POITransaction":           {"At", "IsVillage", "VillageDistance"},
 	"RedstoneTorchTransaction": {"BurnoutStatus"},
 	"RedstoneTransaction": {
 		"CircuitDirection", "CircuitStrength", "ConsumerPower", "ObservedPower", "ProducerStrength", "Torch",
@@ -79,13 +80,13 @@ var worldReads = map[string][]string{
 		"ChunkLoaded", "ChunkReadySignal", "ChunkState", "ColumnBlockVersion", "CurrentTick", "Defer", "DeferErr",
 		"Entities", "EntitiesOfType", "EntitiesOfTypesWithin", "EntitiesWithin", "EntityByUUID", "EntityByUniqueID",
 		"EntityChunk", "EntityTicking", "Features", "HasScheduledBlockUpdate", "HighestBlock",
-		"HighestLightBlocker", "IsDarkOutside", "IsVillage", "Light", "LightBlockedInto", "Liquid",
-		"LoadedBlockEntities", "LocalDifficulty", "Maps", "MayContainLiquid", "MovementBlockProperties", "NativeState", "POI",
+		"HighestLightBlocker", "IsDarkOutside", "Light", "LightBlockedInto", "Liquid",
+		"LoadedBlockEntities", "LocalDifficulty", "Maps", "MayContainLiquid", "MovementBlockProperties", "NativeState", "POIs",
 		"PlayerSpawnPosition", "Players", "PlayersNear", "Raids", "Raining", "RainingAt", "Range", "RawBrightness",
 		"Redstone", "RedstoneConductivePower", "RedstoneDirectPower", "RedstoneDirectPowerFrom", "RedstonePower",
 		"RedstonePowerFrom", "RedstoneStrongPower", "RedstoneStrongPowerFrom", "ReleaseViewers", "SkyDarken",
 		"SkyLight", "Sleepers", "SnowingAt", "SunAngle", "Temperature", "Thundering", "ThunderingAt", "Viewers",
-		"VillageDistance", "World",
+		"World",
 	},
 	"World": {
 		"AutoSaveEnabled", "BlockRegistry", "Border", "ClampToBorder", "CreakingActive", "CurrentTick",

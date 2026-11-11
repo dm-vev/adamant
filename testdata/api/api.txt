@@ -19430,7 +19430,6 @@ server/player	method	Context.ChunkFailed	func(pos server/world.ChunkPos) bool
 server/player	method	Context.ChunkLoaded	func(pos server/world.ChunkPos) bool
 server/player	method	Context.ChunkReadySignal	func(pos server/world.ChunkPos) (<-chan struct{}, bool)
 server/player	method	Context.ChunkState	func(pos server/world.ChunkPos) (loaded bool, ready bool)
-server/player	method	Context.ClaimPOI	func(pos server/block/cube.Pos, owner github.com/google/uuid.UUID) bool
 server/player	method	Context.ClearForcedChunks	func() error
 server/player	method	Context.ColumnBlockVersion	func(pos server/world.ChunkPos) (uint64, bool)
 server/player	method	Context.CreateExplorationMap	func(origin server/block/cube.Pos, destination string, decoration byte, zoom uint8, searchRadius int, skipKnown bool) (data server/world.MapData, ok bool, err error)
@@ -19459,7 +19458,6 @@ server/player	method	Context.HasScheduledBlockUpdate	func(pos server/block/cube.
 server/player	method	Context.HighestBlock	func(x int, z int) int
 server/player	method	Context.HighestLightBlocker	func(x int, z int) int
 server/player	method	Context.IsDarkOutside	func() bool
-server/player	method	Context.IsVillage	func(pos server/block/cube.Pos) bool
 server/player	method	Context.JavaBlockCanSurvive	func(pos server/block/cube.Pos) (survives bool, hasSourceState bool)
 server/player	method	Context.JavaBlockState	func(pos server/block/cube.Pos) (id uint32, ok bool)
 server/player	method	Context.JavaMotionBlockingHeight	func(x int, z int, noLeaves bool) int
@@ -19478,11 +19476,8 @@ server/player	method	Context.MayContainLiquid	func(lo server/block/cube.Pos, hi 
 server/player	method	Context.MovementBlockProperties	func(block server/world.Block) (climbable bool, highSupport bool)
 server/player	method	Context.NativeLiquidBoundaryOpen	func(from server/block/cube.Pos, to server/block/cube.Pos) bool
 server/player	method	Context.NativeState	func(pos server/block/cube.Pos) server/world.NativeState
-server/player	method	Context.NearestPOI	func(pos server/block/cube.Pos, kind server/world.POIKind, radius int, predicate func(server/world.POI) bool) (server/block/cube.Pos, server/world.POI, bool)
 server/player	method	Context.NewReadView	func() *server/world.ReadView
-server/player	method	Context.POI	func(pos server/block/cube.Pos) (server/world.POI, bool)
-server/player	method	Context.POIsInRange	func(centre server/block/cube.Pos, radius int) iter.Seq2[server/block/cube.Pos, server/world.POI]
-server/player	method	Context.POIsInSquare	func(centre server/block/cube.Pos, radius int, typ string) iter.Seq2[server/block/cube.Pos, server/world.POI]
+server/player	method	Context.POIs	func() server/world.POITransaction
 server/player	method	Context.PlaceFire	func(pos server/block/cube.Pos) bool
 server/player	method	Context.PlaceStructure	func(t *server/world.StructureTemplate, pos server/block/cube.Pos, p server/world.StructurePlacement) bool
 server/player	method	Context.PlayEntityAnimation	func(e server/world.Entity, a server/world.EntityAnimation)
@@ -19513,7 +19508,6 @@ server/player	method	Context.RedstonePowerFrom	func(pos server/block/cube.Pos, f
 server/player	method	Context.RedstoneStrongPower	func(pos server/block/cube.Pos) int
 server/player	method	Context.RedstoneStrongPowerFrom	func(pos server/block/cube.Pos, face server/block/cube.Face) int
 server/player	method	Context.RegionRandom	func() *server/internal/vanilla.Random
-server/player	method	Context.ReleasePOI	func(pos server/block/cube.Pos, owner github.com/google/uuid.UUID) bool
 server/player	method	Context.ReleaseViewers	func(viewers []server/world.Viewer)
 server/player	method	Context.RemoveEntity	func(e server/world.Entity) *server/world.EntityHandle
 server/player	method	Context.ResendChunk	func(pos server/world.ChunkPos)
@@ -19539,8 +19533,6 @@ server/player	method	Context.ThunderingAt	func(pos server/block/cube.Pos) bool
 server/player	method	Context.TickingEntities	func() iter.Seq[server/world.Entity]
 server/player	method	Context.TryWarnWarden	func(pos server/block/cube.Pos, trigger server/world.Entity) (int, bool)
 server/player	method	Context.Viewers	func(pos github.com/go-gl/mathgl/mgl64.Vec3) []server/world.Viewer
-server/player	method	Context.VillageDistance	func(pos server/block/cube.Pos) int
-server/player	method	Context.VillageSections	func(pos server/block/cube.Pos, radius int) []server/block/cube.Pos
 server/player	method	Context.WholeWorld	func(f func(tx *server/world.Tx))
 server/player	method	Context.WithBlockInteraction	func(activate func())
 server/player	method	Context.World	func() *server/world.World
@@ -20759,7 +20751,6 @@ server/world	method	Context.ChunkFailed	func(pos server/world.ChunkPos) bool
 server/world	method	Context.ChunkLoaded	func(pos server/world.ChunkPos) bool
 server/world	method	Context.ChunkReadySignal	func(pos server/world.ChunkPos) (<-chan struct{}, bool)
 server/world	method	Context.ChunkState	func(pos server/world.ChunkPos) (loaded bool, ready bool)
-server/world	method	Context.ClaimPOI	func(pos server/block/cube.Pos, owner github.com/google/uuid.UUID) bool
 server/world	method	Context.ClearForcedChunks	func() error
 server/world	method	Context.ColumnBlockVersion	func(pos server/world.ChunkPos) (uint64, bool)
 server/world	method	Context.CreateExplorationMap	func(origin server/block/cube.Pos, destination string, decoration byte, zoom uint8, searchRadius int, skipKnown bool) (data server/world.MapData, ok bool, err error)
@@ -20788,7 +20779,6 @@ server/world	method	Context.HasScheduledBlockUpdate	func(pos server/block/cube.P
 server/world	method	Context.HighestBlock	func(x int, z int) int
 server/world	method	Context.HighestLightBlocker	func(x int, z int) int
 server/world	method	Context.IsDarkOutside	func() bool
-server/world	method	Context.IsVillage	func(pos server/block/cube.Pos) bool
 server/world	method	Context.JavaBlockCanSurvive	func(pos server/block/cube.Pos) (survives bool, hasSourceState bool)
 server/world	method	Context.JavaBlockState	func(pos server/block/cube.Pos) (id uint32, ok bool)
 server/world	method	Context.JavaMotionBlockingHeight	func(x int, z int, noLeaves bool) int
@@ -20807,11 +20797,8 @@ server/world	method	Context.MayContainLiquid	func(lo server/block/cube.Pos, hi s
 server/world	method	Context.MovementBlockProperties	func(block server/world.Block) (climbable bool, highSupport bool)
 server/world	method	Context.NativeLiquidBoundaryOpen	func(from server/block/cube.Pos, to server/block/cube.Pos) bool
 server/world	method	Context.NativeState	func(pos server/block/cube.Pos) server/world.NativeState
-server/world	method	Context.NearestPOI	func(pos server/block/cube.Pos, kind server/world.POIKind, radius int, predicate func(server/world.POI) bool) (server/block/cube.Pos, server/world.POI, bool)
 server/world	method	Context.NewReadView	func() *server/world.ReadView
-server/world	method	Context.POI	func(pos server/block/cube.Pos) (server/world.POI, bool)
-server/world	method	Context.POIsInRange	func(centre server/block/cube.Pos, radius int) iter.Seq2[server/block/cube.Pos, server/world.POI]
-server/world	method	Context.POIsInSquare	func(centre server/block/cube.Pos, radius int, typ string) iter.Seq2[server/block/cube.Pos, server/world.POI]
+server/world	method	Context.POIs	func() server/world.POITransaction
 server/world	method	Context.PlaceFire	func(pos server/block/cube.Pos) bool
 server/world	method	Context.PlaceStructure	func(t *server/world.StructureTemplate, pos server/block/cube.Pos, p server/world.StructurePlacement) bool
 server/world	method	Context.PlayEntityAnimation	func(e server/world.Entity, a server/world.EntityAnimation)
@@ -20841,7 +20828,6 @@ server/world	method	Context.RedstonePowerFrom	func(pos server/block/cube.Pos, fa
 server/world	method	Context.RedstoneStrongPower	func(pos server/block/cube.Pos) int
 server/world	method	Context.RedstoneStrongPowerFrom	func(pos server/block/cube.Pos, face server/block/cube.Face) int
 server/world	method	Context.RegionRandom	func() *server/internal/vanilla.Random
-server/world	method	Context.ReleasePOI	func(pos server/block/cube.Pos, owner github.com/google/uuid.UUID) bool
 server/world	method	Context.ReleaseViewers	func(viewers []server/world.Viewer)
 server/world	method	Context.RemoveEntity	func(e server/world.Entity) *server/world.EntityHandle
 server/world	method	Context.ResendChunk	func(pos server/world.ChunkPos)
@@ -20867,8 +20853,6 @@ server/world	method	Context.ThunderingAt	func(pos server/block/cube.Pos) bool
 server/world	method	Context.TickingEntities	func() iter.Seq[server/world.Entity]
 server/world	method	Context.TryWarnWarden	func(pos server/block/cube.Pos, trigger server/world.Entity) (int, bool)
 server/world	method	Context.Viewers	func(pos github.com/go-gl/mathgl/mgl64.Vec3) []server/world.Viewer
-server/world	method	Context.VillageDistance	func(pos server/block/cube.Pos) int
-server/world	method	Context.VillageSections	func(pos server/block/cube.Pos, radius int) []server/block/cube.Pos
 server/world	method	Context.WholeWorld	func(f func(tx *server/world.Tx))
 server/world	method	Context.WithBlockInteraction	func(activate func())
 server/world	method	Context.World	func() *server/world.World
@@ -20990,6 +20974,15 @@ server/world	method	NopViewer.ViewTimeCycle	func(bool)
 server/world	method	NopViewer.ViewWeather	func(bool, bool)
 server/world	method	NopViewer.ViewWorldSpawn	func(server/block/cube.Pos)
 server/world	method	POI.Vacant	func() bool
+server/world	method	POITransaction.At	func(pos server/block/cube.Pos) (server/world.POI, bool)
+server/world	method	POITransaction.Claim	func(pos server/block/cube.Pos, owner github.com/google/uuid.UUID) bool
+server/world	method	POITransaction.InRange	func(centre server/block/cube.Pos, radius int) iter.Seq2[server/block/cube.Pos, server/world.POI]
+server/world	method	POITransaction.InSquare	func(centre server/block/cube.Pos, radius int, typ string) iter.Seq2[server/block/cube.Pos, server/world.POI]
+server/world	method	POITransaction.IsVillage	func(pos server/block/cube.Pos) bool
+server/world	method	POITransaction.Nearest	func(pos server/block/cube.Pos, kind server/world.POIKind, radius int, predicate func(server/world.POI) bool) (server/block/cube.Pos, server/world.POI, bool)
+server/world	method	POITransaction.Release	func(pos server/block/cube.Pos, owner github.com/google/uuid.UUID) bool
+server/world	method	POITransaction.VillageDistance	func(pos server/block/cube.Pos) int
+server/world	method	POITransaction.VillageSections	func(pos server/block/cube.Pos, radius int) []server/block/cube.Pos
 server/world	method	PanicError.Error	func() string
 server/world	method	PanicError.Unwrap	func() error
 server/world	method	PositionTrackingDestroyAction.BlockAction	func()
@@ -21088,7 +21081,6 @@ server/world	method	Tx.ChunkFailed	func(pos server/world.ChunkPos) bool
 server/world	method	Tx.ChunkLoaded	func(pos server/world.ChunkPos) bool
 server/world	method	Tx.ChunkReadySignal	func(pos server/world.ChunkPos) (<-chan struct{}, bool)
 server/world	method	Tx.ChunkState	func(pos server/world.ChunkPos) (loaded bool, ready bool)
-server/world	method	Tx.ClaimPOI	func(pos server/block/cube.Pos, owner github.com/google/uuid.UUID) bool
 server/world	method	Tx.ClearForcedChunks	func() error
 server/world	method	Tx.ColumnBlockVersion	func(pos server/world.ChunkPos) (uint64, bool)
 server/world	method	Tx.CreateExplorationMap	func(origin server/block/cube.Pos, destination string, decoration byte, zoom uint8, searchRadius int, skipKnown bool) (data server/world.MapData, ok bool, err error)
@@ -21117,7 +21109,6 @@ server/world	method	Tx.HasScheduledBlockUpdate	func(pos server/block/cube.Pos, b
 server/world	method	Tx.HighestBlock	func(x int, z int) int
 server/world	method	Tx.HighestLightBlocker	func(x int, z int) int
 server/world	method	Tx.IsDarkOutside	func() bool
-server/world	method	Tx.IsVillage	func(pos server/block/cube.Pos) bool
 server/world	method	Tx.JavaBlockCanSurvive	func(pos server/block/cube.Pos) (survives bool, hasSourceState bool)
 server/world	method	Tx.JavaBlockState	func(pos server/block/cube.Pos) (id uint32, ok bool)
 server/world	method	Tx.JavaMotionBlockingHeight	func(x int, z int, noLeaves bool) int
@@ -21136,11 +21127,8 @@ server/world	method	Tx.MayContainLiquid	func(lo server/block/cube.Pos, hi server
 server/world	method	Tx.MovementBlockProperties	func(block server/world.Block) (climbable bool, highSupport bool)
 server/world	method	Tx.NativeLiquidBoundaryOpen	func(from server/block/cube.Pos, to server/block/cube.Pos) bool
 server/world	method	Tx.NativeState	func(pos server/block/cube.Pos) server/world.NativeState
-server/world	method	Tx.NearestPOI	func(pos server/block/cube.Pos, kind server/world.POIKind, radius int, predicate func(server/world.POI) bool) (server/block/cube.Pos, server/world.POI, bool)
 server/world	method	Tx.NewReadView	func() *server/world.ReadView
-server/world	method	Tx.POI	func(pos server/block/cube.Pos) (server/world.POI, bool)
-server/world	method	Tx.POIsInRange	func(centre server/block/cube.Pos, radius int) iter.Seq2[server/block/cube.Pos, server/world.POI]
-server/world	method	Tx.POIsInSquare	func(centre server/block/cube.Pos, radius int, typ string) iter.Seq2[server/block/cube.Pos, server/world.POI]
+server/world	method	Tx.POIs	func() server/world.POITransaction
 server/world	method	Tx.PlaceFire	func(pos server/block/cube.Pos) bool
 server/world	method	Tx.PlaceStructure	func(t *server/world.StructureTemplate, pos server/block/cube.Pos, p server/world.StructurePlacement) bool
 server/world	method	Tx.PlayEntityAnimation	func(e server/world.Entity, a server/world.EntityAnimation)
@@ -21170,7 +21158,6 @@ server/world	method	Tx.RedstonePowerFrom	func(pos server/block/cube.Pos, face se
 server/world	method	Tx.RedstoneStrongPower	func(pos server/block/cube.Pos) int
 server/world	method	Tx.RedstoneStrongPowerFrom	func(pos server/block/cube.Pos, face server/block/cube.Face) int
 server/world	method	Tx.RegionRandom	func() *server/internal/vanilla.Random
-server/world	method	Tx.ReleasePOI	func(pos server/block/cube.Pos, owner github.com/google/uuid.UUID) bool
 server/world	method	Tx.ReleaseViewers	func(viewers []server/world.Viewer)
 server/world	method	Tx.RemoveEntity	func(e server/world.Entity) *server/world.EntityHandle
 server/world	method	Tx.ResendChunk	func(pos server/world.ChunkPos)
@@ -21196,8 +21183,6 @@ server/world	method	Tx.ThunderingAt	func(pos server/block/cube.Pos) bool
 server/world	method	Tx.TickingEntities	func() iter.Seq[server/world.Entity]
 server/world	method	Tx.TryWarnWarden	func(pos server/block/cube.Pos, trigger server/world.Entity) (int, bool)
 server/world	method	Tx.Viewers	func(pos github.com/go-gl/mathgl/mgl64.Vec3) []server/world.Viewer
-server/world	method	Tx.VillageDistance	func(pos server/block/cube.Pos) int
-server/world	method	Tx.VillageSections	func(pos server/block/cube.Pos, radius int) []server/block/cube.Pos
 server/world	method	Tx.WholeWorld	func(f func(tx *server/world.Tx))
 server/world	method	Tx.WithBlockInteraction	func(activate func())
 server/world	method	Tx.World	func() *server/world.World
@@ -21460,6 +21445,7 @@ server/world	type	NopProvider	struct{Set *server/world.Settings; WorldData *serv
 server/world	type	NopViewer	struct{}
 server/world	type	POI	struct{Kind server/world.POIKind; Type string; Owner github.com/google/uuid.UUID; HasOwner bool; Capacity int; Owners []github.com/google/uuid.UUID}
 server/world	type	POIKind	uint8
+server/world	type	POITransaction	struct{tx *server/world.Tx}
 server/world	type	PanicError	struct{Value any; Stack []byte}
 server/world	type	Particle	interface{Spawn(w *server/world.World, pos github.com/go-gl/mathgl/mgl64.Vec3)}
 server/world	type	PersistentGenerator	interface{LoadGenerationState(data []byte) error; SaveGenerationState() ([]byte, error); server/world.Generator}

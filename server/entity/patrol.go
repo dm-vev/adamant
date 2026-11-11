@@ -40,7 +40,7 @@ func patrolSpawnTick(tx *world.Tx, random *vanilla.Random) {
 		return
 	}
 	origin := cube.PosFromVec3(player.Position())
-	if tx.VillageDistance(origin) <= 2 {
+	if tx.POIs().VillageDistance(origin) <= 2 {
 		return
 	}
 	sign := func() int {

@@ -20,7 +20,7 @@ func TestVillagesAreSieged(t *testing.T) {
 			head := cube.Pos{-10 + 4*i, 64, -20}
 			tx.SetBlock(head.Side(cube.FaceSouth), block.Bed{Facing: cube.North}, nil)
 			tx.SetBlock(head, block.Bed{Facing: cube.North, Head: true}, nil)
-			tx.ClaimPOI(head, uuid.New())
+			tx.POIs().Claim(head, uuid.New())
 		}
 	})
 	entity.ForceVillageSiegeTonight(w)

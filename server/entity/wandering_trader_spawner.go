@@ -97,7 +97,7 @@ func spawnWanderingTrader(tx *world.Tx, random *vanilla.Random) bool {
 		return false
 	}
 	reference := cube.PosFromVec3(player.Position())
-	if bell, _, ok := tx.NearestPOI(reference, world.Meeting, 48, nil); ok {
+	if bell, _, ok := tx.POIs().Nearest(reference, world.Meeting, 48, nil); ok {
 		reference = bell
 	}
 	pos, ok := traderSpawnPosition(tx, random, reference, 48)

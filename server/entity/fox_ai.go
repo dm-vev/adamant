@@ -442,7 +442,7 @@ func (g *foxSeekShelterGoal) CanUse(m *Mob) bool {
 		return false
 	}
 	g.interval = 100
-	return brightOutside(m.tx) && canSeeSky(m.tx, pos) && !m.tx.IsVillage(pos) && g.setWantedPos(m)
+	return brightOutside(m.tx) && canSeeSky(m.tx, pos) && !m.tx.POIs().IsVillage(pos) && g.setWantedPos(m)
 }
 
 func (g *foxSeekShelterGoal) setWantedPos(m *Mob) bool {
@@ -551,10 +551,10 @@ func (g *foxStrollThroughVillageGoal) canFoxMove(m *Mob) bool {
 }
 
 func (g *foxStrollThroughVillageGoal) CanUse(m *Mob) bool {
-	if brightOutside(m.tx) || m.Random().NextInt(int32(g.interval)) != 0 || !m.tx.IsVillage(m.BlockPos()) {
+	if brightOutside(m.tx) || m.Random().NextInt(int32(g.interval)) != 0 || !m.tx.POIs().IsVillage(m.BlockPos()) {
 		return false
 	}
-	pos, ok := LandRandomPosWeighted(m, 15, 7, func(p cube.Pos) float64 { return -float64(m.tx.VillageDistance(p)) })
+	pos, ok := LandRandomPosWeighted(m, 15, 7, func(p cube.Pos) float64 { return -float64(m.tx.POIs().VillageDistance(p)) })
 	g.hasWant = ok
 	if ok {
 		g.wanted = cube.PosFromVec3(pos)

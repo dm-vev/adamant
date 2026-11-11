@@ -77,19 +77,21 @@ func poiType(b Block) (POI, bool) {
 	return p, true
 }
 
-// POI returns the registered POI at pos, if any.
-func (tx *Tx) POI(pos cube.Pos) (POI, bool) {
+// At returns the registered POI at pos, if any.
+func (h POITransaction) At(pos cube.Pos) (POI, bool) {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	p, ok := tx.World().pois[pos]
 	return p, ok
 }
 
-// POIsInSquare yields the registered POIs of the namespaced type within
+// InSquare yields the registered POIs of the namespaced type within
 // radius blocks of centre on both horizontal axes, at any height. Like Java's
 // PoiManager.getInSquare it reads the POI index only, which covers every chunk
 // indexed since it was loaded: no chunk is loaded or generated.
-func (tx *Tx) POIsInSquare(centre cube.Pos, radius int, typ string) iter.Seq2[cube.Pos, POI] {
+func (h POITransaction) InSquare(centre cube.Pos, radius int, typ string) iter.Seq2[cube.Pos, POI] {
+	tx := h.tx
 	return tx.lockedPOIs(func(yield func(cube.Pos, POI) bool) {
 		for pos, poi := range tx.World().pois {
 			if poi.Type != typ || absInt(pos[0]-centre[0]) > radius || absInt(pos[2]-centre[2]) > radius {
@@ -102,9 +104,10 @@ func (tx *Tx) POIsInSquare(centre cube.Pos, radius int, typ string) iter.Seq2[cu
 	})
 }
 
-// POIsInRange yields the registered POIs of any type within radius blocks
+// InRange yields the registered POIs of any type within radius blocks
 // of centre, as Java's PoiManager.getInRange.
-func (tx *Tx) POIsInRange(centre cube.Pos, radius int) iter.Seq2[cube.Pos, POI] {
+func (h POITransaction) InRange(centre cube.Pos, radius int) iter.Seq2[cube.Pos, POI] {
+	tx := h.tx
 	limit := radius * radius
 	return tx.lockedPOIs(func(yield func(cube.Pos, POI) bool) {
 		for pos, poi := range tx.World().pois {
@@ -146,9 +149,10 @@ func (tx *Tx) lockedPOIs(seq iter.Seq2[cube.Pos, POI]) iter.Seq2[cube.Pos, POI] 
 	}
 }
 
-// NearestPOI finds the closest matching registered POI within a spherical radius.
+// Nearest finds the closest matching registered POI within a spherical radius.
 // Ties are resolved lexicographically by block position.
-func (tx *Tx) NearestPOI(pos cube.Pos, kind POIKind, radius int, predicate func(POI) bool) (cube.Pos, POI, bool) {
+func (h POITransaction) Nearest(pos cube.Pos, kind POIKind, radius int, predicate func(POI) bool) (cube.Pos, POI, bool) {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	if radius < 0 {
@@ -181,8 +185,9 @@ func posLess(a, b cube.Pos) bool {
 	return a[2] < b[2]
 }
 
-// ClaimPOI atomically acquires one available POI ticket for owner.
-func (tx *Tx) ClaimPOI(pos cube.Pos, owner uuid.UUID) bool {
+// Claim atomically acquires one available POI ticket for owner.
+func (h POITransaction) Claim(pos cube.Pos, owner uuid.UUID) bool {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	w := tx.World()
@@ -204,8 +209,9 @@ func (tx *Tx) ClaimPOI(pos cube.Pos, owner uuid.UUID) bool {
 	return true
 }
 
-// ReleasePOI releases one POI ticket owned by owner.
-func (tx *Tx) ReleasePOI(pos cube.Pos, owner uuid.UUID) bool {
+// Release releases one POI ticket owned by owner.
+func (h POITransaction) Release(pos cube.Pos, owner uuid.UUID) bool {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	w := tx.World()
@@ -230,13 +236,14 @@ func (tx *Tx) ReleasePOI(pos cube.Pos, owner uuid.UUID) bool {
 }
 
 // IsVillage reports whether the position is within six sections of a source village section.
-func (tx *Tx) IsVillage(pos cube.Pos) bool {
-	return tx.VillageDistance(pos) <= 6
+func (h POITransaction) IsVillage(pos cube.Pos) bool {
+	return h.VillageDistance(pos) <= 6
 }
 
 // VillageDistance reports the propagated village distance at the position's section.
 // Sources are sections containing occupied POIs tagged as village.
-func (tx *Tx) VillageDistance(pos cube.Pos) int {
+func (h POITransaction) VillageDistance(pos cube.Pos) int {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	best := 7
@@ -266,7 +273,8 @@ func isVillagePOI(p POI) bool {
 
 // VillageSections returns section origins containing occupied village POIs
 // within the requested section radius, ordered by block position.
-func (tx *Tx) VillageSections(pos cube.Pos, radius int) []cube.Pos {
+func (h POITransaction) VillageSections(pos cube.Pos, radius int) []cube.Pos {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	if radius < 0 {

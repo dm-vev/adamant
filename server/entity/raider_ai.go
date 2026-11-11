@@ -218,7 +218,7 @@ func (g *pathfindToRaidGoal) CanUse(m *Mob) bool {
 }
 
 func (g *pathfindToRaidGoal) CanContinueToUse(m *Mob) bool {
-	return raiderOf(m).activeRaid(m) != nil && !m.tx.IsVillage(m.BlockPos())
+	return raiderOf(m).activeRaid(m) != nil && !m.tx.POIs().IsVillage(m.BlockPos())
 }
 
 func (g *pathfindToRaidGoal) Tick(m *Mob) {
@@ -263,7 +263,7 @@ func (g *raiderMoveThroughVillageGoal) CanUse(m *Mob) bool {
 func (g *raiderMoveThroughVillageGoal) findHome(m *Mob) bool {
 	origin := m.BlockPos()
 	var homes []cube.Pos
-	for pos, poi := range m.tx.POIsInSquare(origin, 48, "minecraft:bed") {
+	for pos, poi := range m.tx.POIs().InSquare(origin, 48, "minecraft:bed") {
 		if poi.Kind != world.Home || g.wasVisited(pos) {
 			continue
 		}

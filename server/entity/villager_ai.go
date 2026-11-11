@@ -475,7 +475,7 @@ func newValidateNearbyPoi(_ *VillagerBehaviour, match func(world.POI) bool, mem 
 		if !here || pos.Vec3Centre().Sub(m.data.Pos).LenSqr() >= 256 {
 			return false
 		}
-		poi, ok := m.tx.POI(pos)
+		poi, ok := m.tx.POIs().At(pos)
 		if !ok || !match(poi) {
 			br.erase(mem)
 			return true
@@ -484,7 +484,7 @@ func newValidateNearbyPoi(_ *VillagerBehaviour, match func(world.POI) bool, mem 
 		if bed, isBed := m.tx.Block(pos).(block.Bed); isBed && bed.Occupied && b.sleeping == nil {
 			br.erase(mem)
 			if !villagerSleepsIn(m.tx, pos) {
-				m.tx.ReleasePOI(pos, m.H().UUID())
+				m.tx.POIs().Release(pos, m.H().UUID())
 			}
 		}
 		return true
@@ -509,7 +509,7 @@ func newPoiCompetitorScan(b *VillagerBehaviour) *oneShot {
 	return newOneShot([]memoryCondition{{memJobSite, memPresent}, {memNearestLivingEntities, memPresent}}, func(m *Mob, br *Brain, _ int64) bool {
 		v, _ := br.get(memJobSite)
 		site := v.(globalPos)
-		poi, ok := m.tx.POI(site.pos)
+		poi, ok := m.tx.POIs().At(site.pos)
 		if !ok {
 			return true
 		}
@@ -656,7 +656,7 @@ func newAcquirePoi(b *VillagerBehaviour, match func(world.POI) bool, validate, a
 		}
 		var all []candidate
 		origin := m.BlockPos()
-		for pos, poi := range m.tx.POIsInRange(origin, 48) {
+		for pos, poi := range m.tx.POIs().InRange(origin, 48) {
 			if match(poi) && poi.Vacant() {
 				d := pos.Sub(origin)
 				all = append(all, candidate{pos, poi, d[0]*d[0] + d[1]*d[1] + d[2]*d[2]})
@@ -687,7 +687,7 @@ func newAcquirePoi(b *VillagerBehaviour, match func(world.POI) bool, validate, a
 		path := m.AI.nav.CreatePathToAny(m, targets, reach)
 		if path != nil && path.CanReach() {
 			target := path.Target()
-			if _, ok := m.tx.POI(target); ok && m.tx.ClaimPOI(target, m.H().UUID()) {
+			if _, ok := m.tx.POIs().At(target); ok && m.tx.POIs().Claim(target, m.H().UUID()) {
 				br.set(acquire, globalPos{dim: m.tx.World().Dimension(), pos: target})
 				clear(cache)
 			}
@@ -722,7 +722,7 @@ func newGoToPotentialJobSite(b *VillagerBehaviour, speed float64) *behavior {
 		},
 		stop: func(m *Mob, _ int64) {
 			if pos, ok := villagerPoi(m, memPotentialJobSite); ok {
-				m.tx.ReleasePOI(pos, m.H().UUID())
+				m.tx.POIs().Release(pos, m.H().UUID())
 			}
 			m.Brain().erase(memPotentialJobSite)
 		},
@@ -738,7 +738,7 @@ func newYieldJobSite(b *VillagerBehaviour, speed float64) *oneShot {
 			return false
 		}
 		pos, _ := villagerPoi(m, memPotentialJobSite)
-		poi, ok := m.tx.POI(pos)
+		poi, ok := m.tx.POIs().At(pos)
 		if !ok {
 			return true
 		}
@@ -756,8 +756,8 @@ func newYieldJobSite(b *VillagerBehaviour, speed float64) *oneShot {
 				setWalkAndLookTarget(om, newBlockPosTracker(pos), speed, 1)
 				ob.br.set(memPotentialJobSite, globalPos{dim: m.tx.World().Dimension(), pos: pos})
 				// The ticket moves to the villager it is handed to.
-				m.tx.ReleasePOI(pos, m.H().UUID())
-				m.tx.ClaimPOI(pos, other.H().UUID())
+				m.tx.POIs().Release(pos, m.H().UUID())
+				m.tx.POIs().Claim(pos, other.H().UUID())
 			}
 			break
 		}
@@ -794,7 +794,7 @@ func newAssignProfessionFromJobSite(b *VillagerBehaviour) *oneShot {
 		if b.profession != "minecraft:none" {
 			return true
 		}
-		if poi, ok := m.tx.POI(site.pos); ok {
+		if poi, ok := m.tx.POIs().At(site.pos); ok {
 			if p := villagerJobSiteProfession(poi); p != "" {
 				m.Self.(*Villager).SetProfession(p)
 				b.refreshBrain(m)
@@ -1404,7 +1404,7 @@ func newPlayTagWithOtherKids() *oneShot {
 		for _, f := range friends {
 			if c := chasing(f); c != nil && c.H() == m.H() {
 				for range 10 {
-					if pos, ok := LandRandomPos(m, 20, 8); ok && m.tx.IsVillage(cube.PosFromVec3(pos)) {
+					if pos, ok := LandRandomPos(m, 20, 8); ok && m.tx.POIs().IsVillage(cube.PosFromVec3(pos)) {
 						br.set(memWalkTarget, walkTarget{target: newVecTracker(pos), speed: float64(float32(.6))})
 						break
 					}
@@ -1443,7 +1443,7 @@ func newVillageBoundRandomStroll(speed float64, horizontal, vertical int) *oneSh
 		bp := m.BlockPos()
 		var pos mgl64.Vec3
 		var ok bool
-		if m.tx.IsVillage(bp) {
+		if m.tx.POIs().IsVillage(bp) {
 			pos, ok = LandRandomPos(m, horizontal, vertical)
 		} else if section, closer := villageSectionTowards(m.tx, bp, 2); closer {
 			pos, ok = DefaultRandomPosTowards(m, horizontal, vertical, section, math.Pi/2)
@@ -1465,13 +1465,13 @@ func newVillageBoundRandomStroll(speed float64, horizontal, vertical int) *oneSh
 func villageSectionTowards(tx *world.Tx, pos cube.Pos, radius int) (mgl64.Vec3, bool) {
 	centre := cube.Pos{pos[0] >> 4, pos[1] >> 4, pos[2] >> 4}
 	sectionPos := func(s cube.Pos) cube.Pos { return cube.Pos{s[0]<<4 + 8, s[1]<<4 + 8, s[2]<<4 + 8} }
-	best, bestDist := centre, tx.VillageDistance(sectionPos(centre))
+	best, bestDist := centre, tx.POIs().VillageDistance(sectionPos(centre))
 	start := bestDist
 	for x := -radius; x <= radius; x++ {
 		for y := -radius; y <= radius; y++ {
 			for z := -radius; z <= radius; z++ {
 				s := centre.Add(cube.Pos{x, y, z})
-				if d := tx.VillageDistance(sectionPos(s)); d < start && d < bestDist {
+				if d := tx.POIs().VillageDistance(sectionPos(s)); d < start && d < bestDist {
 					best, bestDist = s, d
 				}
 			}
@@ -1602,14 +1602,14 @@ func newSetClosestHomeAsWalkTarget(speed float64) *oneShot {
 		if time-lastUpdate < 20 {
 			return false
 		}
-		closest, _, found := m.tx.NearestPOI(m.BlockPos(), world.Home, 48, nil)
+		closest, _, found := m.tx.POIs().Nearest(m.BlockPos(), world.Home, 48, nil)
 		if !found || distSqrPos(closest, m.BlockPos()) <= 4 {
 			return false
 		}
 		lastUpdate = time + int64(m.tx.RegionRandom().NextInt(20))
 		tried := 0
 		var targets []cube.Pos
-		for pos, poi := range m.tx.POIsInRange(m.BlockPos(), 48) {
+		for pos, poi := range m.tx.POIs().InRange(m.BlockPos(), 48) {
 			if poi.Kind != world.Home {
 				continue
 			}
@@ -1623,7 +1623,7 @@ func newSetClosestHomeAsWalkTarget(speed float64) *oneShot {
 			targets = append(targets, pos)
 		}
 		if path := m.AI.nav.CreatePathToAny(m, targets, 1); path != nil && path.CanReach() {
-			if _, ok := m.tx.POI(path.Target()); ok {
+			if _, ok := m.tx.POIs().At(path.Target()); ok {
 				br.set(memWalkTarget, walkTarget{target: newBlockPosTracker(path.Target()), speed: speed, closeEnough: 1})
 			}
 		} else if tried < 5 {
@@ -1677,10 +1677,10 @@ func standable(tx *world.Tx, pos cube.Pos) bool {
 // village heads for the nearest one.
 func newGoToClosestVillage(speed float64, closeEnough int) *oneShot {
 	return newOneShot([]memoryCondition{{memWalkTarget, memAbsent}}, func(m *Mob, br *Brain, _ int64) bool {
-		if m.tx.IsVillage(m.BlockPos()) {
+		if m.tx.POIs().IsVillage(m.BlockPos()) {
 			return false
 		}
-		here := m.tx.VillageDistance(m.BlockPos())
+		here := m.tx.POIs().VillageDistance(m.BlockPos())
 		var target mgl64.Vec3
 		found := false
 		for range 5 {
@@ -1688,7 +1688,7 @@ func newGoToClosestVillage(speed float64, closeEnough int) *oneShot {
 			if !ok {
 				continue
 			}
-			d := m.tx.VillageDistance(cube.PosFromVec3(pos))
+			d := m.tx.POIs().VillageDistance(cube.PosFromVec3(pos))
 			if d < here {
 				target, found = pos, true
 				break
@@ -1855,15 +1855,15 @@ func villagerTryToGiveBirth(m *Mob, self, partner *Villager) {
 	}
 	child := self.BreedWith(m.tx, partner, m.Random())
 	if child == nil {
-		m.tx.ReleasePOI(bed, m.H().UUID())
+		m.tx.POIs().Release(bed, m.H().UUID())
 		return
 	}
 	added := m.tx.AddEntity(child)
 	if kid, ok := added.(*Villager); ok {
 		kid.viewAction(LoveHeartsAction{})
 		// The bed moves to the baby.
-		m.tx.ReleasePOI(bed, m.H().UUID())
-		m.tx.ClaimPOI(bed, kid.H().UUID())
+		m.tx.POIs().Release(bed, m.H().UUID())
+		m.tx.POIs().Claim(bed, kid.H().UUID())
 		kid.behaviour().br.set(memHome, globalPos{dim: m.tx.World().Dimension(), pos: bed})
 	}
 }
@@ -1877,7 +1877,7 @@ func villagerTakeVacantBed(m *Mob) (cube.Pos, bool) {
 	}
 	var all []candidate
 	origin := m.BlockPos()
-	for pos, poi := range m.tx.POIsInRange(origin, 48) {
+	for pos, poi := range m.tx.POIs().InRange(origin, 48) {
 		if poi.Kind == world.Home && poi.Vacant() {
 			d := pos.Sub(origin)
 			all = append(all, candidate{pos, d[0]*d[0] + d[1]*d[1] + d[2]*d[2]})
@@ -1886,7 +1886,7 @@ func villagerTakeVacantBed(m *Mob) (cube.Pos, bool) {
 	slices.SortStableFunc(all, func(a, b candidate) int { return a.dist - b.dist })
 	for _, c := range all {
 		path := m.AI.nav.CreatePath(m, c.pos, 1)
-		if path != nil && path.CanReach() && m.tx.ClaimPOI(c.pos, m.H().UUID()) {
+		if path != nil && path.CanReach() && m.tx.POIs().Claim(c.pos, m.H().UUID()) {
 			return c.pos, true
 		}
 	}
@@ -1977,11 +1977,11 @@ func newLocateHidingPlace(radius int, speed float64, closeEnough int) *oneShot {
 		{memLookTarget, memRegistered}, {memBreedTarget, memRegistered}, {memInteractionTarget, memRegistered}}, func(m *Mob, br *Brain, _ int64) bool {
 		var pos cube.Pos
 		found := false
-		if near, _, ok := m.tx.NearestPOI(m.BlockPos(), world.Home, closeEnough+1, nil); ok && near.Vec3Centre().Sub(m.data.Pos).LenSqr() < float64(closeEnough*closeEnough) {
+		if near, _, ok := m.tx.POIs().Nearest(m.BlockPos(), world.Home, closeEnough+1, nil); ok && near.Vec3Centre().Sub(m.data.Pos).LenSqr() < float64(closeEnough*closeEnough) {
 			pos, found = near, true
 		} else {
 			var homes []cube.Pos
-			for p, poi := range m.tx.POIsInRange(m.BlockPos(), radius) {
+			for p, poi := range m.tx.POIs().InRange(m.BlockPos(), radius) {
 				if poi.Kind == world.Home {
 					homes = append(homes, p)
 				}
@@ -2146,7 +2146,7 @@ func (s *villagerNearestBedSensor) doTick(m *Mob, b *Brain) {
 	s.tried = 0
 	s.lastUpdate = m.tx.CurrentTick() + int64(m.tx.RegionRandom().NextInt(20))
 	var targets []cube.Pos
-	for pos, poi := range m.tx.POIsInRange(m.BlockPos(), 48) {
+	for pos, poi := range m.tx.POIs().InRange(m.BlockPos(), 48) {
 		if poi.Kind != world.Home {
 			continue
 		}
@@ -2160,7 +2160,7 @@ func (s *villagerNearestBedSensor) doTick(m *Mob, b *Brain) {
 		targets = append(targets, pos)
 	}
 	if path := m.AI.nav.CreatePathToAny(m, targets, 1); path != nil && path.CanReach() {
-		if _, ok := m.tx.POI(path.Target()); ok {
+		if _, ok := m.tx.POIs().At(path.Target()); ok {
 			b.set(memNearestBed, path.Target())
 		}
 	} else if s.tried < 5 {
@@ -2252,7 +2252,7 @@ func (b *VillagerBehaviour) releasePoi(m *Mob, mem memoryType) {
 	if !ok {
 		return
 	}
-	poi, exists := m.tx.POI(pos)
+	poi, exists := m.tx.POIs().At(pos)
 	if !exists {
 		return
 	}
@@ -2268,7 +2268,7 @@ func (b *VillagerBehaviour) releasePoi(m *Mob, mem memoryType) {
 		match = poi.Kind == world.Meeting
 	}
 	if match {
-		m.tx.ReleasePOI(pos, m.H().UUID())
+		m.tx.POIs().Release(pos, m.H().UUID())
 	}
 }
 
