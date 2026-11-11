@@ -218,56 +218,74 @@ func (p *Player) UseItem() {
 	}
 	switch usable := it.(type) {
 	case item.Chargeable:
-		useCtx := p.useContext()
-		if usable.ReleaseCharge(p, p.tx, useCtx) {
-			p.handleUseContext(useCtx)
-			p.updateState()
-			return
-		}
-		if usable.CanCharge(p, p.tx, useCtx) {
-			p.startItemUse(i)
-		}
-		p.handleUseContext(useCtx)
+		p.useChargeable(i, usable)
 	case item.KineticWeapon:
-		p.startItemUse(i)
-		if spear, ok := it.(item.Spear); ok {
-			name := "item.spear.use"
-			if spear.Tier == item.ToolTierWood {
-				name = "item.spear_wood.use"
-			}
-			p.PlaySound(sound.Custom{Name: name, Volume: 1, Pitch: 1})
-		}
+		p.useKineticWeapon(i, it)
 	case item.Usable:
-		if _, cooldown := it.(item.Cooldown); !cooldown && p.refuseFastUse(it) {
-			p.resyncInventory()
-			return
-		}
-		useCtx := p.useContext()
-		if !usable.Use(p.tx, p, useCtx) {
-			// An item used in no other way may still be consumed, as a milk
-			// bucket that is not pouring anything.
-			if consumable, ok := it.(item.Consumable); ok && p.canConsume(consumable) {
-				p.startItemUse(i)
-			}
-			return
-		}
-		if _, ok := it.(item.FishingRod); ok {
-			event := world.GameEventItemInteractFinish
-			if p.IsFishing() {
-				event = world.GameEventItemInteractStart
-			}
-			p.emitGameEvent(event, p.Position(), nil)
-		}
-		// We only swing the player's arm if the item held actually does something. If it doesn't, there is no
-		// reason to swing the arm.
-		p.SwingArm()
-		p.SetHeldItems(p.subtractItem(p.damageItem(i, useCtx.Damage), useCtx.CountSub), left)
-		p.addNewItem(useCtx)
+		p.useUsable(i, left, usable)
 	case item.Consumable:
 		if p.canConsume(usable) {
 			p.startItemUse(i)
 		}
 	}
+}
+
+// useChargeable uses a chargeable item i in the air, such as a crossbow: it releases the charge it holds, or
+// starts to charge.
+func (p *Player) useChargeable(i item.Stack, usable item.Chargeable) {
+	useCtx := p.useContext()
+	if usable.ReleaseCharge(p, p.tx, useCtx) {
+		p.handleUseContext(useCtx)
+		p.updateState()
+		return
+	}
+	if usable.CanCharge(p, p.tx, useCtx) {
+		p.startItemUse(i)
+	}
+	p.handleUseContext(useCtx)
+}
+
+// useKineticWeapon starts the use of a kinetic weapon i, a spear, which plays the sound of its use.
+func (p *Player) useKineticWeapon(i item.Stack, it world.Item) {
+	p.startItemUse(i)
+	if spear, ok := it.(item.Spear); ok {
+		name := "item.spear.use"
+		if spear.Tier == item.ToolTierWood {
+			name = "item.spear_wood.use"
+		}
+		p.PlaySound(sound.Custom{Name: name, Volume: 1, Pitch: 1})
+	}
+}
+
+// useUsable uses a usable item i in the air, such as a snowball. left is the item in the off hand. An item that
+// does nothing may still be consumed, as a milk bucket is.
+func (p *Player) useUsable(i, left item.Stack, usable item.Usable) {
+	it := i.Item()
+	if _, cooldown := it.(item.Cooldown); !cooldown && p.refuseFastUse(it) {
+		p.resyncInventory()
+		return
+	}
+	useCtx := p.useContext()
+	if !usable.Use(p.tx, p, useCtx) {
+		// An item used in no other way may still be consumed, as a milk
+		// bucket that is not pouring anything.
+		if consumable, ok := it.(item.Consumable); ok && p.canConsume(consumable) {
+			p.startItemUse(i)
+		}
+		return
+	}
+	if _, ok := it.(item.FishingRod); ok {
+		event := world.GameEventItemInteractFinish
+		if p.IsFishing() {
+			event = world.GameEventItemInteractStart
+		}
+		p.emitGameEvent(event, p.Position(), nil)
+	}
+	// We only swing the player's arm if the item held actually does something. If it doesn't, there is no
+	// reason to swing the arm.
+	p.SwingArm()
+	p.SetHeldItems(p.subtractItem(p.damageItem(i, useCtx.Damage), useCtx.CountSub), left)
+	p.addNewItem(useCtx)
 }
 
 // ReleaseItem makes the Player release the item it is currently using. This is only applicable for items that
