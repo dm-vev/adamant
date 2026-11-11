@@ -142,10 +142,11 @@ func dispenseChest(src dispenseSource) dispensed {
 }
 
 // dispenseShears ports ShearsDispenseItemBehavior: a beehive or bee nest in
-// front with honey is sheared for honeycombs, and otherwise the first sheep, or
-// other shearable entity, in front is sheared. A success wears the shears down
-// by one; with nothing to shear the dispenser keeps them. BDS plays no click for
-// shears.
+// front with honey is sheared for honeycombs, and otherwise the first entity in
+// front whose leads are cut or that is ready for shearing (a sheep, a
+// mooshroom, a snow golem, a copper golem, a sulfur cube) is sheared. A success
+// wears the shears down by one; with nothing to shear the dispenser keeps
+// them. BDS plays no click for shears.
 func dispenseShears(src dispenseSource) dispensed {
 	tx, front := src.tx, src.front()
 	fx := dispenseEffects{click: clickSilent}
@@ -182,26 +183,22 @@ func shearBeehive(tx *world.Tx, pos cube.Pos) bool {
 	return true
 }
 
-// shearEntity ports ShearsDispenseItemBehavior.tryShearEntity: the first living,
-// shearable entity in the block, that is ready for shearing (not a lamb), is
-// sheared, and its wool drops from it.
+// shearEntity ports ShearsDispenseItemBehavior.tryShearEntity: the first entity
+// in the block, that is not a spectator, whose leads are cut or that is ready
+// for shearing, which the entity's own shear decides, is the one the dispenser
+// shears.
 func shearEntity(tx *world.Tx, pos cube.Pos) bool {
+	shear := tx.World().EntityRegistry().Config().ShearWithDispenser
+	if shear == nil {
+		return false
+	}
 	for e := range entitiesInBlock(tx, pos) {
-		shearable, ok := e.(interface{ Shear(*world.Tx) item.Stack })
-		if !ok {
+		if g, ok := e.(interface{ GameMode() world.GameMode }); ok && g.GameMode() == world.GameModeSpectator {
 			continue
 		}
-		if baby, ok := e.(interface{ Baby() bool }); ok && baby.Baby() {
-			continue
+		if shear(tx, e, pos) {
+			return true
 		}
-		drops := shearable.Shear(tx)
-		if drops.Empty() {
-			continue
-		}
-		dropItem(tx, drops, e.Position().Add(mgl64.Vec3{0, 1}))
-		tx.PlaySound(e.Position(), sound.Custom{Name: "entity.sheep.shear", Volume: 1, Pitch: 1})
-		tx.EmitGameEvent(world.GameEventShear, pos.Vec3Centre(), world.GameEventContext{})
-		return true
 	}
 	return false
 }

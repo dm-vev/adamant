@@ -958,6 +958,12 @@ type EntityRegistryConfig struct {
 	// LivingEntity.canEquipWithDispenser and setItemSlot do for an armour
 	// stand, a horse and the like, and reports whether it did.
 	EquipWithDispenser func(tx *Tx, e Entity, stack any) bool
+	// ShearWithDispenser shears the entity, which a dispenser with shears
+	// reaches in the block at pos, as the body of Java's
+	// ShearsDispenseItemBehavior.tryShearEntity does for each entity: the
+	// leads it holds or is held by are cut, or it is sheared if it is
+	// ready to be. It reports whether it did either.
+	ShearWithDispenser func(tx *Tx, e Entity, pos cube.Pos) bool
 	FallingBlock       func(opts EntitySpawnOpts, bl Block) *EntityHandle
 	TNT                func(opts EntitySpawnOpts, fuse time.Duration, owner Entity) *EntityHandle
 	Boat               func(opts EntitySpawnOpts, variant int) *EntityHandle

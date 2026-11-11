@@ -168,6 +168,7 @@ var conf = world.EntityRegistryConfig{
 	},
 	WitherPattern:      trySpawnWitherPattern,
 	EquipWithDispenser: equipWithDispenser,
+	ShearWithDispenser: shearWithDispenser,
 	TNT:                NewTNT,
 	Egg:                NewEgg,
 	EggVariant:         NewEggVariant,

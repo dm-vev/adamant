@@ -4761,6 +4761,7 @@ server/entity.CopperGolem	server/entity.Leashable	value
 server/entity.CopperGolem	server/entity.Living	*
 server/entity.CopperGolem	server/entity.Rider	value
 server/entity.CopperGolem	server/entity.Traveller	value
+server/entity.CopperGolem	server/entity.dispenserShearable	*
 server/entity.CopperGolem	server/entity.knockBackable	value
 server/entity.CopperGolem	server/entity.moveTracked	value
 server/entity.CopperGolem	server/entity.seatHolder	value
@@ -6221,6 +6222,7 @@ server/entity.Mooshroom	server/entity.Rider	value
 server/entity.Mooshroom	server/entity.Traveller	value
 server/entity.Mooshroom	server/entity.ageable	*
 server/entity.Mooshroom	server/entity.breeder	*
+server/entity.Mooshroom	server/entity.dispenserShearable	*
 server/entity.Mooshroom	server/entity.knockBackable	value
 server/entity.Mooshroom	server/entity.moveTracked	value
 server/entity.Mooshroom	server/entity.seatHolder	value
@@ -7046,6 +7048,7 @@ server/entity.Sheep	server/entity.Rider	value
 server/entity.Sheep	server/entity.Traveller	value
 server/entity.Sheep	server/entity.ageable	*
 server/entity.Sheep	server/entity.breeder	*
+server/entity.Sheep	server/entity.dispenserShearable	*
 server/entity.Sheep	server/entity.knockBackable	value
 server/entity.Sheep	server/entity.moveTracked	value
 server/entity.Sheep	server/entity.seatHolder	value
@@ -7365,6 +7368,7 @@ server/entity.SnowGolem	server/entity.Living	*
 server/entity.SnowGolem	server/entity.PiercingWeaponTarget	*
 server/entity.SnowGolem	server/entity.Rider	value
 server/entity.SnowGolem	server/entity.Traveller	value
+server/entity.SnowGolem	server/entity.dispenserShearable	*
 server/entity.SnowGolem	server/entity.knockBackable	value
 server/entity.SnowGolem	server/entity.moveTracked	value
 server/entity.SnowGolem	server/entity.seatHolder	value
@@ -7573,6 +7577,7 @@ server/entity.SulfurCube	server/entity.Leashable	value
 server/entity.SulfurCube	server/entity.Living	*
 server/entity.SulfurCube	server/entity.Rider	value
 server/entity.SulfurCube	server/entity.Traveller	value
+server/entity.SulfurCube	server/entity.dispenserShearable	*
 server/entity.SulfurCube	server/entity.freezable	*
 server/entity.SulfurCube	server/entity.knockBackable	value
 server/entity.SulfurCube	server/entity.moveTracked	value
