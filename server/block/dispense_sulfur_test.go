@@ -132,3 +132,18 @@ func TestDispenserFeedsBlocksToSulfurCubes(t *testing.T) {
 		}
 	})
 }
+
+// TestDispenserEmptiesSulfurCubeBucket checks the filled bucket behaviour that
+// bootStrap registers for Items.SULFUR_CUBE_BUCKET: the cube comes out in front
+// and the dispenser holds an empty bucket in its place.
+func TestDispenserEmptiesSulfurCubeBucket(t *testing.T) {
+	t.Parallel()
+	dt := newDispenserTest(t, cube.FaceEast)
+	dt.dispense(nil, item.NewStack(item.MobBucket{Entity: "minecraft:sulfur_cube"}, 1))
+	if cubes := dt.entities("minecraft:sulfur_cube"); len(cubes) != 1 {
+		t.Fatalf("%d sulfur cubes, want one", len(cubes))
+	}
+	if got := dt.slot(0); got.Empty() || got.Item() != (item.Bucket{}) {
+		t.Fatalf("slot holds %v, want an empty bucket", got)
+	}
+}
