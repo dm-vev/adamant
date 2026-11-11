@@ -444,7 +444,7 @@ func (p *Player) onClimbable() bool {
 	if bedStateTag(name, "minecraft:climbable") {
 		return true
 	}
-	if !strings.HasSuffix(name, "_trapdoor") || state.Properties["open"] != "true" {
+	if !strings.HasSuffix(name, "_trapdoor") || !javaStateFlag(state.Properties["open"]) {
 		return false
 	}
 	below, loaded := p.tx.BlockLoaded(pos.Side(cube.FaceDown))
@@ -453,6 +453,19 @@ func (p *Player) onClimbable() bool {
 	}
 	ladder, err := world.CanonicalStateOf(below)
 	return err == nil && strings.TrimPrefix(ladder.Name, "minecraft:") == "ladder" && ladder.Properties["facing"] == state.Properties["facing"]
+}
+
+// javaStateFlag reports if a boolean property of a canonical Java block state
+// is set. The codec gives booleans as bool, but a state read from NBT may
+// still carry them as the strings Java writes.
+func javaStateFlag(v any) bool {
+	switch v := v.(type) {
+	case bool:
+		return v
+	case string:
+		return v == "true"
+	}
+	return false
 }
 
 // Displace moves the player by a server-authoritative relative delta, clipped against block collision boxes.
