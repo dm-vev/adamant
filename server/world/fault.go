@@ -15,6 +15,27 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 )
 
+// faultState is the panics recovered in the world, the tick guard and the hooks
+// of tests.
+type faultState struct {
+	// faults holds the log of the panics recovered in the world and the
+	// offenders quarantined.
+	faults faults
+	// guard is the tick guard of the transactions of the owner.
+	guard tickGuard
+	// blockFaults holds the blocks whose ticks panicked.
+	blockFaults blockFaults
+	// stepFaults holds the subsystems of the tick that panicked, by name.
+	stepFaults map[string]*stepFault
+	// testTickHook, if not nil, is called by each tick that simulates,
+	// before anything else of the world runs: tests make the bookkeeping
+	// of the tick panic with it.
+	testTickHook func(tx *Tx)
+	// testClockHook, if not nil, is called by each tick that advances the
+	// clock of the world, under the lock of its settings: a test panics in it.
+	testClockHook func()
+}
+
 // FaultKind is the code of the game a recovered panic came from.
 type FaultKind uint8
 

@@ -3,11 +3,38 @@ package world
 import (
 	"errors"
 	"slices"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/internal/parallel"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
+
+// saveState is what the world keeps for saving its columns and handing
+// transfers out.
+type saveState struct {
+	autoSaveDisabled atomic.Bool
+	// saver writes saved columns in the background; it is nil for
+	// synchronous and read-only worlds, which write them at once.
+	saver *chunkSaver
+	// saves counts the columns saved, on the world goroutine. A column saved
+	// takes the count as its savedIn, which tells a failed write of that
+	// save from a later save of the column.
+	saves uint64
+	// captures counts the captures of the world for a save, on the world
+	// goroutine. dataWritten is the count of the last capture whose data
+	// was written, under dataMu: the data of a capture is written off the
+	// world goroutine, and that of an older one never after a newer one.
+	captures    uint64
+	dataMu      sync.Mutex
+	dataWritten uint64
+	// holds is the number of HoldTransfers holding transfers out of the
+	// world, and transfersOut the number under way, both under the mutex of
+	// transfers.
+	holds        int
+	transfersOut int
+}
 
 // Save saves the World to the provider and waits until it reached the disk:
 // it captures the world in a transaction, then writes what it captured. It

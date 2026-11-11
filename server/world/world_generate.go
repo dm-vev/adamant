@@ -3,11 +3,37 @@ package world
 import (
 	"errors"
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
+
+// generation is the generation of chunks and the columns read ahead of their
+// load.
+type generation struct {
+	generatorRunning sync.WaitGroup
+	// prefetched holds the columns being read from the provider ahead of
+	// their load, by position, and readSlots bounds how many are read at
+	// once: see prefetchColumn. Only the owner touches the map.
+	prefetched map[ChunkPos]*columnRead
+	readSlots  chan struct{}
+	// releaser is the generator if it releases its caches when generation
+	// idles: releaseTimer fires releaseAfter after the last chunk was
+	// generated, guarded by releaseMu. See armCacheRelease.
+	releaser       ReleasingGenerator
+	releaseMu      sync.Mutex
+	releaseTimer   *time.Timer
+	releaseAfter   time.Duration
+	generatorQueue *generationQueue
+	// generatorQueueSaturation counts how often more chunk generation tasks
+	// waited than GeneratorQueueSize. We use this to rate-limit backlog
+	// warnings so operators can tune the worker count.
+	generatorQueueSaturation atomic.Uint64
+	lastQueueSaturationLog   atomic.Uint64
+}
 
 type generationTask struct {
 	pos     ChunkPos

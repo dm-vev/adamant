@@ -5,6 +5,21 @@ import (
 	"time"
 )
 
+// txQueue is the queue of transactions of the world, and the count of scheduled
+// work that close drains.
+type txQueue struct {
+	queue         chan transaction
+	queueClosing  chan struct{}
+	queueMu       sync.Mutex
+	queueOverflow []transaction
+	queueWake     chan struct{}
+	queueing      sync.WaitGroup
+	// scheduleMu serialises task scheduling against the close transitions
+	// below. scheduling counts in-flight scheduled work that close must drain.
+	scheduleMu sync.Mutex
+	scheduling sync.WaitGroup
+}
+
 // transaction is a type that may be added to the transaction queue of a World.
 // Its Run method is called when the transaction is taken out of the queue.
 type transaction interface {

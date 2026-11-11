@@ -3,7 +3,21 @@ package world
 import (
 	"errors"
 	"strings"
+	"sync"
 )
+
+// structureState is the structure references of the world and the structures
+// that override its natural spawns.
+type structureState struct {
+	structureReferenceQueryMu sync.Mutex
+	// spawnStructures caches the structures overriding natural spawns in
+	// each chunk.
+	spawnStructures           spawnStructureCache
+	structureReferenceMu      sync.Mutex
+	structureReferences       map[StructureReference]struct{}
+	structureReferencesLoaded bool
+	structureReferencesErr    error
+}
 
 // structureTemplateProvider is a Provider that persists structure templates,
 // as Bedrock keeps them in LevelDB under structuretemplate_ keys.

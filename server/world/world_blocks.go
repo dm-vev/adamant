@@ -7,6 +7,17 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 )
 
+// blockState is the block changes yet to be shown to viewers and what the world
+// caches by block state.
+type blockState struct {
+	// blockUpdates holds the columns whose viewers are yet to be shown
+	// changes of their blocks.
+	blockUpdates blockUpdateQueue
+	// gameEventBlocks caches the game event flags of block runtime IDs.
+	gameEventBlocks   ridCache[uint8]
+	javaHeightmapTags [2]ridCache[bool]
+}
+
 // blockLoaded reads a block from a position only if its chunk is already loaded.
 func (w *World) blockLoaded(pos cube.Pos) (Block, bool) {
 	if pos.OutOfBounds(w.ra) {

@@ -7,6 +7,13 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
+// viewerState is the viewers of the world and the loaders they view through.
+type viewerState struct {
+	viewerMu      sync.Mutex
+	viewers       map[*Loader]Viewer
+	viewerLoaders []*Loader
+}
+
 // addParticle spawns a Particle at a given position in the World. Viewers that
 // are viewing the chunk will be shown the particle.
 func (w *World) addParticle(tx *Tx, pos mgl64.Vec3, p Particle) {

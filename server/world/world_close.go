@@ -1,5 +1,28 @@
 package world
 
+import (
+	"sync"
+	"sync/atomic"
+	"time"
+)
+
+// lifecycle is whether the world is closing, and when it was made.
+type lifecycle struct {
+	// closed flips once close starts; new tasks fail with ErrWorldClosed.
+	// closeAcceptingEntityTasks is true only during the close transaction, when
+	// entity Close methods may still schedule final work that close drains.
+	closed                    atomic.Bool
+	closeAcceptingEntityTasks atomic.Bool
+	o                         sync.Once
+	// closeStarted closes as soon as World.Close begins, before the close
+	// transaction runs; closing closes once the world stops ticking.
+	closeStarted chan struct{}
+	closing      chan struct{}
+	running      sync.WaitGroup
+	// made is when the world was made.
+	made time.Time
+}
+
 // Close closes the world and saves all chunks currently loaded. Called from a
 // world owner or a region worker, it returns ErrOwnerWait without closing.
 func (w *World) Close() error {

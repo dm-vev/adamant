@@ -2,11 +2,56 @@ package world
 
 import (
 	"math"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/scoreboard"
 	"github.com/google/uuid"
 )
+
+// clock is the tick counter of the world, whether and how fast it advances, and
+// when its ticks started and ended.
+type clock struct {
+	// advance is a bool that specifies if this World should advance the current
+	// tick, time and weather saved in the Settings struct held by the World.
+	advance bool
+	// tick is the per-world tick counter used by worlds that do not advance the
+	// shared Settings, such as the Nether, End and custom dimensions.
+	tick        int64
+	tickFrozen  atomic.Bool
+	stepTicks   atomic.Int64
+	sprintTicks atomic.Int64
+	tickRate    atomic.Uint64
+	tickTimes   tickTimes
+	tps         atomic.Uint64
+	// tickEnded is when the last tick the tick loop waited for ended, in
+	// nanoseconds since the Unix epoch, beside tickStarted: see TickState.
+	tickEnded atomic.Int64
+	// tickStarted is when the tick the tick loop waits for was queued, in
+	// nanoseconds since the Unix epoch, or 0 between ticks: the watchdog
+	// reads it.
+	tickStarted atomic.Int64
+}
+
+// rules is the settings of the world, its border, handler, forced chunks,
+// scoreboard and the gamerules it caches.
+type rules struct {
+	set         *Settings
+	providerUse *providerRef
+	// border is dimension-owned; Settings' mutex guards its external API.
+	border             worldBorder
+	forcedChunksMu     sync.RWMutex
+	forcedChunks       map[ChunkPos]struct{}
+	forcedChunksLoaded bool
+	scoreboardOnce     sync.Once
+	scoreboardModel    *scoreboard.Model
+	// gameRules caches persisted non-native Java gamerules.
+	gameRulesMu sync.Mutex
+	gameRules   map[string]any
+	handler     atomic.Pointer[Handler]
+}
 
 // currentTickLocked returns the tick used to update this world. The caller
 // must hold the shared settings lock.

@@ -6,6 +6,31 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
+// lightQueue is the light yet to be updated and spread, and the bound of the
+// fills of light of loaded columns.
+type lightQueue struct {
+	// pendingLight holds, per chunk, the positions whose blocks changed in
+	// how they affect light since the light was last brought up to date.
+	pendingLight map[ChunkPos][]cube.Pos
+	// pendingSpreads holds, in the order they became possible, the chunks
+	// whose light is to be spread into the chunks around them, all of which
+	// were lit: flushLight spreads them together.
+	pendingSpreads []pendingSpread
+	// deferredSpreads holds, by the chunk in their middle, the spreads of
+	// light far from every column whose entities tick, which wait until a
+	// column near them comes to tick or light near them is read.
+	deferredSpreads map[ChunkPos]pendingSpread
+	// lightReadNear holds the chunks undeferSpreadsNear undeferred the
+	// spreads around since light was last spread: light spreading on from
+	// them is spread as far as light near them reads it, and waits further
+	// out.
+	lightReadNear []ChunkPos
+	// lightFills bounds how many columns read from the provider have their
+	// light filled at once: half the processors, so that a player loading
+	// the columns around them leaves processors to the owner.
+	lightFills chan struct{}
+}
+
 // fillLightAsync fills the light of a column just read from the provider on
 // a goroutine of its own, marks it ready and then publishes it on the world
 // owner, as a generated column is: until then, readers of its blocks wait

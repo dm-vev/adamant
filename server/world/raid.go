@@ -13,6 +13,13 @@ import (
 	"github.com/google/uuid"
 )
 
+// raidState is the raids of the world.
+type raidState struct {
+	raids        map[int64]*Raid
+	raidByRaider map[uuid.UUID]int64
+	nextRaidID   int64
+}
+
 const (
 	raidVillageRadius   = 96
 	raidTimeoutTicks    = 48000
