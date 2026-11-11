@@ -9,11 +9,11 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// dispenserShearable is Java's Shearable for a dispenser with shears:
-// DispenserShear shears the entity if readyForShearing and reports whether it
-// did, with the sound and the drops of its shear.
-type dispenserShearable interface {
-	DispenserShear(tx *world.Tx) bool
+// shearable is Java's Shearable: ShearIfReady shears the entity if
+// readyForShearing and reports whether it did, with the sound and the drops of
+// its shear. A dispenser and a player with shears both shear through it.
+type shearable interface {
+	ShearIfReady(tx *world.Tx) bool
 }
 
 // shearWithDispenser is the ShearWithDispenser of the default registry. It
@@ -21,10 +21,10 @@ type dispenserShearable interface {
 // the block at pos: the leads of the entity are cut, or a living entity that is
 // ready for shearing is sheared.
 func shearWithDispenser(tx *world.Tx, e world.Entity, pos cube.Pos) bool {
-	if shearOffLeashes(tx, e) {
+	if shearOffLeashes(tx, e, nil) {
 		return true
 	}
-	if s, ok := e.(dispenserShearable); ok && s.DispenserShear(tx) {
+	if s, ok := e.(shearable); ok && s.ShearIfReady(tx) {
 		tx.EmitGameEvent(world.GameEventShear, pos.Vec3Centre(), world.GameEventContext{})
 		return true
 	}
@@ -35,9 +35,10 @@ func shearWithDispenser(tx *world.Tx, e world.Entity, pos cube.Pos) bool {
 // the lead snaps at ten blocks.
 const leashReach = 12
 
-// shearOffLeashes ports Entity.shearOffAllLeashConnections with no player: the
-// lead of the entity, and those of the mobs it holds, drop, and shears snip.
-func shearOffLeashes(tx *world.Tx, e world.Entity) bool {
+// shearOffLeashes ports Entity.shearOffAllLeashConnections: the lead of the
+// entity, and those of the mobs it holds, drop, and shears snip. The shear game
+// event comes from the player passed, which is nil for a dispenser.
+func shearOffLeashes(tx *world.Tx, e world.Entity, by world.Entity) bool {
 	dropped := false
 	if leashed, ok := e.(interface{ LeashEnt() *Ent }); ok && leashed.LeashEnt().HolderLeashID() != 0 {
 		leashed.LeashEnt().DetachLeash(tx, true)
@@ -54,7 +55,7 @@ func shearOffLeashes(tx *world.Tx, e world.Entity) bool {
 	if !dropped {
 		return false
 	}
-	tx.EmitGameEvent(world.GameEventShear, e.Position(), world.GameEventContext{})
+	tx.EmitGameEvent(world.GameEventShear, e.Position(), world.GameEventContext{Source: by})
 	tx.PlaySound(e.Position(), sound.Custom{Name: "item.shears.snip", Volume: 1, Pitch: 1})
 	return true
 }
@@ -67,9 +68,9 @@ func dropShorn(tx *world.Tx, at mgl64.Vec3, shorn item.Stack) {
 	}
 }
 
-// DispenserShear ports Sheep.readyForShearing and shear: a sheep that is not a
+// ShearIfReady ports Sheep.readyForShearing and shear: a sheep that is not a
 // lamb and has its fleece loses it.
-func (s *Sheep) DispenserShear(tx *world.Tx) bool {
+func (s *Sheep) ShearIfReady(tx *world.Tx) bool {
 	if s.Baby() {
 		return false
 	}
@@ -82,9 +83,9 @@ func (s *Sheep) DispenserShear(tx *world.Tx) bool {
 	return true
 }
 
-// DispenserShear ports MushroomCow.readyForShearing and shear: a mooshroom that
+// ShearIfReady ports MushroomCow.readyForShearing and shear: a mooshroom that
 // is not a calf turns into a cow and sheds its mushrooms.
-func (m *Mooshroom) DispenserShear(tx *world.Tx) bool {
+func (m *Mooshroom) ShearIfReady(tx *world.Tx) bool {
 	if m.Baby() || m.Dead() {
 		return false
 	}
@@ -96,9 +97,9 @@ func (m *Mooshroom) DispenserShear(tx *world.Tx) bool {
 	return true
 }
 
-// DispenserShear ports SnowGolem.readyForShearing and shear: a snow golem that
+// ShearIfReady ports SnowGolem.readyForShearing and shear: a snow golem that
 // wears its pumpkin sheds it.
-func (m *SnowGolem) DispenserShear(tx *world.Tx) bool {
+func (m *SnowGolem) ShearIfReady(tx *world.Tx) bool {
 	if m.Dead() || !m.HasPumpkin() {
 		return false
 	}
@@ -108,9 +109,9 @@ func (m *SnowGolem) DispenserShear(tx *world.Tx) bool {
 	return true
 }
 
-// DispenserShear ports CopperGolem.readyForShearing and shear: a copper golem
+// ShearIfReady ports CopperGolem.readyForShearing and shear: a copper golem
 // with a poppy on its antenna sheds it.
-func (c *CopperGolem) DispenserShear(tx *world.Tx) bool {
+func (c *CopperGolem) ShearIfReady(tx *world.Tx) bool {
 	b := c.b()
 	if c.Dead() || !inItemTag(b.antenna, "shearable_from_copper_golem") {
 		return false
@@ -122,9 +123,9 @@ func (c *CopperGolem) DispenserShear(tx *world.Tx) bool {
 	return true
 }
 
-// DispenserShear ports SulfurCube.readyForShearing and shear: a sulfur cube
+// ShearIfReady ports SulfurCube.readyForShearing and shear: a sulfur cube
 // that holds a block spits it out.
-func (s *SulfurCube) DispenserShear(tx *world.Tx) bool {
+func (s *SulfurCube) ShearIfReady(tx *world.Tx) bool {
 	if s.Dead() || s.b().bodyItem.Empty() {
 		return false
 	}

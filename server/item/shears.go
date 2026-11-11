@@ -85,8 +85,15 @@ func (s Shears) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world
 	return false
 }
 
-// UseOnEntity shears a harness from a compatible rideable mob.
+// UseOnEntity ports the shearing of Java's Entity.interact and Mob.interact: the
+// leads of the entity are cut, the equipment of a mob is sheared off it, or a
+// Shearable that is ready for shearing is sheared.
 func (s Shears) UseOnEntity(target world.Entity, tx *world.Tx, user User, ctx *UseContext) bool {
+	// Entity.interact: shears cut the leads of the entity before anything else.
+	if cut := tx.World().EntityRegistry().Config().ShearLeashes; cut != nil && cut(tx, target, user) {
+		ctx.DamageItem(1)
+		return true
+	}
 	if mob, ok := target.(interface {
 		ShearEquipment(*world.Tx, world.Entity) bool
 	}); ok && !userSneaking(user) && mob.ShearEquipment(tx, user) {
@@ -116,22 +123,12 @@ func (s Shears) UseOnEntity(target world.Entity, tx *world.Tx, user User, ctx *U
 			return true
 		}
 	}
-	if mob, ok := target.(interface{ Shear(*world.Tx) Stack }); ok {
-		if drops := mob.Shear(tx); !drops.Empty() {
-			if dropper, ok := user.(interface {
-				DropItemAt(mgl64.Vec3, Stack, mgl64.Vec3)
-			}); ok {
-				dropPos := target.Position()
-				dropPos[1] += 0.5
-				dropper.DropItemAt(dropPos, drops, mgl64.Vec3{0, 0.1})
-			} else {
-				ctx.NewItem = drops
-				ctx.NewItemSurvivalOnly = true
-			}
-			ctx.DamageItem(1)
-			tx.PlaySound(target.Position(), sound.Custom{Name: "entity.sheep.shear", Volume: 1, Pitch: 1})
-			return true
-		}
+	if shearable, ok := target.(interface{ ShearIfReady(*world.Tx) bool }); ok && shearable.ShearIfReady(tx) {
+		// The mobInteract of a Shearable: it plays its own sound and drops its
+		// own items, and the shear game event comes from the player.
+		tx.EmitGameEvent(world.GameEventShear, target.Position(), world.GameEventContext{Source: user, Sneaking: userSneaking(user)})
+		ctx.DamageItem(1)
+		return true
 	}
 	return false
 }

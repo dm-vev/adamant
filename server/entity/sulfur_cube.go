@@ -421,8 +421,8 @@ func gameRuleTNTExplodes(tx *world.Tx) bool {
 }
 
 // Interact ports SulfurCube.mobInteract: slime balls feed a baby cube, flint
-// and steel or a fire charge primes one holding TNT, shears make it spit out
-// its block, and a block it can swallow is swallowed.
+// and steel or a fire charge primes one holding TNT, and a block it can swallow
+// is swallowed. Shears make it spit out its block through ShearIfReady.
 func (s *SulfurCube) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	if user == nil {
 		return false
@@ -452,13 +452,6 @@ func (s *SulfurCube) Interact(tx *world.Tx, user item.User, ctx *item.UseContext
 		} else {
 			ctx.SubtractFromCount(1)
 		}
-		return true
-	}
-	if name == "minecraft:shears" && !b.bodyItem.Empty() {
-		out := s.Shear()
-		tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: s.Position().Add(mgl64.Vec3{0, s.H().Type().BBox(s).Height()})}, out))
-		tx.PlaySound(s.Position(), sound.Custom{Name: "entity.sulfur_cube.eject", Volume: 1, Pitch: 1})
-		ctx.DamageItem(1)
 		return true
 	}
 	if s.EquipItem(held) {

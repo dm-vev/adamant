@@ -8424,7 +8424,6 @@ server/entity	method	CopperGolem.CommandAttributeModifier	func(attribute string,
 server/entity	method	CopperGolem.CommandTags	func() []string
 server/entity	method	CopperGolem.Dead	func() bool
 server/entity	method	CopperGolem.DetachLeash	func(tx *server/world.Tx, drop bool)
-server/entity	method	CopperGolem.DispenserShear	func(tx *server/world.Tx) bool
 server/entity	method	CopperGolem.Displace	func(deltaPos github.com/go-gl/mathgl/mgl64.Vec3)
 server/entity	method	CopperGolem.Effects	func() []server/entity/effect.Effect
 server/entity	method	CopperGolem.EnterPowderSnow	func()
@@ -8484,6 +8483,7 @@ server/entity	method	CopperGolem.SetRiderSeat	func(s server/world.RiderSeat)
 server/entity	method	CopperGolem.SetRiding	func(r *server/world.EntityHandle)
 server/entity	method	CopperGolem.SetSpeed	func(v float64)
 server/entity	method	CopperGolem.SetVelocity	func(v github.com/go-gl/mathgl/mgl64.Vec3)
+server/entity	method	CopperGolem.ShearIfReady	func(tx *server/world.Tx) bool
 server/entity	method	CopperGolem.SpeciesType	func() server/world.EntityType
 server/entity	method	CopperGolem.Speed	func() float64
 server/entity	method	CopperGolem.State	func() server/entity.CopperGolemState
@@ -11936,7 +11936,6 @@ server/entity	method	Mooshroom.CommandAttributeModifier	func(attribute string, i
 server/entity	method	Mooshroom.CommandTags	func() []string
 server/entity	method	Mooshroom.Dead	func() bool
 server/entity	method	Mooshroom.DetachLeash	func(tx *server/world.Tx, drop bool)
-server/entity	method	Mooshroom.DispenserShear	func(tx *server/world.Tx) bool
 server/entity	method	Mooshroom.Displace	func(deltaPos github.com/go-gl/mathgl/mgl64.Vec3)
 server/entity	method	Mooshroom.Effects	func() []server/entity/effect.Effect
 server/entity	method	Mooshroom.EnterPowderSnow	func()
@@ -11997,6 +11996,7 @@ server/entity	method	Mooshroom.SetRiding	func(r *server/world.EntityHandle)
 server/entity	method	Mooshroom.SetSpeed	func(v float64)
 server/entity	method	Mooshroom.SetVelocity	func(v github.com/go-gl/mathgl/mgl64.Vec3)
 server/entity	method	Mooshroom.Shear	func(tx *server/world.Tx) server/item.Stack
+server/entity	method	Mooshroom.ShearIfReady	func(tx *server/world.Tx) bool
 server/entity	method	Mooshroom.Speed	func() float64
 server/entity	method	Mooshroom.Teleport	func(pos github.com/go-gl/mathgl/mgl64.Vec3)
 server/entity	method	Mooshroom.TeleportThroughGateway	func(pos github.com/go-gl/mathgl/mgl64.Vec3)
@@ -13898,7 +13898,6 @@ server/entity	method	Sheep.CommandAttributeModifier	func(attribute string, id st
 server/entity	method	Sheep.CommandTags	func() []string
 server/entity	method	Sheep.Dead	func() bool
 server/entity	method	Sheep.DetachLeash	func(tx *server/world.Tx, drop bool)
-server/entity	method	Sheep.DispenserShear	func(tx *server/world.Tx) bool
 server/entity	method	Sheep.Displace	func(deltaPos github.com/go-gl/mathgl/mgl64.Vec3)
 server/entity	method	Sheep.Effects	func() []server/entity/effect.Effect
 server/entity	method	Sheep.EnterPowderSnow	func()
@@ -13958,6 +13957,7 @@ server/entity	method	Sheep.SetRiding	func(r *server/world.EntityHandle)
 server/entity	method	Sheep.SetSpeed	func(v float64)
 server/entity	method	Sheep.SetVelocity	func(v github.com/go-gl/mathgl/mgl64.Vec3)
 server/entity	method	Sheep.Shear	func(_ *server/world.Tx) server/item.Stack
+server/entity	method	Sheep.ShearIfReady	func(tx *server/world.Tx) bool
 server/entity	method	Sheep.Sheared	func() bool
 server/entity	method	Sheep.Speed	func() float64
 server/entity	method	Sheep.Teleport	func(pos github.com/go-gl/mathgl/mgl64.Vec3)
@@ -14622,7 +14622,6 @@ server/entity	method	SnowGolem.CommandAttributeModifier	func(attribute string, i
 server/entity	method	SnowGolem.CommandTags	func() []string
 server/entity	method	SnowGolem.Dead	func() bool
 server/entity	method	SnowGolem.DetachLeash	func(tx *server/world.Tx, drop bool)
-server/entity	method	SnowGolem.DispenserShear	func(tx *server/world.Tx) bool
 server/entity	method	SnowGolem.Displace	func(deltaPos github.com/go-gl/mathgl/mgl64.Vec3)
 server/entity	method	SnowGolem.Effects	func() []server/entity/effect.Effect
 server/entity	method	SnowGolem.EnterPowderSnow	func()
@@ -14640,7 +14639,6 @@ server/entity	method	SnowGolem.Health	func() float64
 server/entity	method	SnowGolem.HolderLeashID	func() int64
 server/entity	method	SnowGolem.Hurt	func(d float64, s server/world.DamageSource) (float64, bool)
 server/entity	method	SnowGolem.HurtEntities	func(damagePerBlock float64, maxDamage float64)
-server/entity	method	SnowGolem.Interact	func(tx *server/world.Tx, u server/item.User, ctx *server/item.UseContext) bool
 server/entity	method	SnowGolem.IsPreventingPlayerRest	func(player server/world.Entity) bool
 server/entity	method	SnowGolem.IsSensitiveToWater	func() bool
 server/entity	method	SnowGolem.KnockBack	func(p github.com/go-gl/mathgl/mgl64.Vec3, f float64, h float64)
@@ -14681,6 +14679,7 @@ server/entity	method	SnowGolem.SetRiderSeat	func(s server/world.RiderSeat)
 server/entity	method	SnowGolem.SetRiding	func(r *server/world.EntityHandle)
 server/entity	method	SnowGolem.SetSpeed	func(v float64)
 server/entity	method	SnowGolem.SetVelocity	func(v github.com/go-gl/mathgl/mgl64.Vec3)
+server/entity	method	SnowGolem.ShearIfReady	func(tx *server/world.Tx) bool
 server/entity	method	SnowGolem.Speed	func() float64
 server/entity	method	SnowGolem.Teleport	func(pos github.com/go-gl/mathgl/mgl64.Vec3)
 server/entity	method	SnowGolem.TeleportThroughGateway	func(pos github.com/go-gl/mathgl/mgl64.Vec3)
@@ -15112,7 +15111,6 @@ server/entity	method	SulfurCube.CommandAttributeModifier	func(attribute string, 
 server/entity	method	SulfurCube.CommandTags	func() []string
 server/entity	method	SulfurCube.Dead	func() bool
 server/entity	method	SulfurCube.DetachLeash	func(tx *server/world.Tx, drop bool)
-server/entity	method	SulfurCube.DispenserShear	func(tx *server/world.Tx) bool
 server/entity	method	SulfurCube.Displace	func(deltaPos github.com/go-gl/mathgl/mgl64.Vec3)
 server/entity	method	SulfurCube.Effects	func() []server/entity/effect.Effect
 server/entity	method	SulfurCube.EnterPowderSnow	func()
@@ -15177,6 +15175,7 @@ server/entity	method	SulfurCube.SetRiding	func(r *server/world.EntityHandle)
 server/entity	method	SulfurCube.SetSpeed	func(v float64)
 server/entity	method	SulfurCube.SetVelocity	func(v github.com/go-gl/mathgl/mgl64.Vec3)
 server/entity	method	SulfurCube.Shear	func() server/item.Stack
+server/entity	method	SulfurCube.ShearIfReady	func(tx *server/world.Tx) bool
 server/entity	method	SulfurCube.Size	func() int
 server/entity	method	SulfurCube.Speed	func() float64
 server/entity	method	SulfurCube.Teleport	func(pos github.com/go-gl/mathgl/mgl64.Vec3)
@@ -21438,7 +21437,7 @@ server/world	type	EntityHandle	struct{id github.com/google/uuid.UUID; t server/w
 server/world	type	EntityMove	struct{Pos github.com/go-gl/mathgl/mgl64.Vec3; Rot server/block/cube.Rotation; HeadYaw float64; Vel github.com/go-gl/mathgl/mgl64.Vec3; OnGround bool; Changed server/world.MoveParts; Ticks int; Absolute bool; Shared any}
 server/world	type	EntityRef	struct{h *server/world.EntityHandle}
 server/world	type	EntityRegistry	struct{conf *server/world.EntityRegistryConfig; ent map[string]server/world.EntityType}
-server/world	type	EntityRegistryConfig	struct{SpawnMob func(id string, opts server/world.EntitySpawnOpts) *server/world.EntityHandle; SpawnEggOffspring func(tx *server/world.Tx, parent server/world.Entity, spawner server/world.Entity) *server/world.EntityHandle; SpawnMobFromNBT func(reg server/world.EntityRegistry, id string, opts server/world.EntitySpawnOpts, data map[string]any) *server/world.EntityHandle; OminousItemSpawner func(opts server/world.EntitySpawnOpts, stack any, delay int64) *server/world.EntityHandle; NaturalSpawnTick func(*server/world.Tx); EntityCollisions func(*server/world.Tx); SpawnOriginalMobs func(tx *server/world.Tx, pos server/world.ChunkPos); EncodeSharedNBT func(data *server/world.EntityData) map[string]any; DecodeSharedNBT func(data *server/world.EntityData, m map[string]any); Item func(opts server/world.EntitySpawnOpts, it any) *server/world.EntityHandle; Painting func(tx *server/world.Tx, pos server/block/cube.Pos, facing server/block/cube.Direction) *server/world.EntityHandle; EyeOfEnder func(tx *server/world.Tx, opts server/world.EntitySpawnOpts, target github.com/go-gl/mathgl/mgl64.Vec3) *server/world.EntityHandle; TieLeashedEntities func(pos server/block/cube.Pos, tx *server/world.Tx, user server/world.Entity) bool; ExperienceOrbs func(tx *server/world.Tx, pos github.com/go-gl/mathgl/mgl64.Vec3, amount int) []*server/world.EntityHandle; NewFromBucket func(reg server/world.EntityRegistry, opts server/world.EntitySpawnOpts, entityID string, data map[string]any) *server/world.EntityHandle; EnderDragon func(opts server/world.EntitySpawnOpts) *server/world.EntityHandle; DragonFight func(seed int64, data server/world.DragonFightData) server/world.DragonFightController; GolemPattern func(tx *server/world.Tx, pos server/block/cube.Pos) bool; WitherPattern func(tx *server/world.Tx, pos server/block/cube.Pos) bool; EquipWithDispenser func(tx *server/world.Tx, e server/world.Entity, stack any) bool; ShearWithDispenser func(tx *server/world.Tx, e server/world.Entity, pos server/block/cube.Pos) bool; FallingBlock func(opts server/world.EntitySpawnOpts, bl server/world.Block) *server/world.EntityHandle; TNT func(opts server/world.EntitySpawnOpts, fuse time.Duration, owner server/world.Entity) *server/world.EntityHandle; Boat func(opts server/world.EntitySpawnOpts, variant int) *server/world.EntityHandle; ChestBoat func(opts server/world.EntitySpawnOpts, variant int) *server/world.EntityHandle; Minecart func(opts server/world.EntitySpawnOpts) *server/world.EntityHandle; MinecartChest func(opts server/world.EntitySpawnOpts) *server/world.EntityHandle; MinecartHopper func(opts server/world.EntitySpawnOpts) *server/world.EntityHandle; MinecartTNT func(opts server/world.EntitySpawnOpts) *server/world.EntityHandle; BottleOfEnchanting func(opts server/world.EntitySpawnOpts, owner server/world.Entity) *server/world.EntityHandle; Arrow func(opts server/world.EntitySpawnOpts, conf server/world.ArrowSpawnConfig) *server/world.EntityHandle; Trident func(opts server/world.EntitySpawnOpts, owner server/world.Entity, stack any, loyalty int, impaling int, channeling bool) *server/world.EntityHandle; Egg func(opts server/world.EntitySpawnOpts, owner server/world.Entity) *server/world.EntityHandle; EggVariant func(opts server/world.EntitySpawnOpts, owner server/world.Entity, variant int) *server/world.EntityHandle; EnderPearl func(opts server/world.EntitySpawnOpts, owner server/world.Entity) *server/world.EntityHandle; Firework func(opts server/world.EntitySpawnOpts, firework server/world.Item, owner server/world.Entity, sidewaysVelocityMultiplier float64, upwardsAcceleration float64, attached bool) *server/world.EntityHandle; LingeringPotion func(opts server/world.EntitySpawnOpts, t any, owner server/world.Entity) *server/world.EntityHandle; Snowball func(opts server/world.EntitySpawnOpts, owner server/world.Entity) *server/world.EntityHandle; SmallFireball func(opts server/world.EntitySpawnOpts, owner server/world.Entity) *server/world.EntityHandle; WindCharge func(opts server/world.EntitySpawnOpts, owner server/world.Entity) *server/world.EntityHandle; SplashPotion func(opts server/world.EntitySpawnOpts, t any, owner server/world.Entity) *server/world.EntityHandle; Lightning func(opts server/world.EntitySpawnOpts) *server/world.EntityHandle; VisualLightning func(opts server/world.EntitySpawnOpts) *server/world.EntityHandle; EndCrystal func(opts server/world.EntitySpawnOpts, showBase bool) *server/world.EntityHandle; Shulker func(opts server/world.EntitySpawnOpts) *server/world.EntityHandle; ShulkerBullet func(opts server/world.EntitySpawnOpts, owner *server/world.EntityHandle, target *server/world.EntityHandle) *server/world.EntityHandle; Cushion func(opts server/world.EntitySpawnOpts, color int) *server/world.EntityHandle; ArmourStand func(opts server/world.EntitySpawnOpts) *server/world.EntityHandle; FishingHook func(opts server/world.EntitySpawnOpts, owner server/world.Entity, rod any) *server/world.EntityHandle; RaidSpawner func(opts server/world.EntitySpawnOpts, entityID string, raidID int64, wave int, leader bool) *server/world.EntityHandle; StartRiding func(tx *server/world.Tx, rider server/world.Entity, vehicle server/world.Entity) bool; MinecartCommandBlock func(opts server/world.EntitySpawnOpts) *server/world.EntityHandle}
+server/world	type	EntityRegistryConfig	struct{SpawnMob func(id string, opts server/world.EntitySpawnOpts) *server/world.EntityHandle; SpawnEggOffspring func(tx *server/world.Tx, parent server/world.Entity, spawner server/world.Entity) *server/world.EntityHandle; SpawnMobFromNBT func(reg server/world.EntityRegistry, id string, opts server/world.EntitySpawnOpts, data map[string]any) *server/world.EntityHandle; OminousItemSpawner func(opts server/world.EntitySpawnOpts, stack any, delay int64) *server/world.EntityHandle; NaturalSpawnTick func(*server/world.Tx); EntityCollisions func(*server/world.Tx); SpawnOriginalMobs func(tx *server/world.Tx, pos server/world.ChunkPos); EncodeSharedNBT func(data *server/world.EntityData) map[string]any; DecodeSharedNBT func(data *server/world.EntityData, m map[string]any); Item func(opts server/world.EntitySpawnOpts, it any) *server/world.EntityHandle; Painting func(tx *server/world.Tx, pos server/block/cube.Pos, facing server/block/cube.Direction) *server/world.EntityHandle; EyeOfEnder func(tx *server/world.Tx, opts server/world.EntitySpawnOpts, target github.com/go-gl/mathgl/mgl64.Vec3) *server/world.EntityHandle; TieLeashedEntities func(pos server/block/cube.Pos, tx *server/world.Tx, user server/world.Entity) bool; ExperienceOrbs func(tx *server/world.Tx, pos github.com/go-gl/mathgl/mgl64.Vec3, amount int) []*server/world.EntityHandle; NewFromBucket func(reg server/world.EntityRegistry, opts server/world.EntitySpawnOpts, entityID string, data map[string]any) *server/world.EntityHandle; EnderDragon func(opts server/world.EntitySpawnOpts) *server/world.EntityHandle; DragonFight func(seed int64, data server/world.DragonFightData) server/world.DragonFightController; GolemPattern func(tx *server/world.Tx, pos server/block/cube.Pos) bool; WitherPattern func(tx *server/world.Tx, pos server/block/cube.Pos) bool; EquipWithDispenser func(tx *server/world.Tx, e server/world.Entity, stack any) bool; ShearWithDispenser func(tx *server/world.Tx, e server/world.Entity, pos server/block/cube.Pos) bool; ShearLeashes func(tx *server/world.Tx, e server/world.Entity, by server/world.Entity) bool; FallingBlock func(opts server/world.EntitySpawnOpts, bl server/world.Block) *server/world.EntityHandle; TNT func(opts server/world.EntitySpawnOpts, fuse time.Duration, owner server/world.Entity) *server/world.EntityHandle; Boat func(opts server/world.EntitySpawnOpts, variant int) *server/world.EntityHandle; ChestBoat func(opts server/world.EntitySpawnOpts, variant int) *server/world.EntityHandle; Minecart func(opts server/world.EntitySpawnOpts) *server/world.EntityHandle; MinecartChest func(opts server/world.EntitySpawnOpts) *server/world.EntityHandle; MinecartHopper func(opts server/world.EntitySpawnOpts) *server/world.EntityHandle; MinecartTNT func(opts server/world.EntitySpawnOpts) *server/world.EntityHandle; BottleOfEnchanting func(opts server/world.EntitySpawnOpts, owner server/world.Entity) *server/world.EntityHandle; Arrow func(opts server/world.EntitySpawnOpts, conf server/world.ArrowSpawnConfig) *server/world.EntityHandle; Trident func(opts server/world.EntitySpawnOpts, owner server/world.Entity, stack any, loyalty int, impaling int, channeling bool) *server/world.EntityHandle; Egg func(opts server/world.EntitySpawnOpts, owner server/world.Entity) *server/world.EntityHandle; EggVariant func(opts server/world.EntitySpawnOpts, owner server/world.Entity, variant int) *server/world.EntityHandle; EnderPearl func(opts server/world.EntitySpawnOpts, owner server/world.Entity) *server/world.EntityHandle; Firework func(opts server/world.EntitySpawnOpts, firework server/world.Item, owner server/world.Entity, sidewaysVelocityMultiplier float64, upwardsAcceleration float64, attached bool) *server/world.EntityHandle; LingeringPotion func(opts server/world.EntitySpawnOpts, t any, owner server/world.Entity) *server/world.EntityHandle; Snowball func(opts server/world.EntitySpawnOpts, owner server/world.Entity) *server/world.EntityHandle; SmallFireball func(opts server/world.EntitySpawnOpts, owner server/world.Entity) *server/world.EntityHandle; WindCharge func(opts server/world.EntitySpawnOpts, owner server/world.Entity) *server/world.EntityHandle; SplashPotion func(opts server/world.EntitySpawnOpts, t any, owner server/world.Entity) *server/world.EntityHandle; Lightning func(opts server/world.EntitySpawnOpts) *server/world.EntityHandle; VisualLightning func(opts server/world.EntitySpawnOpts) *server/world.EntityHandle; EndCrystal func(opts server/world.EntitySpawnOpts, showBase bool) *server/world.EntityHandle; Shulker func(opts server/world.EntitySpawnOpts) *server/world.EntityHandle; ShulkerBullet func(opts server/world.EntitySpawnOpts, owner *server/world.EntityHandle, target *server/world.EntityHandle) *server/world.EntityHandle; Cushion func(opts server/world.EntitySpawnOpts, color int) *server/world.EntityHandle; ArmourStand func(opts server/world.EntitySpawnOpts) *server/world.EntityHandle; FishingHook func(opts server/world.EntitySpawnOpts, owner server/world.Entity, rod any) *server/world.EntityHandle; RaidSpawner func(opts server/world.EntitySpawnOpts, entityID string, raidID int64, wave int, leader bool) *server/world.EntityHandle; StartRiding func(tx *server/world.Tx, rider server/world.Entity, vehicle server/world.Entity) bool; MinecartCommandBlock func(opts server/world.EntitySpawnOpts) *server/world.EntityHandle}
 server/world	type	EntitySpawnGroup	struct{Data any}
 server/world	type	EntitySpawnOpts	struct{Position github.com/go-gl/mathgl/mgl64.Vec3; Rotation server/block/cube.Rotation; Velocity github.com/go-gl/mathgl/mgl64.Vec3; ID github.com/google/uuid.UUID; NameTag string; SpawnReason string; SpawnFinalized bool; EntityRandom *server/internal/vanilla.Random; Riding *server/world.EntityHandle; SpawnSeed int64; SpawnRandom *server/internal/vanilla.Random; SpawnGroup *server/world.EntitySpawnGroup; SpawnData map[string]any}
 server/world	type	EntityType	interface{BBox(e server/world.Entity) server/block/cube.BBox; DecodeNBT(m map[string]any, data *server/world.EntityData); EncodeEntity() string; EncodeNBT(data *server/world.EntityData) map[string]any; Open(tx *server/world.Tx, handle *server/world.EntityHandle, data *server/world.EntityData) server/world.Entity}

@@ -419,8 +419,8 @@ func (c *CopperGolem) dropEquipment(tx *world.Tx) {
 }
 
 // Interact ports CopperGolem.mobInteract: an empty hand takes the item the
-// golem carries, shears take its flower, honeycomb waxes it and an axe
-// scrapes off the wax or a stage of oxidation.
+// golem carries, honeycomb waxes it and an axe scrapes off the wax or a stage
+// of oxidation. Shears take its flower through ShearIfReady.
 func (c *CopperGolem) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) bool {
 	b := c.b()
 	if u == nil {
@@ -436,14 +436,6 @@ func (c *CopperGolem) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) 
 		return true
 	}
 	switch main.Item().(type) {
-	case item.Shears:
-		if !b.antenna.Empty() {
-			tx.PlaySound(c.Position(), sound.Custom{Name: "entity.copper_golem.shear", Volume: 1, Pitch: 1})
-			tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: c.Position().Add(mgl64.Vec3{0, 1.5, 0})}, b.antenna))
-			b.antenna = item.Stack{}
-			ctx.DamageItem(1)
-			return true
-		}
 	case item.Honeycomb:
 		if b.waxed {
 			return false

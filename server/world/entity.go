@@ -964,6 +964,11 @@ type EntityRegistryConfig struct {
 	// leads it holds or is held by are cut, or it is sheared if it is
 	// ready to be. It reports whether it did either.
 	ShearWithDispenser func(tx *Tx, e Entity, pos cube.Pos) bool
+	// ShearLeashes cuts the leads of the entity that a player with shears
+	// uses them on, as Java's Entity.shearOffAllLeashConnections does: its
+	// own lead and those of the mobs it holds drop, shears snip and the shear
+	// game event comes from the player. It reports whether a lead was cut.
+	ShearLeashes       func(tx *Tx, e Entity, by Entity) bool
 	FallingBlock       func(opts EntitySpawnOpts, bl Block) *EntityHandle
 	TNT                func(opts EntitySpawnOpts, fuse time.Duration, owner Entity) *EntityHandle
 	Boat               func(opts EntitySpawnOpts, variant int) *EntityHandle

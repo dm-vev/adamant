@@ -356,20 +356,6 @@ func (m *IronGolem) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) bo
 	tx.PlaySound(m.Position(), sound.Custom{Name: "entity.iron_golem.repair", Volume: 1, Pitch: 1})
 	return true
 }
-func (m *SnowGolem) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) bool {
-	if !m.HasPumpkin() || u == nil {
-		return false
-	}
-	main, _ := u.HeldItems()
-	if _, ok := main.Item().(item.Shears); !ok || main.Empty() {
-		return false
-	}
-	m.SetPumpkin(false)
-	ctx.DamageItem(1)
-	tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: m.Position()}, item.NewStack(block.Pumpkin{Carved: true}, 1)))
-	tx.PlaySound(m.Position(), sound.Custom{Name: "entity.snow_golem.shear", Volume: 1, Pitch: 1})
-	return true
-}
 func (m *SnowGolem) RequiresCustomPersistence() bool            { return false }
 func (m *SnowGolem) CanBeHitByPiercingWeapon(world.Entity) bool { return true }
 func (m *IronGolem) CanBeHitByPiercingWeapon(world.Entity) bool { return true }
