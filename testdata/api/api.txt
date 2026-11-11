@@ -21283,6 +21283,7 @@ server/world	method	World.Failed	func() bool
 server/world	method	World.FallDamage	func() bool
 server/world	method	World.FindNearestBiome	func(name string, origin server/block/cube.Pos) (server/block/cube.Pos, bool, error)
 server/world	method	World.FindNearestMapFeature	func(structureTag string, origin server/block/cube.Pos, searchRadius int, skipReferenced bool) (server/world.StructureLocation, bool, error)
+server/world	method	World.FindPlayerSpawn	func(ctx context.Context, suggestion server/block/cube.Pos) (github.com/go-gl/mathgl/mgl64.Vec3, error)
 server/world	method	World.ForcedChunks	func() []server/world.ChunkPos
 server/world	method	World.Freeze	func()
 server/world	method	World.Frozen	func() bool

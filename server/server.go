@@ -681,9 +681,11 @@ func (srv *Server) join(ctx context.Context, j client.Join) {
 	}
 	if err != nil || fallback {
 		w = srv.world
-		<-w.Exec(func(tx *world.Tx) {
-			d.Position = tx.PlayerSpawnPosition(w.Spawn())
-		})
+		// The chunks of the spawn of a first join load while the world
+		// ticks on.
+		if pos, err := w.FindPlayerSpawn(ctx, w.Spawn()); err == nil {
+			d.Position = pos
+		}
 		d.GameMode = w.DefaultGameMode()
 		if fallback {
 			d.Velocity = mgl64.Vec3{}
