@@ -30,3 +30,15 @@ func TestGeneratorWorkersFollowTheScheduler(t *testing.T) {
 		t.Errorf("schedulerCPUs() = %d on a host of %d CPUs", got, runtime.NumCPU())
 	}
 }
+
+// TestLightFillsLeaveProcessorsToTheOwner checks that the columns read from
+// the provider have their light filled on at most half the processors, so
+// that a player loading many columns does not leave the owner waiting for
+// one.
+func TestLightFillsLeaveProcessorsToTheOwner(t *testing.T) {
+	w := Config{Provider: NopProvider{}}.New()
+	defer w.Close()
+	if cpus, fills := schedulerCPUs(), cap(w.lightFills); fills > max(1, cpus/2) {
+		t.Errorf("%d columns have their light filled at once on %d processors", fills, cpus)
+	}
+}

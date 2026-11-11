@@ -464,7 +464,7 @@ func (w *World) startLoops(t ticker) {
 // of the caches of its generator once it idles.
 func (w *World) initBackground() {
 	cpus := schedulerCPUs()
-	w.lightFills = make(chan struct{}, cpus)
+	w.lightFills = make(chan struct{}, max(1, cpus/2))
 	w.prefetched = make(map[ChunkPos]*columnRead)
 	w.readSlots = make(chan struct{}, max(2, cpus/4))
 	w.releaseAfter = generatorIdleRelease

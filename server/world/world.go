@@ -109,7 +109,8 @@ type World struct {
 
 	generatorRunning sync.WaitGroup
 	// lightFills bounds how many columns read from the provider have their
-	// light filled at once.
+	// light filled at once: half the processors, so that a player loading
+	// the columns around them leaves processors to the owner.
 	lightFills chan struct{}
 	// prefetched holds the columns being read from the provider ahead of
 	// their load, by position, and readSlots bounds how many are read at
