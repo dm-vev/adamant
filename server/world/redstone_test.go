@@ -415,7 +415,7 @@ func TestRedstoneRecursiveSourceEvaluationReturnsZero(t *testing.T) {
 	var power int
 	runWorld(w, func(tx *Tx) {
 		tx.SetBlock(sourcePos, redstoneRecursiveSource{Target: targetPos}, nil)
-		power = tx.RedstonePower(targetPos)
+		power = tx.Redstone().Power(targetPos)
 	})
 	if power != 0 {
 		t.Fatalf("recursive source power = %d, want 0", power)
@@ -494,7 +494,7 @@ func TestRedstoneRelayerToSinkDoesNotLosePower(t *testing.T) {
 		tx.SetBlock(relayerPos, redstoneLossRelayer{}, nil)
 		tx.SetBlock(sinkPos, redstoneLossConsumer{}, nil)
 
-		directPower = tx.RedstonePower(sinkPos)
+		directPower = tx.Redstone().Power(sinkPos)
 		tx.World().redstone.tick(tx, 1)
 		if sink, ok := tx.Block(sinkPos).(redstoneLossConsumer); ok {
 			sinkPower = sink.Power
@@ -1249,7 +1249,7 @@ type redstoneRecursiveSource struct {
 }
 
 func (b redstoneRecursiveSource) RedstonePower(_ cube.Pos, tx *Tx, _ cube.Face) int {
-	return tx.RedstonePower(b.Target)
+	return tx.Redstone().Power(b.Target)
 }
 func (redstoneRecursiveSource) EncodeBlock() (string, map[string]any) {
 	return "test:redstone_recursive_source", nil
@@ -1504,7 +1504,7 @@ func (t redstoneAttachmentTorch) attachmentPowered(pos cube.Pos, tx *Tx) bool {
 	if !redstoneStrongPowerConductor(attached, attachedBlock, tx, t.Facing.Opposite()) {
 		return false
 	}
-	return tx.RedstoneConductivePower(attached) > 0
+	return tx.Redstone().ConductivePower(attached) > 0
 }
 func (t redstoneAttachmentTorch) EncodeBlock() (string, map[string]any) {
 	return "test:redstone_attachment_torch", map[string]any{"lit": t.Lit}

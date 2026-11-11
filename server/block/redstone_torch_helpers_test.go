@@ -21,5 +21,5 @@ func (t RedstoneTorch) attachmentPowered(pos cube.Pos, tx *world.Tx) bool {
 			}
 		}
 	}
-	return world.RedstoneFullPowerConductor(attached, attachedBlock, tx) && tx.RedstoneConductivePower(attached) > 0
+	return world.RedstoneFullPowerConductor(attached, attachedBlock, tx) && tx.Redstone().ConductivePower(attached) > 0
 }

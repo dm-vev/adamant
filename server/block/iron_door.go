@@ -112,7 +112,7 @@ func (d IronDoor) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *wor
 			d.Right = true
 		}
 	}
-	d.Open = tx.RedstonePower(pos) > 0 || tx.RedstonePower(pos.Side(cube.FaceUp)) > 0
+	d.Open = tx.Redstone().Power(pos) > 0 || tx.Redstone().Power(pos.Side(cube.FaceUp)) > 0
 
 	ctx.IgnoreBBox = true
 	place(tx, pos, d, user, ctx)
@@ -182,7 +182,7 @@ func (t IronTrapdoor) UseOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Ve
 	}
 	t.Facing = user.Rotation().Direction().Opposite()
 	t.Top = (clickPos.Y() > 0.5 && face != cube.FaceUp) || face == cube.FaceDown
-	t.Open = tx.RedstonePower(pos) > 0
+	t.Open = tx.Redstone().Power(pos) > 0
 	place(tx, pos, t, user, ctx)
 	return placed(ctx)
 }

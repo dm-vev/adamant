@@ -73,7 +73,8 @@ var worldReads = map[string][]string{
 	"POITransaction":           {"At", "IsVillage", "VillageDistance"},
 	"RedstoneTorchTransaction": {"BurnoutStatus"},
 	"RedstoneTransaction": {
-		"CircuitDirection", "CircuitStrength", "ConsumerPower", "ObservedPower", "ProducerStrength", "Torch",
+		"CircuitDirection", "CircuitStrength", "ConductivePower", "ConsumerPower", "DirectPower", "DirectPowerFrom",
+		"ObservedPower", "Power", "PowerFrom", "ProducerStrength", "StrongPower", "StrongPowerFrom", "Torch",
 	},
 	"Tx": {
 		"Biome", "Block", "BlockFaceSturdy", "BlockLight", "BlockLoaded", "BlockStateID", "CaptureStructure",
@@ -83,8 +84,7 @@ var worldReads = map[string][]string{
 		"HighestLightBlocker", "IsDarkOutside", "Light", "LightBlockedInto", "Liquid",
 		"LoadedBlockEntities", "LocalDifficulty", "Maps", "MayContainLiquid", "MovementBlockProperties", "NativeState", "POIs",
 		"PlayerSpawnPosition", "Players", "PlayersNear", "Raids", "Raining", "RainingAt", "Range", "RawBrightness",
-		"Redstone", "RedstoneConductivePower", "RedstoneDirectPower", "RedstoneDirectPowerFrom", "RedstonePower",
-		"RedstonePowerFrom", "RedstoneStrongPower", "RedstoneStrongPowerFrom", "ReleaseViewers", "SkyDarken",
+		"Redstone", "ReleaseViewers", "SkyDarken",
 		"SkyLight", "Sleepers", "SnowingAt", "SunAngle", "Temperature", "Thundering", "ThunderingAt", "Viewers",
 		"World",
 	},

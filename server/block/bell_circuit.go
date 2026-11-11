@@ -15,7 +15,7 @@ func (s bellCircuit) Cache(cube.Pos, *world.Tx) world.RedstoneCircuitState { ret
 func (s bellCircuit) CacheAfterSources(pos cube.Pos, tx *world.Tx) world.RedstoneCircuitState {
 	s.input = 0
 	for _, face := range cube.Faces() {
-		s.input = max(s.input, tx.RedstonePowerFrom(pos, face))
+		s.input = max(s.input, tx.Redstone().PowerFrom(pos, face))
 	}
 	return s
 }

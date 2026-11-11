@@ -55,7 +55,7 @@ func TestStruckLightningRodPulsesItsSupport(t *testing.T) {
 		if r := tx.Block(rod).(LightningRod); !r.Powered {
 			t.Fatal("struck rod is not powered")
 		}
-		if got := tx.RedstoneStrongPower(support); got != 15 {
+		if got := tx.Redstone().StrongPower(support); got != 15 {
 			t.Fatalf("support strong power = %d, want 15", got)
 		}
 	})

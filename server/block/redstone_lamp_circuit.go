@@ -32,7 +32,7 @@ func (s lampCircuit) CacheAfterSources(pos cube.Pos, tx *world.Tx) world.Redston
 	}
 	s.lamp = l
 	s.previousInput = s.input
-	s.input = tx.RedstonePower(pos)
+	s.input = tx.Redstone().Power(pos)
 	return s
 }
 

@@ -191,6 +191,6 @@ func allDoors() (doors []world.Block) {
 func doorSignalSwitch(pos cube.Pos, top bool, tx *world.Tx, oldPower, newPower int) (signal, switched bool) {
 	other := pos.Side(cube.Face(boolByte(!top)))
 	was := oldPower > 0 || tx.Redstone().ObservedPower(other) > 0
-	signal = newPower > 0 || tx.RedstonePower(other) > 0
+	signal = newPower > 0 || tx.Redstone().Power(other) > 0
 	return signal, signal != was
 }

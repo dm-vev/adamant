@@ -19,7 +19,7 @@ func TestSculkSensorsStronglyPowerOnlyTheBlockBelow(t *testing.T) {
 			tx.SetBlock(cube.Pos{0, 0, 0}, Stone{}, nil)
 			tx.SetBlock(cube.Pos{0, 2, 0}, Stone{}, nil)
 			tx.SetBlock(cube.Pos{0, 1, 0}, sensor, nil)
-			if below, above := tx.RedstoneStrongPower(cube.Pos{0, 0, 0}), tx.RedstoneStrongPower(cube.Pos{0, 2, 0}); below != 9 || above != 0 {
+			if below, above := tx.Redstone().StrongPower(cube.Pos{0, 0, 0}), tx.Redstone().StrongPower(cube.Pos{0, 2, 0}); below != 9 || above != 0 {
 				t.Fatalf("%s strongly powers below %d and above %d, want 9 and 0", name, below, above)
 			}
 		})

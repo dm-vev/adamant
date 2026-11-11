@@ -6,7 +6,7 @@ import (
 )
 
 func diodeSidePower(sidePos cube.Pos, side cube.Face, tx *world.Tx) int {
-	return tx.RedstoneDirectPowerFrom(sidePos.Side(side.Opposite()), side)
+	return tx.Redstone().DirectPowerFrom(sidePos.Side(side.Opposite()), side)
 }
 
 func diodeSideInputPower(pos cube.Pos, facing cube.Direction, tx *world.Tx) int {
@@ -25,7 +25,7 @@ func diodeSideInputPower(pos cube.Pos, facing cube.Direction, tx *world.Tx) int 
 			// Native wire sources are flattened into the capacitor's source
 			// list. Read the current cached graph, not the wire permutation
 			// that will be published after this circuit evaluation.
-			power = max(power, tx.RedstonePowerFrom(pos, face))
+			power = max(power, tx.Redstone().PowerFrom(pos, face))
 		case RedstoneRepeater, RedstoneComparator:
 			power = max(power, diodeSidePower(sidePos, face, tx))
 		}

@@ -115,7 +115,7 @@ func (b *SulfurCubeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		s.die(ExplosionDamageSource{Source: src})
 		return nil
 	}
-	if s.canExplode() && tx.RedstonePower(cube.PosFromVec3(e.data.Pos)) != 0 {
+	if s.canExplode() && tx.Redstone().Power(cube.PosFromVec3(e.data.Pos)) != 0 {
 		s.primeTime(false)
 	}
 	// AgeableMob.aiStep: a baby grows into a cube of size two.

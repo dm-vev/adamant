@@ -30,7 +30,7 @@ func TestTrappedChestPowerFollowsViewers(t *testing.T) {
 				w.AdvanceTick()
 			}
 			ch := tx.Block(pos).(TrappedChest)
-			return ch.RedstonePower(pos, tx, cube.FaceNorth), tx.RedstoneStrongPower(below)
+			return ch.RedstonePower(pos, tx, cube.FaceNorth), tx.Redstone().StrongPower(below)
 		}
 		if p, strong := power(); p != 0 || strong != 0 {
 			t.Fatalf("closed chest power=%d strong below=%d", p, strong)

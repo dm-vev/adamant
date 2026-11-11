@@ -94,7 +94,7 @@ func railDirectlyPowered(pos cube.Pos, tx *world.Tx, match railPowerMatcher) boo
 	}
 	ascending, sloped := r.RailDirection().AscendingFace()
 	for _, face := range cube.Faces() {
-		if tx.RedstonePowerFrom(pos, face) == 0 {
+		if tx.Redstone().PowerFrom(pos, face) == 0 {
 			continue
 		}
 		if face.Axis() != direction.Axis() {
@@ -128,7 +128,7 @@ func railDirectlyPowered(pos cube.Pos, tx *world.Tx, match railPowerMatcher) boo
 			if axis != direction {
 				continue
 			}
-			if tx.RedstoneDirectPowerFrom(neighbor, vertical.Opposite()) > 0 {
+			if tx.Redstone().DirectPowerFrom(neighbor, vertical.Opposite()) > 0 {
 				replaced = true
 				break
 			}

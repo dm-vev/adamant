@@ -129,7 +129,7 @@ func (s Skull) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
 	if s.Type != DragonHead() && s.Type != PiglinHead() {
 		return
 	}
-	s.Powered = tx.RedstonePower(pos) > 0
+	s.Powered = tx.Redstone().Power(pos) > 0
 	if s.Powered {
 		s.AnimationTicks++
 	}

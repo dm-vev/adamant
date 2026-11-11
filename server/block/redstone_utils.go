@@ -12,7 +12,7 @@ func gameTicks(ticks int) time.Duration {
 }
 
 func redstonePowered(pos cube.Pos, tx *world.Tx) bool {
-	return tx.RedstonePower(pos) > 0
+	return tx.Redstone().Power(pos) > 0
 }
 
 // NotifyComparatorUpdate sends neighbour updates around a position and around adjacent normal blocks.

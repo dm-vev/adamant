@@ -200,7 +200,7 @@ func (p Piston) inputPower(pos cube.Pos, tx *world.Tx) int {
 		if face == p.Facing {
 			continue
 		}
-		power = max(power, tx.RedstonePowerFrom(pos, face))
+		power = max(power, tx.Redstone().PowerFrom(pos, face))
 	}
 	return power
 }

@@ -59,7 +59,7 @@ func (r RedstoneRepeater) shouldBePowered(pos cube.Pos, tx *world.Tx) bool {
 
 func (r RedstoneRepeater) inputPower(pos cube.Pos, tx *world.Tx) int {
 	inputFace := r.Facing.Face()
-	return tx.RedstonePowerFrom(pos, inputFace)
+	return tx.Redstone().PowerFrom(pos, inputFace)
 }
 
 func (r RedstoneRepeater) isLocked(pos cube.Pos, tx *world.Tx) bool {

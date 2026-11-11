@@ -19500,13 +19500,6 @@ server/player	method	Context.Range	func() server/block/cube.Range
 server/player	method	Context.RawBrightness	func(pos server/block/cube.Pos) int
 server/player	method	Context.RedirectLightning	func(pos github.com/go-gl/mathgl/mgl64.Vec3) github.com/go-gl/mathgl/mgl64.Vec3
 server/player	method	Context.Redstone	func() server/world.RedstoneTransaction
-server/player	method	Context.RedstoneConductivePower	func(pos server/block/cube.Pos) int
-server/player	method	Context.RedstoneDirectPower	func(pos server/block/cube.Pos) int
-server/player	method	Context.RedstoneDirectPowerFrom	func(pos server/block/cube.Pos, face server/block/cube.Face) int
-server/player	method	Context.RedstonePower	func(pos server/block/cube.Pos) int
-server/player	method	Context.RedstonePowerFrom	func(pos server/block/cube.Pos, face server/block/cube.Face) int
-server/player	method	Context.RedstoneStrongPower	func(pos server/block/cube.Pos) int
-server/player	method	Context.RedstoneStrongPowerFrom	func(pos server/block/cube.Pos, face server/block/cube.Face) int
 server/player	method	Context.RegionRandom	func() *server/internal/vanilla.Random
 server/player	method	Context.ReleaseViewers	func(viewers []server/world.Viewer)
 server/player	method	Context.RemoveEntity	func(e server/world.Entity) *server/world.EntityHandle
@@ -20820,13 +20813,6 @@ server/world	method	Context.Range	func() server/block/cube.Range
 server/world	method	Context.RawBrightness	func(pos server/block/cube.Pos) int
 server/world	method	Context.RedirectLightning	func(pos github.com/go-gl/mathgl/mgl64.Vec3) github.com/go-gl/mathgl/mgl64.Vec3
 server/world	method	Context.Redstone	func() server/world.RedstoneTransaction
-server/world	method	Context.RedstoneConductivePower	func(pos server/block/cube.Pos) int
-server/world	method	Context.RedstoneDirectPower	func(pos server/block/cube.Pos) int
-server/world	method	Context.RedstoneDirectPowerFrom	func(pos server/block/cube.Pos, face server/block/cube.Face) int
-server/world	method	Context.RedstonePower	func(pos server/block/cube.Pos) int
-server/world	method	Context.RedstonePowerFrom	func(pos server/block/cube.Pos, face server/block/cube.Face) int
-server/world	method	Context.RedstoneStrongPower	func(pos server/block/cube.Pos) int
-server/world	method	Context.RedstoneStrongPowerFrom	func(pos server/block/cube.Pos, face server/block/cube.Face) int
 server/world	method	Context.RegionRandom	func() *server/internal/vanilla.Random
 server/world	method	Context.ReleaseViewers	func(viewers []server/world.Viewer)
 server/world	method	Context.RemoveEntity	func(e server/world.Entity) *server/world.EntityHandle
@@ -21026,9 +21012,14 @@ server/world	method	RedstoneTorchTransaction.BurnoutStatus	func() (burnedOut boo
 server/world	method	RedstoneTorchTransaction.ClearBurnout	func()
 server/world	method	RedstoneTransaction.CircuitDirection	func(pos server/block/cube.Pos) (server/block/cube.Face, bool)
 server/world	method	RedstoneTransaction.CircuitStrength	func(pos server/block/cube.Pos) int
+server/world	method	RedstoneTransaction.ConductivePower	func(pos server/block/cube.Pos) int
 server/world	method	RedstoneTransaction.ConsumerPower	func(pos server/block/cube.Pos) (int, bool)
+server/world	method	RedstoneTransaction.DirectPower	func(pos server/block/cube.Pos) int
+server/world	method	RedstoneTransaction.DirectPowerFrom	func(pos server/block/cube.Pos, face server/block/cube.Face) int
 server/world	method	RedstoneTransaction.NotifyCircuitNeighbour	func(pos server/block/cube.Pos, changed server/block/cube.Pos)
 server/world	method	RedstoneTransaction.ObservedPower	func(pos server/block/cube.Pos) int
+server/world	method	RedstoneTransaction.Power	func(pos server/block/cube.Pos) int
+server/world	method	RedstoneTransaction.PowerFrom	func(pos server/block/cube.Pos, face server/block/cube.Face) int
 server/world	method	RedstoneTransaction.ProducerStrength	func(pos server/block/cube.Pos) (power int, active bool)
 server/world	method	RedstoneTransaction.RefreshCircuit	func(pos server/block/cube.Pos)
 server/world	method	RedstoneTransaction.SampleAnalogInput	func(pos server/block/cube.Pos)
@@ -21036,6 +21027,8 @@ server/world	method	RedstoneTransaction.ScheduleUpdate	func(pos server/block/cub
 server/world	method	RedstoneTransaction.SetCircuitStrength	func(pos server/block/cube.Pos, power int)
 server/world	method	RedstoneTransaction.SetProducerBlock	func(pos server/block/cube.Pos, b server/world.Block)
 server/world	method	RedstoneTransaction.SetProducerStrength	func(pos server/block/cube.Pos, power int)
+server/world	method	RedstoneTransaction.StrongPower	func(pos server/block/cube.Pos) int
+server/world	method	RedstoneTransaction.StrongPowerFrom	func(pos server/block/cube.Pos, face server/block/cube.Face) int
 server/world	method	RedstoneTransaction.Torch	func(pos server/block/cube.Pos) server/world.RedstoneTorchTransaction
 server/world	method	Settings.Lock	func()
 server/world	method	Settings.ResolveSeed	func(fallback int64) int64
@@ -21150,13 +21143,6 @@ server/world	method	Tx.Range	func() server/block/cube.Range
 server/world	method	Tx.RawBrightness	func(pos server/block/cube.Pos) int
 server/world	method	Tx.RedirectLightning	func(pos github.com/go-gl/mathgl/mgl64.Vec3) github.com/go-gl/mathgl/mgl64.Vec3
 server/world	method	Tx.Redstone	func() server/world.RedstoneTransaction
-server/world	method	Tx.RedstoneConductivePower	func(pos server/block/cube.Pos) int
-server/world	method	Tx.RedstoneDirectPower	func(pos server/block/cube.Pos) int
-server/world	method	Tx.RedstoneDirectPowerFrom	func(pos server/block/cube.Pos, face server/block/cube.Face) int
-server/world	method	Tx.RedstonePower	func(pos server/block/cube.Pos) int
-server/world	method	Tx.RedstonePowerFrom	func(pos server/block/cube.Pos, face server/block/cube.Face) int
-server/world	method	Tx.RedstoneStrongPower	func(pos server/block/cube.Pos) int
-server/world	method	Tx.RedstoneStrongPowerFrom	func(pos server/block/cube.Pos, face server/block/cube.Face) int
 server/world	method	Tx.RegionRandom	func() *server/internal/vanilla.Random
 server/world	method	Tx.ReleaseViewers	func(viewers []server/world.Viewer)
 server/world	method	Tx.RemoveEntity	func(e server/world.Entity) *server/world.EntityHandle

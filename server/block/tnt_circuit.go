@@ -24,7 +24,7 @@ func (s tntCircuit) CacheAfterSources(pos cube.Pos, tx *world.Tx) world.Redstone
 	s.block = tx.Block(pos).(TNT)
 	s.previousInput, s.input = s.input, 0
 	for _, face := range cube.Faces() {
-		s.input = max(s.input, tx.RedstonePowerFrom(pos, face))
+		s.input = max(s.input, tx.Redstone().PowerFrom(pos, face))
 	}
 	return s
 }

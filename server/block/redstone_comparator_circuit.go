@@ -49,7 +49,7 @@ func (s comparatorCircuitState) Cache(pos cube.Pos, tx *world.Tx) world.Redstone
 	// cacheValues leaves electrical caches untouched until the first actor
 	// tick sets mHasAnalogBeenSet. Setup initially supplies a zero actor value.
 	if s.ready {
-		s.rear = tx.RedstonePowerFrom(pos, s.facing.Face())
+		s.rear = tx.Redstone().PowerFrom(pos, s.facing.Face())
 		s.side = diodeSideInputPower(pos, s.facing, tx)
 	}
 	if s.analog >= 0 {

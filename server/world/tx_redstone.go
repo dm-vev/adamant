@@ -121,58 +121,65 @@ func (t RedstoneTorchTransaction) ClearBurnout() {
 	}
 }
 
-// RedstonePower returns the strongest redstone power currently applied to the position passed. Custom redstone block
+// Power returns the strongest redstone power currently applied to the position passed. Custom redstone block
 // implementations may use this method to query the transaction's current redstone state.
-func (tx *Tx) RedstonePower(pos cube.Pos) int {
+func (r RedstoneTransaction) Power(pos cube.Pos) int {
+	tx := r.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	return tx.World().redstone.powerTo(pos, tx)
 }
 
-// RedstoneDirectPower returns the strongest direct redstone power currently applied to the position passed, excluding
+// DirectPower returns the strongest direct redstone power currently applied to the position passed, excluding
 // power conducted through solid blocks. Custom redstone block implementations may use this method to query the
 // transaction's current redstone state.
-func (tx *Tx) RedstoneDirectPower(pos cube.Pos) int {
+func (r RedstoneTransaction) DirectPower(pos cube.Pos) int {
+	tx := r.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	return tx.World().redstone.directPower(pos, tx)
 }
 
-// RedstoneStrongPower returns the strongest strong redstone power currently applied to the position passed. Custom
+// StrongPower returns the strongest strong redstone power currently applied to the position passed. Custom
 // redstone block implementations may use this method to query the transaction's current redstone state.
-func (tx *Tx) RedstoneStrongPower(pos cube.Pos) int {
+func (r RedstoneTransaction) StrongPower(pos cube.Pos) int {
+	tx := r.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	return tx.World().redstone.strongPower(pos, tx)
 }
 
-// RedstoneConductivePower returns the power held by pos as a conductive block, excluding direct component activation.
+// ConductivePower returns the power held by pos as a conductive block, excluding direct component activation.
 // Custom redstone block implementations may use this method to query the transaction's current redstone state.
-func (tx *Tx) RedstoneConductivePower(pos cube.Pos) int {
+func (r RedstoneTransaction) ConductivePower(pos cube.Pos) int {
+	tx := r.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	return tx.World().redstone.conductivePowerTo(pos, tx)
 }
 
-// RedstonePowerFrom returns the strongest redstone power reaching pos from the side passed. Custom redstone block
+// PowerFrom returns the strongest redstone power reaching pos from the side passed. Custom redstone block
 // implementations may use this method to query the transaction's current redstone state.
-func (tx *Tx) RedstonePowerFrom(pos cube.Pos, face cube.Face) int {
+func (r RedstoneTransaction) PowerFrom(pos cube.Pos, face cube.Face) int {
+	tx := r.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	return tx.World().redstone.powerFrom(pos, tx, face)
 }
 
-// RedstoneDirectPowerFrom returns the strongest direct redstone power reaching pos from the side passed. Custom
+// DirectPowerFrom returns the strongest direct redstone power reaching pos from the side passed. Custom
 // redstone block implementations may use this method to query the transaction's current redstone state.
-func (tx *Tx) RedstoneDirectPowerFrom(pos cube.Pos, face cube.Face) int {
+func (r RedstoneTransaction) DirectPowerFrom(pos cube.Pos, face cube.Face) int {
+	tx := r.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	return tx.World().redstone.directPowerFrom(pos, tx, face)
 }
 
-// RedstoneStrongPowerFrom returns the strongest strong redstone power reaching pos from the side passed. Custom
+// StrongPowerFrom returns the strongest strong redstone power reaching pos from the side passed. Custom
 // redstone block implementations may use this method to query the transaction's current redstone state.
-func (tx *Tx) RedstoneStrongPowerFrom(pos cube.Pos, face cube.Face) int {
+func (r RedstoneTransaction) StrongPowerFrom(pos cube.Pos, face cube.Face) int {
+	tx := r.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	return tx.World().redstone.strongPowerFrom(pos, tx, face)

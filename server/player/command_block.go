@@ -49,7 +49,7 @@ func (p *Player) EditCommandBlock(pos cube.Pos, edit block.CommandBlockEdit) err
 	}
 	wasAuto := !b.NeedsRedstone
 	b = b.Edited(edit)
-	b.Powered = p.tx.RedstonePower(pos) > 0
+	b.Powered = p.tx.Redstone().Power(pos) > 0
 	p.tx.SetBlock(pos, b, nil)
 	if b.Mode == block.CommandBlockImpulse && !b.NeedsRedstone && !wasAuto && !b.Powered {
 		p.tx.ScheduleBlockUpdate(pos, b, time.Second/20)

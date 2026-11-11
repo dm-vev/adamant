@@ -345,7 +345,7 @@ func (s CalibratedSculkSensor) CanReceiveVibration(tx *world.Tx, listenerPos, ev
 		return false
 	}
 	direction := s.Facing.Opposite()
-	frequency := tx.RedstonePowerFrom(listenerPos, direction.Face())
+	frequency := tx.Redstone().PowerFrom(listenerPos, direction.Face())
 	return frequency == 0 || frequency == world.GameEventFrequency(event)
 }
 func (s CalibratedSculkSensor) ReceiveVibration(tx *world.Tx, listenerPos, _ cube.Pos, info world.VibrationInfo, distance float32) {

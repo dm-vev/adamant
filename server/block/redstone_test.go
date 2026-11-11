@@ -332,8 +332,8 @@ func TestRedstoneBlockPowersAdjacentComponentsButNotThroughStone(t *testing.T) {
 		tx.SetBlock(farDustPos, RedstoneWire{}, nil)
 		tx.SetBlock(farDustPos.Side(cube.FaceDown), Stone{}, nil)
 
-		adjacentPower = tx.RedstonePower(adjacentDustPos)
-		farPower = tx.RedstonePower(farDustPos)
+		adjacentPower = tx.Redstone().Power(adjacentDustPos)
+		farPower = tx.Redstone().Power(farDustPos)
 	})
 
 	if adjacentPower == 0 {
@@ -379,8 +379,8 @@ func TestLeverStrongPowersAttachedBlockFace(t *testing.T) {
 		tx.SetBlock(unattachedPos, Stone{}, nil)
 		tx.SetBlock(leverPos, Lever{Powered: true, Facing: cube.FaceEast}, nil)
 
-		attachedPower = tx.RedstoneStrongPower(attachedPos)
-		unattachedPower = tx.RedstoneStrongPower(unattachedPos)
+		attachedPower = tx.Redstone().StrongPower(attachedPos)
+		unattachedPower = tx.Redstone().StrongPower(unattachedPos)
 	})
 
 	if attachedPower != 15 {
@@ -505,7 +505,7 @@ func TestTNTDoesNotConductRedstonePower(t *testing.T) {
 		tx.SetBlock(dustPos, RedstoneWire{}, nil)
 		tx.SetBlock(dustPos.Side(cube.FaceDown), Stone{}, nil)
 
-		power = tx.RedstonePower(dustPos)
+		power = tx.Redstone().Power(dustPos)
 	})
 
 	if power != 0 {

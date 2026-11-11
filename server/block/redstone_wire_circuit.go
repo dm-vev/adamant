@@ -30,7 +30,7 @@ func (s wireCircuit) Cache(pos cube.Pos, tx *world.Tx) world.RedstoneCircuitStat
 		return nil
 	}
 	s.wire = r
-	s.next = tx.RedstonePower(pos)
+	s.next = tx.Redstone().Power(pos)
 	return s
 }
 

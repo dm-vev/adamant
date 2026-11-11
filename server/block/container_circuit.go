@@ -116,7 +116,7 @@ func (s containerCircuit) CacheAfterSources(pos cube.Pos, tx *world.Tx) world.Re
 	s.block = tx.Block(pos).(poweredContainer)
 	s.previousInput, s.input = s.input, 0
 	for _, face := range cube.Faces() {
-		s.input = max(s.input, tx.RedstonePowerFrom(pos, face))
+		s.input = max(s.input, tx.Redstone().PowerFrom(pos, face))
 	}
 	return s
 }
