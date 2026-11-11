@@ -1,14 +1,12 @@
 package session
 
 import (
-	"bytes"
 	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
-	"github.com/dm-vev/adamant/net/nbt"
 )
 
 // ViewTime ...
@@ -26,20 +24,26 @@ func (s *Session) ViewFallDamage(enabled bool) {
 	s.sendGameRules([]mc.GameRule{{Name: "falldamage", Value: enabled}})
 }
 
+// sleepingPlayersPayload is the payload of the event of the sleeping players.
+// A struct, as the encoder writes the keys of a map in random order.
+type sleepingPlayersPayload struct {
+	AbleToSleep          int32 `nbt:"ableToSleep"`
+	OverworldPlayerCount int32 `nbt:"overworldPlayerCount"`
+	SleepingPlayerCount  int32 `nbt:"sleepingPlayerCount"`
+}
+
 // ViewSleepingPlayers ...
 func (s *Session) ViewSleepingPlayers(sleeping, max int) {
-	buf := bytes.NewBuffer(nil)
-	_ = nbt.NewEncoderWithEncoding(buf, nbt.NetworkLittleEndian).Encode(map[string]any{
-		"ableToSleep":          int32(max),
-		"overworldPlayerCount": int32(max),
-		"sleepingPlayerCount":  int32(sleeping),
-	})
+	s.writePacket(sleepingPlayersPacket(sleeping, max))
+}
 
-	eventData := buf.Bytes()
-
-	s.writePacket(&mc.LevelEventGenericPacket{
-		EventID:             mc.LevelEventSleepingPlayers,
-		SerialisedEventData: eventData[2 : len(eventData)-1],
+// sleepingPlayersPacket returns the packet of the sleeping players: how many
+// of the max that may sleep do.
+func sleepingPlayersPacket(sleeping, max int) *mc.LevelEventGenericPacket {
+	return genericLevelEvent(mc.LevelEventSleepingPlayers, sleepingPlayersPayload{
+		AbleToSleep:          int32(max),
+		OverworldPlayerCount: int32(max),
+		SleepingPlayerCount:  int32(sleeping),
 	})
 }
 

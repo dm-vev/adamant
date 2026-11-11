@@ -271,6 +271,33 @@ func (s *Session) sendMerchantOffers(e *world.EntityHandle, merchant entity.Merc
 	})
 }
 
+// merchantRecipe is an offer of the trade screen. A struct, as the encoder
+// writes the keys of a map in random order. BuyA, BuyB and Sell are item
+// NBT, maps of item.WriteNBT, whose keys the encoder still writes in random
+// order.
+type merchantRecipe struct {
+	NetID            int32          `nbt:"netId"`
+	BuyA             map[string]any `nbt:"buyA"`
+	BuyB             map[string]any `nbt:"buyB"`
+	BuyCountA        int32          `nbt:"buyCountA"`
+	BuyCountB        int32          `nbt:"buyCountB"`
+	Sell             map[string]any `nbt:"sell"`
+	Uses             int32          `nbt:"uses"`
+	MaxUses          int32          `nbt:"maxUses"`
+	RewardExp        byte           `nbt:"rewardExp"`
+	Tier             int32          `nbt:"tier"`
+	TraderExp        int32          `nbt:"traderExp"`
+	PriceMultiplierA float32        `nbt:"priceMultiplierA"`
+	PriceMultiplierB float32        `nbt:"priceMultiplierB"`
+	Demand           int32          `nbt:"demand"`
+}
+
+// merchantOffersPayload is the serialised offers of the trade screen.
+type merchantOffersPayload struct {
+	Recipes             []any `nbt:"Recipes"`
+	TierExpRequirements []any `nbt:"TierExpRequirements"`
+}
+
 func serializeMerchantOffers(offers []entity.MerchantOffer) ([]byte, error) {
 	recipes := make([]any, len(offers))
 	for i, offer := range offers {
@@ -280,21 +307,21 @@ func serializeMerchantOffers(offers []entity.MerchantOffer) ([]byte, error) {
 		}
 		// The client shows buyA as priced and names the offer by netId, the
 		// recipe network ID its trade request carries.
-		recipes[i] = map[string]any{
-			"netId":            int32(i + 1),
-			"buyA":             tradeItemNBT(offer.CostA()),
-			"buyB":             tradeItemNBT(offer.SecondaryInput),
-			"buyCountA":        int32(offer.Input.Count()),
-			"buyCountB":        int32(offer.SecondaryInput.Count()),
-			"sell":             tradeItemNBT(offer.Output),
-			"uses":             int32(offer.Uses),
-			"maxUses":          int32(offer.MaxUses),
-			"rewardExp":        rewardXP,
-			"tier":             int32(offer.Tier),
-			"traderExp":        int32(offer.XP),
-			"priceMultiplierA": offer.PriceMultiplier,
-			"priceMultiplierB": float32(0),
-			"demand":           int32(offer.Demand),
+		recipes[i] = merchantRecipe{
+			NetID:            int32(i + 1),
+			BuyA:             tradeItemNBT(offer.CostA()),
+			BuyB:             tradeItemNBT(offer.SecondaryInput),
+			BuyCountA:        int32(offer.Input.Count()),
+			BuyCountB:        int32(offer.SecondaryInput.Count()),
+			Sell:             tradeItemNBT(offer.Output),
+			Uses:             int32(offer.Uses),
+			MaxUses:          int32(offer.MaxUses),
+			RewardExp:        rewardXP,
+			Tier:             int32(offer.Tier),
+			TraderExp:        int32(offer.XP),
+			PriceMultiplierA: offer.PriceMultiplier,
+			PriceMultiplierB: 0,
+			Demand:           int32(offer.Demand),
 		}
 	}
 	// The experience a villager needs for each level, as
@@ -304,7 +331,7 @@ func serializeMerchantOffers(offers []entity.MerchantOffer) ([]byte, error) {
 		map[string]any{"3": int32(150)}, map[string]any{"4": int32(250)},
 	}
 	var buf bytes.Buffer
-	if err := nbt.NewEncoderWithEncoding(&buf, nbt.NetworkLittleEndian).Encode(map[string]any{"Recipes": recipes, "TierExpRequirements": tiers}); err != nil {
+	if err := nbt.NewEncoderWithEncoding(&buf, nbt.NetworkLittleEndian).Encode(merchantOffersPayload{Recipes: recipes, TierExpRequirements: tiers}); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil

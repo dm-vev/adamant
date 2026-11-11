@@ -168,13 +168,32 @@ func dragonEggTeleportData(diff cube.Pos) int32 {
 // position, which name the block the position is in.
 func sculkChargePacket(pos mgl64.Vec3, p world.Particle) *mc.LevelEventGenericPacket {
 	block := cube.PosFromVec3(pos)
-	data := map[string]any{"x": int32(block.X()), "y": int32(block.Y()), "z": int32(block.Z())}
-	event := int32(mc.LevelEventSculkChargePop)
+	x, y, z := int32(block.X()), int32(block.Y()), int32(block.Z())
 	if charge, ok := p.(particle.SculkCharge); ok {
-		event = mc.LevelEventSculkCharge
-		data["charge"], data["facing"] = int16(charge.Charge), int16(charge.Faces)
+		return genericLevelEvent(mc.LevelEventSculkCharge, sculkChargePayload{
+			X: x, Y: y, Z: z, Charge: int16(charge.Charge), Facing: int16(charge.Faces),
+		})
 	}
-	return genericLevelEvent(event, data)
+	return genericLevelEvent(mc.LevelEventSculkChargePop, sculkPopPayload{X: x, Y: y, Z: z})
+}
+
+// sculkPopPayload is the payload of the event of a sculk charge pop: the
+// block the pop is in. A struct, as the encoder writes the keys of a map in
+// random order.
+type sculkPopPayload struct {
+	X int32 `nbt:"x"`
+	Y int32 `nbt:"y"`
+	Z int32 `nbt:"z"`
+}
+
+// sculkChargePayload is the payload of the event of a sculk charge: the
+// block it is in with the charge and the faces it spreads to.
+type sculkChargePayload struct {
+	X      int32 `nbt:"x"`
+	Y      int32 `nbt:"y"`
+	Z      int32 `nbt:"z"`
+	Charge int16 `nbt:"charge"`
+	Facing int16 `nbt:"facing"`
 }
 
 // flamePacket returns the packet of a flame at a position: of the colour it
