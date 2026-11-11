@@ -165,6 +165,8 @@ var bedrockSoundNames = map[string]string{
 	"entity.snow_golem.shear":                   "mob.sheep.shear",
 	"entity.snow_golem.shoot":                   "mob.snowgolem.shoot",
 	"entity.squid.squirt":                       "mob.squid.ink_squirt",
+	"entity.pig.saddle":                         "mob.horse.leather",
+	"entity.strider.saddle":                     "mob.horse.leather",
 	"entity.strider.eat":                        "mob.strider.eat",
 	"entity.strider.happy":                      "mob.strider.tempt",
 	"entity.strider.retreat":                    "mob.strider.panic",

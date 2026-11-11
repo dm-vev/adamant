@@ -27,12 +27,15 @@ func TestJavaSoundsPlayTheirBedrockDefinitions(t *testing.T) {
 		"entity.goat.screaming.long_jump",
 		"entity.panda.eat",
 		"entity.strider.happy",
+		// The saddle sounds of the pig and the strider are leather.
+		"entity.pig.saddle",
+		"entity.strider.saddle",
 		// Bedrock definitions pass through as they are.
 		"random.glass",
 	} {
 		viewer.ViewSound(mgl64.Vec3{}, sound.Custom{Name: name, Volume: 1, Pitch: 1})
 	}
-	want := []string{"mob.cat.purr", "item.enchant.lunge2", "mob.panda.eat", "mob.strider.tempt", "random.glass"}
+	want := []string{"mob.cat.purr", "item.enchant.lunge2", "mob.panda.eat", "mob.strider.tempt", "mob.horse.leather", "mob.horse.leather", "random.glass"}
 	var got []string
 	timeout := time.After(time.Second)
 	for len(got) < len(want)+1 {

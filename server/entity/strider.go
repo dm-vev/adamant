@@ -402,6 +402,7 @@ func (s *Strider) Interact(tx *world.Tx, u item.User, c *item.UseContext) bool {
 	}
 	if itemNamed(held, "minecraft:saddle") && !b.saddled && b.age >= 0 && !s.Dead() {
 		b.saddled = true
+		playSaddleEquip(tx, s, "entity.strider.saddle")
 		if c != nil {
 			c.SubtractFromCount(1)
 		}

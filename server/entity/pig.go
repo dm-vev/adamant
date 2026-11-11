@@ -425,6 +425,7 @@ func (p *Pig) Interact(tx *world.Tx, u item.User, c *item.UseContext) bool {
 		return true
 	}
 	if _, ok := held.Item().(item.Saddle); ok && c != nil && p.Saddle() {
+		playSaddleEquip(tx, p, "entity.pig.saddle")
 		c.SubtractFromCount(1)
 		return true
 	}

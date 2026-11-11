@@ -132,20 +132,24 @@ func (a *ArmourStandBehaviour) dispenserEquip(e *Ent, tx *world.Tx, stack item.S
 // dispenserEquip ports LivingEntity.canEquipWithDispenser and
 // Pig.canDispenserEquipIntoSlot: an adult pig takes a saddle, which it does not
 // wear yet, whether tame or not.
-func (p *Pig) dispenserEquip(_ *world.Tx, stack item.Stack) bool {
-	_, saddle := stack.Item().(item.Saddle)
-	return saddle && p.Saddle()
+func (p *Pig) dispenserEquip(tx *world.Tx, stack item.Stack) bool {
+	if _, saddle := stack.Item().(item.Saddle); !saddle || !p.Saddle() {
+		return false
+	}
+	playSaddleEquip(tx, p, "entity.pig.saddle")
+	return true
 }
 
 // dispenserEquip ports LivingEntity.canEquipWithDispenser and
 // Strider.canDispenserEquipIntoSlot: an adult strider takes a saddle, which it
 // does not wear yet.
-func (s *Strider) dispenserEquip(_ *world.Tx, stack item.Stack) bool {
+func (s *Strider) dispenserEquip(tx *world.Tx, stack item.Stack) bool {
 	b := s.b()
 	if _, saddle := stack.Item().(item.Saddle); !saddle || b.saddled || b.age < 0 || s.Dead() {
 		return false
 	}
 	b.saddled = true
+	playSaddleEquip(tx, s, "entity.strider.saddle")
 	return true
 }
 
@@ -180,4 +184,12 @@ func (m *oceanMob) dispenserEquip(tx *world.Tx, stack item.Stack) bool {
 		return true
 	}
 	return false
+}
+
+// playSaddleEquip plays the sound a mob makes when it is saddled, as
+// LivingEntity.onEquipItem does with the getEquipSound of the mob: Pig and
+// Strider override the horse saddle sound of the Equippable of a saddle with
+// their own.
+func playSaddleEquip(tx *world.Tx, e world.Entity, name string) {
+	tx.PlaySound(e.Position(), sound.Custom{Name: name, Volume: 1, Pitch: 1})
 }
