@@ -30,7 +30,7 @@ func equipWithDispenser(tx *world.Tx, e world.Entity, v any) bool {
 
 // dispenserEquip ports LivingEntity.canEquipWithDispenser and setItemSlot for an
 // armour stand: it wears a piece of armour, a pumpkin or a skull in the slot of
-// the piece if that slot is free.
+// the piece if that slot is free, and holds a shield in its off hand.
 func (a *ArmourStandBehaviour) dispenserEquip(e *Ent, tx *world.Tx, stack item.Stack) bool {
 	inv := a.armours
 	switch i := stack.Item().(type) {
@@ -54,6 +54,15 @@ func (a *ArmourStandBehaviour) dispenserEquip(e *Ent, tx *world.Tx, stack item.S
 			return false
 		}
 		inv.SetBoots(stack)
+	case item.Shield:
+		// A shield is equippable in the off hand.
+		mainHand, offHand := a.HeldItems()
+		if !offHand.Empty() {
+			return false
+		}
+		a.SetHeldItems(e, mainHand, stack)
+		tx.PlaySound(e.Position(), sound.EquipItem{Item: stack.Item()})
+		return true
 	default:
 		return false
 	}

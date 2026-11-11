@@ -32,7 +32,7 @@ func equippableByDispenser(it world.Item) bool {
 		}
 	}
 	switch it.(type) {
-	case item.Saddle, Carpet, item.WolfArmor, item.NautilusArmor,
+	case item.Saddle, Carpet, item.Shield, item.WolfArmor, item.NautilusArmor,
 		item.LeatherHorseArmour, item.CopperHorseArmour, item.IronHorseArmour,
 		item.GoldenHorseArmour, item.DiamondHorseArmour, item.NetheriteHorseArmour:
 		return true
@@ -56,6 +56,9 @@ func equipWithDispenser(tx *world.Tx, e world.Entity, one item.Stack) bool {
 	if equip := tx.World().EntityRegistry().Config().EquipWithDispenser; equip != nil && equip(tx, e, one) {
 		return true
 	}
+	if _, shield := one.Item().(item.Shield); shield {
+		return equipOffHand(tx, e, one)
+	}
 	wearer, ok := e.(interface{ Armour() *inventory.Armour })
 	if !ok {
 		return false
@@ -71,6 +74,25 @@ func equipWithDispenser(tx *world.Tx, e world.Entity, one item.Stack) bool {
 		}
 	}
 	return false
+}
+
+// equipOffHand puts the item in the off hand of the entity if it holds items in
+// its hands and the off hand is empty: a shield is equippable in that slot.
+func equipOffHand(tx *world.Tx, e world.Entity, one item.Stack) bool {
+	hands, ok := e.(interface {
+		HeldItems() (mainHand, offHand item.Stack)
+		SetHeldItems(mainHand, offHand item.Stack)
+	})
+	if !ok {
+		return false
+	}
+	mainHand, offHand := hands.HeldItems()
+	if !offHand.Empty() {
+		return false
+	}
+	hands.SetHeldItems(mainHand, one)
+	tx.PlaySound(e.Position(), sound.EquipItem{Item: one.Item()})
+	return true
 }
 
 // dispenseEquipment ports EquipmentDispenseItemBehavior.dispenseEquipment: the

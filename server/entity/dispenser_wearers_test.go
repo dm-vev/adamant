@@ -10,6 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // wearable is a piece of armour a dispenser equips, the slot of the armour
@@ -155,6 +156,60 @@ func TestDispenserEquipsArmourStands(t *testing.T) {
 				}
 				if !c.kept && (items != 1 || !left.Empty()) {
 					t.Errorf("%d items dropped and the dispenser holds %v, want the item ejected", items, left)
+				}
+			})
+		})
+	}
+}
+
+// TestDispenserPutsShieldsInOffHands checks the Equippable component of a
+// shield, which is for the off hand: a player or an armour stand in front holds
+// it there when the hand is empty, and a hand that is full keeps its item and
+// the shield is ejected.
+func TestDispenserPutsShieldsInOffHands(t *testing.T) {
+	t.Parallel()
+	shield := item.NewStack(item.Shield{}, 1)
+	for _, c := range []struct {
+		name  string
+		spawn func(tx *world.Tx, pos mgl64.Vec3) world.Entity
+		hands func(e world.Entity) (mainHand, offHand item.Stack)
+		set   func(e world.Entity, mainHand, offHand item.Stack)
+	}{
+		{"player", func(tx *world.Tx, pos mgl64.Vec3) world.Entity { return addSurvivalPlayer(tx, pos) },
+			func(e world.Entity) (item.Stack, item.Stack) { return e.(*player.Player).HeldItems() },
+			func(e world.Entity, mainHand, offHand item.Stack) { e.(*player.Player).SetHeldItems(mainHand, offHand) }},
+		{"armour stand", func(tx *world.Tx, pos mgl64.Vec3) world.Entity {
+			return tx.AddEntity(entity.NewArmourStand(world.EntitySpawnOpts{Position: pos}))
+		},
+			func(e world.Entity) (item.Stack, item.Stack) {
+				return e.(*entity.Ent).Behaviour().(*entity.ArmourStandBehaviour).HeldItems()
+			},
+			func(e world.Entity, mainHand, offHand item.Stack) {
+				e.(*entity.Ent).Behaviour().(*entity.ArmourStandBehaviour).SetHeldItems(e.(*entity.Ent), mainHand, offHand)
+			}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			w, _ := dispenserWorld(t)
+			<-w.Exec(func(tx *world.Tx) {
+				var e world.Entity
+				pos := dispenseOnce(tx, shield, func(front cube.Pos) { e = c.spawn(tx, front.Vec3Middle()) })
+				if _, off := c.hands(e); off.Empty() || !off.Comparable(shield) {
+					t.Fatalf("the off hand holds %v, want the shield", off)
+				}
+				if left := slotOf(tx, pos); !left.Empty() {
+					t.Errorf("dispenser holds %v, want the shield used", left)
+				}
+				if items := entitiesOfType(tx, entity.ItemType); len(items) != 0 {
+					t.Errorf("%d items dropped, want none", len(items))
+				}
+				// With the off hand full the shield is ejected.
+				refill(tx, pos, shield)
+				if _, off := c.hands(e); off.Count() != 1 {
+					t.Errorf("the off hand holds %v after the second, want the first shield", off)
+				}
+				if items := entitiesOfType(tx, entity.ItemType); len(items) != 1 {
+					t.Errorf("%d items dropped, want the second shield", len(items))
 				}
 			})
 		})
