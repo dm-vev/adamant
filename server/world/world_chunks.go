@@ -2,10 +2,35 @@ package world
 
 import (
 	"errors"
+	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/goleveldb/leveldb"
 )
+
+// chunkStore is the chunks currently loaded, the last one read, and what waits
+// for them.
+type chunkStore struct {
+	// chunks holds a cache of chunks currently loaded. These chunks are cleared
+	// from this map after some time of not being used.
+	chunks map[ChunkPos]*Column
+	// lastChunk caches the settled column most recently read at
+	// lastChunkPos, as ServerChunkCache keeps its last chunks. It is cleared
+	// whenever the column at a position is replaced or removed.
+	lastChunkPos  ChunkPos
+	lastChunk     *Column
+	chunkRequests map[ChunkPos][]chunkCallback
+	// unsettled holds the columns in chunks that were not settled yet when
+	// last seen, so that a region phase may settle them first.
+	unsettled map[ChunkPos]*Column
+	regions   regionState
+	// workerLocals holds the values Tx.Local and ReadView.Local keep for the
+	// world owner, first, and the other workers of parallel phases.
+	workerLocals []map[any]any
+	// chunkCount tracks the size of chunks so callers outside the world
+	// goroutine can read the count without racing map mutations.
+	chunkCount atomic.Int64
+}
 
 type chunkCallback func(tx *Tx, col *Column)
 

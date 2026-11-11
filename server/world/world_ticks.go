@@ -9,6 +9,23 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
+// tickQueues is what the tick of the world drains: scheduled ticks, neighbour
+// updates and the active columns.
+type tickQueues struct {
+	blockTickingPass       bool
+	pendingBlockTickChunks map[ChunkPos]struct{}
+	// Scheduled updates are partitioned by native registry: blocks drain before
+	// fluids, and each queue owns ticks by their scheduled position.
+	scheduledBlockTicks *scheduledTickQueue
+	scheduledFluidTicks *scheduledTickQueue
+	scheduledTickBlocks map[scheduledTickTypeKey]Block
+	redstone            *redstoneEngine
+	neighbourUpdates    neighbourUpdateQueue
+	deferredNeighbours  []neighbourUpdate
+	activeColumns       []columnRef
+	activeColumnIndex   map[ChunkPos]int
+}
+
 // scheduleBlockUpdate schedules a live update after a specific delay. Liquids
 // are stored in the distinct fluid queue; other blocks use the block queue.
 func (w *World) scheduleBlockUpdate(pos cube.Pos, b Block, delay time.Duration) {

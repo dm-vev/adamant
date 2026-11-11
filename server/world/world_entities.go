@@ -3,10 +3,49 @@ package world
 import (
 	"iter"
 	"slices"
+	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/google/uuid"
 )
+
+// entityIndex is the entities currently loaded, the ways they are found by and
+// the columns whose entities tick.
+type entityIndex struct {
+	// entities holds a map of entities currently loaded and metadata associated
+	// with them, such as the last chunk position they were located in and a
+	// cached instance of the opened entity. The cached entity instance allows us
+	// to reuse the same Go object across ticks instead of re-opening it each
+	// iteration, which significantly reduces pressure on the garbage collector
+	// and CPU usage during the entity pipeline.
+	entities map[*EntityHandle]*entityState
+	// players holds the handles in entities that are players, so that
+	// finding the players does not walk every entity.
+	players map[*EntityHandle]struct{}
+	// playerList holds the handles in players in the order they were added,
+	// as Java's ServerLevel lists its players. It is replaced rather than
+	// changed, so that a reader may keep it while players come and go.
+	playerList []*EntityHandle
+	// playerMoves counts the players coming, leaving and moving, so that
+	// playerGrid is built again once they did.
+	playerMoves        atomic.Uint64
+	playerGrid         playerGrid
+	queuedEntityTicks  []*EntityHandle
+	entitiesByUUID     map[uuid.UUID]*EntityHandle
+	entitiesByUniqueID map[int64]*EntityHandle
+	pendingRiders      map[uuid.UUID][]*EntityHandle
+	// entityCount tracks the size of entities so callers outside the world
+	// goroutine can read the count without racing map mutations.
+	entityCount       atomic.Int64
+	entityColumns     []columnRef
+	entityColumnIndex map[ChunkPos]int
+	// entityTickingStamp changes every tick. The columns whose entities
+	// tick this tick hold it, plus one.
+	entityTickingStamp uint64
+	// entityTickingSeen holds the areas whose columns were stamped this
+	// tick, so that loaders standing together stamp theirs once.
+	entityTickingSeen map[loaderActiveArea]struct{}
+}
 
 type entityState struct {
 	pos               ChunkPos

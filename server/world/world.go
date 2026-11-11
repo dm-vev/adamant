@@ -3,11 +3,9 @@ package world
 import (
 	"log/slog"
 	"math/rand/v2"
-	"sync/atomic"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/google/uuid"
 )
 
 // World implements a Minecraft world. It manages all aspects of what players
@@ -16,6 +14,11 @@ import (
 // world, so World ensures that all its methods will always be safe for
 // simultaneous calls. A nil *World is safe to use but not functional.
 type World struct {
+	chunkStore
+	entityIndex
+	tickQueues
+	scratch
+
 	txQueue
 	lifecycle
 	clock
@@ -31,7 +34,6 @@ type World struct {
 	saveState
 	viewerState
 	faultState
-
 	conf Config
 	// log is the logger of the world; genLog and saveLog are those of its
 	// generation, lighting and saves. Each is the logger of the Config
@@ -39,81 +41,8 @@ type World struct {
 	log, genLog, saveLog *slog.Logger
 	ra                   cube.Range
 	weather
-	// chunks holds a cache of chunks currently loaded. These chunks are cleared
-	// from this map after some time of not being used.
-	chunks map[ChunkPos]*Column
-	// lastChunk caches the settled column most recently read at
-	// lastChunkPos, as ServerChunkCache keeps its last chunks. It is cleared
-	// whenever the column at a position is replaced or removed.
-	lastChunkPos  ChunkPos
-	lastChunk     *Column
-	chunkRequests map[ChunkPos][]chunkCallback
-	// unsettled holds the columns in chunks that were not settled yet when
-	// last seen, so that a region phase may settle them first.
-	unsettled map[ChunkPos]*Column
-	regions   regionState
-	// workerLocals holds the values Tx.Local and ReadView.Local keep for the
-	// world owner, first, and the other workers of parallel phases.
-	workerLocals []map[any]any
-	// entities holds a map of entities currently loaded and metadata associated
-	// with them, such as the last chunk position they were located in and a
-	// cached instance of the opened entity. The cached entity instance allows us
-	// to reuse the same Go object across ticks instead of re-opening it each
-	// iteration, which significantly reduces pressure on the garbage collector
-	// and CPU usage during the entity pipeline.
-	entities map[*EntityHandle]*entityState
-	// players holds the handles in entities that are players, so that
-	// finding the players does not walk every entity.
-	players map[*EntityHandle]struct{}
-	// playerList holds the handles in players in the order they were added,
-	// as Java's ServerLevel lists its players. It is replaced rather than
-	// changed, so that a reader may keep it while players come and go.
-	playerList []*EntityHandle
-	// playerMoves counts the players coming, leaving and moving, so that
-	// playerGrid is built again once they did.
-	playerMoves        atomic.Uint64
-	playerGrid         playerGrid
-	queuedEntityTicks  []*EntityHandle
-	entitiesByUUID     map[uuid.UUID]*EntityHandle
-	entitiesByUniqueID map[int64]*EntityHandle
-	pendingRiders      map[uuid.UUID][]*EntityHandle
-	// chunkCount and entityCount track the map sizes so callers outside the world
-	// goroutine can read counts without racing map mutations.
-	chunkCount             atomic.Int64
-	entityCount            atomic.Int64
-	blockTickingPass       bool
-	pendingBlockTickChunks map[ChunkPos]struct{}
 	// stats is what the world counts of itself, for metrics.
 	stats *Stats
-	// Scheduled updates are partitioned by native registry: blocks drain before
-	// fluids, and each queue owns ticks by their scheduled position.
-	scheduledBlockTicks          *scheduledTickQueue
-	scheduledFluidTicks          *scheduledTickQueue
-	scheduledTickBlocks          map[scheduledTickTypeKey]Block
-	redstone                     *redstoneEngine
-	neighbourUpdates             neighbourUpdateQueue
-	deferredNeighbours           []neighbourUpdate
-	scratchPrefetch              []prefetchItem
-	scratchRegionRefs            []columnRef
-	scratchViews                 []ReadView
-	scratchRandom                []cube.Pos
-	scratchRandomScan            []randomTickScan
-	scratchRandomFound           [][]cube.Pos
-	scratchBlockEntities         []blockEntityTickRef
-	scratchLoaderAreas           []loaderActiveArea
-	scratchFocus                 []ChunkPos
-	scratchInhabitedPlayers      []inhabitedTimePlayer
-	scratchPostProcessingColumns []columnRef
-	activeColumns                []columnRef
-	activeColumnIndex            map[ChunkPos]int
-	entityColumns                []columnRef
-	entityColumnIndex            map[ChunkPos]int
-	// entityTickingStamp changes every tick. The columns whose entities
-	// tick this tick hold it, plus one.
-	entityTickingStamp uint64
-	// entityTickingSeen holds the areas whose columns were stamped this
-	// tick, so that loaders standing together stamp theirs once.
-	entityTickingSeen map[loaderActiveArea]struct{}
 }
 
 // New creates a new initialised world. The world may be used right away, but
