@@ -45,7 +45,7 @@ func hostileIllager(kind string) bool {
 }
 
 // raid returns the raid the raider takes part in, if any.
-func (r *raiderState) raid(m *Mob) *world.Raid { return m.tx.RaidForRaider(m.Self) }
+func (r *raiderState) raid(m *Mob) *world.Raid { return m.tx.Raids().ForRaider(m.Self) }
 
 // activeRaid ports Raider.hasActiveRaid with the raid not over.
 func (r *raiderState) activeRaid(m *Mob) *world.Raid {
@@ -194,7 +194,7 @@ func (b *raiderState) findPatrolTarget(pos cube.Pos, r *vanilla.Random) {
 func raiderPatrolCompanions(m *Mob) []*raiderState {
 	var out []*raiderState
 	for e := range m.tx.EntitiesWithin(m.BBox().Grow(16)) {
-		if e.H() == m.H() || !isRaiderEntity(e) || !entityAlive(e) || m.tx.RaidForRaider(e) != nil {
+		if e.H() == m.H() || !isRaiderEntity(e) || !entityAlive(e) || m.tx.Raids().ForRaider(e) != nil {
 			continue
 		}
 		if b, ok := e.(interface{ Behaviour() Behaviour }); ok {
@@ -229,8 +229,8 @@ func (g *pathfindToRaidGoal) Tick(m *Mob) {
 	if m.AI.tickCount > g.recruitmentTick {
 		g.recruitmentTick = m.AI.tickCount + 20
 		for e := range m.tx.EntitiesWithin(m.BBox().Grow(16)) {
-			if isRaiderEntity(e) && e.H() != m.H() && m.tx.RaidForRaider(e) == nil {
-				m.tx.RegisterRaider(raid.ID(), e)
+			if isRaiderEntity(e) && e.H() != m.H() && m.tx.Raids().ForRaider(e) == nil {
+				m.tx.Raids().RegisterRaider(raid.ID(), e)
 			}
 		}
 	}
@@ -699,7 +699,7 @@ func (b *hostileState) isJohnny(m *Mob) bool { return b.johnny || m.data.Name ==
 func (b *hostileState) customServerAiStep(m *Mob) {
 	switch b.kind {
 	case "minecraft:vindicator":
-		m.AI.nav.SetCanOpenDoors(m.tx.RaidAt(m.BlockPos()) != nil)
+		m.AI.nav.SetCanOpenDoors(m.tx.Raids().At(m.BlockPos()) != nil)
 	case "minecraft:evoker":
 		if b.spellTicks > 0 {
 			b.spellTicks--
@@ -713,7 +713,7 @@ func hostileOf(m *Mob) *hostileState { return m.Behaviour().(*hostileState) }
 // PatrollingMonster's: a raider in a raid stays, and a patrol unless it is
 // beyond 128 blocks.
 func raiderRemoveWhenFarAway(m *Mob, r *raiderState, distSqr float64) bool {
-	if m.tx.RaidForRaider(m.Self) != nil {
+	if m.tx.Raids().ForRaider(m.Self) != nil {
 		return false
 	}
 	return !r.patrolling || distSqr > 16384

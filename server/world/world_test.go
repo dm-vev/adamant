@@ -90,7 +90,7 @@ func TestTickRaidsPrunesStoppedRaids(t *testing.T) {
 	member := uuid.MustParse("f99dd0f3-6cc0-4f02-bcd2-3a51cbb5e91b")
 	w.raids[1] = &Raid{id: 1, status: RaidStopped, members: map[uuid.UUID]struct{}{member: {}}}
 	w.raidByRaider[member] = 1
-	<-w.Exec(func(tx *Tx) { tx.TickRaids() })
+	<-w.Exec(func(tx *Tx) { tx.Raids().Tick() })
 
 	if _, exists := w.raids[1]; exists {
 		t.Fatal("stopped raid remained in the manager")

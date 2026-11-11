@@ -34,13 +34,13 @@ func TestRaidersTakeTheCaptainsBanner(t *testing.T) {
 		tx.SetBlock(head, block.Bed{Facing: cube.North, Head: true}, nil)
 		tx.ClaimPOI(head, uuid.New())
 		pl, _ := p.Entity(tx)
-		if !tx.TryApplyRaidOmen(omenHolder{Entity: pl, pos: head}) {
+		if !tx.Raids().TryApplyRaidOmen(omenHolder{Entity: pl, pos: head}) {
 			t.Fatal("no raid started at a village")
 		}
 		v = tx.AddEntity(entity.NewVindicator(world.EntitySpawnOpts{Position: mgl64.Vec3{6.5, 64, 6.5}})).H()
-		raid := tx.RaidAt(cube.Pos{0, 64, -6})
+		raid := tx.Raids().At(cube.Pos{0, 64, -6})
 		e, _ := v.Entity(tx)
-		if raid == nil || !tx.RegisterRaider(raid.ID(), e) {
+		if raid == nil || !tx.Raids().RegisterRaider(raid.ID(), e) {
 			t.Fatal("vindicator did not join the raid")
 		}
 		tx.AddEntity(entity.NewItem(world.EntitySpawnOpts{Position: mgl64.Vec3{12.5, 64, 6.5}}, entity.OminousBannerStack()))

@@ -247,7 +247,7 @@ func (t ticker) tickWorld(tx *Tx) {
 		if spawnTick := w.EntityRegistry().Config().NaturalSpawnTick; spawnTick != nil {
 			w.step(tx, tick, "natural spawning", spawnTick)
 		}
-		w.step(tx, tick, "raids", (*Tx).TickRaids)
+		w.step(tx, tick, "raids", func(tx *Tx) { tx.Raids().Tick() })
 		w.scheduledBlockTicks.tickNonCircuits(tx, tick, loaders...)
 		w.scheduledFluidTicks.tick(tx, tick, loaders...)
 		t.tickBlocksRandomly(tx, loaders, tick)

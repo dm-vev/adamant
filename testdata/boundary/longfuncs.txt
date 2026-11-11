@@ -94,7 +94,7 @@ server/world/generator/advanced/overworld/modern_structure_stronghold.go strongh
 server/world/generator/advanced/overworld/modern_surface.go modernSurface.Apply 113 port
 server/world/mcdb/map.go mapDataFromNBT 107
 server/world/portal/nether.go CreateNetherPortal 174
-server/world/raid.go Tx.TickRaids 103
+server/world/raid.go Tx.tickRaids 103
 server/world/redstone_circuit.go redstoneEngine.tickCircuits 211
 server/world/tick.go scheduledTickQueue.tickPhase 122
 server/world/tick.go ticker.tickBlocksRandomly 189

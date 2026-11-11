@@ -80,7 +80,7 @@ var worldReads = map[string][]string{
 		"EntityChunk", "EntityTicking", "Features", "ForEachMapFrame", "HasScheduledBlockUpdate", "HighestBlock",
 		"HighestLightBlocker", "IsDarkOutside", "IsVillage", "Light", "LightBlockedInto", "Liquid",
 		"LoadedBlockEntities", "LocalDifficulty", "MayContainLiquid", "MovementBlockProperties", "NativeState", "POI",
-		"PlayerSpawnPosition", "Players", "PlayersNear", "Raining", "RainingAt", "Range", "RawBrightness",
+		"PlayerSpawnPosition", "Players", "PlayersNear", "Raids", "Raining", "RainingAt", "Range", "RawBrightness",
 		"Redstone", "RedstoneConductivePower", "RedstoneDirectPower", "RedstoneDirectPowerFrom", "RedstonePower",
 		"RedstonePowerFrom", "RedstoneStrongPower", "RedstoneStrongPowerFrom", "ReleaseViewers", "SkyDarken",
 		"SkyLight", "Sleepers", "SnowingAt", "SunAngle", "Temperature", "Thundering", "ThunderingAt", "Viewers",

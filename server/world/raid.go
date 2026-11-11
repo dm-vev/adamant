@@ -52,9 +52,10 @@ type Raid struct {
 	leaders map[int]uuid.UUID
 }
 
-// RaidLeader returns the captain of a wave of the raid, if it has one in the
+// Leader returns the captain of a wave of the raid, if it has one in the
 // world, as Raid.getLeader.
-func (tx *Tx) RaidLeader(r *Raid, wave int) (Entity, bool) {
+func (h RaidTransaction) Leader(r *Raid, wave int) (Entity, bool) {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	if r == nil {
@@ -67,9 +68,10 @@ func (tx *Tx) RaidLeader(r *Raid, wave int) (Entity, bool) {
 	return tx.EntityByUUID(id)
 }
 
-// SetRaidLeader makes a raider the captain of a wave of the raid, as
+// SetLeader makes a raider the captain of a wave of the raid, as
 // Raid.setLeader. The caller gives it the ominous banner.
-func (tx *Tx) SetRaidLeader(r *Raid, wave int, e Entity) {
+func (h RaidTransaction) SetLeader(r *Raid, wave int, e Entity) {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	if r == nil || e == nil {
@@ -119,8 +121,9 @@ func (r *Raid) Contains(e Entity) bool {
 	return ok
 }
 
-// RaidAt returns the nearest active raid whose 96-block village radius contains pos.
-func (tx *Tx) RaidAt(pos cube.Pos) *Raid {
+// At returns the nearest active raid whose 96-block village radius contains pos.
+func (h RaidTransaction) At(pos cube.Pos) *Raid {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	var found *Raid
@@ -141,8 +144,9 @@ func (tx *Tx) RaidAt(pos cube.Pos) *Raid {
 	return found
 }
 
-// RaidForRaider returns the active raid to which e belongs.
-func (tx *Tx) RaidForRaider(e Entity) *Raid {
+// ForRaider returns the active raid to which e belongs.
+func (h RaidTransaction) ForRaider(e Entity) *Raid {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	if e == nil {
@@ -156,7 +160,8 @@ func (tx *Tx) RaidForRaider(e Entity) *Raid {
 }
 
 // RegisterRaider adds a newly published raid member to its raid.
-func (tx *Tx) RegisterRaider(raidID int64, e Entity) bool {
+func (h RaidTransaction) RegisterRaider(raidID int64, e Entity) bool {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	r := tx.World().raids[raidID]
@@ -176,7 +181,8 @@ func (tx *Tx) RegisterRaider(raidID int64, e Entity) bool {
 }
 
 // RaiderDied removes a dead or removed raider from its registered raid.
-func (tx *Tx) RaiderDied(e Entity) {
+func (h RaidTransaction) RaiderDied(e Entity) {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	if e == nil {
@@ -209,7 +215,10 @@ func (tx *Tx) RaiderDied(e Entity) {
 		}
 	}
 }
-func (tx *Tx) RaiderKilled(raider, killer Entity) {
+
+// RaiderKilled records a player who killed a raider as a hero of the raid the raider belonged to.
+func (h RaidTransaction) RaiderKilled(raider, killer Entity) {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	if killer == nil || killer.H().Type().EncodeEntity() != "minecraft:player" || raider == nil {
@@ -230,7 +239,8 @@ func (tx *Tx) RaiderKilled(raider, killer Entity) {
 }
 
 // TryApplyBadOmen reports whether Bad Omen may transition to Raid Omen at pos.
-func (tx *Tx) TryApplyBadOmen(player Entity, pos cube.Pos, amplifier int) bool {
+func (h RaidTransaction) TryApplyBadOmen(player Entity, pos cube.Pos, amplifier int) bool {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	if !tx.World().GameRuleBool("raids") || player == nil || amplifier < 0 || amplifier >= 5 || tx.World().Difficulty() == DifficultyPeaceful || !tx.IsVillage(pos) {
@@ -244,7 +254,8 @@ func (tx *Tx) TryApplyBadOmen(player Entity, pos cube.Pos, amplifier int) bool {
 }
 
 // TryApplyRaidOmen starts or extends a raid at the saved Raid Omen position.
-func (tx *Tx) TryApplyRaidOmen(player Entity) bool {
+func (h RaidTransaction) TryApplyRaidOmen(player Entity) bool {
+	tx := h.tx
 	tx.lockShared()
 	defer tx.unlockShared()
 	if player == nil || tx.World().Difficulty() == DifficultyPeaceful || !tx.World().GameRuleBool("raids") {
@@ -268,7 +279,7 @@ func (tx *Tx) TryApplyRaidOmen(player Entity) bool {
 	if !ok {
 		return false
 	}
-	r := tx.RaidAt(center)
+	r := tx.Raids().At(center)
 	if r != nil {
 		if r.started && r.omenLevel >= 5 {
 			return false
@@ -286,8 +297,13 @@ func (tx *Tx) TryApplyRaidOmen(player Entity) bool {
 	return true
 }
 
-// TickRaids advances raid timers, spawns due waves, updates bars and resolves outcomes.
-func (tx *Tx) TickRaids() {
+// Tick advances raid timers, spawns due waves, updates bars and resolves outcomes.
+func (h RaidTransaction) Tick() {
+	h.tx.tickRaids()
+}
+
+// tickRaids is the body of RaidTransaction.Tick.
+func (tx *Tx) tickRaids() {
 	w := tx.World()
 	ids := make([]int64, 0, len(w.raids))
 	for id := range w.raids {
@@ -347,7 +363,7 @@ func (tx *Tx) TickRaids() {
 			}
 			d := entity.Position().Sub(mgl64.Vec3{float64(r.center[0]), float64(r.center[1]), float64(r.center[2])})
 			if d.LenSqr() >= 12544 {
-				tx.RaiderDied(entity)
+				tx.Raids().RaiderDied(entity)
 			}
 		}
 		if r.ticksActive >= raidTimeoutTicks {
@@ -425,11 +441,11 @@ func (tx *Tx) spawnRaidWave(r *Raid) bool {
 			}
 			leader := member.leader && spawned == 0
 			entity := tx.AddEntity(handle)
-			if tx.RegisterRaider(r.id, entity) {
+			if tx.Raids().RegisterRaider(r.id, entity) {
 				spawned++
 			}
 			if leader {
-				tx.SetRaidLeader(r, wave, entity)
+				tx.Raids().SetLeader(r, wave, entity)
 			}
 			if member.id == "minecraft:ravager" {
 				tx.spawnRavagerRider(r, wave, ravagers, entity, pos, factory)
@@ -466,7 +482,7 @@ func (tx *Tx) spawnRavagerRider(r *Raid, wave, ravagers int, ravager Entity, pos
 		return
 	}
 	rider := tx.AddEntity(handle)
-	tx.RegisterRaider(r.id, rider)
+	tx.Raids().RegisterRaider(r.id, rider)
 	if mount := tx.World().EntityRegistry().Config().StartRiding; mount != nil {
 		mount(tx, rider, ravager)
 	}

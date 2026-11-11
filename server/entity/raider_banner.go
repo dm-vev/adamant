@@ -95,7 +95,7 @@ func raiderCannotPickUpBanner(m *Mob) bool {
 	if h, ok := equipmentHolderOf(m.Self); ok && ominousBanner(*h.equipment(slotHead)) {
 		return true
 	}
-	leader, ok := m.tx.RaidLeader(raid, raiderWave(m))
+	leader, ok := m.tx.Raids().Leader(raid, raiderWave(m))
 	return ok && entityAlive(leader)
 }
 
@@ -123,7 +123,7 @@ func raiderPickUpItem(m *Mob, e world.Entity) {
 	if raid == nil || !ominousBanner(stack) {
 		return
 	}
-	if _, hasLeader := m.tx.RaidLeader(raid, b.raidWave); hasLeader {
+	if _, hasLeader := m.tx.Raids().Leader(raid, b.raidWave); hasLeader {
 		return
 	}
 	if current := b.head; !current.Empty() && float32(math.Max(float64(m.Random().NextFloat())-.1, 0)) < b.dropChance(slotHead) {
@@ -138,7 +138,7 @@ func raiderPickUpItem(m *Mob, e world.Entity) {
 	}
 	takeItemEntity(m, e, stack.Count())
 	// Raid.setLeader puts the banner on, sure to drop.
-	m.tx.SetRaidLeader(raid, b.raidWave, m.Self)
+	m.tx.Raids().SetLeader(raid, b.raidWave, m.Self)
 	b.head, b.headDropGuaranteed = ominousBannerStack(), true
 	b.patrolLeader = true
 	viewEquipment(m.tx, m.Self)

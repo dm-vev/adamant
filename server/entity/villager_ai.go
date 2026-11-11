@@ -309,7 +309,7 @@ func villagerPreRaidPackage(speed float64) []prioritizedBehavior {
 func villagerRaidPackage(b *VillagerBehaviour, speed float64) []prioritizedBehavior {
 	return []prioritizedBehavior{
 		{0, newTriggerIf(func(m *Mob) bool {
-			r := m.tx.RaidAt(m.BlockPos())
+			r := m.tx.Raids().At(m.BlockPos())
 			return r != nil && r.Victory()
 		}, newOneShotGate(
 			weightedBehavior{newMoveToSkySeeingSpot(speed), 5},
@@ -317,7 +317,7 @@ func villagerRaidPackage(b *VillagerBehaviour, speed float64) []prioritizedBehav
 		))},
 		{0, newCelebrateVillagersSurvivedRaid(b, 600, 600)},
 		{2, newTriggerIf(func(m *Mob) bool {
-			r := m.tx.RaidAt(m.BlockPos())
+			r := m.tx.Raids().At(m.BlockPos())
 			return r != nil && r.Active() && !r.Victory() && !r.Loss()
 		}, newLocateHidingPlace(24, float64(float32(speed)*1.4), 1))},
 		villagerMinimalLook(),
@@ -412,7 +412,7 @@ func newWakeUp(b *VillagerBehaviour) *oneShot {
 // raid near hides.
 func newReactToBell(b *VillagerBehaviour) *oneShot {
 	return newOneShot([]memoryCondition{{memHeardBellTime, memPresent}}, func(m *Mob, br *Brain, _ int64) bool {
-		if m.tx.RaidAt(m.BlockPos()) == nil {
+		if m.tx.Raids().At(m.BlockPos()) == nil {
 			br.setActiveIfPossible(activityHide)
 		}
 		return true
@@ -426,7 +426,7 @@ func newSetRaidStatus(b *VillagerBehaviour) *oneShot {
 		if m.Random().NextInt(20) != 0 {
 			return false
 		}
-		if r := m.tx.RaidAt(m.BlockPos()); r != nil {
+		if r := m.tx.Raids().At(m.BlockPos()); r != nil {
 			act := activityPreRaid
 			if r.FirstWaveSpawned() && !r.BetweenWaves() {
 				act = activityRaid
@@ -444,7 +444,7 @@ func newResetRaidStatus() *oneShot {
 		if m.Random().NextInt(20) != 0 {
 			return false
 		}
-		if r := m.tx.RaidAt(m.BlockPos()); r == nil || r.Stopped() || r.Loss() {
+		if r := m.tx.Raids().At(m.BlockPos()); r == nil || r.Stopped() || r.Loss() {
 			br.defaultAct = activityIdle
 			villagerOf(m).updateActivityFromSchedule(m)
 		}
@@ -1940,7 +1940,7 @@ func newCelebrateVillagersSurvivedRaid(b *VillagerBehaviour, minDuration, maxDur
 	return &behavior{
 		minDuration: minDuration, maxDuration: maxDuration,
 		checkExtra: func(m *Mob) bool {
-			raid = m.tx.RaidAt(m.BlockPos())
+			raid = m.tx.Raids().At(m.BlockPos())
 			return raid != nil && raid.Victory() && villagerNoBlocksAbove(m, m.BlockPos())
 		},
 		canStillUse: func(*Mob, int64) bool { return raid != nil && !raid.Stopped() },

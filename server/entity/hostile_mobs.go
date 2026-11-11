@@ -523,7 +523,7 @@ func (m *HostileMob) RaidID() int64      { return m.state().raidID }
 func (m *HostileMob) RaidWave() int      { return m.state().raidWave }
 func (m *HostileMob) IsRaidLeader() bool { return m.state().raidLeader }
 func (m *HostileMob) CloseIn(tx *world.Tx) error {
-	tx.RaiderDied(m)
+	tx.Raids().RaiderDied(m)
 	return m.Ent.CloseIn(tx)
 }
 func (m *HostileMob) HeldItems() (item.Stack, item.Stack) {
@@ -679,7 +679,7 @@ func hostileRaidMob(kind string) bool {
 }
 
 func (b *hostileState) joinRaid(e *Ent, tx *world.Tx) {
-	raid := tx.RaidForRaider(e)
+	raid := tx.Raids().ForRaider(e)
 	if raid != nil {
 		// Raiders stay with a raid they won to celebrate it.
 		if raid.Status() == world.RaidDefeat {
@@ -687,7 +687,7 @@ func (b *hostileState) joinRaid(e *Ent, tx *world.Tx) {
 			return
 		}
 		if !raid.Active() {
-			tx.RaiderDied(e)
+			tx.Raids().RaiderDied(e)
 			b.raidID, b.raidWave, b.raidLeader = 0, 0, false
 			return
 		}
@@ -695,14 +695,14 @@ func (b *hostileState) joinRaid(e *Ent, tx *world.Tx) {
 		return
 	}
 	if b.raidID == 0 && hostileRaidMob(b.kind) {
-		if nearby := tx.RaidAt(cube.PosFromVec3(e.Position())); nearby != nil {
+		if nearby := tx.Raids().At(cube.PosFromVec3(e.Position())); nearby != nil {
 			b.raidID = nearby.ID()
 		}
 	}
 	if b.raidID == 0 {
 		return
 	}
-	if tx.RegisterRaider(b.raidID, e) {
+	if tx.Raids().RegisterRaider(b.raidID, e) {
 		return
 	}
 	b.raidID, b.raidWave, b.raidLeader = 0, 0, false
@@ -735,7 +735,7 @@ func (m *HostileMob) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	if m.Dead() {
 		b.dead = true
 		m.viewAction(DeathAction{})
-		m.tx.RaiderKilled(m, raidDamageAttacker(s))
+		m.tx.Raids().RaiderKilled(m, raidDamageAttacker(s))
 		m.dropLoot(s)
 		_ = m.CloseIn(m.tx)
 	}
@@ -1415,5 +1415,5 @@ func (b *hostileState) removeWhenFarAway(m *Mob, distSqr float64) bool {
 // requiresCustomPersistence ports Raider.requiresCustomPersistence: a
 // raider in a raid stays.
 func (b *hostileState) requiresCustomPersistence(m *Mob) bool {
-	return hostileRaidMob(b.kind) && m.tx.RaidForRaider(m.Self) != nil
+	return hostileRaidMob(b.kind) && m.tx.Raids().ForRaider(m.Self) != nil
 }

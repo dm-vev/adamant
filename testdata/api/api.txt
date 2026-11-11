@@ -19499,11 +19499,7 @@ server/player	method	Context.Players	func() iter.Seq[server/world.Entity]
 server/player	method	Context.PlayersElsewhere	func() bool
 server/player	method	Context.PlayersNear	func(pos github.com/go-gl/mathgl/mgl64.Vec3, r float64) iter.Seq[server/world.Entity]
 server/player	method	Context.QueueEntityTick	func(e server/world.Entity)
-server/player	method	Context.RaidAt	func(pos server/block/cube.Pos) *server/world.Raid
-server/player	method	Context.RaidForRaider	func(e server/world.Entity) *server/world.Raid
-server/player	method	Context.RaidLeader	func(r *server/world.Raid, wave int) (server/world.Entity, bool)
-server/player	method	Context.RaiderDied	func(e server/world.Entity)
-server/player	method	Context.RaiderKilled	func(raider server/world.Entity, killer server/world.Entity)
+server/player	method	Context.Raids	func() server/world.RaidTransaction
 server/player	method	Context.Raining	func() bool
 server/player	method	Context.RainingAt	func(pos server/block/cube.Pos) bool
 server/player	method	Context.RandomFloat32	func() float32
@@ -19521,7 +19517,6 @@ server/player	method	Context.RedstonePowerFrom	func(pos server/block/cube.Pos, f
 server/player	method	Context.RedstoneStrongPower	func(pos server/block/cube.Pos) int
 server/player	method	Context.RedstoneStrongPowerFrom	func(pos server/block/cube.Pos, face server/block/cube.Face) int
 server/player	method	Context.RegionRandom	func() *server/internal/vanilla.Random
-server/player	method	Context.RegisterRaider	func(raidID int64, e server/world.Entity) bool
 server/player	method	Context.ReleasePOI	func(pos server/block/cube.Pos, owner github.com/google/uuid.UUID) bool
 server/player	method	Context.ReleaseViewers	func(viewers []server/world.Viewer)
 server/player	method	Context.RemoveEntity	func(e server/world.Entity) *server/world.EntityHandle
@@ -19538,7 +19533,6 @@ server/player	method	Context.SetBlockKnownShape	func(pos server/block/cube.Pos, 
 server/player	method	Context.SetFeatureState	func(pos server/block/cube.Pos, state server/world.NativeState, actor server/world.Block)
 server/player	method	Context.SetJavaBlockState	func(pos server/block/cube.Pos, state uint32) bool
 server/player	method	Context.SetLiquid	func(pos server/block/cube.Pos, b server/world.Liquid)
-server/player	method	Context.SetRaidLeader	func(r *server/world.Raid, wave int, e server/world.Entity)
 server/player	method	Context.ShapeUpdate	func(pos server/block/cube.Pos, changed server/block/cube.Pos) (server/world.Block, bool)
 server/player	method	Context.SkyDarken	func() int
 server/player	method	Context.SkyLight	func(pos server/block/cube.Pos) uint8
@@ -19548,10 +19542,7 @@ server/player	method	Context.SunAngle	func() float32
 server/player	method	Context.Temperature	func(pos server/block/cube.Pos) float64
 server/player	method	Context.Thundering	func() bool
 server/player	method	Context.ThunderingAt	func(pos server/block/cube.Pos) bool
-server/player	method	Context.TickRaids	func()
 server/player	method	Context.TickingEntities	func() iter.Seq[server/world.Entity]
-server/player	method	Context.TryApplyBadOmen	func(player server/world.Entity, pos server/block/cube.Pos, amplifier int) bool
-server/player	method	Context.TryApplyRaidOmen	func(player server/world.Entity) bool
 server/player	method	Context.TryWarnWarden	func(pos server/block/cube.Pos, trigger server/world.Entity) (int, bool)
 server/player	method	Context.UpdateMap	func(id int64, player server/block/cube.Pos) (server/world.MapData, error)
 server/player	method	Context.Viewers	func(pos github.com/go-gl/mathgl/mgl64.Vec3) []server/world.Viewer
@@ -20843,11 +20834,7 @@ server/world	method	Context.Players	func() iter.Seq[server/world.Entity]
 server/world	method	Context.PlayersElsewhere	func() bool
 server/world	method	Context.PlayersNear	func(pos github.com/go-gl/mathgl/mgl64.Vec3, r float64) iter.Seq[server/world.Entity]
 server/world	method	Context.QueueEntityTick	func(e server/world.Entity)
-server/world	method	Context.RaidAt	func(pos server/block/cube.Pos) *server/world.Raid
-server/world	method	Context.RaidForRaider	func(e server/world.Entity) *server/world.Raid
-server/world	method	Context.RaidLeader	func(r *server/world.Raid, wave int) (server/world.Entity, bool)
-server/world	method	Context.RaiderDied	func(e server/world.Entity)
-server/world	method	Context.RaiderKilled	func(raider server/world.Entity, killer server/world.Entity)
+server/world	method	Context.Raids	func() server/world.RaidTransaction
 server/world	method	Context.Raining	func() bool
 server/world	method	Context.RainingAt	func(pos server/block/cube.Pos) bool
 server/world	method	Context.RandomFloat32	func() float32
@@ -20865,7 +20852,6 @@ server/world	method	Context.RedstonePowerFrom	func(pos server/block/cube.Pos, fa
 server/world	method	Context.RedstoneStrongPower	func(pos server/block/cube.Pos) int
 server/world	method	Context.RedstoneStrongPowerFrom	func(pos server/block/cube.Pos, face server/block/cube.Face) int
 server/world	method	Context.RegionRandom	func() *server/internal/vanilla.Random
-server/world	method	Context.RegisterRaider	func(raidID int64, e server/world.Entity) bool
 server/world	method	Context.ReleasePOI	func(pos server/block/cube.Pos, owner github.com/google/uuid.UUID) bool
 server/world	method	Context.ReleaseViewers	func(viewers []server/world.Viewer)
 server/world	method	Context.RemoveEntity	func(e server/world.Entity) *server/world.EntityHandle
@@ -20882,7 +20868,6 @@ server/world	method	Context.SetBlockKnownShape	func(pos server/block/cube.Pos, b
 server/world	method	Context.SetFeatureState	func(pos server/block/cube.Pos, state server/world.NativeState, actor server/world.Block)
 server/world	method	Context.SetJavaBlockState	func(pos server/block/cube.Pos, state uint32) bool
 server/world	method	Context.SetLiquid	func(pos server/block/cube.Pos, b server/world.Liquid)
-server/world	method	Context.SetRaidLeader	func(r *server/world.Raid, wave int, e server/world.Entity)
 server/world	method	Context.ShapeUpdate	func(pos server/block/cube.Pos, changed server/block/cube.Pos) (server/world.Block, bool)
 server/world	method	Context.SkyDarken	func() int
 server/world	method	Context.SkyLight	func(pos server/block/cube.Pos) uint8
@@ -20892,10 +20877,7 @@ server/world	method	Context.SunAngle	func() float32
 server/world	method	Context.Temperature	func(pos server/block/cube.Pos) float64
 server/world	method	Context.Thundering	func() bool
 server/world	method	Context.ThunderingAt	func(pos server/block/cube.Pos) bool
-server/world	method	Context.TickRaids	func()
 server/world	method	Context.TickingEntities	func() iter.Seq[server/world.Entity]
-server/world	method	Context.TryApplyBadOmen	func(player server/world.Entity, pos server/block/cube.Pos, amplifier int) bool
-server/world	method	Context.TryApplyRaidOmen	func(player server/world.Entity) bool
 server/world	method	Context.TryWarnWarden	func(pos server/block/cube.Pos, trigger server/world.Entity) (int, bool)
 server/world	method	Context.UpdateMap	func(id int64, player server/block/cube.Pos) (server/world.MapData, error)
 server/world	method	Context.Viewers	func(pos github.com/go-gl/mathgl/mgl64.Vec3) []server/world.Viewer
@@ -21028,6 +21010,16 @@ server/world	method	Raid.Loss	func() bool
 server/world	method	Raid.Status	func() server/world.RaidStatus
 server/world	method	Raid.Stopped	func() bool
 server/world	method	Raid.Victory	func() bool
+server/world	method	RaidTransaction.At	func(pos server/block/cube.Pos) *server/world.Raid
+server/world	method	RaidTransaction.ForRaider	func(e server/world.Entity) *server/world.Raid
+server/world	method	RaidTransaction.Leader	func(r *server/world.Raid, wave int) (server/world.Entity, bool)
+server/world	method	RaidTransaction.RaiderDied	func(e server/world.Entity)
+server/world	method	RaidTransaction.RaiderKilled	func(raider server/world.Entity, killer server/world.Entity)
+server/world	method	RaidTransaction.RegisterRaider	func(raidID int64, e server/world.Entity) bool
+server/world	method	RaidTransaction.SetLeader	func(r *server/world.Raid, wave int, e server/world.Entity)
+server/world	method	RaidTransaction.Tick	func()
+server/world	method	RaidTransaction.TryApplyBadOmen	func(player server/world.Entity, pos server/block/cube.Pos, amplifier int) bool
+server/world	method	RaidTransaction.TryApplyRaidOmen	func(player server/world.Entity) bool
 server/world	method	ReadView.Block	func(pos server/block/cube.Pos) server/world.Block
 server/world	method	ReadView.BlockLoaded	func(pos server/block/cube.Pos) (server/world.Block, bool)
 server/world	method	ReadView.BlockStateID	func(pos server/block/cube.Pos) (uint32, error)
@@ -21170,11 +21162,7 @@ server/world	method	Tx.Players	func() iter.Seq[server/world.Entity]
 server/world	method	Tx.PlayersElsewhere	func() bool
 server/world	method	Tx.PlayersNear	func(pos github.com/go-gl/mathgl/mgl64.Vec3, r float64) iter.Seq[server/world.Entity]
 server/world	method	Tx.QueueEntityTick	func(e server/world.Entity)
-server/world	method	Tx.RaidAt	func(pos server/block/cube.Pos) *server/world.Raid
-server/world	method	Tx.RaidForRaider	func(e server/world.Entity) *server/world.Raid
-server/world	method	Tx.RaidLeader	func(r *server/world.Raid, wave int) (server/world.Entity, bool)
-server/world	method	Tx.RaiderDied	func(e server/world.Entity)
-server/world	method	Tx.RaiderKilled	func(raider server/world.Entity, killer server/world.Entity)
+server/world	method	Tx.Raids	func() server/world.RaidTransaction
 server/world	method	Tx.Raining	func() bool
 server/world	method	Tx.RainingAt	func(pos server/block/cube.Pos) bool
 server/world	method	Tx.RandomFloat32	func() float32
@@ -21192,7 +21180,6 @@ server/world	method	Tx.RedstonePowerFrom	func(pos server/block/cube.Pos, face se
 server/world	method	Tx.RedstoneStrongPower	func(pos server/block/cube.Pos) int
 server/world	method	Tx.RedstoneStrongPowerFrom	func(pos server/block/cube.Pos, face server/block/cube.Face) int
 server/world	method	Tx.RegionRandom	func() *server/internal/vanilla.Random
-server/world	method	Tx.RegisterRaider	func(raidID int64, e server/world.Entity) bool
 server/world	method	Tx.ReleasePOI	func(pos server/block/cube.Pos, owner github.com/google/uuid.UUID) bool
 server/world	method	Tx.ReleaseViewers	func(viewers []server/world.Viewer)
 server/world	method	Tx.RemoveEntity	func(e server/world.Entity) *server/world.EntityHandle
@@ -21209,7 +21196,6 @@ server/world	method	Tx.SetBlockKnownShape	func(pos server/block/cube.Pos, b serv
 server/world	method	Tx.SetFeatureState	func(pos server/block/cube.Pos, state server/world.NativeState, actor server/world.Block)
 server/world	method	Tx.SetJavaBlockState	func(pos server/block/cube.Pos, state uint32) bool
 server/world	method	Tx.SetLiquid	func(pos server/block/cube.Pos, b server/world.Liquid)
-server/world	method	Tx.SetRaidLeader	func(r *server/world.Raid, wave int, e server/world.Entity)
 server/world	method	Tx.ShapeUpdate	func(pos server/block/cube.Pos, changed server/block/cube.Pos) (server/world.Block, bool)
 server/world	method	Tx.SkyDarken	func() int
 server/world	method	Tx.SkyLight	func(pos server/block/cube.Pos) uint8
@@ -21219,10 +21205,7 @@ server/world	method	Tx.SunAngle	func() float32
 server/world	method	Tx.Temperature	func(pos server/block/cube.Pos) float64
 server/world	method	Tx.Thundering	func() bool
 server/world	method	Tx.ThunderingAt	func(pos server/block/cube.Pos) bool
-server/world	method	Tx.TickRaids	func()
 server/world	method	Tx.TickingEntities	func() iter.Seq[server/world.Entity]
-server/world	method	Tx.TryApplyBadOmen	func(player server/world.Entity, pos server/block/cube.Pos, amplifier int) bool
-server/world	method	Tx.TryApplyRaidOmen	func(player server/world.Entity) bool
 server/world	method	Tx.TryWarnWarden	func(pos server/block/cube.Pos, trigger server/world.Entity) (int, bool)
 server/world	method	Tx.UpdateMap	func(id int64, player server/block/cube.Pos) (server/world.MapData, error)
 server/world	method	Tx.Viewers	func(pos github.com/go-gl/mathgl/mgl64.Vec3) []server/world.Viewer
@@ -21507,6 +21490,7 @@ server/world	type	ProjectileCollider	interface{ProjectileBBox(pos server/block/c
 server/world	type	Provider	interface{LoadColumn(pos server/world.ChunkPos, dim server/world.Dimension) (*server/world/chunk.Column, error); LoadPlayerSpawnPosition(uuid github.com/google/uuid.UUID) (pos server/block/cube.Pos, exists bool, err error); SavePlayerSpawnPosition(uuid github.com/google/uuid.UUID, pos server/block/cube.Pos) error; SaveSettings(*server/world.Settings); Settings() *server/world.Settings; StoreColumn(pos server/world.ChunkPos, dim server/world.Dimension, col *server/world/chunk.Column) error; io.Closer}
 server/world	type	Raid	struct{id int64; center server/block/cube.Pos; status server/world.RaidStatus; active bool; started bool; ticksActive int64; omenLevel int; groupsSpawned int; groupCount int; cooldown int; postRaidTicks int; celebrationTicks int; spawnFailures int; totalHealth float64; members map[github.com/google/uuid.UUID]struct{}; heroes map[github.com/google/uuid.UUID]struct{}; leaders map[int]github.com/google/uuid.UUID}
 server/world	type	RaidStatus	uint8
+server/world	type	RaidTransaction	struct{tx *server/world.Tx}
 server/world	type	RainObstructor	interface{ObstructsRain() bool}
 server/world	type	RandomTicker	interface{RandomTick(pos server/block/cube.Pos, tx *server/world.Tx, r *math/rand/v2.Rand)}
 server/world	type	ReadView	struct{w *server/world.World; lastPos server/world.ChunkPos; last *server/world.Column; missed bool; tracking bool; tracked []server/world.ChunkPos; locals map[any]any; lastLocal server/world.lastLocal}

@@ -129,12 +129,12 @@ func (w *Witch) Tick(tx *world.Tx, n int64)                { w.behaviour().effec
 func (w *Witch) RaidID() int64                             { return w.behaviour().raidID }
 func (w *Witch) RaidWave() int                             { return w.behaviour().raidWave }
 func (w *Witch) IsRaidLeader() bool                        { return w.behaviour().raidLeader }
-func (w *Witch) CloseIn(tx *world.Tx) error                { tx.RaiderDied(w); return w.Ent.CloseIn(tx) }
+func (w *Witch) CloseIn(tx *world.Tx) error                { tx.Raids().RaiderDied(w); return w.Ent.CloseIn(tx) }
 func (b *WitchBehaviour) joinRaid(e *Ent, tx *world.Tx) {
-	raid := tx.RaidForRaider(e)
+	raid := tx.Raids().ForRaider(e)
 	if raid != nil {
 		if !raid.Active() {
-			tx.RaiderDied(e)
+			tx.Raids().RaiderDied(e)
 			b.raidID, b.raidWave, b.raidLeader = 0, 0, false
 			return
 		}
@@ -144,7 +144,7 @@ func (b *WitchBehaviour) joinRaid(e *Ent, tx *world.Tx) {
 	if b.raidID == 0 {
 		return
 	}
-	if tx.RegisterRaider(b.raidID, e) {
+	if tx.Raids().RegisterRaider(b.raidID, e) {
 		return
 	}
 	b.raidID, b.raidWave, b.raidLeader = 0, 0, false
@@ -180,7 +180,7 @@ func (w *Witch) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	if w.Dead() {
 		b.dead = true
 		w.viewAction(DeathAction{})
-		w.tx.RaiderKilled(w, raidDamageAttacker(s))
+		w.tx.Raids().RaiderKilled(w, raidDamageAttacker(s))
 		dropAllDeathLoot(w.tx, w, s)
 		_ = w.CloseIn(w.tx)
 	} else {
@@ -230,5 +230,5 @@ func (b *WitchBehaviour) removeWhenFarAway(m *Mob, distSqr float64) bool {
 // requiresCustomPersistence ports Raider.requiresCustomPersistence for a
 // witch.
 func (b *WitchBehaviour) requiresCustomPersistence(m *Mob) bool {
-	return m.tx.RaidForRaider(m.Self) != nil
+	return m.tx.Raids().ForRaider(m.Self) != nil
 }

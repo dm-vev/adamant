@@ -76,7 +76,7 @@ func (p *Player) TryActivateBadOmen(tx *world.Tx, amplifier int) bool {
 		return false
 	}
 	pos := cube.PosFromVec3(p.Position())
-	if !tx.TryApplyBadOmen(p, pos, amplifier) {
+	if !tx.Raids().TryApplyBadOmen(p, pos, amplifier) {
 		return false
 	}
 	p.raidOmenPosition = &pos
@@ -89,7 +89,7 @@ func (p *Player) ActivateRaidOmen(tx *world.Tx) bool {
 	if p.raidOmenPosition == nil || p.GameMode() == world.GameModeSpectator {
 		return false
 	}
-	_ = tx.TryApplyRaidOmen(p)
+	_ = tx.Raids().TryApplyRaidOmen(p)
 	p.raidOmenPosition = nil
 	return true
 }
