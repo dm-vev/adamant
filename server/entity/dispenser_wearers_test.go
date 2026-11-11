@@ -215,3 +215,49 @@ func TestDispenserPutsShieldsInOffHands(t *testing.T) {
 		})
 	}
 }
+
+// TestDispenserEjectsShieldsMobsCannotHold checks that a shield is not lost on
+// a mob in front whose hands keep only a main hand item: the mob takes
+// nothing, and the dispenser ejects the shield as it does with no one in
+// front.
+func TestDispenserEjectsShieldsMobsCannotHold(t *testing.T) {
+	t.Parallel()
+	shield := item.NewStack(item.Shield{}, 1)
+	for _, c := range []struct {
+		name  string
+		spawn func(tx *world.Tx, pos mgl64.Vec3) world.Entity
+	}{
+		{"villager", func(tx *world.Tx, pos mgl64.Vec3) world.Entity {
+			return tx.AddEntity(entity.NewVillager(world.EntitySpawnOpts{Position: pos}))
+		}},
+		{"fox", func(tx *world.Tx, pos mgl64.Vec3) world.Entity {
+			return tx.AddEntity(world.EntitySpawnOpts{Position: pos}.New(entity.FoxType, entity.FoxConfig{}))
+		}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			w, _ := dispenserWorld(t)
+			<-w.Exec(func(tx *world.Tx) {
+				var e world.Entity
+				pos := dispenseOnce(tx, shield, func(front cube.Pos) { e = c.spawn(tx, front.Vec3Middle()) })
+				if held, ok := e.(interface {
+					HeldItems() (item.Stack, item.Stack)
+				}); ok {
+					if main, off := held.HeldItems(); !main.Empty() || !off.Empty() {
+						t.Errorf("the %s holds %v and %v, want nothing", c.name, main, off)
+					}
+				}
+				if left := slotOf(tx, pos); !left.Empty() {
+					t.Errorf("dispenser holds %v, want the shield ejected", left)
+				}
+				items := entitiesOfType(tx, entity.ItemType)
+				if len(items) != 1 {
+					t.Fatalf("%d items dropped, want the shield", len(items))
+				}
+				if got := items[0].(*entity.Ent).Behaviour().(*entity.ItemBehaviour).Item(); !got.Comparable(shield) {
+					t.Errorf("the item dropped is %v, want the shield", got)
+				}
+			})
+		})
+	}
+}

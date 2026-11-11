@@ -76,10 +76,13 @@ func equipWithDispenser(tx *world.Tx, e world.Entity, one item.Stack) bool {
 	return false
 }
 
-// equipOffHand puts the item in the off hand of the entity if it holds items in
-// its hands and the off hand is empty: a shield is equippable in that slot.
+// equipOffHand puts the item in the empty off hand of a player in front, as
+// the armour slots below: a shield is equippable in that slot. A mob's off
+// hand is the entity registry's to fill (EquipWithDispenser), as many mobs
+// hold an item only in the main hand and would drop the shield set there.
 func equipOffHand(tx *world.Tx, e world.Entity, one item.Stack) bool {
 	hands, ok := e.(interface {
+		Armour() *inventory.Armour
 		HeldItems() (mainHand, offHand item.Stack)
 		SetHeldItems(mainHand, offHand item.Stack)
 	})
