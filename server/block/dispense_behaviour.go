@@ -244,24 +244,34 @@ func spawnDispensedFirework(conf *world.EntityRegistryConfig, opts world.EntityS
 	return conf.Firework(opts, it.(item.Firework), nil, 1, 0, false)
 }
 
+// boatWidth is the width of every boat of Java's EntityType (1.375), which
+// BoatDispenseItemBehavior uses to put the boat just outside the dispenser.
+const boatWidth = 1.375
+
 // dispenseBoat places the boat spawn creates on the water in front, or on
-// the air above it, as BoatDispenseItemBehavior, and drops it otherwise.
+// the air above it, as BoatDispenseItemBehavior, and drops it otherwise: the
+// boat is put 0.5625 plus half its width out of the dispenser's centre,
+// 1.125 blocks along it if it faces up or down, and a block higher over water
+// than over air; it faces the way the dispenser does, and starts at rest.
 func dispenseBoat(spawn dispenseSpawner) dispenseBehaviour {
 	return func(src dispenseSource) dispensed {
 		tx, front := src.tx, src.front()
-		frontLiquid, frontWater := tx.Liquid(front)
-		belowLiquid, waterBelow := tx.Liquid(front.Side(cube.FaceDown))
-		frontWater = frontWater && frontLiquid.LiquidType() == "water"
-		waterBelow = waterBelow && belowLiquid.LiquidType() == "water"
-		_, frontAir := tx.Block(front).(Air)
-		if !frontWater && (!frontAir || !waterBelow) {
-			return dispenseDefault(src)
+		var yOffset float64
+		if liquid, ok := tx.Liquid(front); ok && liquid.LiquidType() == "water" {
+			yOffset = 1
+		} else {
+			below, belowWater := tx.Liquid(front.Side(cube.FaceDown))
+			if _, air := tx.Block(front).(Air); !air || !belowWater || below.LiquidType() != "water" {
+				return dispenseDefault(src)
+			}
 		}
 		direction := src.direction()
-		opts := src.launch()
-		opts.Position = front.Vec3Middle().Add(mgl64.Vec3{0, 0.375, 0})
-		opts.Rotation = cube.Rotation{math.Atan2(direction[2], direction[0])*180/math.Pi + 90, 0}
-		opts.Velocity = direction.Mul(0.1)
+		justOutside := 0.5625 + boatWidth/2
+		pos := src.pos.Vec3Centre()
+		opts := world.EntitySpawnOpts{
+			Position: mgl64.Vec3{pos[0] + direction[0]*justOutside, pos[1] + direction[1]*1.125 + yOffset, pos[2] + direction[2]*justOutside},
+			Rotation: cube.Rotation{math.Atan2(direction[2], direction[0])*180/math.Pi + 90, 0},
+		}
 		tx.AddEntity(spawn(tx.World().EntityRegistry().Config(), opts, src.stack.Item()))
 		return src.done()
 	}

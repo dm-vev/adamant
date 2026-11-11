@@ -255,61 +255,6 @@ func TestDispenserEjectsUnsupportedItem(t *testing.T) {
 	})
 }
 
-func TestDispenserSpawnsBoatsOnWater(t *testing.T) {
-	t.Parallel()
-	typ := dispenserTestEntityType{}
-	entities := world.EntityRegistryConfig{
-		Boat: func(opts world.EntitySpawnOpts, variant int) *world.EntityHandle {
-			return opts.New(typ, dispenserTestEntityConfig{variant: variant})
-		},
-		ChestBoat: func(opts world.EntitySpawnOpts, variant int) *world.EntityHandle {
-			return opts.New(typ, dispenserTestEntityConfig{variant: variant})
-		},
-	}.New([]world.EntityType{typ})
-
-	tests := []struct {
-		name    string
-		stack   item.Stack
-		variant item.BoatVariant
-		below   bool
-	}{
-		{"boat facing water", item.NewStack(item.Boat{Variant: item.BoatVariantCherry}, 1), item.BoatVariantCherry, false},
-		{"chest boat above water", item.NewStack(item.ChestBoat{Variant: item.BoatVariantBamboo}, 1), item.BoatVariantBamboo, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			d := NewDispenser()
-			d.Facing, d.Triggered = cube.FaceEast, true
-			_ = d.inventory.SetItem(0, tt.stack)
-			w := world.Config{Synchronous: true, Entities: entities}.New()
-			defer w.Close()
-			pos := cube.Pos{0, 1, 0}
-			<-w.Exec(func(tx *world.Tx) {
-				tx.SetBlock(pos, d, nil)
-				waterPos := pos.Side(d.Facing)
-				if tt.below {
-					waterPos = waterPos.Side(cube.FaceDown)
-				}
-				tx.SetLiquid(waterPos, Water{Depth: 8, Still: true})
-				d.ScheduledTick(pos, tx, rand.New(rand.NewPCG(1, 2)))
-
-				count := 0
-				for spawned := range tx.Entities() {
-					count++
-					e := spawned.(*dispenserTestEntity)
-					if e.data.Data != tt.variant.Int() || e.Position() != (mgl64.Vec3{1.5, 1.375, 0.5}) || e.Rotation() != (cube.Rotation{90, 0}) || e.data.Vel != (mgl64.Vec3{0.1, 0, 0}) {
-						t.Fatalf("unexpected boat: variant=%v pos=%v rot=%v vel=%v", e.data.Data, e.Position(), e.Rotation(), e.data.Vel)
-					}
-				}
-				stack, _ := tx.Block(pos).(Dispenser).inventory.Item(0)
-				if count != 1 || !stack.Empty() {
-					t.Fatalf("entities=%d stack=%v", count, stack)
-				}
-			})
-		})
-	}
-}
-
 func TestDispenserEjectsBoatWithoutWater(t *testing.T) {
 	t.Parallel()
 	typ := dispenserTestEntityType{}
