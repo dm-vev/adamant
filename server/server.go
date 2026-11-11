@@ -682,10 +682,16 @@ func (srv *Server) join(ctx context.Context, j client.Join) {
 	if err != nil || fallback {
 		w = srv.world
 		// The chunks of the spawn of a first join load while the world
-		// ticks on.
-		if pos, err := w.FindPlayerSpawn(ctx, w.Spawn()); err == nil {
-			d.Position = pos
+		// ticks on. The search ends early only if the client left or the
+		// world closes: the join ends then, rather than spawn the player
+		// where its record left it, or at the origin.
+		pos, err := w.FindPlayerSpawn(ctx, w.Spawn())
+		if err != nil {
+			j.Reject(text.Literal("Connection timeout."))
+			srv.conf.Log.Debug("spawn search failed: "+err.Error(), "raddr", login.Addr)
+			return
 		}
+		d.Position = pos
 		d.GameMode = w.DefaultGameMode()
 		if fallback {
 			d.Velocity = mgl64.Vec3{}
