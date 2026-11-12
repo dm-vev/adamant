@@ -92,3 +92,20 @@ func (tx *Tx) RaidSpawnPosition(center cube.Pos, cooldown int) (cube.Pos, bool) 
 // StrikeLightning exposes one lightning strike on the chunk at pos to
 // world_test.
 func (w *World) StrikeLightning(tx *Tx, pos ChunkPos) { w.strikeLightning(tx, pos) }
+
+// EntityColumn returns the position of the column the entity of h is listed
+// in, which it leaves for the column it moved into at its next tick.
+func (tx *Tx) EntityColumn(h *EntityHandle) (ChunkPos, bool) {
+	s, ok := tx.World().entities[h]
+	if !ok {
+		return ChunkPos{}, false
+	}
+	return s.pos, true
+}
+
+// ColumnTouched reports whether the loaded column at pos was touched since
+// it was last saved.
+func (tx *Tx) ColumnTouched(pos ChunkPos) bool {
+	c, ok := tx.World().chunks[pos]
+	return ok && c.touched
+}
