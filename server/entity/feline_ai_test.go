@@ -111,6 +111,10 @@ func huntRabbit(t *testing.T) (hurt, stalled bool) {
 		w.AdvanceTick()
 		<-w.Exec(func(tx *world.Tx) {
 			hurt = livingHealth(tx, rabbit) < 3
+			if hurt {
+				// A rabbit that died is gone from the world.
+				return
+			}
 			c, p := entityPos(tx, cat), entityPos(tx, rabbit)
 			if c.Sub(catPos).Len() > 1e-3 || p.Sub(rabbitPos).Len() > 1e-3 {
 				catPos, rabbitPos, stillSince = c, p, tick
