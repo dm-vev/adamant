@@ -39,6 +39,17 @@ type Provider interface {
 	StoreColumn(pos ChunkPos, dim Dimension, col *chunk.Column) error
 }
 
+// ActorStorer is a Provider that stores the actors of a column apart from
+// its blocks: its entities, block entities, scheduled ticks and inhabited
+// time, leaving its blocks, biomes and post-processing marks as it holds
+// them. A world saves a column whose blocks did not change since it last
+// stored them through it, sparing the write of the blocks, which take most
+// of a column. The column passed has no Chunk. As StoreColumn, it is called
+// from a background goroutine.
+type ActorStorer interface {
+	StoreColumnActors(pos ChunkPos, dim Dimension, col *chunk.Column) error
+}
+
 // SettingsWriter is a Provider that keeps the settings given to SaveSettings
 // in memory, and writes them to disk only when it closes or when asked to
 // with WriteSettings, as mcdb keeps level.dat. A server asks it once each of

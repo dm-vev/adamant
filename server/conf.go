@@ -565,7 +565,7 @@ type UserConfig struct {
 		// SaveChunks selects which loaded chunks a save or an unload stores:
 		// "modified", the default, stores those generated or changed since
 		// they were last saved and those whose entities or block entities
-		// ticked or were used since;
+		// ticked or were used since, without their blocks;
 		// "all" stores every chunk loaded, changed or not, as pregenerating
 		// a world wants. Any other value stops the server at start.
 		SaveChunks string

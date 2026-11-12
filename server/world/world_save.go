@@ -2,6 +2,7 @@ package world
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -70,20 +71,28 @@ func (w *World) saveChunk(tx *Tx, pos ChunkPos, c *Column) {
 // saveChunks saves the columns that changed since they were last saved,
 // into commit if not nil, and returns how many it saved. It walks the
 // columns listed as they changed (dirtyColumns), not every column loaded,
-// but for ChunkSavingAll, which saves every column. Compacting and copying
-// the blocks of each column only touch that column, so they are done on
-// all cores while the owner waits; the entities, block entities and
-// scheduled ticks are then encoded and handed to the saver on the owner.
+// but for ChunkSavingAll, which saves every column. A column modified is
+// saved whole: compacting and copying its blocks only touch that column,
+// so they are done on all cores while the owner waits. A column only
+// touched is saved without its blocks, which the provider keeps as they
+// are, if it is an ActorStorer. The entities, block entities and scheduled
+// ticks of each are then encoded and handed to the saver on the owner.
 func (w *World) saveChunks(tx *Tx, commit Commit) int {
 	type persisted struct {
-		pos ChunkPos
-		c   *Column
+		pos  ChunkPos
+		c    *Column
+		full bool
 	}
+	to := w.conf.Provider
+	if commit != nil {
+		to = commit
+	}
+	_, actors := to.(ActorStorer)
 	var columns []persisted
 	add := func(pos ChunkPos, c *Column) {
 		w.finishGeneration(tx, c)
 		if w.storesColumn(pos, c) {
-			columns = append(columns, persisted{pos: pos, c: c})
+			columns = append(columns, persisted{pos: pos, c: c, full: c.modified || !actors || !c.complete})
 		}
 	}
 	all := w.conf.SaveChunks == ChunkSavingAll
@@ -117,8 +126,15 @@ func (w *World) saveChunks(tx *Tx, commit Commit) int {
 			}
 		}
 	}
+	var full []int
+	for i, p := range columns {
+		if p.full {
+			full = append(full, i)
+		}
+	}
 	clones := make([]*chunk.Chunk, len(columns))
-	parallel.For(len(columns), 4, func(i int) {
+	parallel.For(len(full), 4, func(j int) {
+		i := full[j]
 		c := columns[i].c
 		c.compact()
 		if w.saver != nil {
@@ -127,19 +143,20 @@ func (w *World) saveChunks(tx *Tx, commit Commit) int {
 	})
 	for i, p := range columns {
 		col := w.columnTo(p.c, p.pos)
-		saved := w.markSaved(p.c)
+		saved := w.markSaved(p.c, p.full)
+		if !p.full {
+			col.Chunk, col.PostProcessing = nil, nil
+		}
 		if w.saver == nil {
-			to := w.conf.Provider
-			if commit != nil {
-				to = commit
-			}
 			if w.writeColumn(to, p.pos, col) != nil {
-				p.c.setModified()
+				w.restoreFailedSave(p.c, p.full)
 			}
 			continue
 		}
-		col.Chunk = clones[i]
-		col.PostProcessing = clonePostProcessing(col.PostProcessing)
+		if p.full {
+			col.Chunk = clones[i]
+			col.PostProcessing = clonePostProcessing(col.PostProcessing)
+		}
 		w.saver.store(p.pos, col, saved, commit)
 	}
 	w.saveEpoch++
@@ -147,17 +164,31 @@ func (w *World) saveChunks(tx *Tx, commit Commit) int {
 }
 
 // markSaved clears the modified and touched flags of c, which is being
-// saved, and returns the number of the save, for the saver to report a
-// failed write with.
-func (w *World) markSaved(c *Column) uint64 {
+// saved, whole if full, and returns the number of the save, for the saver
+// to report a failed write with.
+func (w *World) markSaved(c *Column, full bool) uint64 {
 	w.saves++
 	c.modified, c.touched, c.savedIn = false, false, w.saves
+	if full {
+		c.blocksSavedIn = w.saves
+	}
 	return w.saves
 }
 
+// restoreFailedSave marks c, whose save failed to write, to be saved
+// again: modified if the save wrote its blocks, touched if not.
+func (w *World) restoreFailedSave(c *Column, full bool) {
+	if full {
+		c.setModified()
+	} else {
+		c.touch()
+	}
+}
+
 // restoreFailedSaves takes the saves the background saver failed to write.
-// A column still loaded and not saved since is modified again, so that the
-// next save writes it as it is then; a column unloaded since is written
+// A column still loaded is saved again by the next save: whole if the
+// blocks of the save that failed were not saved since, without them if only
+// what it keeps beside them was not; a column unloaded since is written
 // again as it was saved.
 func (w *World) restoreFailedSaves() {
 	if w.saver == nil {
@@ -165,8 +196,11 @@ func (w *World) restoreFailedSaves() {
 	}
 	for pos, p := range w.saver.takeFailed() {
 		if c, ok := w.chunks[pos]; ok {
-			if c.savedIn == p.saved {
+			switch {
+			case p.hasBlocks() && c.blocksSavedIn == p.blocksSaved:
 				c.setModified()
+			case c.savedIn == p.saved:
+				c.touch()
 			}
 			continue
 		}
@@ -190,7 +224,7 @@ func (w *World) persistChunk(tx *Tx, pos ChunkPos, c *Column, live bool) {
 	}
 	c.compact()
 	col := w.columnTo(c, pos)
-	saved := w.markSaved(c)
+	saved := w.markSaved(c, true)
 	if w.saver == nil {
 		if w.writeColumn(w.conf.Provider, pos, col) != nil {
 			c.setModified()
@@ -225,9 +259,20 @@ func (w *World) failedLoad(pos ChunkPos, c *Column) bool {
 }
 
 // writeColumn stores col through p, the provider of the world or a commit
-// of it, logging the error it fails with.
+// of it, logging the error it fails with. A column without blocks is stored
+// through ActorStorer, leaving the blocks p holds.
 func (w *World) writeColumn(p Provider, pos ChunkPos, col *chunk.Column) error {
-	err := p.StoreColumn(pos, w.conf.Dim, col)
+	var err error
+	if col.Chunk == nil {
+		storer, ok := p.(ActorStorer)
+		if !ok {
+			err = fmt.Errorf("store the actors of column %v: provider %T stores whole columns only", pos, p)
+		} else {
+			err = storer.StoreColumnActors(pos, w.conf.Dim, col)
+		}
+	} else {
+		err = p.StoreColumn(pos, w.conf.Dim, col)
+	}
 	if err != nil {
 		w.saveLog.Error("save chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
 		return err

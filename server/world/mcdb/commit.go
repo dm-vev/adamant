@@ -149,7 +149,11 @@ type Commit struct {
 // discarded.
 var errCommitEnded = errors.New("commit: committed or discarded already")
 
-var _ world.Commit = (*Commit)(nil)
+var (
+	_ world.Commit      = (*Commit)(nil)
+	_ world.ActorStorer = (*Commit)(nil)
+	_ world.ActorStorer = (*DB)(nil)
+)
 
 // BeginCommit opens a commit of the DB. Until it is committed or
 // discarded, the records of players saved go into it. One commit is open
@@ -274,6 +278,17 @@ func (c *Commit) StoreColumn(pos world.ChunkPos, dim world.Dimension, col *chunk
 	if err := c.db.storeColumn(c, dbKey{pos: pos, dim: dim}, col); err != nil {
 		return fmt.Errorf("store column %v (%v): %w", pos, dim, err)
 	}
+	return nil
+}
+
+// StoreColumnActors stores the entities, block entities, scheduled ticks and
+// inhabited time of a column in the commit, leaving its blocks as the DB
+// holds them, or as the commit does if it stored them.
+func (c *Commit) StoreColumnActors(pos world.ChunkPos, dim world.Dimension, col *chunk.Column) error {
+	if c.ended.Load() {
+		return fmt.Errorf("store the actors of column %v (%v): %w", pos, dim, errCommitEnded)
+	}
+	c.db.storeActors(c, dbKey{pos: pos, dim: dim}, col)
 	return nil
 }
 

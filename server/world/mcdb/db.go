@@ -698,6 +698,20 @@ func (db *DB) StoreColumn(pos world.ChunkPos, dim world.Dimension, col *chunk.Co
 	return nil
 }
 
+// StoreColumnActors stores the entities, block entities, scheduled ticks
+// and inhabited time of a column, leaving its blocks, biomes and
+// post-processing marks as the DB holds them. It implements
+// world.ActorStorer.
+func (db *DB) StoreColumnActors(pos world.ChunkPos, dim world.Dimension, col *chunk.Column) error {
+	k := dbKey{pos: pos, dim: dim}
+	s := db.direct()
+	db.storeActors(s, k, col)
+	if err := s.flush(); err != nil {
+		return fmt.Errorf("store the actors of column %v (%v): %w", pos, dim, err)
+	}
+	return nil
+}
+
 // storeColumn stores col in s. The entities it no longer holds are deleted
 // unless another column stored them since, as s reads back: within a
 // commit, a column stored before in the same commit.
@@ -712,20 +726,26 @@ func (db *DB) storeColumn(s store, k dbKey, col *chunk.Column) error {
 	db.storeBiomes(s, k, data.Biomes)
 	db.storeSubChunks(s, k, data.SubChunks, col.Chunk.Range())
 	db.storeFinalisation(s, k, finalisationPopulated)
-	db.emu.Lock()
-	defer db.emu.Unlock()
-	db.storeEntities(s, k, col.Entities)
-	db.storeBlockEntities(s, k, col.BlockEntities)
-	db.storeScheduledUpdates(s, k, col.ScheduledTicks)
 	if len(postProcessing) == 0 {
 		s.delete(k.Sum([]byte(keyAdamantPostProcessing)...))
 	} else {
 		s.put(k.Sum([]byte(keyAdamantPostProcessing)...), postProcessing)
 	}
+	db.storeActors(s, k, col)
+	return nil
+}
+
+// storeActors stores the entities, block entities, scheduled ticks and
+// inhabited time of col in s.
+func (db *DB) storeActors(s store, k dbKey, col *chunk.Column) {
+	db.emu.Lock()
+	defer db.emu.Unlock()
+	db.storeEntities(s, k, col.Entities)
+	db.storeBlockEntities(s, k, col.BlockEntities)
+	db.storeScheduledUpdates(s, k, col.ScheduledTicks)
 	inhabitedTime := make([]byte, 8)
 	binary.LittleEndian.PutUint64(inhabitedTime, col.InhabitedTime)
 	s.put(k.Sum([]byte(keyAdamantInhabitedTime)...), inhabitedTime)
-	return nil
 }
 
 func (db *DB) storeVersion(s store, k dbKey, ver uint8) {

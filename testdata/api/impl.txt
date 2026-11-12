@@ -10866,6 +10866,7 @@ server/world/generator/advanced/overworld.modernSwampHutPiece	server/world/gener
 server/world/generator/advanced/overworld.modernTerrainSource	server/world/generator/advanced/overworld.ModernFeatureSource	value
 server/world/generator/advanced/overworld.runtimeFeatures	server/world.RuntimeFeatures	*
 server/world/generator/advanced/overworld.strongholdPiece	server/world/generator/advanced/overworld.modernStructurePiece	value
+server/world/mcdb.Commit	server/world.ActorStorer	*
 server/world/mcdb.Commit	server/world.Commit	*
 server/world/mcdb.Commit	server/world.DragonFightProvider	*
 server/world/mcdb.Commit	server/world.MapDataProvider	*
@@ -10876,6 +10877,7 @@ server/world/mcdb.Commit	server/world/mcdb.getter	*
 server/world/mcdb.Commit	server/world/mcdb.store	*
 server/world/mcdb.DB	server.worldSnapshotter	*
 server/world/mcdb.DB	server/player/playerdb.Records	*
+server/world/mcdb.DB	server/world.ActorStorer	*
 server/world/mcdb.DB	server/world.Committer	*
 server/world/mcdb.DB	server/world.DragonFightProvider	*
 server/world/mcdb.DB	server/world.MapDataProvider	*

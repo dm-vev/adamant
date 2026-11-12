@@ -33,14 +33,17 @@ func (c *Column) compact() {
 type Column struct {
 	// modified is set when a block, biome, entity or scheduled tick of the
 	// column changes, and cleared once the column is saved. savedIn numbers
-	// that save (World.saves): if writing it fails, the column is modified
-	// again, unless it was saved again since.
-	modified bool
-	savedIn  uint64
+	// that save (World.saves), and blocksSavedIn the last save that wrote
+	// the blocks of the column: if writing the blocks fails, the column is
+	// modified again, unless they were saved again since.
+	modified      bool
+	savedIn       uint64
+	blocksSavedIn uint64
 	// touched is set when what the column keeps beside its blocks may have
 	// changed although nothing marked it modified: one of its entities
 	// ticked or was used, one of its block entities ticked or was read, as
-	// opening a chest reads it, or its inhabited time grew.
+	// opening a chest reads it, or its inhabited time grew. A save of a
+	// column only touched leaves its blocks as stored (ActorStorer).
 	touched bool
 	// listed is set while the column is in the list of the columns of its
 	// world that changed since they were last saved (dirtyColumns), which
