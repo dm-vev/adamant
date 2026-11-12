@@ -63,6 +63,10 @@ func patrolSpawnTick(tx *world.Tx, random *vanilla.Random) {
 	}
 	group := int(math.Ceil(float64(tx.LocalDifficulty(pos).Effective))) + 1
 	for i := range group {
+		if !columnReady(tx, pos[0], pos[2]) {
+			// The members drift from the chunks checked above.
+			break
+		}
 		// The MOTION_BLOCKING_NO_LEAVES height map: under leaves and on
 		// top of grass.
 		pos[1] = tx.JavaMotionBlockingHeight(pos[0], pos[2], true)

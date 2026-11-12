@@ -551,6 +551,10 @@ func (tx *Tx) raidSpawnPosition(r *Raid) (cube.Pos, bool) {
 		a := angle + math.Pi*float64(attempt)/8
 		x := r.center[0] + int(math.Floor(math.Cos(a)*32*distanceScale)) + tx.World().r.IntN(3)*int(distanceScale)
 		z := r.center[2] + int(math.Floor(math.Sin(a)*32*distanceScale)) + tx.World().r.IntN(3)*int(distanceScale)
+		if !tx.ChunkLoaded(ChunkPos{int32(x >> 4), int32(z >> 4)}) {
+			// Not generated yet: the owner does not wait for it.
+			continue
+		}
 		y := tx.HighestBlock(x, z)
 		candidate := cube.Pos{x, y, z}
 		airPos := candidate.Side(cube.FaceUp)

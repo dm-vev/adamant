@@ -37,6 +37,16 @@ func NaturalSpawnTick(tx *world.Tx) {
 	villageSiegeTick(tx, w.Difficulty() != world.DifficultyPeaceful && w.MonsterSpawningEnabled(), random)
 }
 
+// columnReady reports whether the column holding the block column x, z is
+// loaded and generated. The world owner reads nothing from a column that is
+// not: Tx.Block and what reads through it wait for the generation of the
+// column, which holds up every tick of the world, behind however many columns
+// the generator has queued. Java never waits for a player's own chunk, as it
+// is always loaded, and the spawners skip a position whose chunk is not.
+func columnReady(tx *world.Tx, x, z int) bool {
+	return tx.ChunkLoaded(world.ChunkPos{int32(x >> 4), int32(z >> 4)})
+}
+
 // levelRandoms are the Level.random streams of the worlds mobs spawn in.
 var levelRandoms sync.Map
 
@@ -82,6 +92,9 @@ func phantomSpawnTick(tx *world.Tx, players []world.Entity, random *vanilla.Rand
 	}
 	for _, player := range players {
 		pos := cube.PosFromVec3(player.Position())
+		if !columnReady(tx, pos[0], pos[2]) {
+			continue
+		}
 		if skyLight && (pos[1] < seaLevel(tx) || !canSeeSky(tx, pos)) {
 			continue
 		}
@@ -99,6 +112,9 @@ func phantomSpawnTick(tx *world.Tx, players []world.Entity, random *vanilla.Rand
 		spawnPos := cube.Pos{pos[0], pos[1] + 20 + int(random.NextInt(15)), pos[2]}
 		spawnPos[0] += -10 + int(random.NextInt(21))
 		spawnPos[2] += -10 + int(random.NextInt(21))
+		if !columnReady(tx, spawnPos[0], spawnPos[2]) {
+			continue
+		}
 		if !validEmptySpawnBlock(tx, spawnPos, "minecraft:phantom") {
 			continue
 		}

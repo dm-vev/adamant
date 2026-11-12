@@ -216,6 +216,9 @@ func (s *customSpawnerState) setUpSiege(tx *world.Tx, r *vanilla.Random) bool {
 func (s *customSpawnerState) siegeSpawnPos(tx *world.Tx, pos cube.Pos, r *vanilla.Random) (mgl64.Vec3, bool) {
 	for range 10 {
 		x, z := pos[0]+int(r.NextInt(16))-8, pos[2]+int(r.NextInt(16))-8
+		if !columnReady(tx, x, z) {
+			continue
+		}
 		at := cube.Pos{x, tx.HighestBlock(x, z) + 1, z}
 		if tx.POIs().IsVillage(at) && checkMonsterSpawnRules(tx, "minecraft:zombie", at, r) {
 			return at.Vec3Middle(), true

@@ -137,6 +137,9 @@ func traderSpawnPosition(tx *world.Tx, random *vanilla.Random, reference cube.Po
 	for range 10 {
 		x := reference[0] + int(random.NextInt(int32(radius*2))) - radius
 		z := reference[2] + int(random.NextInt(int32(radius*2))) - radius
+		if !columnReady(tx, x, z) {
+			continue
+		}
 		pos := cube.Pos{x, motionBlockingNoLeavesHeight(tx, x, z), z}
 		if onGroundSpawnPosition(tx, pos) {
 			return pos, true

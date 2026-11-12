@@ -82,3 +82,13 @@ func (tx *Tx) ColumnModified(pos ChunkPos) bool {
 	c, ok := tx.World().chunks[pos]
 	return ok && c.modified
 }
+
+// RaidSpawnPosition exposes the search for where a raid wave spawns to
+// world_test: for a raid around center, cooldown ticks before its wave.
+func (tx *Tx) RaidSpawnPosition(center cube.Pos, cooldown int) (cube.Pos, bool) {
+	return tx.raidSpawnPosition(&Raid{center: center, cooldown: cooldown})
+}
+
+// StrikeLightning exposes one lightning strike on the chunk at pos to
+// world_test.
+func (w *World) StrikeLightning(tx *Tx, pos ChunkPos) { w.weather.strikeLightning(tx, pos) }
