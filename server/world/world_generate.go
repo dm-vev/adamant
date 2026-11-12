@@ -55,7 +55,7 @@ var errGenerationPanicked = errors.New("generation panicked")
 func (w *World) generateChunkAsync(pos ChunkPos, col *Column) {
 	task := generationTask{pos: pos, col: col, context: w.generationContext()}
 	if w.closed.Load() {
-		col.markReady()
+		w.markUngenerated(col)
 		return
 	}
 	if w.conf.Synchronous {
@@ -64,7 +64,7 @@ func (w *World) generateChunkAsync(pos ChunkPos, col *Column) {
 	}
 	waiting, ok := w.generatorQueue.push(task)
 	if !ok {
-		col.markReady()
+		w.markUngenerated(col)
 		return
 	}
 	if waiting > w.conf.GeneratorQueueSize {
@@ -95,9 +95,13 @@ func (w *World) generatorWorker() {
 // This design guarantees that no waiting goroutine (e.g., loadChunk callers)
 // will hang indefinitely due to an unmarked column.
 func (w *World) runGenerationTask(task generationTask) {
-	if task.col.Ready() {
-		// The chunk was closed while its task waited: nothing reads it.
+	if task.col.Ready() || !task.col.startGeneration() {
+		// The chunk was closed, or nothing wanted it any more, while its
+		// task waited: nothing reads it.
 		return
+	}
+	if task.col.Chunk == nil {
+		task.col.Chunk = chunk.New(w.conf.Blocks, w.Range())
 	}
 	// Generation owns terrain, block entities and cached terrain payloads until
 	// markReady publishes them. Entity/viewer membership remains owner-only,
@@ -226,8 +230,19 @@ func (w *World) focusGeneration(loaders []*Loader) {
 // columns of the tasks no worker took ready, so nothing waits for them.
 func (w *World) drainGenerationQueue() {
 	for _, task := range w.generatorQueue.close() {
-		task.col.markReady()
+		if !task.col.abandoned() {
+			w.markUngenerated(task.col)
+		}
 	}
+}
+
+// markUngenerated marks a column ready that is not generated, as the world
+// closes: it holds air, and is not complete, so that it is never saved.
+func (w *World) markUngenerated(col *Column) {
+	if col.Chunk == nil {
+		col.Chunk = chunk.New(w.conf.Blocks, w.Range())
+	}
+	col.markReady()
 }
 
 // handleGeneratorBackpressure counts a chunk request made while more

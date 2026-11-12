@@ -131,6 +131,11 @@ type Column struct {
 	// shown.
 	pendingBlocks pendingBlockUpdates
 
+	// generationState is that of the generation of a column not read from
+	// the provider: generationQueued until a worker starts it, or
+	// generationAbandoned once nothing wanted it before one did.
+	generationState atomic.Uint32
+
 	ready           atomic.Bool
 	readyCh         chan struct{}
 	lightOnce       sync.Once
@@ -150,6 +155,14 @@ func newColumn(c *chunk.Chunk) *Column {
 		readyCh:                  make(chan struct{}),
 		viewers:                  make(map[Viewer]struct{}),
 	}
+}
+
+// newQueuedColumn returns a Column to be generated. The worker that generates
+// it gives it its chunk: a column waiting in the queue holds none.
+func newQueuedColumn() *Column {
+	c := newColumn(nil)
+	c.generationState.Store(generationQueued)
+	return c
 }
 
 // blockVersionClock hands out the block versions of columns.
@@ -468,6 +481,32 @@ type cachedSubChunkHeightMap struct {
 	mapType byte
 	mapData []int8
 	ready   bool
+}
+
+// The states of the generation of a column.
+const (
+	generationNone uint32 = iota
+	generationQueued
+	generationStarted
+	generationAbandoned
+)
+
+// startGeneration records that a worker starts generating the column, and
+// reports whether it may: not once the column was abandoned.
+func (c *Column) startGeneration() bool {
+	return c.generationState.Swap(generationStarted) != generationAbandoned
+}
+
+// abandonGeneration abandons the generation of a column whose task is still
+// queued, and reports whether it did: a worker that takes the task then
+// skips it. A column a worker started is generated in full.
+func (c *Column) abandonGeneration() bool {
+	return c.generationState.CompareAndSwap(generationQueued, generationAbandoned)
+}
+
+// abandoned reports whether the column's generation was abandoned.
+func (c *Column) abandoned() bool {
+	return c.generationState.Load() == generationAbandoned
 }
 
 // Ready reports whether the Column has finished generating.

@@ -84,9 +84,9 @@ func TestChunkCallbackPanicDoesNotSkipOtherLoaders(t *testing.T) {
 
 	w.Do(func(tx *Tx) {
 		w.chunks[pos] = col
-		w.chunkRequests[pos] = []chunkCallback{
-			func(tx *Tx, col *Column) { panicking.viewChunk(tx, pos, col) },
-			func(tx *Tx, col *Column) { healthy.viewChunk(tx, pos, col) },
+		w.chunkRequests[pos] = []chunkRequest{
+			{loader: panicking, callback: func(tx *Tx, col *Column) { panicking.viewChunk(tx, pos, col) }},
+			{loader: healthy, callback: func(tx *Tx, col *Column) { healthy.viewChunk(tx, pos, col) }},
 		}
 		w.finishChunkRequest(tx, pos, col)
 	})

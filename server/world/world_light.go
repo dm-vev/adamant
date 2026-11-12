@@ -291,7 +291,8 @@ func (w *World) spreadStillLoaded(sp pendingSpread) bool {
 	i := 0
 	for z := int32(-1); z <= 1; z++ {
 		for x := int32(-1); x <= 1; x++ {
-			if col, ok := w.chunks[ChunkPos{sp.pos[0] + x, sp.pos[1] + z}]; !ok || col.Chunk != sp.chunks[i] {
+			// A column still generating gets its chunk from the worker.
+			if col, ok := w.chunks[ChunkPos{sp.pos[0] + x, sp.pos[1] + z}]; !ok || !col.Ready() || col.Chunk != sp.chunks[i] {
 				return false
 			}
 			i++

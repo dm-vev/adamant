@@ -347,7 +347,7 @@ func newWorldState(conf Config, s *Settings, providerUse *providerRef) *World {
 		raidByRaider:        make(map[uuid.UUID]int64),
 		viewers:             make(map[*Loader]Viewer),
 		chunks:              make(map[ChunkPos]*Column),
-		chunkRequests:       make(map[ChunkPos][]chunkCallback),
+		chunkRequests:       make(map[ChunkPos][]chunkRequest),
 		unsettled:           make(map[ChunkPos]*Column),
 		workerLocals:        []map[any]any{make(map[any]any)},
 		queueClosing:        make(chan struct{}),

@@ -70,7 +70,7 @@ func (l *Loader) ChangeWorld(tx *Tx, new *World) {
 	l.changing = true
 	l.detaching++
 	l.loaded = make(map[ChunkPos]*Column)
-	clear(l.pending)
+	released := l.releasePending()
 	l.loadQueue = l.loadQueue[:0]
 	l.mu.Unlock()
 
@@ -80,7 +80,7 @@ func (l *Loader) ChangeWorld(tx *Tx, new *World) {
 	l.world(new)
 	l.mu.Unlock()
 	l.changeMu.Unlock()
-	defer l.detach(tx, old, loaded, viewer)
+	defer l.detach(tx, old, loaded, released, viewer)
 	new.initWorldViewer(viewer)
 }
 
@@ -93,11 +93,11 @@ func (l *Loader) ChangeRadius(tx *Tx, new int) {
 	}
 	l.r = new
 	w, viewer := l.w, l.viewer
-	evicted := l.evictUnused()
+	evicted, released := l.evictUnused()
 	l.populateLoadQueue()
 	l.mu.Unlock()
-	if len(evicted) != 0 {
-		l.detach(tx, w, evicted, viewer)
+	if len(evicted) != 0 || len(released) != 0 {
+		l.detach(tx, w, evicted, released, viewer)
 	}
 }
 
@@ -111,11 +111,11 @@ func (l *Loader) Move(tx *Tx, pos mgl64.Vec3) {
 	}
 	l.pos = chunkPos
 	w, viewer := l.w, l.viewer
-	evicted := l.evictUnused()
+	evicted, released := l.evictUnused()
 	l.populateLoadQueue()
 	l.mu.Unlock()
-	if len(evicted) != 0 {
-		l.detach(tx, w, evicted, viewer)
+	if len(evicted) != 0 || len(released) != 0 {
+		l.detach(tx, w, evicted, released, viewer)
 	}
 }
 
@@ -172,7 +172,7 @@ func (l *Loader) Load(tx *Tx, n int) {
 		l.loadQueue = append(l.loadQueue, pos)
 		l.mu.Unlock()
 
-		if !w.loadChunkAsync(tx, pos, func(tx2 *Tx, col *Column) {
+		if !w.loadChunkFor(tx, pos, l, func(tx2 *Tx, col *Column) {
 			l.viewChunk(tx2, pos, col)
 		}) {
 			l.mu.Lock()
@@ -286,7 +286,7 @@ func (l *Loader) Close(tx *Tx) {
 	}
 	w, loaded, viewer := l.w, l.loaded, l.viewer
 	l.loaded = make(map[ChunkPos]*Column)
-	clear(l.pending)
+	released := l.releasePending()
 	l.closed = true
 	l.changing = true
 	l.detaching++
@@ -295,15 +295,20 @@ func (l *Loader) Close(tx *Tx) {
 
 	w.removeWorldViewer(l)
 	l.changeMu.Unlock()
-	l.detach(tx, w, loaded, viewer)
+	l.detach(tx, w, loaded, released, viewer)
 }
 
 // detach owns the captured view, not the loader's current view. Counting all
 // pending detaches also protects rapid A->B->A changes and Close during a change.
-func (l *Loader) detach(tx *Tx, w *World, loaded map[ChunkPos]*Column, viewer Viewer) {
+// The requests for the columns at released, which the loader awaited and no
+// longer wants, are taken back with it.
+func (l *Loader) detach(tx *Tx, w *World, loaded map[ChunkPos]*Column, released []ChunkPos, viewer Viewer) {
 	remove := func(tx *Tx) {
 		for pos, col := range loaded {
 			w.removeViewerFrom(tx, pos, col, l, viewer, true)
+		}
+		if len(released) != 0 {
+			w.releaseChunkRequests(l, released)
 		}
 	}
 	finish := func() {
@@ -350,10 +355,12 @@ func (l *Loader) world(new *World) {
 	l.populateLoadQueue()
 }
 
-// evictUnused removes chunks beyond the retention radius from the loader's map.
-// The caller holds mu and detaches the captured view after releasing it.
-func (l *Loader) evictUnused() map[ChunkPos]*Column {
-	var evicted map[ChunkPos]*Column
+// evictUnused removes chunks beyond the retention radius from the loader's
+// map, and the positions beyond it the loader awaits from pending: the world
+// may then unload those columns, and skip generating them, as nothing else
+// wants them. The caller holds mu and detaches the captured view, and
+// releases the positions, after releasing it.
+func (l *Loader) evictUnused() (evicted map[ChunkPos]*Column, released []ChunkPos) {
 	for pos, col := range l.loaded {
 		if !l.withinLoadRadius(pos) {
 			if evicted == nil {
@@ -363,11 +370,40 @@ func (l *Loader) evictUnused() map[ChunkPos]*Column {
 			delete(l.loaded, pos)
 		}
 	}
-	if len(evicted) != 0 {
+	for pos := range l.pending {
+		if !l.withinLoadRadius(pos) {
+			released = append(released, pos)
+			delete(l.pending, pos)
+		}
+	}
+	if len(evicted) != 0 || len(released) != 0 {
 		l.changing = true
 		l.detaching++
 	}
-	return evicted
+	return evicted, released
+}
+
+// releasePending empties pending and returns the positions it held, for
+// detach to release. The caller holds mu.
+func (l *Loader) releasePending() []ChunkPos {
+	if len(l.pending) == 0 {
+		return nil
+	}
+	released := make([]ChunkPos, 0, len(l.pending))
+	for pos := range l.pending {
+		released = append(released, pos)
+	}
+	clear(l.pending)
+	return released
+}
+
+// awaits reports whether the loader awaits the column at pos in w. It must
+// be called from the owner of w.
+func (l *Loader) awaits(w *World, pos ChunkPos) bool {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	_, ok := l.pending[pos]
+	return ok && !l.closed && l.w == w
 }
 
 // withinLoadRadius checks if a chunk position is within the Loader's radius.

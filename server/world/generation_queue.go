@@ -1,6 +1,7 @@
 package world
 
 import (
+	"slices"
 	"sync"
 	"sync/atomic"
 )
@@ -66,11 +67,16 @@ func (q *generationQueue) setFocus(focus []ChunkPos) {
 func (q *generationQueue) pop() (generationTask, bool) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	for len(q.tasks) == 0 && !q.closed {
-		q.ready.Wait()
-	}
-	if q.closed {
-		return generationTask{}, false
+	for {
+		for len(q.tasks) == 0 && !q.closed {
+			q.ready.Wait()
+		}
+		if q.closed {
+			return generationTask{}, false
+		}
+		if q.dropAbandoned(); len(q.tasks) != 0 {
+			break
+		}
 	}
 	best := 0
 	bestDist := q.distance(q.tasks[0].task.pos)
@@ -94,6 +100,14 @@ func (q *generationQueue) pop() (generationTask, bool) {
 	q.tasks = q.tasks[:last]
 	q.length.Store(int64(last))
 	return task, true
+}
+
+// dropAbandoned removes the tasks of the columns nothing wants any more.
+func (q *generationQueue) dropAbandoned() {
+	q.tasks = slices.DeleteFunc(q.tasks, func(t queuedGeneration) bool {
+		return t.task.col != nil && t.task.col.abandoned()
+	})
+	q.length.Store(int64(len(q.tasks)))
 }
 
 // distance returns the squared distance from pos to the nearest loader, or

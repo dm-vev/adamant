@@ -2,6 +2,7 @@ package world
 
 import (
 	"errors"
+	"slices"
 	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/world/chunk"
@@ -19,7 +20,7 @@ type chunkStore struct {
 	// whenever the column at a position is replaced or removed.
 	lastChunkPos  ChunkPos
 	lastChunk     *Column
-	chunkRequests map[ChunkPos][]chunkCallback
+	chunkRequests map[ChunkPos][]chunkRequest
 	// unsettled holds the columns in chunks that were not settled yet when
 	// last seen, so that a region phase may settle them first.
 	unsettled map[ChunkPos]*Column
@@ -33,6 +34,14 @@ type chunkStore struct {
 }
 
 type chunkCallback func(tx *Tx, col *Column)
+
+// chunkRequest is a callback waiting for a column, and the loader that asked
+// for it, if one did: a loader that stops wanting the column takes its
+// requests back, see releaseChunkRequests.
+type chunkRequest struct {
+	loader   *Loader
+	callback chunkCallback
+}
 
 // LoadedChunkCount returns the number of chunks currently kept in memory by the
 // world.
@@ -147,8 +156,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 
 	case errors.Is(err, leveldb.ErrNotFound):
 		// Case 2: Column not found in storage — needs generation.
-		// Create a new empty column filled with air.
-		col := newColumn(chunk.New(w.conf.Blocks, w.Range()))
+		col := newQueuedColumn()
 		if _, ok := w.chunks[pos]; !ok {
 			w.chunkCount.Add(1)
 		} else {
@@ -218,11 +226,18 @@ func (w *World) readColumn(pos ChunkPos) (column *chunk.Column, staged bool, err
 // loadChunkAsync loads or generates the chunk at pos in the background,
 // calling callback once ready. It returns false if it could not be scheduled.
 func (w *World) loadChunkAsync(tx *Tx, pos ChunkPos, callback chunkCallback) bool {
+	return w.loadChunkFor(tx, pos, nil, callback)
+}
+
+// loadChunkFor is loadChunkAsync for a request of the loader l, which
+// releaseChunkRequests takes back.
+func (w *World) loadChunkFor(tx *Tx, pos ChunkPos, l *Loader, callback chunkCallback) bool {
 	if w.closed.Load() {
 		return false
 	}
+	request := chunkRequest{loader: l, callback: callback}
 	if c, ok := w.chunks[pos]; ok {
-		w.chunkRequests[pos] = append(w.chunkRequests[pos], callback)
+		w.chunkRequests[pos] = append(w.chunkRequests[pos], request)
 		if c.Ready() {
 			c.ensureLight(w, pos)
 			w.finishChunkRequest(tx, pos, c)
@@ -230,7 +245,7 @@ func (w *World) loadChunkAsync(tx *Tx, pos ChunkPos, callback chunkCallback) boo
 		return true
 	}
 
-	w.chunkRequests[pos] = append(w.chunkRequests[pos], callback)
+	w.chunkRequests[pos] = append(w.chunkRequests[pos], request)
 	c, err := w.loadChunk(pos)
 	if err != nil {
 		w.log.Error("load chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
@@ -255,16 +270,16 @@ func (w *World) finishChunkRequest(tx *Tx, pos ChunkPos, c *Column) {
 		w.indexCircuitChunk(pos, c)
 	}
 	w.finishGeneration(tx, c)
-	callbacks := w.chunkRequests[pos]
-	if len(callbacks) == 0 {
+	requests := w.chunkRequests[pos]
+	if len(requests) == 0 {
 		return
 	}
 	delete(w.chunkRequests, pos)
 	if w.closed.Load() {
 		return
 	}
-	for _, callback := range callbacks {
-		callback := callback
+	for _, request := range requests {
+		callback := request.callback
 		tx.Defer(func(tx *Tx) {
 			if w.closed.Load() {
 				return
@@ -284,7 +299,14 @@ func (w *World) CollectGarbage(tx *Tx) (chunksCollected, entitiesCollected, bloc
 		if w.retainedByForcedChunk(pos) {
 			continue
 		}
-		if !c.Ready() || len(w.chunkRequests[pos]) != 0 || len(c.viewers) != 0 || len(c.loaders) != 0 {
+		if !c.Ready() {
+			w.pruneChunkRequests(pos)
+			if w.abandonColumn(pos, c) {
+				chunksCollected++
+			}
+			continue
+		}
+		if len(w.chunkRequests[pos]) != 0 || len(c.viewers) != 0 || len(c.loaders) != 0 {
 			continue
 		}
 		chunksCollected++
@@ -298,4 +320,69 @@ func (w *World) CollectGarbage(tx *Tx) (chunksCollected, entitiesCollected, bloc
 // closeUnusedChunks closes chunks currently not in use by any viewer or loader.
 func (w *World) closeUnusedChunks(tx *Tx) {
 	w.CollectGarbage(tx)
+}
+
+// releaseChunkRequests takes back the requests the loader l made for the
+// columns at positions, which it no longer wants, and abandons those of the
+// columns nothing else wants that are still queued for generation. It must
+// be called from the owner.
+func (w *World) releaseChunkRequests(l *Loader, positions []ChunkPos) {
+	for _, pos := range positions {
+		requests := w.chunkRequests[pos]
+		kept := slices.DeleteFunc(requests, func(r chunkRequest) bool { return r.loader == l })
+		if len(kept) != len(requests) {
+			if len(kept) == 0 {
+				delete(w.chunkRequests, pos)
+			} else {
+				w.chunkRequests[pos] = kept
+			}
+		}
+		if c, ok := w.chunks[pos]; ok && !c.Ready() && !w.retainedByForcedChunk(pos) {
+			w.abandonColumn(pos, c)
+		}
+	}
+}
+
+// pruneChunkRequests drops the requests for the column at pos of the
+// loaders that no longer await it.
+func (w *World) pruneChunkRequests(pos ChunkPos) {
+	requests := w.chunkRequests[pos]
+	kept := slices.DeleteFunc(requests, func(r chunkRequest) bool {
+		return r.loader != nil && !r.loader.awaits(w, pos)
+	})
+	if len(kept) == len(requests) {
+		return
+	}
+	if len(kept) == 0 {
+		delete(w.chunkRequests, pos)
+		return
+	}
+	w.chunkRequests[pos] = kept
+}
+
+// abandonColumn removes the column at pos, still queued for generation, if
+// nothing wants it: no request waits for it and it holds no entity. The
+// worker that takes its task skips it, and the column is generated again if
+// it is asked for again. It reports whether the column was removed. A column
+// a worker started generating is left to finish, and unloads once ready.
+func (w *World) abandonColumn(pos ChunkPos, c *Column) bool {
+	if len(w.chunkRequests[pos]) != 0 || len(c.Entities) != 0 || len(c.viewers) != 0 || len(c.loaders) != 0 {
+		return false
+	}
+	if !c.abandonGeneration() {
+		return false
+	}
+	delete(w.chunks, pos)
+	delete(w.unsettled, pos)
+	delete(w.pendingLight, pos)
+	if w.lastChunkPos == pos {
+		w.lastChunk = nil
+	}
+	w.chunkCount.Add(-1)
+	w.stats.ChunksUnloaded.Inc()
+	w.columnLeft(pos)
+	// Nothing reads the column any more; whatever might wait for it does
+	// not wait for ever.
+	c.markReady()
+	return true
 }
