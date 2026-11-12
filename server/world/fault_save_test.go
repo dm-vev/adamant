@@ -65,10 +65,17 @@ func TestSaverPanicKeepsWriting(t *testing.T) {
 		other := cancelBatchTestBlock{name: "test:other", id: 71, tick: func(cube.Pos, *Tx) {}}
 		w := sink.configure(Config{Provider: prov, Generator: NopGenerator{}, Blocks: testBlockRegistry(other), RandomTickSpeed: -1}, rec).New()
 		defer func() { _ = w.Close() }()
+		// change alternates between the block and air: setting a block to
+		// the state it has changes nothing.
+		changes := 0
 		change := func() {
+			var b Block = other
+			if changes++; changes%2 == 0 {
+				b = nil
+			}
 			within(t, 10*time.Second, w.Exec(func(tx *Tx) {
-				tx.SetBlock(cube.Pos{1, 10, 1}, other, nil)
-				tx.SetBlock(cube.Pos{65, 10, 1}, other, nil)
+				tx.SetBlock(cube.Pos{1, 10, 1}, b, nil)
+				tx.SetBlock(cube.Pos{65, 10, 1}, b, nil)
 			}), "changing the columns")
 		}
 

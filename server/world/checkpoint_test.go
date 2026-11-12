@@ -70,8 +70,14 @@ func TestCaptureAllIsOneInstant(t *testing.T) {
 			return [2]int64{first, events.Load()}
 		}
 		for i := range 3 {
-			<-a.Exec(func(tx *world.Tx) { tx.SetBlock(pos, block.Dirt{}, nil) })
-			<-b.Exec(func(tx *world.Tx) { tx.SetBlock(pos, block.Dirt{}, nil) })
+			// Each capture changes the block: the same state again changes
+			// nothing.
+			var changed world.Block = block.Dirt{}
+			if i%2 == 1 {
+				changed = block.Stone{}
+			}
+			<-a.Exec(func(tx *world.Tx) { tx.SetBlock(pos, changed, nil) })
+			<-b.Exec(func(tx *world.Tx) { tx.SetBlock(pos, changed, nil) })
 			cps, err := world.CaptureAll(context.Background(), []*world.World{a, b, a}, extra)
 			if err != nil {
 				t.Fatalf("capture %d: %v", i, err)

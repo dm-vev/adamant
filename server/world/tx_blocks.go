@@ -102,6 +102,9 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	needOldBlock := !opts.DisableRedstoneUpdates || !redstoneAfterRelevant
 
 	oldRID := c.Block(x, y, z, 0)
+	if opts.nativeState == nil && w.sameBlockState(c, pos, rid) {
+		return
+	}
 	needOldBlock = needOldBlock || w.conf.Blocks.NBTBlock(oldRID)
 	oldBlock := w.conf.Blocks.BlockByRuntimeIDOrAir(oldRID)
 	if w.conf.Blocks.NBTBlock(oldRID) {
@@ -141,12 +144,7 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 		c.updateBlockEntity(pos, nil)
 		c.invalidateBlockEntityPayloads()
 	}
-	if len(c.faultyActors) != 0 {
-		if a, ok := c.faultyActors[pos]; ok && c.tickerBlockEntityVersions[pos] != a.version {
-			// The block entity that panicked was removed or replaced.
-			w.forgetActor(c, pos)
-		}
-	}
+	w.forgetReplacedFaultyActor(c, pos)
 	if len(w.blockFaults.m) != 0 {
 		w.blockSet(pos, b)
 	}
@@ -206,6 +204,32 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	if handler, ok := b.(PlacementHandler); ok && !opts.disablePlacementHandler {
 		handler.Placed(pos, tx, oldBlock)
 	}
+}
+
+// forgetReplacedFaultyActor forgets the block entity of the column c at pos
+// that panicked if it was removed or replaced.
+func (w *World) forgetReplacedFaultyActor(c *Column, pos cube.Pos) {
+	if len(c.faultyActors) == 0 {
+		return
+	}
+	if a, ok := c.faultyActors[pos]; ok && c.tickerBlockEntityVersions[pos] != a.version {
+		w.forgetActor(c, pos)
+	}
+}
+
+// sameBlockState reports whether setting the block of runtime ID rid at pos
+// of the column c changes nothing, as LevelChunk.setBlockState returns null
+// for the state the block has and Level.setBlock false: no viewer is sent the
+// block and no neighbour is updated. Blocks with block entity data are never
+// the same, as their data may differ, nor is a position whose state waits to
+// be canonicalised.
+func (w *World) sameBlockState(c *Column, pos cube.Pos, rid uint32) bool {
+	x, y, z := uint8(pos[0]), int16(pos[1]), uint8(pos[2])
+	if c.Block(x, y, z, 0) != rid || w.conf.Blocks.NBTBlock(rid) || c.Block(x, y, z, 1) != w.conf.Blocks.AirRuntimeID() {
+		return false
+	}
+	_, pending := c.missingBlockStates[pos]
+	return !pending
 }
 
 // setBlockEntity updates block entity data without triggering block updates.
@@ -447,6 +471,11 @@ func (tx *Tx) setLiquid(pos cube.Pos, b Liquid) {
 		}
 	}
 	rid := w.conf.Blocks.BlockRuntimeID(b)
+	if l0, l1 := c.Block(x, y, z, 0), c.Block(x, y, z, 1); l0 == rid && l1 == w.conf.Blocks.AirRuntimeID() || l1 == rid && !w.conf.Blocks.LiquidBlock(l0) {
+		// The liquid the block holds already, as Level.setBlock of the
+		// state it has: nothing changes.
+		return
+	}
 	if w.removeLiquids(c, pos) {
 		c.SetBlock(x, y, z, 0, rid)
 		c.invalidateRandomTickSubChunks()

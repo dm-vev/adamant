@@ -571,7 +571,8 @@ func TestTickFaulterHandlesItsPanicsOnTheOwner(t *testing.T) {
 func TestBlockEntityTickPanicQuarantinesIt(t *testing.T) {
 	var sink faultSink
 	rec := newFaultRecorder()
-	w := sink.configure(Config{Synchronous: true, RandomTickSpeed: -1, RandSource: actorIdentityRandom{}}, rec).New()
+	other := cancelBatchTestBlock{name: "test:other", id: 3, tick: func(cube.Pos, *Tx) {}}
+	w := sink.configure(Config{Synchronous: true, RandomTickSpeed: -1, RandSource: actorIdentityRandom{}, Blocks: testBlockRegistry(other)}, rec).New()
 	defer func() { _ = w.Close() }()
 
 	badPos, goodPos := cube.Pos{0, 4, 0}, cube.Pos{1, 4, 0}
@@ -608,8 +609,9 @@ func TestBlockEntityTickPanicQuarantinesIt(t *testing.T) {
 		t.Fatalf("the quarantined block entity ticked after its data changed")
 	}
 	// Removed by a block set there, it is no longer quarantined, and the
-	// block entity placed there next ticks.
-	<-w.Exec(func(tx *Tx) { tx.SetBlock(badPos, nil, nil) })
+	// block entity placed there next ticks. (The block set differs from air,
+	// which the position holds: a block set to its own state changes nothing.)
+	<-w.Exec(func(tx *Tx) { tx.SetBlock(badPos, other, nil) })
 	if q := w.Quarantined(); len(q) != 0 {
 		t.Fatalf("Quarantined after the block entity was removed = %v", q)
 	}
