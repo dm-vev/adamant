@@ -328,6 +328,8 @@ func (c *javaShapeContext) schedule(pos cube.Pos, kind chunk.ScheduledTickKind, 
 	queue := w.scheduledBlockTicks
 	if kind == chunk.FluidTick {
 		queue = w.scheduledFluidTicks
+	} else if !w.blockTickHasHandler(name) {
+		return
 	}
 	if queue.insertTypeTick(pos, name, queue.currentTick+int64(delay), 0, false) {
 		w.markScheduledTickColumnModified(pos)

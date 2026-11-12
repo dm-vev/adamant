@@ -115,3 +115,10 @@ func (tx *Tx) ColumnTouched(pos ChunkPos) bool {
 func (w *World) EntityFromNBT(t EntityType, id int64, data map[string]any) *EntityHandle {
 	return w.entityFromNBT(t, id, data)
 }
+
+// ScheduledTicks returns the block and then the fluid ticks the queues hold
+// for the column at pos, as a save of it writes them.
+func (tx *Tx) ScheduledTicks(pos ChunkPos) []chunk.SavedScheduledTick {
+	w := tx.World()
+	return append(w.scheduledBlockTicks.fromChunk(pos), w.scheduledFluidTicks.fromChunk(pos)...)
+}

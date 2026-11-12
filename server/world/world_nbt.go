@@ -250,6 +250,10 @@ func (w *World) columnFrom(c *chunk.Column, pos ChunkPos, ready bool) *Column {
 		}
 		switch update.Kind {
 		case chunk.BlockTick:
+			if !w.blockTickHasHandler(typeName) {
+				// Saves of earlier versions hold the generated ticks of leaves.
+				continue
+			}
 			blockTicks = append(blockTicks, tick)
 		case chunk.FluidTick:
 			fluidTicks = append(fluidTicks, tick)

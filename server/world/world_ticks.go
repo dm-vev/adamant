@@ -19,11 +19,14 @@ type tickQueues struct {
 	scheduledBlockTicks *scheduledTickQueue
 	scheduledFluidTicks *scheduledTickQueue
 	scheduledTickBlocks map[scheduledTickTypeKey]Block
-	redstone            *redstoneEngine
-	neighbourUpdates    neighbourUpdateQueue
-	deferredNeighbours  []neighbourUpdate
-	activeColumns       []columnRef
-	activeColumnIndex   map[ChunkPos]int
+	// blockTickHandlers holds the Java block types of the native blocks that
+	// are a ScheduledTicker; see blockTickHasHandler.
+	blockTickHandlers  map[string]bool
+	redstone           *redstoneEngine
+	neighbourUpdates   neighbourUpdateQueue
+	deferredNeighbours []neighbourUpdate
+	activeColumns      []columnRef
+	activeColumnIndex  map[ChunkPos]int
 }
 
 // scheduleBlockUpdate schedules a live update after a specific delay. Liquids
@@ -102,6 +105,44 @@ func (w *World) resolveScheduledTickBlock(tick chunk.ScheduledTick) (Block, bool
 	return nil, false
 }
 
+// blockTickHasHandler reports whether a block tick of the Java type typeName
+// can do anything when it fires. The block queue runs water, lava and bubble
+// columns itself, and every other type only through the ScheduledTicker of
+// the native block (scheduledTickQueue.dispatchFrom). A type no native block
+// of which is a ScheduledTicker has no handler, and its tick would do
+// nothing: Java leaves, whose tick recomputes the distance the native palette
+// does not store (Leaves decay through their update bit instead), sand, which
+// falls by its neighbour updates, or cave_air.
+func (w *World) blockTickHasHandler(typeName string) bool {
+	switch typeName {
+	case "minecraft:water", "minecraft:lava", "minecraft:bubble_column":
+		return true
+	}
+	if w.blockTickHandlers == nil {
+		w.blockTickHandlers = make(map[string]bool)
+		for rid := uint32(0); rid < uint32(w.conf.Blocks.BlockCount()); rid++ {
+			b, ok := w.conf.Blocks.BlockByRuntimeID(rid)
+			if !ok {
+				continue
+			}
+			if _, ticker := b.(ScheduledTicker); ticker {
+				w.blockTickHandlers[scheduledTickType(w.conf.Blocks, b)] = true
+			}
+		}
+	}
+	if w.blockTickHandlers[typeName] {
+		return true
+	}
+	// The type may also resolve to a block that maps back to another type,
+	// as cave_air resolves to air.
+	b, ok := w.resolveScheduledTickBlock(chunk.ScheduledTick{Kind: chunk.BlockTick, Type: typeName})
+	if !ok {
+		return true
+	}
+	_, ticker := b.(ScheduledTicker)
+	return ticker
+}
+
 // scheduleGeneratedTick installs a worldless generation result on the owner
 // thread. Source ProtoChunkTicks converts every generated delay to zero.
 func (w *World) scheduleGeneratedTick(tick chunk.ScheduledTick) {
@@ -112,6 +153,10 @@ func (w *World) scheduleGeneratedTick(tick chunk.ScheduledTick) {
 	queue := w.scheduledBlockTicks
 	if tick.Kind == chunk.FluidTick {
 		queue = w.scheduledFluidTicks
+	} else if !w.blockTickHasHandler(tick.Type) {
+		// Java leaves a tick on every leaf at the edge of a tree. It would
+		// wait, deferred, until the column block-ticks and then do nothing.
+		return
 	}
 	if queue.insertTypeTick(tick.Pos, tick.Type, 0, tick.Priority, true) {
 		w.markScheduledTickColumnModified(tick.Pos)
