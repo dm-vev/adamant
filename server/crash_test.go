@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/identity"
 	"github.com/df-mc/dragonfly/server/version"
@@ -39,7 +40,7 @@ func TestCrashReportAndOrderlyStop(t *testing.T) {
 	collide := entities.EntityCollisions
 	entities.EntityCollisions = func(tx *world.Tx) {
 		if armed.Load() {
-			panic("test: collisions")
+			panic(faultcheck.Expected{Why: "test: collisions"})
 		}
 		if collide != nil {
 			collide(tx)

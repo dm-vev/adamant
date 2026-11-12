@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/metrics"
@@ -20,7 +21,7 @@ func TestServerMetrics(t *testing.T) {
 	jt.join(t, joinLogin("Alice", ""))
 
 	w := jt.srv.World()
-	if err := w.Do(func(*world.Tx) { panic("a fault for the metrics") }).Wait(t.Context()); err == nil {
+	if err := w.Do(func(*world.Tx) { panic(faultcheck.Expected{Why: "a fault for the metrics"}) }).Wait(t.Context()); err == nil {
 		t.Fatal("a transaction that panicked did not fail")
 	}
 	if err := jt.srv.checkpoints.checkpoint(context.Background(), "save-all"); err != nil {
