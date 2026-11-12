@@ -46,10 +46,14 @@ type featureRegion struct {
 	columns map[uint64]featureColumn
 	// base is the source of the region when it is the generated terrain,
 	// whose immutable chunks baseChunks keeps once read.
-	base                    *modernTerrainSource
-	baseChunks              map[world.ChunkPos]*chunk.Chunk
-	lastBasePos             world.ChunkPos
-	lastBase                *chunk.Chunk
+	base        *modernTerrainSource
+	baseChunks  map[world.ChunkPos]*chunk.Chunk
+	lastBasePos world.ChunkPos
+	lastBase    *chunk.Chunk
+	// lastHeights holds the WORLDGEN heightmaps of the base terrain of the
+	// chunk at lastHeightsPos, last read by worldgenHeight.
+	lastHeightsPos          world.ChunkPos
+	lastHeights             *worldgenHeights
 	regionRandoms           map[[2]int32]*vanilla.Random
 	scheduledTicks          map[featureTickReservation]struct{}
 	blockActorRecords       map[cube.Pos]structure.Block

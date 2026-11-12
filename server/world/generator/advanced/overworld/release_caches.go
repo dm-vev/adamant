@@ -17,6 +17,7 @@ func (g *Overworld) ReleaseGenerationCaches() {
 	g.previewCache.clear()
 	g.rawCache.clear()
 	g.chunkBiomes.clear()
+	g.worldgenHeights.clear()
 	g.modernFeatures.ReleaseCaches()
 }
 

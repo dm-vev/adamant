@@ -35,16 +35,20 @@ func (r *featureRegion) placementHeight(x, z int32, heightmap string) int32 {
 		return column.height[kind]
 	}
 	height := r.MinY()
-	for y := min(r.MaxY(), r.columnTop(x, z, frozen)); y >= r.MinY(); y-- {
-		var state world.NativeState
-		if frozen {
-			state = r.baseState(featurePos{x, y, z})
-		} else {
-			state = r.nativeState(featurePos{x, y, z})
-		}
-		if r.f.heightmapFlags(r.c, state)&mask != 0 {
-			height = y + 1
-			break
+	if frozen && r.base != nil {
+		height = r.worldgenHeight(x, z, kind)
+	} else {
+		for y := min(r.MaxY(), r.columnTop(x, z, frozen)); y >= r.MinY(); y-- {
+			var state world.NativeState
+			if frozen {
+				state = r.baseState(featurePos{x, y, z})
+			} else {
+				state = r.nativeState(featurePos{x, y, z})
+			}
+			if r.f.heightmapFlags(r.c, state)&mask != 0 {
+				height = y + 1
+				break
+			}
 		}
 	}
 	column.known |= 1 << kind

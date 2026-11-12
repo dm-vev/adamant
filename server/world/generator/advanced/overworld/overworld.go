@@ -36,6 +36,9 @@ type Overworld struct {
 
 	previewCache *previewCache
 	chunkBiomes  chunkBiomeCache
+	// worldgenHeights keeps the WORLDGEN heightmaps of base terrain that
+	// left previewCache.
+	worldgenHeights worldgenHeightCache
 }
 
 // SetLog sets where the structures of the generator log. It must be called
