@@ -167,5 +167,5 @@ func (w *World) postProcessGeneration(tx *Tx, pos ChunkPos, col *Column) {
 		col.postProcessing[section] = nil
 	}
 	col.postProcessing = nil
-	col.modified = true
+	col.setModified()
 }

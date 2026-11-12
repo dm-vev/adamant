@@ -123,7 +123,7 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	}
 	lightBefore := w.cellLightAt(c, pos)
 
-	c.modified = true
+	c.setModified()
 	if opts.nativeState == nil {
 		c.SetBlock(x, y, z, 0, rid)
 	} else {
@@ -259,7 +259,7 @@ func (tx *Tx) setBlockEntity(pos cube.Pos, b Block) {
 	c.blockVersion = blockVersionClock.Add(1)
 	// Chunk and sub-chunk responses cache encoded block entities.
 	c.invalidateBlockEntityPayloads()
-	c.modified = true
+	c.setModified()
 }
 
 // setBiome sets the Biome at the position passed. If a chunk is not yet loaded
@@ -275,7 +275,7 @@ func (tx *Tx) setBiome(pos cube.Pos, b Biome) {
 		return
 	}
 	c := tx.chunk(chunkPosFromBlockPos(pos))
-	c.modified = true
+	c.setModified()
 	c.SetBiome(uint8(pos[0]), int16(pos[1]), uint8(pos[2]), uint32(b.EncodeBiome()))
 	c.invalidateNetworkBiomePayload()
 }
@@ -389,7 +389,7 @@ func (tx *Tx) buildStructure(pos cube.Pos, s Structure) {
 			c.SetBlock(0, 0, 0, 0, c.Block(0, 0, 0, 0)) // Make sure the heightmap is recalculated.
 			// The structure set its blocks past SetBlock.
 			c.surface = nil
-			c.modified = true
+			c.setModified()
 			touched = append(touched, chunkPos)
 
 			// After setting all blocks of the structure within a single chunk,
@@ -486,7 +486,7 @@ func (tx *Tx) setLiquid(pos cube.Pos, b Liquid) {
 		c.SetBlock(x, y, z, 1, rid)
 		w.viewBlockUpdate(c, pos, b, 1)
 	}
-	c.modified = true
+	c.setModified()
 
 	tx.doBlockUpdatesAround(pos)
 	w.redstone.invalidateAround(pos, pos, RedstoneUpdateCauseBlockUpdate, w.Range())

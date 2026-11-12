@@ -12,8 +12,8 @@ type ChunkSaving int
 const (
 	// ChunkSavingModified stores a column only if the provider may lack what
 	// it holds: a column generated or changed since its last save, and one
-	// holding entities or block entities, whose state changes without
-	// marking the column changed. A column read from the provider and left
+	// whose entities or block entities may have changed since, because they
+	// ticked or were used. A column read from the provider and left
 	// unchanged is not written back.
 	ChunkSavingModified ChunkSaving = iota
 	// ChunkSavingAll stores every column loaded, read from the provider or

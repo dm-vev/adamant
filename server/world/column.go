@@ -14,12 +14,10 @@ type columnRef struct {
 	col *Column
 }
 
-// needsSave reports whether c may hold changes the provider lacks. Entities
-// and block entities change without marking their column modified, as an
-// entity walking, the contents of a chest or a furnace smelting do, so a
-// column holding any is saved every time.
+// needsSave reports whether c may hold changes the provider lacks: it was
+// modified or touched since it was last saved.
 func (c *Column) needsSave() bool {
-	return c.modified || len(c.Entities) != 0 || len(c.BlockEntities) != 0
+	return c.modified || c.touched
 }
 
 // compact compacts the palettes of the column unless no block changed since
@@ -39,6 +37,19 @@ type Column struct {
 	// again, unless it was saved again since.
 	modified bool
 	savedIn  uint64
+	// touched is set when what the column keeps beside its blocks may have
+	// changed although nothing marked it modified: one of its entities
+	// ticked or was used, one of its block entities ticked or was read, as
+	// opening a chest reads it, or its inhabited time grew.
+	touched bool
+	// listed is set while the column is in the list of the columns of its
+	// world that changed since they were last saved (dirtyColumns), which
+	// a capture walks instead of every column loaded. pos is the position
+	// of the column and dirty that list, set once it was placed in its
+	// world.
+	listed bool
+	pos    ChunkPos
+	dirty  *dirtyColumns
 	// complete is set on a column read from the provider or generated in
 	// full. A column whose generation was cut short, by the world closing or
 	// a panic of the generator, holds air and is not complete, nor is the

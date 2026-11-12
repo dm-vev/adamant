@@ -22,6 +22,12 @@ type saveState struct {
 	// takes the count as its savedIn, which tells a failed write of that
 	// save from a later save of the column.
 	saves uint64
+	// dirty lists the columns modified or touched since they were last
+	// saved, which a capture walks. saveEpoch counts the captures that
+	// walked them, on the world goroutine: an entity touches its column
+	// once an epoch (World.touchEntity).
+	dirty     dirtyColumns
+	saveEpoch uint64
 	// captures counts the captures of the world for a save, on the world
 	// goroutine. dataWritten is the count of the last capture whose data
 	// was written, under dataMu: the data of a capture is written off the
@@ -61,27 +67,55 @@ func (w *World) saveChunk(tx *Tx, pos ChunkPos, c *Column) {
 	w.persistChunk(tx, pos, c, true)
 }
 
-// saveChunks saves every loaded chunk as saveChunk does, into commit if not
-// nil, and returns how many it saved. Compacting and copying the blocks of
-// each chunk only touch that chunk, so they are done on all cores while the
-// owner waits; the entities and block entities are then encoded and handed
-// to the saver on the owner.
+// saveChunks saves the columns that changed since they were last saved,
+// into commit if not nil, and returns how many it saved. It walks the
+// columns listed as they changed (dirtyColumns), not every column loaded,
+// but for ChunkSavingAll, which saves every column. Compacting and copying
+// the blocks of each column only touch that column, so they are done on
+// all cores while the owner waits; the entities, block entities and
+// scheduled ticks are then encoded and handed to the saver on the owner.
 func (w *World) saveChunks(tx *Tx, commit Commit) int {
 	type persisted struct {
 		pos ChunkPos
 		c   *Column
-		col *chunk.Column
 	}
 	var columns []persisted
-	for pos, c := range w.chunks {
-		if !c.Ready() {
-			continue
-		}
+	add := func(pos ChunkPos, c *Column) {
 		w.finishGeneration(tx, c)
-		if !w.storesColumn(pos, c) {
-			continue
+		if w.storesColumn(pos, c) {
+			columns = append(columns, persisted{pos: pos, c: c})
 		}
-		columns = append(columns, persisted{pos: pos, c: c})
+	}
+	all := w.conf.SaveChunks == ChunkSavingAll
+	var waiting map[ChunkPos]bool
+	for _, pos := range w.dirty.take() {
+		c, ok := w.chunks[pos]
+		switch {
+		case !ok || !c.listed:
+			// Unloaded, and saved as it unloaded, or listed twice: a
+			// column replaced lists its position again.
+		case !c.Ready():
+			// Generating or being lit: listed until it is ready, once.
+			if !waiting[pos] {
+				if waiting == nil {
+					waiting = map[ChunkPos]bool{}
+				}
+				waiting[pos] = true
+				w.dirty.add(pos)
+			}
+		default:
+			c.listed = false
+			if !all {
+				add(pos, c)
+			}
+		}
+	}
+	if all {
+		for pos, c := range w.chunks {
+			if c.Ready() {
+				add(pos, c)
+			}
+		}
 	}
 	clones := make([]*chunk.Chunk, len(columns))
 	parallel.For(len(columns), 4, func(i int) {
@@ -100,7 +134,7 @@ func (w *World) saveChunks(tx *Tx, commit Commit) int {
 				to = commit
 			}
 			if w.writeColumn(to, p.pos, col) != nil {
-				p.c.modified = true
+				p.c.setModified()
 			}
 			continue
 		}
@@ -108,15 +142,16 @@ func (w *World) saveChunks(tx *Tx, commit Commit) int {
 		col.PostProcessing = clonePostProcessing(col.PostProcessing)
 		w.saver.store(p.pos, col, saved, commit)
 	}
+	w.saveEpoch++
 	return len(columns)
 }
 
-// markSaved clears the modified flag of c, which is being saved, and
-// returns the number of the save, for the saver to report a failed write
-// with.
+// markSaved clears the modified and touched flags of c, which is being
+// saved, and returns the number of the save, for the saver to report a
+// failed write with.
 func (w *World) markSaved(c *Column) uint64 {
 	w.saves++
-	c.modified, c.savedIn = false, w.saves
+	c.modified, c.touched, c.savedIn = false, false, w.saves
 	return w.saves
 }
 
@@ -131,7 +166,7 @@ func (w *World) restoreFailedSaves() {
 	for pos, p := range w.saver.takeFailed() {
 		if c, ok := w.chunks[pos]; ok {
 			if c.savedIn == p.saved {
-				c.modified = true
+				c.setModified()
 			}
 			continue
 		}
@@ -158,7 +193,7 @@ func (w *World) persistChunk(tx *Tx, pos ChunkPos, c *Column, live bool) {
 	saved := w.markSaved(c)
 	if w.saver == nil {
 		if w.writeColumn(w.conf.Provider, pos, col) != nil {
-			c.modified = true
+			c.setModified()
 		}
 		return
 	}

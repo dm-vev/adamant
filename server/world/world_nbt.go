@@ -256,7 +256,7 @@ func (w *World) dropStaleBlockEntities(col *Column, entities []chunk.BlockEntity
 	if kept == nil {
 		return entities
 	}
-	col.modified = true
+	col.setModified()
 	w.log.Debug("read column: dropped block entities of blocks without one", "count", len(entities)-len(kept))
 	return kept
 }

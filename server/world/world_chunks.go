@@ -113,7 +113,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		} else {
 			w.columnLeft(pos)
 		}
-		w.chunks[pos] = col
+		w.placeColumn(pos, col)
 		w.markUnsettled(pos, col)
 		if w.lastChunkPos == pos {
 			w.lastChunk = nil
@@ -162,7 +162,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		} else {
 			w.columnLeft(pos)
 		}
-		w.chunks[pos] = col
+		w.placeColumn(pos, col)
 		w.markUnsettled(pos, col)
 		if w.lastChunkPos == pos {
 			w.lastChunk = nil
@@ -191,7 +191,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		} else {
 			w.columnLeft(pos)
 		}
-		w.chunks[pos] = col
+		w.placeColumn(pos, col)
 		w.markUnsettled(pos, col)
 		if w.lastChunkPos == pos {
 			w.lastChunk = nil
@@ -201,9 +201,9 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 }
 
 // readColumn returns the column at pos for loadChunk: the one staged as it
-// unloaded, whether staged says so, or the one read from the provider, or
-// through the commit still holding its last save, or the one a read ahead
-// brought. An error is that of the provider, which wraps leveldb.ErrNotFound
+// unloaded, or the one read through the commit still holding its last
+// save, whether staged says so, which the provider may lack, or else the
+// one read from the provider or the one a read ahead brought. An error is that of the provider, which wraps leveldb.ErrNotFound
 // for a column it has none of.
 func (w *World) readColumn(pos ChunkPos) (column *chunk.Column, staged bool, err error) {
 	if w.saver != nil {
@@ -212,8 +212,10 @@ func (w *World) readColumn(pos ChunkPos) (column *chunk.Column, staged bool, err
 			return column, true, err
 		}
 		if from != nil {
+			// The commit may still fail: the column is saved whole by the
+			// next capture, as one taken from staging is.
 			column, err = from.LoadColumn(pos, w.conf.Dim)
-			return column, false, err
+			return column, true, err
 		}
 	}
 	if column, ahead, err := w.takePrefetched(pos); ahead {

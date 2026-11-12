@@ -50,7 +50,7 @@ func (tx *Tx) ForceChunk(pos ChunkPos, force bool) error {
 	if force {
 		w.loadForcedChunk(pos)
 		if c := tx.chunk(pos); c != nil {
-			c.modified = true
+			c.setModified()
 		}
 	}
 	return w.saveForcedChunks()

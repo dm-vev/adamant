@@ -98,7 +98,7 @@ server/world/raid.go Tx.tickRaids 103
 server/world/redstone_circuit.go redstoneEngine.tickCircuits 211
 server/world/tick.go scheduledTickQueue.tickPhase 122
 server/world/tick.go ticker.tickBlocksRandomly 189
-server/world/tick.go ticker.tickEntityHandle 132
+server/world/tick.go ticker.tickEntityHandle 122
 server/world/tick.go ticker.tickWorld 116
 server/world/tx_blocks.go Tx.buildStructure 113
 server/world/tx_blocks.go Tx.setBlock 133

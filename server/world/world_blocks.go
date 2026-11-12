@@ -36,6 +36,9 @@ func (w *World) loadedBlockIn(c *Column, pos cube.Pos) Block {
 	rid := c.Block(uint8(pos[0]), int16(pos[1]), uint8(pos[2]), 0)
 	if w.conf.Blocks.NBTBlock(rid) {
 		if b, ok := c.BlockEntities[pos]; ok {
+			// Whoever reads a block entity may change it, as a container
+			// handed out is filled, without setting it again.
+			c.touch()
 			return b
 		}
 	}
@@ -66,7 +69,7 @@ func (w *World) reconcileMissingBlockStates(pos ChunkPos) {
 			reconstructor, ok := current.(MissingStateReconstructor)
 			if !ok {
 				if col.CanonicalizeMissingBlockState(blockPos, 0) {
-					col.modified = true
+					col.setModified()
 					col.blockVersion = blockVersionClock.Add(1)
 					delete(col.missingBlockStates, blockPos)
 				}
@@ -124,11 +127,11 @@ func (w *World) reconcileMissingBlockStates(pos ChunkPos) {
 			candidate.column.invalidateRandomTickSubChunks()
 			candidate.column.invalidateSubChunkHeightMaps()
 			candidate.column.invalidateNetworkSubChunkPayloads()
-			candidate.column.modified = true
+			candidate.column.setModified()
 			w.viewBlockUpdate(candidate.column, candidate.pos, updated, 0)
 		}
 		if candidate.column.CanonicalizeMissingBlockState(candidate.pos, 0) {
-			candidate.column.modified = true
+			candidate.column.setModified()
 			candidate.column.blockVersion = blockVersionClock.Add(1)
 			delete(candidate.column.missingBlockStates, candidate.pos)
 		}
@@ -144,8 +147,11 @@ func (w *World) blockInChunk(c *Column, pos cube.Pos) Block {
 	}
 	rid := c.Block(uint8(pos[0]), int16(pos[1]), uint8(pos[2]), 0)
 	if w.conf.Blocks.NBTBlock(rid) {
-		// The block was also a block entity, so we look it up in the block entity map.
+		// The block was also a block entity, so we look it up in the block
+		// entity map. Whoever reads it may change it without setting it
+		// again, as a chest opened is filled.
 		if b, ok := c.BlockEntities[pos]; ok {
+			c.touch()
 			return b
 		}
 		// Despite being a block with NBT, the block didn't actually have any

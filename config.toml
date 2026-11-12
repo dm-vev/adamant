@@ -66,7 +66,8 @@
   # or "90s". /save-all and stopping the server save them too. Set this to "0s" to save only then.
   SaveInterval = "5m"
   # SaveChunks selects which loaded chunks a save or an unload writes to disk. "modified" writes the chunks
-  # generated or changed since they were last saved, and those holding entities or block entities. "all"
+  # generated or changed since they were last saved, and those whose entities or block entities ticked or were used
+  # since. "all"
   # writes every loaded chunk, changed or not, at every save: use it while pregenerating a world.
   SaveChunks = "modified"
   # GeneratorWorkers controls how many background workers are dedicated to generating chunks.

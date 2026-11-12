@@ -155,7 +155,8 @@ func (w *World) runGenerationTask(task generationTask) {
 	task.col.invalidateNetworkBiomePayload()
 	task.col.invalidateNetworkSubChunkPayloads()
 	task.col.invalidateBlockEntityPayloads()
-	task.col.modified, task.col.complete = true, true
+	task.col.complete = true
+	task.col.setModified()
 }
 
 // generatedBlockEntities produces default block entity data for NBT blocks in a newly generated chunk.

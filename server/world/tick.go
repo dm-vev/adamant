@@ -452,6 +452,7 @@ func (t ticker) tickInhabitedTime(w *World, loaders []*Loader) {
 			x, z := player.pos[0]-chunkX, player.pos[2]-chunkZ
 			if x*x+z*z < 128*128 {
 				ref.col.InhabitedTime++
+				ref.col.touch()
 				break
 			}
 		}
@@ -863,6 +864,7 @@ func tickBlockEntityRefsFrom(tx *Tx, tick int64, refs []blockEntityTickRef, i in
 			continue
 		}
 		if tb, ok := c.BlockEntities[ref.pos].(TickerBlock); ok {
+			c.touch()
 			tb.Tick(tick, ref.pos, tx)
 		}
 	}
@@ -1116,6 +1118,25 @@ func (t ticker) tickQueuedEntitiesFrom(tx *Tx, tick int64, queued []*EntityHandl
 	return -1
 }
 
+// agePassively advances the age and the fire of an entity out of the active
+// area by the ticks since it last ticked. Its age grows without touching its
+// column, which a capture would otherwise save again every time for its age
+// alone: Java's entities do not age at all there. Its fire going out does
+// touch it.
+func (w *World) agePassively(handle *EntityHandle, state *entityState, tick int64) {
+	delta := tick - state.lastTick
+	if delta <= 0 {
+		return
+	}
+	inc := time.Duration(delta) * (time.Second / 20)
+	handle.data.Age += inc
+	if handle.data.FireDuration > 0 {
+		w.touchEntity(state)
+		handle.data.FireDuration = max(handle.data.FireDuration-inc, 0)
+	}
+	state.lastTick = tick
+}
+
 // tickEntityColumn ticks the entities of col. A panic of one is blamed on it
 // and the column goes on with the entity after it, so that one recover
 // covers the whole column.
@@ -1289,18 +1310,7 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 		if tick < state.nextPassiveTick {
 			return
 		}
-		if delta := tick - state.lastTick; delta > 0 {
-			inc := time.Duration(delta) * (time.Second / 20)
-			handle.data.Age += inc
-			if handle.data.FireDuration > 0 {
-				if inc >= handle.data.FireDuration {
-					handle.data.FireDuration = 0
-				} else {
-					handle.data.FireDuration -= inc
-				}
-			}
-			state.lastTick = tick
-		}
+		w.agePassively(handle, state, tick)
 		state.nextPassiveTick = tick + passiveMaintenanceInterval
 		if state.isItem && handle.data.Age >= 5*time.Minute {
 			if entity == nil {
@@ -1319,6 +1329,7 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 		// behaviours that rely on entity age or fire duration stay in sync even if an entity temporarily left
 		// the active area.
 		inc := time.Duration(delta-1) * (time.Second / 20)
+		w.touchEntity(state)
 		handle.data.Age += inc
 		if handle.data.FireDuration > 0 {
 			if inc >= handle.data.FireDuration {
@@ -1386,14 +1397,14 @@ func (w *World) moveEntityChunk(tx *Tx, handle *EntityHandle, state *entityState
 	if newChunk.Ready() {
 		// The generator worker owns the flag of a chunk it is still filling and
 		// marks it modified itself.
-		newChunk.modified = true
+		newChunk.setModified()
 	}
 	w.addEntityColumn(chunkPos, newChunk)
 
 	var viewers map[Viewer]struct{}
 	if oldPos == ref.pos && ref.col != nil {
 		if ref.col.removeEntity(handle) && ref.col.Ready() {
-			ref.col.modified = true
+			ref.col.setModified()
 		}
 		if len(ref.col.Entities) == 0 {
 			w.removeEntityColumn(ref.pos)
@@ -1401,7 +1412,7 @@ func (w *World) moveEntityChunk(tx *Tx, handle *EntityHandle, state *entityState
 		viewers = ref.col.viewers
 	} else if old, ok := w.chunks[oldPos]; ok {
 		if old.removeEntity(handle) && old.Ready() {
-			old.modified = true
+			old.setModified()
 		}
 		if len(old.Entities) == 0 {
 			w.removeEntityColumn(oldPos)
@@ -1652,7 +1663,7 @@ func (queue *scheduledTickQueue) tickPhase(tx *Tx, tick int64, circuitPhase bool
 	for _, t := range queue.run {
 		delete(queue.scheduledTicks, scheduledTickIndex{pos: t.pos, typeName: t.btype})
 		if col, ok := w.chunks[chunkPosFromBlockPos(t.pos)]; ok {
-			col.modified = true
+			col.setModified()
 		}
 	}
 

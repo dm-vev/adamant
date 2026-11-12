@@ -43,7 +43,7 @@ func (w *World) scheduleBlockUpdate(pos cube.Pos, b Block, delay time.Duration) 
 
 func (w *World) markScheduledTickColumnModified(pos cube.Pos) {
 	if col, ok := w.chunks[chunkPosFromBlockPos(pos)]; ok {
-		col.modified = true
+		col.setModified()
 	}
 }
 

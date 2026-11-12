@@ -79,9 +79,10 @@ func (p *countingStore) failNextStores(pos world.ChunkPos, n int) {
 
 // TestSaveWritesOnlyDirtyColumns checks that a save stores only the columns
 // that changed since the last save, through the background saver or not: a
-// second save with nothing changed stores nothing, a change stores its column
-// only, a change of a container's contents stores its column, and a column
-// whose store failed is stored again by the next save, loaded or unloaded.
+// second save with nothing changed stores nothing, not even the column of a
+// chest, a change stores its column only, a change of a container's contents
+// stores its column, and a column whose store failed is stored again by the
+// next save, loaded or unloaded.
 func TestSaveWritesOnlyDirtyColumns(t *testing.T) {
 	for _, synchronous := range []bool{true, false} {
 		t.Run(fmt.Sprintf("synchronous=%v", synchronous), func(t *testing.T) {
@@ -123,13 +124,11 @@ func TestSaveWritesOnlyDirtyColumns(t *testing.T) {
 			expect("first save", map[world.ChunkPos]int{posA: 1, posB: 1, posC: 1})
 
 			w.Save()
-			// The column with the chest is saved again: a container's
-			// contents change without marking its column changed.
-			expect("second save with nothing changed", map[world.ChunkPos]int{posC: 1})
+			expect("second save with nothing changed", nil)
 
 			<-w.Exec(func(tx *world.Tx) { tx.SetBlock(a, block.Dirt{}, nil) })
 			w.Save()
-			expect("save after a change", map[world.ChunkPos]int{posA: 1, posC: 1})
+			expect("save after a change", map[world.ChunkPos]int{posA: 1})
 
 			<-w.Exec(func(tx *world.Tx) {
 				if _, err := tx.Block(c).(block.Chest).Inventory(tx, c).AddItem(item.NewStack(item.Diamond{}, 10)); err != nil {
@@ -143,27 +142,27 @@ func TestSaveWritesOnlyDirtyColumns(t *testing.T) {
 			p.failNextStores(posB, 1)
 			<-w.Exec(func(tx *world.Tx) { tx.SetBlock(b, block.Dirt{}, nil) })
 			w.Save()
-			expect("save failing to store", map[world.ChunkPos]int{posC: 1})
+			expect("save failing to store", nil)
 			w.Save()
-			expect("save after the failed store", map[world.ChunkPos]int{posB: 1, posC: 1})
+			expect("save after the failed store", map[world.ChunkPos]int{posB: 1})
 			w.Save()
-			expect("save after the store again", map[world.ChunkPos]int{posC: 1})
+			expect("save after the store again", nil)
 
 			// A column whose store failed and that was unloaded since is
 			// stored by the next save.
 			p.failNextStores(posA, 1)
 			<-w.Exec(func(tx *world.Tx) { tx.SetBlock(a, block.Stone{}, nil) })
 			w.Save()
-			expect("save failing to store before unloading", map[world.ChunkPos]int{posC: 1})
+			expect("save failing to store before unloading", nil)
 			<-w.Exec(func(tx *world.Tx) {
 				if n, _, _ := w.CollectGarbage(tx); n != 3 {
 					t.Errorf("unloaded %d chunks, want 3", n)
 				}
 			})
 			w.Save()
-			// Unloading stores the column again, and the chest's column
-			// as every unload does.
-			expect("unloading and saving after the failed store", map[world.ChunkPos]int{posA: 1, posC: 1})
+			// Unloading stores the column again, but not the chest's
+			// column, which did not change.
+			expect("unloading and saving after the failed store", map[world.ChunkPos]int{posA: 1})
 
 			if !synchronous {
 				// The background saver fails to store a column unloaded

@@ -56,6 +56,9 @@ type entityState struct {
 	// firstTickPending distinguishes the spawn-time processed marker from an
 	// actual entity tick. A block may explicitly admit a new actor this tick.
 	firstTickPending bool
+	// touchedIn is the save epoch of the world, plus one, the entity last
+	// touched its column in (World.touchEntity).
+	touchedIn uint64
 	// nextPassiveTick is the next scheduled tick at which the entity should receive
 	// maintenance updates such as ageing and fire decay while it is outside of the
 	// active simulation range.
@@ -87,6 +90,7 @@ func (s *entityState) entity(tx *Tx, handle *EntityHandle) Entity {
 	if s == nil {
 		return nil
 	}
+	tx.World().touchEntity(s)
 	if s.ent == nil {
 		s.ent = handle.mustEntity(tx)
 		s.binder, s.binds = s.ent.(interface{ BindTransaction(*Tx) })
@@ -228,7 +232,7 @@ func (w *World) placeEntity(tx *Tx, handle *EntityHandle, state *entityState) *C
 	c.addEntity(handle)
 	if c.Ready() {
 		// The worker owns this flag before publication and dirties it itself.
-		c.modified = true
+		c.setModified()
 	}
 	w.addEntityColumn(pos, c)
 	return c
@@ -256,7 +260,7 @@ func (w *World) removeEntity(e Entity, tx *Tx) *EntityHandle {
 	c, loaded := tx.loadedColumn(pos)
 	if loaded {
 		if c.removeEntity(handle) && c.Ready() {
-			c.modified = true
+			c.setModified()
 		}
 		if len(c.Entities) == 0 {
 			w.removeEntityColumn(pos)
