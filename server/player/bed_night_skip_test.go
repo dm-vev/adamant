@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/client/clienttest"
@@ -149,7 +150,7 @@ type wakePanicClient struct {
 
 func (c wakePanicClient) ViewSleepingPlayers(sleeping, max int) {
 	if c.armed.Load() {
-		panic("test: wake")
+		panic(faultcheck.Expected{Why: "test: wake"})
 	}
 	c.Recorder.ViewSleepingPlayers(sleeping, max)
 }
@@ -190,7 +191,7 @@ func TestNightSkipPanicWakingDisconnectsTheSleeper(t *testing.T) {
 			break
 		}
 	}
-	if len(faults) != 1 || faults[0].Kind != world.FaultPlayer || faults[0].Entity != handle || faults[0].Value != "test: wake" || faults[0].Quarantined {
+	if len(faults) != 1 || faults[0].Kind != world.FaultPlayer || faults[0].Entity != handle || faults[0].Value != expectedPanic("test: wake") || faults[0].Quarantined {
 		t.Fatalf("faults = %v, want one of the player, not quarantined", brief(faults))
 	}
 	checkDisconnected(t, w, c.Recorder, handle, left)
@@ -212,7 +213,7 @@ type healthPanicClient struct {
 
 func (c healthPanicClient) SendHealth(health, max, absorption float64) {
 	if c.armed.Load() {
-		panic("test: health")
+		panic(faultcheck.Expected{Why: "test: health"})
 	}
 	c.Recorder.SendHealth(health, max, absorption)
 }
@@ -253,7 +254,7 @@ func TestCrammingPanicDisconnectsThePlayer(t *testing.T) {
 			break
 		}
 	}
-	if len(faults) != 1 || faults[0].Kind != world.FaultPlayer || faults[0].Entity != crammed || faults[0].Value != "test: health" {
+	if len(faults) != 1 || faults[0].Kind != world.FaultPlayer || faults[0].Entity != crammed || faults[0].Value != expectedPanic("test: health") {
 		t.Fatalf("faults = %v, want one of the crammed player", brief(faults))
 	}
 	checkDisconnected(t, w, c.Recorder, crammed, left)

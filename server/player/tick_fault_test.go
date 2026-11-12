@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/client/clienttest"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
@@ -22,7 +23,7 @@ type tickPanicClient struct {
 
 func (c tickPanicClient) SendHudUpdates() {
 	if c.armed.Load() {
-		panic("test: player tick")
+		panic(faultcheck.Expected{Why: "test: player tick"})
 	}
 	c.Recorder.SendHudUpdates()
 }
@@ -30,7 +31,9 @@ func (c tickPanicClient) SendHudUpdates() {
 // panicController is a controller that panics.
 type panicController struct{}
 
-func (panicController) Control(*world.Tx, world.Entity) { panic("test: controller") }
+func (panicController) Control(*world.Tx, world.Entity) {
+	panic(faultcheck.Expected{Why: "test: controller"})
+}
 
 // tickFaultPlayer returns a synchronous world reporting its faults to
 // faults, with a player in it whose client is client, and counts the calls of
@@ -107,7 +110,7 @@ func TestPlayerTickPanicDisconnects(t *testing.T) {
 	advance(t, w)
 	armed.Store(true)
 	advance(t, w)
-	if len(faults) != 1 || faults[0].Kind != world.FaultPlayer || faults[0].Entity != handle || faults[0].Value != "test: player tick" || faults[0].Quarantined {
+	if len(faults) != 1 || faults[0].Kind != world.FaultPlayer || faults[0].Entity != handle || faults[0].Value != expectedPanic("test: player tick") || faults[0].Quarantined {
 		t.Fatalf("faults = %v, want one of the player, not quarantined", brief(faults))
 	}
 	checkDisconnected(t, w, c.Recorder, handle, left)
@@ -125,8 +128,12 @@ func TestPlayerControllerPanicDisconnects(t *testing.T) {
 	w, handle := tickFaultPlayer(t, c, &faults, &left)
 	handle.SetController(panicController{})
 	advance(t, w)
-	if len(faults) != 1 || faults[0].Kind != world.FaultPlayer || faults[0].Entity != handle || faults[0].Value != "test: controller" {
+	if len(faults) != 1 || faults[0].Kind != world.FaultPlayer || faults[0].Entity != handle || faults[0].Value != expectedPanic("test: controller") {
 		t.Fatalf("faults = %v, want one of the player", brief(faults))
 	}
 	checkDisconnected(t, w, c.Recorder, handle, left)
 }
+
+// expectedPanic returns the value of a panic of a test that panics on
+// purpose, for the test to compare a fault with.
+func expectedPanic(why string) any { return faultcheck.Expected{Why: why} }
