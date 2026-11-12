@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/protocol/bedrock/session"
 	"github.com/df-mc/dragonfly/server/item"
@@ -154,11 +155,15 @@ func TestHandleQuitPanicCompletesSessionTeardown(t *testing.T) {
 
 type packetPanicHandler struct{ player.NopHandler }
 
-func (packetPanicHandler) HandleChat(*player.Context, *string) { panic("packet handler panic") }
+func (packetPanicHandler) HandleChat(*player.Context, *string) {
+	panic(faultcheck.Expected{Why: "packet handler panic"})
+}
 
 type quitPanicHandler struct{ player.NopHandler }
 
-func (quitPanicHandler) HandleQuit(*player.Player) { panic("quit handler panic") }
+func (quitPanicHandler) HandleQuit(*player.Player) {
+	panic(faultcheck.Expected{Why: "quit handler panic"})
+}
 
 type packetPanicConn struct {
 	identity   login.Identity

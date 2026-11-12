@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -16,7 +17,7 @@ type panicBufferConn struct {
 	closed *atomic.Bool
 }
 
-func (panicBufferConn) Buffered() int  { panic("test: buffered") }
+func (panicBufferConn) Buffered() int  { panic(faultcheck.Expected{Why: "test: buffered"}) }
 func (c panicBufferConn) Close() error { c.closed.Store(true); return nil }
 
 // closingControllable is the Controllable of a test, counting its closes.

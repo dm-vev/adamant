@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/protocol/bedrock/session"
 	"github.com/df-mc/dragonfly/server"
@@ -323,7 +324,7 @@ func (p *panicSaveProvider) Load(_ uuid.UUID, dim func(world.Dimension) *world.W
 
 func (p *panicSaveProvider) Save(uuid.UUID, player.Config, *world.World) error {
 	close(p.saved)
-	panic("player provider save panic")
+	panic(faultcheck.Expected{Why: "player provider save panic"})
 }
 
 type recordingSaveProvider struct {
@@ -379,7 +380,7 @@ func (e panicRemoveViewerEntity) Position() mgl64.Vec3    { return e.data.Pos }
 func (e panicRemoveViewerEntity) Rotation() cube.Rotation { return e.data.Rot }
 func (e panicRemoveViewerEntity) RemoveViewer(block.ContainerViewer) {
 	close(e.data.Data.(chan struct{}))
-	panic("container RemoveViewer panic")
+	panic(faultcheck.Expected{Why: "container RemoveViewer panic"})
 }
 
 // teardownConn is a connection of a teardownServer: it logs in as a player
