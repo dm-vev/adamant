@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/go-gl/mathgl/mgl64"
@@ -108,7 +109,9 @@ func TestChunkCallbackPanicDoesNotSkipOtherLoaders(t *testing.T) {
 
 type panicChunkViewer struct{ NopViewer }
 
-func (panicChunkViewer) ViewChunk(ChunkPos, Dimension, *Column) { panic("view chunk") }
+func (panicChunkViewer) ViewChunk(ChunkPos, Dimension, *Column) {
+	panic(faultcheck.Expected{Why: "view chunk"})
+}
 
 type countChunkViewer struct {
 	NopViewer
@@ -193,7 +196,7 @@ func (v *panicEntityViewer) ViewEntity(e Entity) {
 	v.visible[h] = true
 	if v.panicView {
 		v.panicView = false
-		panic("view entity")
+		panic(faultcheck.Expected{Why: "view entity"})
 	}
 }
 

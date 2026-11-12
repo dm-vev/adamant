@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
@@ -203,7 +204,7 @@ type panicGenerator struct {
 
 func (g panicGenerator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk, ctx world.GenerationContext) world.GenerationResult {
 	if pos == g.pos {
-		panic("injected: generator failed")
+		panic(faultcheck.Expected{Why: "injected: generator failed"})
 	}
 	return g.Flat.GenerateChunk(pos, c, ctx)
 }

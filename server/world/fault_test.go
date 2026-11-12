@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/block/cube"
 )
 
@@ -85,7 +86,7 @@ func TestFaultLogIsRateLimited(t *testing.T) {
 
 	// 1,000 panics of one key, one every 100 ms: 100 seconds.
 	for i := range 1000 {
-		f := Fault{Kind: FaultEntity, Type: "test:zombie", Pos: cube.Pos{i, 64, 0}, Value: "boom", Stack: []byte("stack")}
+		f := Fault{Kind: FaultEntity, Type: "test:zombie", Pos: cube.Pos{i, 64, 0}, Value: faultcheck.Expected{Why: "boom"}, Stack: []byte("stack")}
 		w.reportFault(f, quarantineKey{})
 		clock.t = clock.t.Add(100 * time.Millisecond)
 	}
@@ -107,19 +108,19 @@ func TestFaultLogIsRateLimited(t *testing.T) {
 	}
 
 	// Another key logs at once.
-	w.reportFault(Fault{Kind: FaultEntity, Type: "test:cow", Value: "boom"}, quarantineKey{})
+	w.reportFault(Fault{Kind: FaultEntity, Type: "test:cow", Value: faultcheck.Expected{Why: "boom"}}, quarantineKey{})
 	if lines = rec.errors(); len(lines) != 3 || lines[2].Message != "entity panicked" || attr(lines[2], "type") != "test:cow" {
 		t.Fatalf("another key did not log at once: %d lines", len(lines))
 	}
 	// The same type of another kind is another key.
-	w.reportFault(Fault{Kind: FaultBlockEntity, Type: "test:cow", Value: "boom"}, quarantineKey{})
+	w.reportFault(Fault{Kind: FaultBlockEntity, Type: "test:cow", Value: faultcheck.Expected{Why: "boom"}}, quarantineKey{})
 	if lines = rec.errors(); len(lines) != 4 || lines[3].Message != "block entity panicked" {
 		t.Fatalf("another kind did not log at once: %d lines", len(lines))
 	}
 	// A minute after the summary, a key with no panic suppressed logs as
 	// a first panic again.
 	clock.t = clock.t.Add(2 * time.Minute)
-	w.reportFault(Fault{Kind: FaultEntity, Type: "test:cow", Value: "boom"}, quarantineKey{})
+	w.reportFault(Fault{Kind: FaultEntity, Type: "test:cow", Value: faultcheck.Expected{Why: "boom"}}, quarantineKey{})
 	if lines = rec.errors(); len(lines) != 5 || lines[4].Message != "entity panicked" {
 		t.Fatalf("a quiet key did not log as a first panic: %v", lines[len(lines)-1].Message)
 	}
@@ -232,10 +233,10 @@ func TestFailCallsTheHookOnce(t *testing.T) {
 	rec := newFaultRecorder()
 	var fatal []Fault
 	w := faultTestWorld(t, rec, nil, Config{Fatal: func(f Fault) { fatal = append(fatal, f) }})
-	w.fail(Fault{Type: "test glue", Value: "first", Stack: []byte("stack")})
-	w.fail(Fault{Type: "test glue", Value: "second", Stack: []byte("stack 2")})
-	w.fail(Fault{Type: "test glue", Value: "third"})
-	if len(fatal) != 1 || fatal[0].Value != "first" || fatal[0].Kind != FaultFatal || fatal[0].World != w {
+	w.fail(Fault{Type: "test glue", Value: faultcheck.Expected{Why: "first"}, Stack: []byte("stack")})
+	w.fail(Fault{Type: "test glue", Value: faultcheck.Expected{Why: "second"}, Stack: []byte("stack 2")})
+	w.fail(Fault{Type: "test glue", Value: faultcheck.Expected{Why: "third"}})
+	if len(fatal) != 1 || fatal[0].Value != expectedPanic("first") || fatal[0].Kind != FaultFatal || fatal[0].World != w {
 		t.Fatalf("Config.Fatal calls = %v, want the first fault only, of kind fatal", fatal)
 	}
 	if !w.faults.failed.Load() {
@@ -266,13 +267,13 @@ func TestBlockFaultsForgetTheOldest(t *testing.T) {
 
 	// The first block is quarantined, then blockFaultEntries others panic.
 	for range FaultLimit {
-		w.blockPanicked(FaultScheduledTick, 1, at(0), "test:first", "boom")
+		w.blockPanicked(FaultScheduledTick, 1, at(0), "test:first", faultcheck.Expected{Why: "boom"})
 	}
 	if q := w.Quarantined(); len(q) != 1 || q[0].Pos != at(0) {
 		t.Fatalf("Quarantined = %v, want the first block", q)
 	}
 	for i := 1; i <= blockFaultEntries; i++ {
-		w.blockPanicked(FaultScheduledTick, 1, at(i), "test:other", "boom")
+		w.blockPanicked(FaultScheduledTick, 1, at(i), "test:other", faultcheck.Expected{Why: "boom"})
 	}
 	if n := len(w.blockFaults.m); n != blockFaultEntries {
 		t.Fatalf("blocks kept = %d, want %d", n, blockFaultEntries)
@@ -281,7 +282,7 @@ func TestBlockFaultsForgetTheOldest(t *testing.T) {
 		t.Fatal("the block whose last panic is the oldest was not forgotten, or is still quarantined")
 	}
 	// Another block at a position is another offender.
-	w.blockPanicked(FaultScheduledTick, 1, at(1), "test:third", "boom")
+	w.blockPanicked(FaultScheduledTick, 1, at(1), "test:third", faultcheck.Expected{Why: "boom"})
 	if e := w.blockFaults.m[at(1)]; e.name != "test:third" || e.faults.n != 1 {
 		t.Fatalf("entry at a position another block panicked at = %+v", e)
 	}

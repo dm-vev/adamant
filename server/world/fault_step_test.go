@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/player/bossbar"
 	"github.com/df-mc/dragonfly/server/player/chat"
@@ -62,7 +63,7 @@ func (e sleeperTestEntity) Wake() {
 	s := e.state()
 	s.wakes++
 	if s.panics {
-		panic("test: wake")
+		panic(faultcheck.Expected{Why: "test: wake"})
 	}
 	s.sleeping = false
 }
@@ -101,7 +102,7 @@ func TestSleeperWakePanicIsBlamedOnTheSleeper(t *testing.T) {
 			t.Fatalf("night %d: faults = %v, want %d", night, briefFaults(faults), night)
 		}
 		f := faults[night-1]
-		if f.Kind != FaultEntity || f.Entity != badHandle || f.Type != "dragonfly:test_sleeper" || f.Value != "test: wake" || f.Count != night || f.Quarantined != (night == FaultLimit) {
+		if f.Kind != FaultEntity || f.Entity != badHandle || f.Type != "dragonfly:test_sleeper" || f.Value != expectedPanic("test: wake") || f.Count != night || f.Quarantined != (night == FaultLimit) {
 			t.Fatalf("night %d: fault = %v, want one of the sleeper, counted %d", night, briefFaults([]Fault{f}), night)
 		}
 	}
@@ -147,12 +148,12 @@ func TestClockPanicFailsTheWorldAndReleasesItsSettings(t *testing.T) {
 			tx.SetBlock(cube.Pos{0, 64, 0}, other, nil)
 			w.testClockHook = func() {
 				if ticks.Add(1) == 3 {
-					panic("test: clock")
+					panic(faultcheck.Expected{Why: "test: clock"})
 				}
 			}
 		}), "arming the hook")
 		waitFor(t, 10*time.Second, "the world failing", func() bool { return len(sink.fatals()) != 0 })
-		if fatal := sink.fatals(); len(fatal) != 1 || fatal[0].Kind != FaultFatal || fatal[0].Value != "test: clock" {
+		if fatal := sink.fatals(); len(fatal) != 1 || fatal[0].Kind != FaultFatal || fatal[0].Value != expectedPanic("test: clock") {
 			t.Fatalf("Config.Fatal calls = %v, want one for the panic of the clock", briefFaults(fatal))
 		}
 		done := make(chan struct{})
@@ -189,7 +190,7 @@ type timeTestViewer struct {
 
 func (v timeTestViewer) ViewTime(int) {
 	if v.panics.Load() {
-		panic("test: view time")
+		panic(faultcheck.Expected{Why: "test: view time"})
 	}
 	v.shown.Add(1)
 }
@@ -232,7 +233,7 @@ func TestViewerPanicShowingTheTimeFailsTheViewer(t *testing.T) {
 	if n := bad.failed.Load(); n != 2 {
 		t.Fatalf("the panicking viewer was told it failed %d times, want 2", n)
 	}
-	if faults := sink.all(0); len(faults) != 2 || faults[0].Kind != FaultViewer || faults[0].Type != "world.timeTestViewer" || faults[0].Value != "test: view time" {
+	if faults := sink.all(0); len(faults) != 2 || faults[0].Kind != FaultViewer || faults[0].Type != "world.timeTestViewer" || faults[0].Value != expectedPanic("test: view time") {
 		t.Fatalf("faults = %v, want two of the viewer", briefFaults(faults))
 	}
 }
@@ -248,8 +249,8 @@ func (barTestType) EncodeEntity() string { return "minecraft:player" }
 
 type barTestEntity struct{ *testEntity }
 
-func (barTestEntity) SendBossBar(bossbar.BossBar) { panic("test: boss bar") }
-func (barTestEntity) RemoveBossBarID(string)      { panic("test: boss bar") }
+func (barTestEntity) SendBossBar(bossbar.BossBar) { panic(faultcheck.Expected{Why: "test: boss bar"}) }
+func (barTestEntity) RemoveBossBarID(string)      { panic(faultcheck.Expected{Why: "test: boss bar"}) }
 
 // A panic showing a player the bar of a raid, in the step of the tick that
 // ticks raids, is blamed on the player, not on the step: it is counted and
@@ -272,7 +273,7 @@ func TestRaidBarPanicIsBlamedOnThePlayer(t *testing.T) {
 		t.Fatalf("faults = %v, want %d of the player", briefFaults(faults), FaultLimit)
 	}
 	for i, f := range faults {
-		if f.Kind != FaultEntity || f.Entity != h || f.Value != "test: boss bar" || f.Count != i+1 {
+		if f.Kind != FaultEntity || f.Entity != h || f.Value != expectedPanic("test: boss bar") || f.Count != i+1 {
 			t.Fatalf("fault %d = %v, want one of the player", i, briefFaults([]Fault{f}))
 		}
 	}
@@ -314,7 +315,7 @@ func TestViewerPanicAtNightSkipFailsTheViewer(t *testing.T) {
 	if n := bad.failed.Load(); n != 1 {
 		t.Fatalf("the viewer was told it failed %d times, want once", n)
 	}
-	if faults := sink.all(0); len(faults) != 1 || faults[0].Kind != FaultViewer || faults[0].Value != "test: view time" {
+	if faults := sink.all(0); len(faults) != 1 || faults[0].Kind != FaultViewer || faults[0].Value != expectedPanic("test: view time") {
 		t.Fatalf("faults = %v, want one of the viewer", briefFaults(faults))
 	}
 }

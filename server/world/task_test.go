@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -18,7 +19,7 @@ func TestCallRethrowsPanic(t *testing.T) {
 	w := Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}.New()
 	t.Cleanup(func() { _ = w.Close() })
 
-	panicValue := &struct{ message string }{"call panic"}
+	panicValue := faultcheck.Expected{Why: "call panic"}
 	defer func() {
 		if recovered := recover(); recovered != panicValue {
 			t.Fatalf("Call panic = %v, want original value %v", recovered, panicValue)
@@ -38,7 +39,7 @@ func TestCallRefRethrowsPanic(t *testing.T) {
 		t.Fatalf("add entity: %v", err)
 	}
 
-	panicValue := &struct{ message string }{"call ref panic"}
+	panicValue := faultcheck.Expected{Why: "call ref panic"}
 	defer func() {
 		if recovered := recover(); recovered != panicValue {
 			t.Fatalf("CallRef panic = %v, want original value %v", recovered, panicValue)
@@ -55,7 +56,7 @@ func TestCallRethrowsPanicWhenCancellationLoses(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	started := make(chan struct{})
 	release := make(chan struct{})
-	panicValue := &struct{ message string }{"call panic after cancellation"}
+	panicValue := faultcheck.Expected{Why: "call panic after cancellation"}
 	type outcome struct {
 		panicValue any
 		err        error
@@ -94,7 +95,7 @@ func TestDoCapturesPanic(t *testing.T) {
 	w := Config{Synchronous: true, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}.New()
 	t.Cleanup(func() { _ = w.Close() })
 
-	panicValue := &struct{ message string }{"do panic"}
+	panicValue := faultcheck.Expected{Why: "do panic"}
 	task := w.Do(func(*Tx) { panic(panicValue) })
 	var panicErr *PanicError
 	if err := task.Err(); !errors.As(err, &panicErr) {
@@ -110,7 +111,7 @@ func TestTaskWaitReturnsPanicError(t *testing.T) {
 	w := Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}.New()
 	t.Cleanup(func() { _ = w.Close() })
 
-	panicValue := &struct{ message string }{"task panic"}
+	panicValue := faultcheck.Expected{Why: "task panic"}
 	err := w.Do(func(*Tx) { panic(panicValue) }).Wait(testContext(t))
 	var panicErr *PanicError
 	if !errors.As(err, &panicErr) {

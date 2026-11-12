@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/go-gl/mathgl/mgl64"
@@ -32,7 +33,7 @@ func (p *panickingStoreProvider) StoreColumn(pos ChunkPos, _ Dimension, _ *chunk
 	p.attempts[pos]++
 	p.mu.Unlock()
 	if pos == p.bad {
-		panic("test: store column")
+		panic(faultcheck.Expected{Why: "test: store column"})
 	}
 	return nil
 }
@@ -79,7 +80,7 @@ func TestSaverPanicKeepsWriting(t *testing.T) {
 			t.Fatalf("stores: panicking column %d, other %d, want 1 each", prov.storesAt(bad), prov.storesAt(good))
 		}
 		faults := sink.all(FaultSave)
-		if len(faults) != 1 || faults[0].Type != "chunk writer" || faults[0].Pos != (cube.Pos{}) || faults[0].Value != "test: store column" || !strings.Contains(string(faults[0].Stack), "fault_save_test.go") {
+		if len(faults) != 1 || faults[0].Type != "chunk writer" || faults[0].Pos != (cube.Pos{}) || faults[0].Value != expectedPanic("test: store column") || !strings.Contains(string(faults[0].Stack), "fault_save_test.go") {
 			t.Fatalf("faults = %v, want one of the writer, with the stack of the provider", sink.all(0))
 		}
 		// The next save writes it once more; it panics again and is
@@ -130,7 +131,7 @@ func (g *panicGenerator) GenerateChunk(pos ChunkPos, _ *chunk.Chunk, _ Generatio
 	first := g.calls == 1
 	g.mu.Unlock()
 	if first {
-		panic("test: generation")
+		panic(faultcheck.Expected{Why: "test: generation"})
 	}
 	return GenerationResult{}
 }
@@ -206,7 +207,9 @@ func TestGenerationPanicIsNeverSaved(t *testing.T) {
 // panicNBTType is an entity type whose NBT panics.
 type panicNBTType struct{ testEntityType }
 
-func (panicNBTType) EncodeNBT(*EntityData) map[string]any { panic("test: entity NBT") }
+func (panicNBTType) EncodeNBT(*EntityData) map[string]any {
+	panic(faultcheck.Expected{Why: "test: entity NBT"})
+}
 
 func TestSaveLeavesOutAnEntityWhoseNBTPanics(t *testing.T) {
 	var sink faultSink

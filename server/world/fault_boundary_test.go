@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/go-gl/mathgl/mgl64"
@@ -121,7 +122,7 @@ func TestExecPanicIsLogged(t *testing.T) {
 		deferred := make(chan struct{})
 		done := w.Exec(func(tx *Tx) {
 			tx.Defer(func(*Tx) { close(deferred) })
-			panic("test: exec panic")
+			panic(faultcheck.Expected{Why: "test: exec panic"})
 		})
 		within(t, 5*time.Second, done, "the panicking Exec did not end")
 		within(t, 5*time.Second, deferred, "the work it deferred did not run")
@@ -130,7 +131,7 @@ func TestExecPanicIsLogged(t *testing.T) {
 		within(t, 5*time.Second, ran, "the next Exec did not run")
 
 		faults := sink.all(FaultTransaction)
-		if len(faults) != 1 || faults[0].Value != "test: exec panic" || faults[0].World != w {
+		if len(faults) != 1 || faults[0].Value != expectedPanic("test: exec panic") || faults[0].World != w {
 			t.Fatalf("faults = %v, want the panic of the Exec", sink.all(0))
 		}
 		if !strings.Contains(faults[0].Type, "TestExecPanicIsLogged") {
@@ -154,7 +155,7 @@ type openPanicType struct {
 
 func (t openPanicType) Open(tx *Tx, handle *EntityHandle, data *EntityData) Entity {
 	if t.armed.Load() {
-		panic("test: open panic")
+		panic(faultcheck.Expected{Why: "test: open panic"})
 	}
 	return t.taskTestEntityType.Open(tx, handle, data)
 }
@@ -180,7 +181,7 @@ func TestEntityOpenPanicFailsTheTask(t *testing.T) {
 		task := h.Do(func(*Tx, Entity) { called = true })
 		within(t, 5*time.Second, task.Done(), "the entity task did not end")
 		var perr *PanicError
-		if err := task.Err(); !errors.As(err, &perr) || perr.Value != "test: open panic" || !errors.Is(err, ErrTaskPanicked) {
+		if err := task.Err(); !errors.As(err, &perr) || perr.Value != expectedPanic("test: open panic") || !errors.Is(err, ErrTaskPanicked) {
 			t.Fatalf("task error = %v, want a *PanicError of the panic of Open", err)
 		}
 		if called {
@@ -210,16 +211,16 @@ func TestTaskPanicIsAFaultOfTheTransaction(t *testing.T) {
 	w := sink.configure(Config{Provider: NopProvider{}, Synchronous: true}, rec).New()
 	t.Cleanup(func() { _ = w.Close() })
 
-	task := w.Do(func(*Tx) { panic("test: task panic") })
+	task := w.Do(func(*Tx) { panic(faultcheck.Expected{Why: "test: task panic"}) })
 	if err := task.Err(); !errors.Is(err, ErrTaskPanicked) {
 		t.Fatalf("task error = %v, want ErrTaskPanicked", err)
 	}
 	faults := sink.all(FaultTransaction)
-	if len(faults) != 1 || faults[0].Value != "test: task panic" || !strings.Contains(faults[0].Type, "TestTaskPanicIsAFaultOfTheTransaction") {
+	if len(faults) != 1 || faults[0].Value != expectedPanic("test: task panic") || !strings.Contains(faults[0].Type, "TestTaskPanicIsAFaultOfTheTransaction") {
 		t.Fatalf("faults = %v, want the panic of the task, blamed on the function that panicked", sink.all(0))
 	}
 	// A synchronous world recovers the panic of an Exec too.
-	<-w.Exec(func(*Tx) { panic("test: exec panic") })
+	<-w.Exec(func(*Tx) { panic(faultcheck.Expected{Why: "test: exec panic"}) })
 	if n := len(sink.all(FaultTransaction)); n != 2 {
 		t.Fatalf("faults of the transaction = %d, want 2", n)
 	}
@@ -297,7 +298,7 @@ func TestEntityTickPanicKeepsTheWorld(t *testing.T) {
 		var panicked, counted tickLog
 		bad := probe(mgl64.Vec3{1.5, 64, 1.5}, func(tx *Tx, _ *testEntity) {
 			panicked.add(tx.CurrentTick())
-			panic("test: entity tick")
+			panic(faultcheck.Expected{Why: "test: entity tick"})
 		})
 		// The second entity is in the same column, after the first: the
 		// column goes on after the panic.
@@ -374,7 +375,7 @@ func TestRegionEntityPanicStaysInItsRegion(t *testing.T) {
 		bad := probe(a, func(tx *Tx, _ *testEntity) {
 			regions.Store("bad", tx.region)
 			panicked.add(tx.CurrentTick())
-			panic("test: region entity tick")
+			panic(faultcheck.Expected{Why: "test: region entity tick"})
 		})
 		next := probe(a.Add(mgl64.Vec3{1, 0, 1}), func(tx *Tx, _ *testEntity) { sameRegion.add(tx.CurrentTick()) })
 		far := probe(b, func(tx *Tx, _ *testEntity) {
@@ -427,7 +428,7 @@ func TestRegionPanicHoldingTheSharedLockIsFatal(t *testing.T) {
 		bad := probe(a, func(tx *Tx, _ *testEntity) {
 			panicked.add(tx.CurrentTick())
 			tx.lockShared()
-			panic("test: panic holding the shared lock")
+			panic(faultcheck.Expected{Why: "test: panic holding the shared lock"})
 		})
 		far := probe(b, func(tx *Tx, _ *testEntity) { otherRegion.add(tx.CurrentTick()) })
 		within(t, 10*time.Second, w.Exec(func(tx *Tx) {
@@ -443,7 +444,7 @@ func TestRegionPanicHoldingTheSharedLockIsFatal(t *testing.T) {
 			t.Fatalf("the failed world ticked its entities: %d panics, %d ticks of the other after %d", len(p), len(otherRegion.all()), ticked)
 		}
 		fatal := sink.fatals()
-		if len(fatal) != 1 || fatal[0].Kind != FaultFatal || fatal[0].Entity != bad || fatal[0].Value != "test: panic holding the shared lock" {
+		if len(fatal) != 1 || fatal[0].Kind != FaultFatal || fatal[0].Entity != bad || fatal[0].Value != expectedPanic("test: panic holding the shared lock") {
 			t.Fatalf("Config.Fatal calls = %v, want one, blamed on the entity", fatal)
 		}
 		if faults := sink.all(FaultEntity); len(faults) != 0 {
@@ -484,7 +485,7 @@ func TestRegionWorkPanicIsBlamedOnItsEntity(t *testing.T) {
 	a := probe(mgl64.Vec3{8.5, 4, 8.5}, func(tx *Tx, _ *testEntity) {
 		// Left to the owner after the phase, which runs the work after it
 		// anyway.
-		tx.WholeWorld(func(*Tx) { panic("test: region work") })
+		tx.WholeWorld(func(*Tx) { panic(faultcheck.Expected{Why: "test: region work"}) })
 		tx.WholeWorld(func(*Tx) { ran = append(ran, "after") })
 	})
 	b := probe(mgl64.Vec3{1024 + 8.5, 4, 8.5}, func(*Tx, *testEntity) {})
@@ -541,7 +542,7 @@ func TestTickFaulterHandlesItsPanicsOnTheOwner(t *testing.T) {
 		if tx.region == nil {
 			t.Error("the entity ticked outside a region")
 		}
-		panic("test: faulter tick")
+		panic(faultcheck.Expected{Why: "test: faulter tick"})
 	}})
 	b := probe(mgl64.Vec3{1024 + 8.5, 4, 8.5}, func(*Tx, *testEntity) {})
 	<-w.Exec(func(tx *Tx) {
@@ -575,7 +576,7 @@ func TestBlockEntityTickPanicQuarantinesIt(t *testing.T) {
 
 	badPos, goodPos := cube.Pos{0, 4, 0}, cube.Pos{1, 4, 0}
 	bad, good := &actorIdentityTicker{}, &actorIdentityTicker{}
-	bad.callback = func(*Tx) { panic("test: block entity tick") }
+	bad.callback = func(*Tx) { panic(faultcheck.Expected{Why: "test: block entity tick"}) }
 	var col *Column
 	<-w.Exec(func(tx *Tx) {
 		col = tx.chunk(ChunkPos{})
@@ -632,7 +633,7 @@ func TestScheduledTickPanicDropsTheTick(t *testing.T) {
 		// It schedules itself again, then panics: a storm, once it no
 		// longer brings the world down.
 		tx.ScheduleBlockUpdate(pos, bad, time.Second/20)
-		panic("test: scheduled tick")
+		panic(faultcheck.Expected{Why: "test: scheduled tick"})
 	}}
 	good = cancelBatchTestBlock{name: "test:counting", id: 12, tick: func(pos cube.Pos, tx *Tx) {
 		goodTicks++
@@ -776,7 +777,7 @@ func TestRandomTickPanic(t *testing.T) {
 		// Setting itself first, as a block changing its state does, it is
 		// still the block that panicked.
 		tx.SetBlock(pos, tx.Block(pos), nil)
-		panic("test: random tick")
+		panic(faultcheck.Expected{Why: "test: random tick"})
 	}}}
 	good := randomTestBlock{cancelBatchTestBlock{name: "test:random_counting", id: 22, tick: func(cube.Pos, *Tx) { goodTicks++ }}}
 	other := cancelBatchTestBlock{name: "test:other", id: 23, tick: func(cube.Pos, *Tx) {}}
@@ -818,7 +819,7 @@ func TestNeighbourUpdatePanic(t *testing.T) {
 	var badTicks, goodTicks int
 	bad := neighbourTestBlock{cancelBatchTestBlock{name: "test:neighbour_panicking", id: 31, tick: func(cube.Pos, *Tx) {
 		badTicks++
-		panic("test: neighbour update")
+		panic(faultcheck.Expected{Why: "test: neighbour update"})
 	}}}
 	good := neighbourTestBlock{cancelBatchTestBlock{name: "test:neighbour_counting", id: 32, tick: func(cube.Pos, *Tx) { goodTicks++ }}}
 	other := cancelBatchTestBlock{name: "test:other", id: 33, tick: func(cube.Pos, *Tx) {}}
@@ -882,7 +883,7 @@ func TestPrecipitationPanicIsARandomTickFault(t *testing.T) {
 	var ticks int
 	bad := rainTestBlock{cancelBatchTestBlock{name: "test:rain_panicking", id: 41, tick: func(cube.Pos, *Tx) {
 		ticks++
-		panic("test: precipitation")
+		panic(faultcheck.Expected{Why: "test: precipitation"})
 	}}}
 	w := sink.configure(Config{Synchronous: true, Blocks: testBlockRegistry(bad), RandomTickSpeed: 1, RandSource: zeroRandom{}}, rec).New()
 	defer func() { _ = w.Close() }()
@@ -941,13 +942,13 @@ func TestTickGluePanicIsFatal(t *testing.T) {
 			tx.SetBlock(cube.Pos{0, 64, 0}, other, nil)
 			w.testTickHook = func(*Tx) {
 				if ticks.Add(1) == 5 {
-					panic("test: tick glue")
+					panic(faultcheck.Expected{Why: "test: tick glue"})
 				}
 			}
 		}), "arming the hook")
 		waitFor(t, 10*time.Second, "the world failing", func() bool { return len(sink.fatals()) != 0 })
 		fatal := sink.fatals()
-		if len(fatal) != 1 || fatal[0].Kind != FaultFatal || fatal[0].Value != "test: tick glue" || fatal[0].World != w || !strings.Contains(fatal[0].Type, "TestTickGluePanicIsFatal") {
+		if len(fatal) != 1 || fatal[0].Kind != FaultFatal || fatal[0].Value != expectedPanic("test: tick glue") || fatal[0].World != w || !strings.Contains(fatal[0].Type, "TestTickGluePanicIsFatal") {
 			t.Fatalf("Config.Fatal calls = %v, want one for the panic of the tick", fatal)
 		}
 		if !strings.Contains(string(fatal[0].Stack), "fault_boundary_test.go") {
@@ -996,7 +997,7 @@ func TestSubsystemPanicFailsTheWorldAfterTicksInARow(t *testing.T) {
 			collisions++
 			// It panics in 10 ticks, then not in one, then in 20.
 			if collisions != 11 {
-				panic("test: collisions")
+				panic(faultcheck.Expected{Why: "test: collisions"})
 			}
 		},
 		NaturalSpawnTick: func(*Tx) {
@@ -1042,7 +1043,9 @@ func TestSubsystemPanicFailsTheWorldAfterTicksInARow(t *testing.T) {
 // redstonePanicSource is a redstone source whose power panics.
 type redstonePanicSource struct{ cancelBatchTestBlock }
 
-func (redstonePanicSource) RedstonePower(cube.Pos, *Tx, cube.Face) int { panic("test: redstone") }
+func (redstonePanicSource) RedstonePower(cube.Pos, *Tx, cube.Face) int {
+	panic(faultcheck.Expected{Why: "test: redstone"})
+}
 
 func TestRedstonePanicDropsItsInput(t *testing.T) {
 	var sink faultSink
@@ -1063,7 +1066,7 @@ func TestRedstonePanicDropsItsInput(t *testing.T) {
 	advance(t, w)
 	advance(t, w)
 	faults := sink.all(FaultSubsystem)
-	if len(faults) != 1 || faults[0].Type != "redstone" || faults[0].Value != "test: redstone" {
+	if len(faults) != 1 || faults[0].Type != "redstone" || faults[0].Value != expectedPanic("test: redstone") {
 		t.Fatalf("faults = %v, want one of redstone", sink.all(0))
 	}
 	if n := len(w.redstone.dirty); n != 0 {
@@ -1078,8 +1081,10 @@ type failingTestViewer struct {
 	failed *atomic.Int32
 }
 
-func (failingTestViewer) ViewBlockUpdates(*BlockUpdates) { panic("test: view block updates") }
-func (v failingTestViewer) ViewFailed()                  { v.failed.Add(1) }
+func (failingTestViewer) ViewBlockUpdates(*BlockUpdates) {
+	panic(faultcheck.Expected{Why: "test: view block updates"})
+}
+func (v failingTestViewer) ViewFailed() { v.failed.Add(1) }
 
 // countingTestViewer counts the changes of blocks it is shown.
 type countingTestViewer struct {
@@ -1138,8 +1143,12 @@ func TestViewerPanicFailsTheViewer(t *testing.T) {
 			t.Fatalf("the other viewer was shown %d changes of blocks, want 2", n)
 		}
 		faults := sink.all(FaultViewer)
-		if len(faults) != 2 || faults[0].Type != "world.failingTestViewer" || faults[0].Value != "test: view block updates" || !strings.Contains(string(faults[0].Stack), "fault_boundary_test.go") {
+		if len(faults) != 2 || faults[0].Type != "world.failingTestViewer" || faults[0].Value != expectedPanic("test: view block updates") || !strings.Contains(string(faults[0].Stack), "fault_boundary_test.go") {
 			t.Fatalf("faults = %v, want two of the viewer", sink.all(0))
 		}
 	})
 }
+
+// expectedPanic returns the value of a panic of a test that panics on
+// purpose, for the test to compare a fault with.
+func expectedPanic(why string) any { return faultcheck.Expected{Why: why} }
