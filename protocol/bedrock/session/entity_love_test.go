@@ -41,7 +41,7 @@ func TestFedAnimalsShowHearts(t *testing.T) {
 		if event.EventType != mc.ActorEventLoveHearts || event.EntityRuntimeID != added.EntityRuntimeID {
 			t.Errorf("hearts event = %d of %d, want %d of %d", event.EventType, event.EntityRuntimeID, mc.ActorEventLoveHearts, added.EntityRuntimeID)
 		}
-		if down := for2193(t, event).(*v2193.ActorEventPacket); down.EventType != event.EventType {
+		if down := for2193(t, event, &v2193.ActorEventPacket{}); down.EventType != event.EventType {
 			t.Errorf("hearts event of 2193 = %d, want %d", down.EventType, event.EventType)
 		}
 	})

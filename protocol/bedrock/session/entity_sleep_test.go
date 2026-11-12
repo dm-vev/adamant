@@ -11,6 +11,7 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto/convert/c2225"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -36,14 +37,27 @@ func actorFlag(m mc.Metadata, flag uint8) bool {
 }
 
 // for2193 returns the one packet a client of 2193 is sent for a packet of
-// 2225, which the converter makes of it.
-func for2193(t *testing.T, pk proto.Packet) proto.Packet {
+// 2225, which the converter makes of it, as a packet of 2193: into, which
+// holds what a client of 2193 decodes of it. The converter returns a packet
+// of an ID that both protocols code the same as it is, a packet of 2225, which
+// the client reads as its own.
+func for2193[T proto.Packet](t *testing.T, pk proto.Packet, into T) T {
 	t.Helper()
 	out := c2225.Down(pk)
 	if len(out) != 1 {
 		t.Fatalf("%T converts to %d packets for clients of 2193, want 1", pk, len(out))
 	}
-	return out[0]
+	if got, ok := out[0].(T); ok {
+		return got
+	}
+	var w wire.Writer
+	out[0].Encode(&w)
+	r := wire.NewReader(w.B)
+	into.Decode(r)
+	if err := r.Err(); err != nil {
+		t.Fatalf("%T for a client of 2193 does not decode as %T: %v", out[0], into, err)
+	}
+	return into
 }
 
 // TestSleepingVillagerIsViewedAsBDSViews records what BDS 1.26.61.1 sends of
@@ -97,7 +111,7 @@ func TestSleepingVillagerIsViewedAsBDSViews(t *testing.T) {
 					t.Fatal("no AddActor")
 				}
 				checkSleeping(t, "AddActor", added.EntityMetadata, true)
-				checkSleeping(t, "AddActor of 2193", mc.Metadata(for2193(t, added).(*v2193.AddActorPacket).EntityMetadata), true)
+				checkSleeping(t, "AddActor of 2193", mc.Metadata(for2193(t, added, &v2193.AddActorPacket{}).EntityMetadata), true)
 				if got := added.Position; !near(vec32(got), c.pos) {
 					t.Errorf("AddActor position = %v, want %v", got, c.pos)
 				}
@@ -117,13 +131,13 @@ func TestSleepingVillagerIsViewedAsBDSViews(t *testing.T) {
 					t.Fatal("no SetActorData")
 				}
 				checkSleeping(t, "SetActorData", state.EntityMetadata, true)
-				checkSleeping(t, "SetActorData of 2193", mc.Metadata(for2193(t, state).(*v2193.SetActorDataPacket).EntityMetadata), true)
+				checkSleeping(t, "SetActorData of 2193", mc.Metadata(for2193(t, state, &v2193.SetActorDataPacket{}).EntityMetadata), true)
 				viewer.ViewEntityMovement(v, v.Position(), v.Rotation(), true)
 				moved, ok := viewer.testPacket().(*mc.MoveActorAbsolutePacket)
 				if !ok {
 					t.Fatal("no MoveActorAbsolute")
 				}
-				if down := for2193(t, moved).(*v2193.MoveActorAbsolutePacket); down.Position != moved.Position || down.Rotation != moved.Rotation {
+				if down := for2193(t, moved, &v2193.MoveActorAbsolutePacket{}); down.Position != moved.Position || down.Rotation != moved.Rotation {
 					t.Errorf("MoveActorAbsolute of 2193 = %v %v, want %v %v", down.Position, down.Rotation, moved.Position, moved.Rotation)
 				}
 				if !near(vec32(moved.Position), c.pos) {
