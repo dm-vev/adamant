@@ -462,6 +462,11 @@ func (s *chunkSaver) write(p pendingColumn) (panicked bool, err error) {
 		}
 	}()
 	col := p.col
+	if p.enc == nil && col.Chunk != nil {
+		// The saver owns the blocks it writes: a copy of the blocks of a
+		// column loaded, or those of a column unloaded.
+		col.Chunk.Compact()
+	}
 	if p.enc != nil {
 		var decodeErr error
 		if col, decodeErr = p.enc.decode(s.w.conf.Blocks, s.w.Range()); decodeErr != nil {
@@ -602,6 +607,7 @@ func (s *chunkSaver) run() {
 // encodeStaged encodes sc, the column s.encoding names. A column that
 // fails to encode stays staged as it is, to be written as it is.
 func (s *chunkSaver) encodeStaged(sc *stagedColumn) {
+	sc.col.Chunk.Compact()
 	enc, err := encodeColumn(sc.col)
 	if err != nil {
 		s.w.saveLog.Error("stage chunk: "+err.Error(), "X", sc.pos[0], "Z", sc.pos[1])

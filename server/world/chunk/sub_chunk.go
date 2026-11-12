@@ -45,6 +45,21 @@ func (sub *SubChunk) Clone() *SubChunk {
 	return clone
 }
 
+// cloneBlocks returns a copy of the sub-chunk with its blocks and no light,
+// sharing the read-only array of no light.
+func (sub *SubChunk) cloneBlocks() *SubChunk {
+	clone := &SubChunk{
+		air:        sub.air,
+		storages:   make([]*PalettedStorage, len(sub.storages)),
+		blockLight: noLight,
+		skyLight:   noLight,
+	}
+	for i, storage := range sub.storages {
+		clone.storages[i] = storage.Clone()
+	}
+	return clone
+}
+
 func cloneLight(light []uint8) []uint8 {
 	if len(light) == 0 {
 		return slices.Clone(light)

@@ -160,6 +160,33 @@ func (chunk *Chunk) Clone() *Chunk {
 	return clone
 }
 
+// CloneBlocks returns a copy of the chunk as Clone does, but for its light:
+// every sub-chunk of the copy is dark. It is the copy a save takes, as the
+// encodings that store a chunk leave its light out, and copying the light
+// would double what the copy costs.
+func (chunk *Chunk) CloneBlocks() *Chunk {
+	clone := &Chunk{
+		r:                    chunk.r,
+		br:                   chunk.br,
+		air:                  chunk.air,
+		recalculateHeightMap: chunk.recalculateHeightMap,
+		heightMap:            slices.Clone(chunk.heightMap),
+		sub:                  make([]*SubChunk, len(chunk.sub)),
+		biomes:               make([]*PalettedStorage, len(chunk.biomes)),
+	}
+	for i, sub := range chunk.sub {
+		clone.sub[i] = sub.cloneBlocks()
+	}
+	for i, biomes := range chunk.biomes {
+		clone.biomes[i] = biomes.Clone()
+	}
+	clone.missingBlockStates = maps.Clone(chunk.missingBlockStates)
+	for key, properties := range clone.missingBlockStates {
+		clone.missingBlockStates[key] = slices.Clone(properties)
+	}
+	return clone
+}
+
 // Equals returns if the chunk passed is equal to the current one
 func (chunk *Chunk) Equals(c *Chunk) bool {
 	if !chunk.recalculateHeightMap && !c.recalculateHeightMap && !slices.Equal(c.heightMap, chunk.heightMap) {

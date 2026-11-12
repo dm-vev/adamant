@@ -72,11 +72,13 @@ func (w *World) saveChunk(tx *Tx, pos ChunkPos, c *Column) {
 // into commit if not nil, and returns how many it saved. It walks the
 // columns listed as they changed (dirtyColumns), not every column loaded,
 // but for ChunkSavingAll, which saves every column. A column modified is
-// saved whole: compacting and copying its blocks only touch that column,
-// so they are done on all cores while the owner waits. A column only
-// touched is saved without its blocks, which the provider keeps as they
-// are, if it is an ActorStorer. The entities, block entities and scheduled
-// ticks of each are then encoded and handed to the saver on the owner.
+// saved whole: copying its blocks only touches that column, so it is done
+// on all cores while the owner waits, and the saver compacts the copy. A
+// column only touched is saved without its blocks, which the provider
+// keeps as they are, if it is an ActorStorer. The entities, block entities
+// and scheduled ticks of each are then encoded and handed to the saver on
+// the owner. A synchronous world compacts its columns and writes them at
+// once.
 func (w *World) saveChunks(tx *Tx, commit Commit) int {
 	type persisted struct {
 		pos  ChunkPos
@@ -136,10 +138,11 @@ func (w *World) saveChunks(tx *Tx, commit Commit) int {
 	parallel.For(len(full), 4, func(j int) {
 		i := full[j]
 		c := columns[i].c
-		c.compact()
-		if w.saver != nil {
-			clones[i] = c.Chunk.Clone() //nolint:staticcheck // QF1008: the chunk of the column is cloned, not the column.
+		if w.saver == nil {
+			c.compact()
+			return
 		}
+		clones[i] = c.Chunk.CloneBlocks() //nolint:staticcheck // QF1008: the chunk of the column is cloned, not the column.
 	})
 	for i, p := range columns {
 		col := w.columnTo(p.c, p.pos)
@@ -211,7 +214,7 @@ func (w *World) restoreFailedSaves() {
 // persistChunk saves the column at pos. A live column stays loaded and keeps
 // changing, so the background saver gets a copy of its blocks; a closing
 // column is handed over as it is, and staged by the saver until the world
-// is next captured (chunkSaver.stage).
+// is next captured (chunkSaver.stage). The saver compacts either.
 func (w *World) persistChunk(tx *Tx, pos ChunkPos, c *Column, live bool) {
 	// Column generation runs in background workers. Saving is performed on the world transaction goroutine and must
 	// not access columns that are still being generated.
@@ -222,10 +225,10 @@ func (w *World) persistChunk(tx *Tx, pos ChunkPos, c *Column, live bool) {
 	if w.conf.ReadOnly || !w.storesColumn(pos, c) {
 		return
 	}
-	c.compact()
 	col := w.columnTo(c, pos)
 	saved := w.markSaved(c, true)
 	if w.saver == nil {
+		c.compact()
 		if w.writeColumn(w.conf.Provider, pos, col) != nil {
 			c.setModified()
 		}
@@ -235,7 +238,7 @@ func (w *World) persistChunk(tx *Tx, pos ChunkPos, c *Column, live bool) {
 		w.saver.stage(pos, col, saved)
 		return
 	}
-	col.Chunk = c.Chunk.Clone() //nolint:staticcheck // QF1008: the chunk of the column is cloned, not the column.
+	col.Chunk = c.Chunk.CloneBlocks() //nolint:staticcheck // QF1008: the chunk of the column is cloned, not the column.
 	col.PostProcessing = clonePostProcessing(col.PostProcessing)
 	w.saver.store(pos, col, saved, nil)
 }

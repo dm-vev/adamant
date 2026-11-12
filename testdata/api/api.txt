@@ -20695,6 +20695,7 @@ server/world	method	Column.CachedSubChunkBlockEntityPayload	func(ind int16) ([]b
 server/world	method	Column.CachedSubChunkHeightMap	func(ind int16) (byte, []int8, bool)
 server/world	method	Column.CanonicalizeMissingBlockState	func(pos server/block/cube.Pos, layer uint8) bool
 server/world	method	Column.Clone	func() *server/world/chunk.Chunk
+server/world	method	Column.CloneBlocks	func() *server/world/chunk.Chunk
 server/world	method	Column.Compact	func()
 server/world	method	Column.Equals	func(c *server/world/chunk.Chunk) bool
 server/world	method	Column.FillBiomes2D	func(biomes []uint32)
@@ -22474,6 +22475,7 @@ server/world/chunk	method	Chunk.Block	func(x uint8, y int16, z uint8, layer uint
 server/world/chunk	method	Chunk.BlockRegistry	func() server/world/chunk.BlockRegistry
 server/world/chunk	method	Chunk.CanonicalizeMissingBlockState	func(pos server/block/cube.Pos, layer uint8) bool
 server/world/chunk	method	Chunk.Clone	func() *server/world/chunk.Chunk
+server/world/chunk	method	Chunk.CloneBlocks	func() *server/world/chunk.Chunk
 server/world/chunk	method	Chunk.Compact	func()
 server/world/chunk	method	Chunk.Equals	func(c *server/world/chunk.Chunk) bool
 server/world/chunk	method	Chunk.FillBiomes2D	func(biomes []uint32)
