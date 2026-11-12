@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sync"
 	"testing"
 	"time"
 
@@ -396,4 +397,53 @@ func BenchmarkCheckpointOwnerPause(b *testing.B) {
 			b.ReportMetric(float64(held.Microseconds())/1000/float64(b.N), "owner-ms/op")
 		})
 	}
+}
+
+// TestEntitiesEncodeAtOnce encodes the NBT of an entity of every type
+// registered, which ticked for a second, all at once on several goroutines,
+// as a capture does while the world waits: run with -race, it fails if encoding an entity writes
+// anything another encoding reads.
+func TestEntitiesEncodeAtOnce(t *testing.T) {
+	t.Parallel()
+	w := world.Config{Generator: world.NopGenerator{}, RandomTickSpeed: -1, Entities: entity.DefaultRegistry}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	var handles []*world.EntityHandle
+	<-w.Exec(func(tx *world.Tx) {
+		tx.SetBlock(cube.Pos{0, 0, 0}, block.Stone{}, nil)
+		for i, typ := range entity.DefaultRegistry.Types() {
+			if typ.EncodeEntity() == "minecraft:player" {
+				continue
+			}
+			h := w.EntityFromNBT(typ, int64(i+1), map[string]any{"Pos": []any{float32(i%16) + .5, float32(20), float32(.5)}})
+			if h == nil {
+				continue
+			}
+			tx.AddEntity(h)
+			handles = append(handles, h)
+		}
+	})
+	if len(handles) < 50 {
+		t.Fatalf("only %d entity types decoded", len(handles))
+	}
+	// Near a viewer, they tick for a second first.
+	loader := world.NewLoader(2, w, world.NopViewer{})
+	<-w.Exec(func(tx *world.Tx) {
+		loader.Move(tx, mgl64.Vec3{8, 20, 8})
+		loader.Load(tx, 25)
+	})
+	time.Sleep(time.Second)
+	t.Cleanup(func() { <-w.Exec(loader.Close) })
+	<-w.Exec(func(*world.Tx) {
+		var wg sync.WaitGroup
+		for range 4 {
+			wg.Go(func() {
+				for _, h := range handles {
+					if data := w.EntityNBT(h); data["identifier"] == nil {
+						t.Errorf("entity of type %v encoded without its identifier", h.Type().EncodeEntity())
+					}
+				}
+			})
+		}
+		wg.Wait()
+	})
 }

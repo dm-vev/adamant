@@ -68,6 +68,36 @@ func MergeNativeEntityNBT(retained, canonical map[string]any) map[string]any {
 	return out
 }
 
+// mergeIntoNativeEntityNBT returns what MergeNativeEntityNBT returns for
+// owned and canonical, but merges canonical into owned, which the caller
+// built for it and no longer uses, rather than into a copy of it: only the
+// values of canonical are copied.
+func mergeIntoNativeEntityNBT(owned, canonical map[string]any) map[string]any {
+	_, itemName := canonical["Name"].(string)
+	_, itemCount := canonical["Count"]
+	if itemName && itemCount {
+		delete(owned, "tag")
+	}
+	for key, value := range canonical {
+		previous, ok := owned[key]
+		if !ok {
+			owned[key] = cloneNativeEntityNBTValue(value, false)
+			continue
+		}
+		switch key {
+		case "Attributes", "Armor", "Mainhand", "Offhand", "ChestItems":
+			value = mergeNativeEntityNBTList(key, previous, value)
+		}
+		if oldCompound, ok := previous.(map[string]any); ok {
+			if newCompound, ok := value.(map[string]any); ok {
+				value = MergeNativeEntityNBT(oldCompound, newCompound)
+			}
+		}
+		owned[key] = cloneNativeEntityNBTValue(value, false)
+	}
+	return owned
+}
+
 func mergeNativeEntityNBTList(key string, retained, canonical any) any {
 	oldList, okOld := retained.([]any)
 	newList, okNew := canonical.([]any)

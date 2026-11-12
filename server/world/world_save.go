@@ -144,8 +144,13 @@ func (w *World) saveChunks(tx *Tx, commit Commit) int {
 		}
 		clones[i] = c.Chunk.CloneBlocks() //nolint:staticcheck // QF1008: the chunk of the column is cloned, not the column.
 	})
+	cols := make([]*Column, len(columns))
 	for i, p := range columns {
-		col := w.columnTo(p.c, p.pos)
+		cols[i] = p.c
+	}
+	entities := w.encodeEntities(cols)
+	for i, p := range columns {
+		col := w.columnWith(p.c, p.pos, entities[i])
 		saved := w.markSaved(p.c, p.full)
 		if !p.full {
 			col.Chunk, col.PostProcessing = nil, nil

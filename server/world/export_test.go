@@ -109,3 +109,9 @@ func (tx *Tx) ColumnTouched(pos ChunkPos) bool {
 	c, ok := tx.World().chunks[pos]
 	return ok && c.touched
 }
+
+// EntityFromNBT decodes an entity of type t from the NBT data, as a world
+// reads one from its provider.
+func (w *World) EntityFromNBT(t EntityType, id int64, data map[string]any) *EntityHandle {
+	return w.entityFromNBT(t, id, data)
+}

@@ -6,12 +6,20 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/parallel"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
 // columnTo converts a Column to a chunk.Column so that it can be written to
-// a provider.
+// a provider. The entities of the column are encoded on all cores
+// (encodeEntities).
 func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
+	return w.columnWith(col, pos, w.encodeEntities([]*Column{col})[0])
+}
+
+// columnWith converts a Column to a chunk.Column as columnTo does, with the
+// entities passed, encoded already.
+func (w *World) columnWith(col *Column, pos ChunkPos, entities []chunk.Entity) *chunk.Column {
 	scheduled := make([]chunk.SavedScheduledTick, 0, 8)
 	scheduled = append(scheduled, w.scheduledBlockTicks.fromChunk(pos)...)
 	scheduled = append(scheduled, w.scheduledFluidTicks.fromChunk(pos)...)
@@ -20,25 +28,11 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 	}
 	c := &chunk.Column{
 		Chunk:          col.Chunk,
-		Entities:       make([]chunk.Entity, 0, len(col.Entities)),
+		Entities:       entities,
 		BlockEntities:  make([]chunk.BlockEntity, 0, len(col.BlockEntities)),
 		ScheduledTicks: scheduled,
 		InhabitedTime:  col.InhabitedTime,
 		PostProcessing: col.postProcessing,
-	}
-	for _, e := range col.Entities {
-		if e.t.EncodeEntity() == "minecraft:player" {
-			// Player entities are persisted separately from chunk data and should not be stored in the
-			// chunk provider. Keeping them out of the provider avoids stale player entities being read
-			// back after a restart.
-			continue
-		}
-
-		data, ok := w.saveEntityNBT(e)
-		if !ok {
-			continue
-		}
-		c.Entities = append(c.Entities, chunk.Entity{ID: e.UniqueID(), Data: data})
 	}
 	for pos, be := range col.BlockEntities {
 		data, ok := w.saveBlockEntityNBT(pos, be)
@@ -57,23 +51,57 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 	return c
 }
 
-// saveEntityNBT returns the NBT the entity of e is saved with, as EntityNBT
-// does. A panic of encoding it leaves the entity out of the save of its
-// column, which still saves: it is reported as a fault of saving, and false
-// returned.
-func (w *World) saveEntityNBT(e *EntityHandle) (data map[string]any, ok bool) {
-	defer func() {
-		if r := recover(); r != nil {
-			f := newFault(FaultSave, r)
-			f.Type, f.Pos, f.Entity = e.t.EncodeEntity(), cube.PosFromVec3(e.data.Pos), e
-			w.reportFault(f, quarantineKey{})
+// encodeEntities returns the entities of each column passed, which is being
+// saved, encoded as EntityNBT does, but for the players, which are saved
+// apart: a player stored with a column would be read back stale.
+//
+// They are encoded on all cores while the world goroutine waits, as it
+// does in a capture: nothing changes an entity meanwhile, and encoding one
+// only reads it and the world, so that the encodings do not race. Encoding
+// the NBT of entities is most of what a capture costs the world goroutine.
+// A panic of encoding an entity leaves it out of the save of its column,
+// which still saves: it is reported on the world goroutine as a fault of
+// saving, once all were encoded.
+func (w *World) encodeEntities(cols []*Column) [][]chunk.Entity {
+	type encoding struct {
+		col      int
+		e        *EntityHandle
+		data     map[string]any
+		panicked any
+	}
+	var jobs []encoding
+	for i, col := range cols {
+		for _, e := range col.Entities {
+			if e.t.EncodeEntity() != "minecraft:player" {
+				jobs = append(jobs, encoding{col: i, e: e})
+			}
 		}
-	}()
-	return w.EntityNBT(e), true
+	}
+	parallel.For(len(jobs), 8, func(i int) {
+		job := &jobs[i]
+		defer func() { job.panicked = recover() }()
+		job.data = w.EntityNBT(job.e)
+	})
+	out := make([][]chunk.Entity, len(cols))
+	for i, col := range cols {
+		out[i] = make([]chunk.Entity, 0, len(col.Entities))
+	}
+	for _, job := range jobs {
+		if job.panicked != nil {
+			f := newFault(FaultSave, job.panicked)
+			f.Type, f.Pos, f.Entity = job.e.t.EncodeEntity(), cube.PosFromVec3(job.e.data.Pos), job.e
+			w.reportFault(f, quarantineKey{})
+			continue
+		}
+		out[job.col] = append(out[job.col], chunk.Entity{ID: job.e.UniqueID(), Data: job.data})
+	}
+	return out
 }
 
-// saveBlockEntityNBT returns the NBT of the block entity be at pos, as
-// saveEntityNBT does for an entity.
+// saveBlockEntityNBT returns the NBT of the block entity be at pos. A panic
+// of encoding it leaves the block entity out of the save of its column,
+// which still saves: it is reported as a fault of saving, and false
+// returned.
 func (w *World) saveBlockEntityNBT(pos cube.Pos, be Block) (data map[string]any, ok bool) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -88,7 +116,9 @@ func (w *World) saveBlockEntityNBT(pos cube.Pos, be Block) (data map[string]any,
 // EntityNBT encodes the native NBT an entity is saved with, in the world
 // save and in structure templates.
 func (w *World) EntityNBT(e *EntityHandle) map[string]any {
-	data := MergeNativeEntityNBT(e.encodeNBT(), e.t.EncodeNBT(&e.data))
+	// The NBT of the handle is built for this call: it takes the NBT of
+	// the type without being copied again.
+	data := mergeIntoNativeEntityNBT(e.encodeNBT(), e.t.EncodeNBT(&e.data))
 	if encode := w.conf.Entities.Config().EncodeSharedNBT; encode != nil {
 		maps.Copy(data, encode(&e.data))
 	}
