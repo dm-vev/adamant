@@ -20,6 +20,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/net/bedrock"
 	bedrocklogin "github.com/dm-vev/adamant/net/bedrock/login"
@@ -556,6 +557,7 @@ func (l *Listener) run(c *Conn, login func(*Conn) error) {
 		// A panic is a bug of the login, which no client may use to take
 		// the server down: the client is dropped.
 		if v := recover(); v != nil {
+			faultcheck.Report("netconn login", v)
 			l.cfg.Log.Error("login panicked", "raddr", c.t.RemoteAddr(), "panic", v)
 			_ = c.Close()
 		}

@@ -9,6 +9,8 @@ import (
 
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
+
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 )
 
 // unhandledInterval is how often a session logs a packet it has no handler
@@ -50,7 +52,8 @@ func (s *Session) logUnhandled(pk proto.Packet) {
 // does not encode.
 func packetSize(pk proto.Packet) (n int) {
 	defer func() {
-		if recover() != nil {
+		if r := recover(); r != nil {
+			faultcheck.Report("session packet size", r)
 			n = -1
 		}
 	}()

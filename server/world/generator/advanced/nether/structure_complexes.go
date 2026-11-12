@@ -3,6 +3,7 @@ package nether
 import (
 	"fmt"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/world"
@@ -76,6 +77,7 @@ func (g *Nether) cachedComplexStart(cx, cz int32) (*netherComplexStart, error) {
 func (g *Nether) buildComplexStart(cx, cz int32) (start *netherComplexStart, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
+			faultcheck.Report("nether complex structure build", recovered)
 			start = nil
 			err = fmt.Errorf("nether: complex build at %d,%d failed: %v", cx, cz, recovered)
 		}

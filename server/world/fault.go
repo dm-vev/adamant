@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/block/cube"
 )
 
@@ -120,6 +121,17 @@ type Fault struct {
 	// one included. Quarantined is set once Count reached FaultLimit.
 	Count       int
 	Quarantined bool
+}
+
+// check tells tests of the panic of f, which every recovery site of the
+// world turns into a fault: one that no test expects fails its package. A
+// fault without a value is not of a panic, as a panic value is never nil, but
+// one that a test makes up to see the log of faults.
+func (f Fault) check() {
+	if f.Value == nil {
+		return
+	}
+	faultcheck.ReportStack("world "+f.Kind.String()+" "+f.Type, f.Value, f.Stack)
 }
 
 const (
@@ -331,6 +343,7 @@ func (w *World) faultLog(kind FaultKind) *slog.Logger {
 // set lists its offender, of key, as quarantined.
 func (w *World) reportFault(f Fault, key quarantineKey) {
 	f.World = w
+	f.check()
 	l := &w.faults
 	l.mu.Lock()
 	lines := l.record(f, l.clock()())
@@ -421,6 +434,7 @@ func (w *World) Quarantined() []Fault {
 // rate-limited, and calls Config.Fatal no more.
 func (w *World) fail(f Fault) {
 	f.Kind, f.World = FaultFatal, w
+	f.check()
 	l := &w.faults
 	if !l.failed.CompareAndSwap(false, true) {
 		l.mu.Lock()
@@ -604,7 +618,8 @@ func (w *World) blockFaultType(b Block) (typ string) {
 		return ""
 	}
 	defer func() {
-		if recover() != nil {
+		if r := recover(); r != nil {
+			faultcheck.Report("world block fault type", r)
 			typ, _ = b.EncodeBlock()
 		}
 	}()

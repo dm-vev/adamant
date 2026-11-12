@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
@@ -84,6 +85,7 @@ func (g *Nether) fossilStart(cx, cz int32) (*netherFossilStart, error) {
 func (g *Nether) buildNetherFossilStart(cx, cz int32) (start *netherFossilStart, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
+			faultcheck.Report("nether fossil structure build", recovered)
 			start = nil
 			err = fmt.Errorf("nether: Nether fossil start at %d,%d failed: %v", cx, cz, recovered)
 		}

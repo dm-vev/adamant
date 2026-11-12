@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
@@ -94,6 +95,7 @@ func (g *Nether) portalStart(cx, cz int32) (*netherPortalStart, error) {
 func (g *Nether) buildNetherPortalStart(cx, cz int32) (start *netherPortalStart, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
+			faultcheck.Report("nether portal structure build", recovered)
 			start, err = nil, fmt.Errorf("build Nether ruined portal start at %d,%d: %v", cx, cz, recovered)
 		}
 	}()

@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/parallel"
 	"github.com/df-mc/dragonfly/server/world/chunk"
@@ -1058,6 +1059,7 @@ func (t ticker) prefetchEntities(tx *Tx) {
 				// Prefetching only spares the tick work: an entity whose
 				// prefetch fails reads everything in its tick instead.
 				if r := recover(); r != nil {
+					faultcheck.Report("world entity prefetch", r)
 					failed.CompareAndSwap(nil, &parallel.Panic{Value: r, Stack: debug.Stack()})
 				}
 			}()

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
@@ -87,6 +88,7 @@ func (w *World) prefetchColumn(pos ChunkPos) {
 		defer close(r.done)
 		defer func() {
 			if v := recover(); v != nil {
+				faultcheck.Report("world column load", v)
 				r.col, r.err = nil, fmt.Errorf("load column %v (%v): panic: %v", pos, dim, v)
 			}
 		}()

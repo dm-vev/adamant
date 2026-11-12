@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -630,7 +631,8 @@ func (s *Session) withControllable(ctx context.Context, f func(tx *world.Tx, c C
 // callControllable isolates panics at the asynchronous session boundary.
 func (s *Session) callControllable(ctx context.Context, f func(tx *world.Tx, c Controllable) error) (err error) {
 	defer func() {
-		if recover() != nil {
+		if r := recover(); r != nil {
+			faultcheck.Report("session controllable call", r)
 			err = world.ErrTaskPanicked
 		}
 	}()
@@ -700,6 +702,7 @@ func (s *Session) Control(tx *world.Tx, e world.Entity) {
 func (s *Session) updateSafely(tx *world.Tx, c Controllable) (err error) {
 	defer func() {
 		if v := recover(); v != nil {
+			faultcheck.Report("session update", v)
 			s.conf.Log.Error("panic updating a session", "panic", v, "stack", string(runtimedebug.Stack()))
 			err = fmt.Errorf("panic: %v", v)
 		}
@@ -770,6 +773,7 @@ func (s *Session) requeue(packets []received) {
 func (s *Session) handlePacketSafely(pk proto.Packet, tx *world.Tx, c Controllable) (err error) {
 	defer func() {
 		if v := recover(); v != nil {
+			faultcheck.Report("session packet handler", v)
 			s.conf.Log.Error("panic handling a packet", "packet", fmt.Sprintf("%T", pk), "panic", v, "stack", string(runtimedebug.Stack()))
 			err = fmt.Errorf("%T: panic: %v", pk, v)
 		}
@@ -788,6 +792,7 @@ func (s *Session) closeControllable(c Controllable) {
 		// one, must not take down the tick: the session still closes.
 		defer func() {
 			if v := recover(); v != nil {
+				faultcheck.Report("session close player", v)
 				s.conf.Log.Error("panic closing the player of a session", "panic", v, "stack", string(runtimedebug.Stack()))
 			}
 		}()

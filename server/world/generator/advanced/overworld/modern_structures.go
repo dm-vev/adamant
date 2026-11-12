@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 
@@ -454,6 +455,7 @@ type modernStructureStartFlight struct {
 func (s *modernStructures) buildStart(set modernStructureSet, cx, cz int32) (start modernStructureStart, valid bool, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
+			faultcheck.Report("overworld structure build", recovered)
 			start = modernStructureStart{}
 			valid = false
 			err = fmt.Errorf("overworld: structure build at %d,%d failed: %v", cx, cz, recovered)

@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/portal"
@@ -350,7 +351,8 @@ func (t *PortalTravelComputer) transfer(handle *world.EntityHandle, source, dest
 
 func safeWorldCall[T any](w *world.World, f func(*world.Tx) (T, error)) (result T, err error) {
 	defer func() {
-		if recover() != nil {
+		if r := recover(); r != nil {
+			faultcheck.Report("entity world call", r)
 			var zero T
 			result, err = zero, world.ErrTaskPanicked
 		}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
@@ -12,6 +13,7 @@ import (
 func (g *End) FindNearestMapFeature(tag string, origin cube.Pos, searchRadius int, isReferenced func(world.StructureLocation) bool) (location world.StructureLocation, found bool, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
+			faultcheck.Report("end structure lookup", recovered)
 			location, found = world.StructureLocation{}, false
 			err = fmt.Errorf("End structure lookup failed: %v", recovered)
 		}

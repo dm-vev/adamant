@@ -8,6 +8,8 @@ import (
 
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/nethernet"
+
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 )
 
 // writeQueued writes a packet taken from the queue to the connection. A
@@ -17,6 +19,7 @@ import (
 func (s *Session) writeQueued(pk proto.Packet) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
+			faultcheck.Report("session packet encode", r)
 			s.conf.Log.Error("drop session packet that does not encode", "packet", fmt.Sprintf("%T", pk), "panic", r)
 			err = nil
 		}
@@ -259,6 +262,7 @@ func (p *flushPool) flush(s *Session, batch *nethernet.SendBatch) {
 	}
 	defer func() {
 		if v := recover(); v != nil {
+			faultcheck.Report("session packet flush", v)
 			s.conf.Log.Error("panic flushing session packets", "panic", v)
 			s.packetsMu.Lock()
 			s.flushing = false

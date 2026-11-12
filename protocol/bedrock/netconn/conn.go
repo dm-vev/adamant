@@ -21,6 +21,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/login"
@@ -544,6 +545,7 @@ func decodePacket(p *versions.Protocol, raw []byte) (pk proto.Packet, cost int, 
 		// The codecs fail softly; a panic is a bug of a hand-written one,
 		// which must not take the server down.
 		if v := recover(); v != nil {
+			faultcheck.Report("netconn packet decode", v)
 			pk, cost, err = nil, 0, fmt.Errorf("netconn: decode %T: %v", pk, v)
 		}
 	}()
@@ -567,6 +569,7 @@ func decodePacket(p *versions.Protocol, raw []byte) (pk proto.Packet, cost int, 
 // connection.
 func (c *Conn) recoverRead(err *error) {
 	if v := recover(); v != nil {
+		faultcheck.Report("netconn read", v)
 		_ = c.Close()
 		*err = fmt.Errorf("netconn: read: panic: %v", v)
 	}

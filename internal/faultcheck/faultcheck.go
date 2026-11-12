@@ -79,6 +79,27 @@ func Report(site string, value any) {
 	mu.Unlock()
 }
 
+// ReportStack is Report for a panic whose stack was kept at the recovery site,
+// as the faults of a world keep it: the first lines of stack are recorded
+// instead of the stack of the caller.
+func ReportStack(site string, value any, stack []byte) {
+	if !recording.Load() {
+		return
+	}
+	if _, ok := value.(Expected); ok {
+		return
+	}
+	lines := strings.SplitAfter(string(stack), "\n")
+	if len(lines) > 2*stackFrames {
+		lines = lines[:2*stackFrames]
+	}
+	mu.Lock()
+	if len(recovered) < maxRecorded {
+		recovered = append(recovered, Recovered{Site: site, Value: value, Stack: strings.Join(lines, "")})
+	}
+	mu.Unlock()
+}
+
 // shortStack returns the first stackFrames frames of the calling goroutine
 // above Report, one "function file:line" per line.
 func shortStack() string {

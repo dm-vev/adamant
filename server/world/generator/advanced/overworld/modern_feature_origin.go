@@ -7,6 +7,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
@@ -240,7 +241,11 @@ func (f *ModernFeatures) fill(cache *originRecordCache, entry *originRecordEntry
 	}
 	go func() {
 		// The waiters of the entry raise the panic again.
-		defer func() { _ = recover() }()
+		defer func() {
+			if r := recover(); r != nil {
+				faultcheck.Report("overworld feature origin prefetch", r)
+			}
+		}()
 		cache.fill(entry, compute)
 	}()
 }
