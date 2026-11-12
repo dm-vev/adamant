@@ -35,7 +35,7 @@ protocol/bedrock/session/view_entity.go Session.ViewEntity 109
 server/block/explosion.go ExplosionConfig.Explode 140
 server/block/smelter.go smelter.tickSmelting 117
 server/block/vine.go Vines.RandomTick 116
-server/checkpoint.go checkpointer.checkpoint 105
+server/checkpoint.go checkpointer.checkpoint 101
 server/entity/ai_behaviors.go newMoveToTargetSink 112
 server/entity/ai_behaviors_jump.go newLongJumpToPreferredBlock 111
 server/entity/goat.go newPrepareRamNearestTarget 110

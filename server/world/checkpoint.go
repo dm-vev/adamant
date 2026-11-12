@@ -29,6 +29,8 @@ type Checkpoint struct {
 	// commit, if not nil, is the commit of the provider the checkpoint is
 	// written into (CaptureAllInto).
 	commit Commit
+	// took is how long capturing the world took in its transaction.
+	took time.Duration
 
 	// Extra is what the function passed to CaptureAll returned in the
 	// transaction the world was captured in, such as the players in it.
@@ -48,6 +50,11 @@ func (cp *Checkpoint) World() *World { return cp.w }
 // Columns returns the number of columns captured, those unloaded since the
 // last capture included.
 func (cp *Checkpoint) Columns() int { return cp.columns }
+
+// CaptureTime returns how long capturing the world took in its transaction:
+// what a checkpoint holds the goroutine of the world for, besides waiting at
+// the barrier for the other worlds and capturing the players in it.
+func (cp *Checkpoint) CaptureTime() time.Duration { return cp.took }
 
 // Settings returns the settings of the world as they were captured, nil if
 // the world is read-only and nothing was captured.
@@ -156,6 +163,8 @@ func (w *World) capture(tx *Tx, closing bool, commit Commit) *Checkpoint {
 	if w.conf.ReadOnly {
 		return cp
 	}
+	start := time.Now()
+	defer func() { cp.took = time.Since(start) }()
 	w.captures++
 	cp.seq = w.captures
 	w.saveLog.Debug("Saving chunks in memory to disk...")

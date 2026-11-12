@@ -20665,6 +20665,7 @@ server/world	method	BlockExplosionSource.Position	func() github.com/go-gl/mathgl
 server/world	method	BlockExplosionSource.Size	func() float64
 server/world	method	Broadcast.Load	func() any
 server/world	method	Broadcast.Store	func(v any)
+server/world	method	Checkpoint.CaptureTime	func() time.Duration
 server/world	method	Checkpoint.Columns	func() int
 server/world	method	Checkpoint.Committed	func(err error)
 server/world	method	Checkpoint.Settings	func() *server/world.Settings
@@ -21347,7 +21348,7 @@ server/world	type	BlockUpdates	struct{Updates []server/world.BlockUpdate; Shared
 server/world	type	BorderSettings	struct{CenterX float64 "json:\"center_x\""; CenterZ float64 "json:\"center_z\""; DamagePerBlock float64 "json:\"damage_per_block\""; SafeZone float64 "json:\"safe_zone\""; WarningBlocks int32 "json:\"warning_blocks\""; WarningTime int32 "json:\"warning_time\""; Size float64 "json:\"size\""; LerpTime int64 "json:\"lerp_time\""; LerpTarget float64 "json:\"lerp_target\""}
 server/world	type	Broadcast	struct{v any}
 server/world	type	CanonicalStateBlock	interface{WithCanonicalState(name string, properties map[string]any) (server/world.Block, error)}
-server/world	type	Checkpoint	struct{w *server/world.World; seq uint64; columns int; settings *server/world.Settings; data []server/world.worldData; tracking *server/world.positionTrackingCapture; staged *server/world.stagedWrites; retry *server/world.stagedWrites; commit server/world.Commit; Extra any}
+server/world	type	Checkpoint	struct{w *server/world.World; seq uint64; columns int; settings *server/world.Settings; data []server/world.worldData; tracking *server/world.positionTrackingCapture; staged *server/world.stagedWrites; retry *server/world.stagedWrites; commit server/world.Commit; took time.Duration; Extra any}
 server/world	type	ChorusGenerationAccess	interface{BlockStateID(server/block/cube.Pos) (uint32, error); SetBlockState(server/block/cube.Pos, uint32, int) bool}
 server/world	type	ChunkPos	[2]int32
 server/world	type	ChunkSaving	int

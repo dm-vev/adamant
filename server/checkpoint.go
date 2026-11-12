@@ -189,12 +189,8 @@ func (c *checkpointer) checkpoint(ctx context.Context, reason string) (err error
 	stats.capture.Observe(captured.Sub(start).Seconds())
 	errs := []error{err}
 
-	chunks, settings := 0, false
-	for _, cp := range cps {
-		chunks += cp.Columns()
-		settings = settings || cp.Settings() != nil
-		errs = append(errs, cp.Write())
-	}
+	chunks, settings, paused, werr := writeWorlds(cps)
+	errs = append(errs, werr)
 	players := 0
 	savePlayers := func() {
 		for _, cp := range cps {
@@ -242,8 +238,22 @@ func (c *checkpointer) checkpoint(ctx context.Context, reason string) (err error
 	stats.write.Observe(time.Since(captured).Seconds())
 	stats.lastChunks.Store(int64(chunks))
 	stats.lastPlayers.Store(int64(players))
-	c.log().Debug("Saved checkpoint.", "checkpoint", c.id, "reason", reason, "chunks", chunks, "players", players, "captured", captured.Sub(start), "written", time.Since(captured))
+	c.log().Debug("Saved checkpoint.", "checkpoint", c.id, "reason", reason, "chunks", chunks, "players", players, "captured", captured.Sub(start), "paused", paused, "written", time.Since(captured))
 	return errors.Join(errs...)
+}
+
+// writeWorlds writes the worlds captured by a checkpoint and returns the
+// columns they captured, whether any captured its settings, the longest a
+// capture held a world and the errors of the writes joined.
+func writeWorlds(cps []*world.Checkpoint) (chunks int, settings bool, paused time.Duration, err error) {
+	var errs []error
+	for _, cp := range cps {
+		chunks += cp.Columns()
+		paused = max(paused, cp.CaptureTime())
+		settings = settings || cp.Settings() != nil
+		errs = append(errs, cp.Write())
+	}
+	return chunks, settings, paused, errors.Join(errs...)
 }
 
 // distinctWorlds returns the dimensions of the server, each world once.
