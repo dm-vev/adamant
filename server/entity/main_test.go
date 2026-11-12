@@ -6,16 +6,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
 // TestMain makes every wait for a world owner from a world owner end the
 // tests with its stack (world.PanicOnOwnerWait), so that none hides behind a
-// task that recovers it.
+// task that recovers it, and fails the tests when code they run recovers a
+// panic that none of them expects.
 func TestMain(m *testing.M) {
 	world.PanicOnOwnerWait = true
 	stop := releaseClosedWorlds()
-	code := m.Run()
+	code := testfixture.RunCheckingPanics(m)
 	stop()
 	os.Exit(code)
 }
