@@ -79,7 +79,10 @@ func (*slowStoneGenerator) DefaultSpawn(world.Dimension) cube.Pos { return cube.
 // the ground within respawn_radius, while the owner went on running
 // transactions as the chunks generated.
 func TestFindPlayerSpawnLetsTheWorldTick(t *testing.T) {
-	const delay = 150 * time.Millisecond
+	// A chunk takes long enough that an owner waiting for one waits far past
+	// half of it, while the race detector on a busy machine delays a
+	// transaction by up to about 85 ms with no wait at all.
+	const delay = 300 * time.Millisecond
 	g := &slowStoneGenerator{delay: delay}
 	w := world.Config{Generator: g, Provider: world.NopProvider{}, RandomTickSpeed: -1, GeneratorWorkers: 1}.New()
 	defer w.Close()
