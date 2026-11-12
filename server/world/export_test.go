@@ -80,7 +80,7 @@ func RegionGroups(columns []ChunkPos) [][]ChunkPos {
 // was last saved.
 func (tx *Tx) ColumnModified(pos ChunkPos) bool {
 	c, ok := tx.World().chunks[pos]
-	return ok && c.modified
+	return ok && c.modified.Load()
 }
 
 // RaidSpawnPosition exposes the search for where a raid wave spawns to
@@ -107,7 +107,7 @@ func (tx *Tx) EntityColumn(h *EntityHandle) (ChunkPos, bool) {
 // it was last saved.
 func (tx *Tx) ColumnTouched(pos ChunkPos) bool {
 	c, ok := tx.World().chunks[pos]
-	return ok && c.touched
+	return ok && c.touched.Load()
 }
 
 // EntityFromNBT decodes an entity of type t from the NBT data, as a world

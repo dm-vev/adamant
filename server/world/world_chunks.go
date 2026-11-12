@@ -103,7 +103,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		async := !w.conf.Synchronous
 		col := w.columnFrom(column, pos, !async)
 		col.complete = true
-		col.modified = col.modified || staged
+		col.modified.Store(col.modified.Load() || staged)
 		col.fillingLight = async
 		if !async {
 			col.fillLight(pos)

@@ -10,7 +10,9 @@ import "sync"
 // freed: a capture skips a position whose column is not listed. Columns
 // change on the owner, on region workers and, as they finish generating,
 // on generation workers, hence the mutex: it is taken once a column a save,
-// not once a change.
+// not once a change. The flags of a column (Column.modified, touched and
+// listed) are atomic for the same reason: a worker finishing a column sets
+// them while the owner may touch it, for an entity added to it.
 type dirtyColumns struct {
 	mu   sync.Mutex
 	list []ChunkPos
@@ -35,7 +37,7 @@ func (d *dirtyColumns) take() []ChunkPos {
 // setModified marks c modified: a block, biome, entity or scheduled tick of
 // it changed. The next save writes all of it.
 func (c *Column) setModified() {
-	c.modified = true
+	c.modified.Store(true)
 	c.enlist()
 }
 
@@ -43,8 +45,8 @@ func (c *Column) setModified() {
 // The next save writes its entities, block entities, scheduled ticks and
 // inhabited time. It costs a branch once c was touched.
 func (c *Column) touch() {
-	if !c.touched {
-		c.touched = true
+	if !c.touched.Load() {
+		c.touched.Store(true)
 		c.enlist()
 	}
 }
@@ -53,10 +55,9 @@ func (c *Column) touch() {
 // listed or was not placed in a world yet: placing it lists it then if it
 // needs saving (World.placeColumn).
 func (c *Column) enlist() {
-	if c.listed || c.dirty == nil {
+	if c.dirty == nil || c.listed.Load() || !c.listed.CompareAndSwap(false, true) {
 		return
 	}
-	c.listed = true
 	c.dirty.add(c.pos)
 }
 

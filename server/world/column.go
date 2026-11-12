@@ -17,7 +17,7 @@ type columnRef struct {
 // needsSave reports whether c may hold changes the provider lacks: it was
 // modified or touched since it was last saved.
 func (c *Column) needsSave() bool {
-	return c.modified || c.touched
+	return c.modified.Load() || c.touched.Load()
 }
 
 // compact compacts the palettes of the column unless no block changed since
@@ -36,7 +36,7 @@ type Column struct {
 	// that save (World.saves), and blocksSavedIn the last save that wrote
 	// the blocks of the column: if writing the blocks fails, the column is
 	// modified again, unless they were saved again since.
-	modified      bool
+	modified      atomic.Bool
 	savedIn       uint64
 	blocksSavedIn uint64
 	// touched is set when what the column keeps beside its blocks may have
@@ -44,13 +44,13 @@ type Column struct {
 	// ticked or was used, one of its block entities ticked or was read, as
 	// opening a chest reads it, or its inhabited time grew. A save of a
 	// column only touched leaves its blocks as stored (ActorStorer).
-	touched bool
+	touched atomic.Bool
 	// listed is set while the column is in the list of the columns of its
 	// world that changed since they were last saved (dirtyColumns), which
 	// a capture walks instead of every column loaded. pos is the position
 	// of the column and dirty that list, set once it was placed in its
 	// world.
-	listed bool
+	listed atomic.Bool
 	pos    ChunkPos
 	dirty  *dirtyColumns
 	// complete is set on a column read from the provider or generated in

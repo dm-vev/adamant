@@ -928,19 +928,19 @@ func TestScheduledTickChangesMarkDestinationDirty(t *testing.T) {
 	b := scheduledTickTestBlock{}
 	runWorld(w, func(tx *Tx) {
 		col := tx.chunk(chunkPosFromBlockPos(pos))
-		col.modified = false
+		col.modified.Store(false)
 		tx.ScheduleBlockUpdate(pos, b, time.Second/20)
-		if !col.modified {
+		if !col.modified.Load() {
 			t.Fatal("scheduling a tick did not dirty its loaded destination column")
 		}
-		col.modified = false
+		col.modified.Store(false)
 		tx.ScheduleBlockUpdate(pos, b, time.Second/20)
-		if col.modified {
+		if col.modified.Load() {
 			t.Fatal("duplicate scheduling dirtied a column without changing its pending tick set")
 		}
-		col.modified = false
+		col.modified.Store(false)
 		w.scheduledBlockTicks.tick(tx, w.scheduledBlockTicks.currentTick+1)
-		if !col.modified {
+		if !col.modified.Load() {
 			t.Fatal("collecting a tick did not dirty its loaded destination column")
 		}
 	})

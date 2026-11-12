@@ -94,7 +94,7 @@ func (w *World) saveChunks(tx *Tx, commit Commit) int {
 	add := func(pos ChunkPos, c *Column) {
 		w.finishGeneration(tx, c)
 		if w.storesColumn(pos, c) {
-			columns = append(columns, persisted{pos: pos, c: c, full: c.modified || !actors || !c.complete})
+			columns = append(columns, persisted{pos: pos, c: c, full: c.modified.Load() || !actors || !c.complete})
 		}
 	}
 	all := w.conf.SaveChunks == ChunkSavingAll
@@ -102,7 +102,7 @@ func (w *World) saveChunks(tx *Tx, commit Commit) int {
 	for _, pos := range w.dirty.take() {
 		c, ok := w.chunks[pos]
 		switch {
-		case !ok || !c.listed:
+		case !ok || !c.listed.Load():
 			// Unloaded, and saved as it unloaded, or listed twice: a
 			// column replaced lists its position again.
 		case !c.Ready():
@@ -115,7 +115,7 @@ func (w *World) saveChunks(tx *Tx, commit Commit) int {
 				w.dirty.add(pos)
 			}
 		default:
-			c.listed = false
+			c.listed.Store(false)
 			if !all {
 				add(pos, c)
 			}
@@ -176,7 +176,9 @@ func (w *World) saveChunks(tx *Tx, commit Commit) int {
 // to report a failed write with.
 func (w *World) markSaved(c *Column, full bool) uint64 {
 	w.saves++
-	c.modified, c.touched, c.savedIn = false, false, w.saves
+	c.modified.Store(false)
+	c.touched.Store(false)
+	c.savedIn = w.saves
 	if full {
 		c.blocksSavedIn = w.saves
 	}
