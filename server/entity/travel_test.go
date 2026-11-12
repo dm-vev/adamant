@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
@@ -533,7 +534,7 @@ func TestPortalTravelRecoversDestinationPanic(t *testing.T) {
 			if mover, ok := e.(interface{ SetVelocity(mgl64.Vec3) }); ok {
 				mover.SetVelocity(mgl64.Vec3{4, 5, 6})
 			}
-			panic("teleport panic")
+			panic(faultcheck.Expected{Why: "teleport panic"})
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -816,7 +817,9 @@ type entitySpawnRecorder struct {
 
 type panicSpawnHandler struct{ world.NopHandler }
 
-func (panicSpawnHandler) HandleEntitySpawn(*world.Tx, world.Entity) { panic("spawn panic") }
+func (panicSpawnHandler) HandleEntitySpawn(*world.Tx, world.Entity) {
+	panic(faultcheck.Expected{Why: "spawn panic"})
+}
 
 func (r *entitySpawnRecorder) HandleEntitySpawn(_ *world.Tx, e world.Entity) {
 	r.called = true
