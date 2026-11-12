@@ -115,7 +115,11 @@ func sourceAround(b world.Liquid, pos cube.Pos, tx *world.Tx) (sourcePresent boo
 			// liquid.
 			return
 		}
-		if neighbour[1] == pos[1]+1 || source(side) || side.LiquidDepth() > b.LiquidDepth() {
+		// A falling liquid counts as a full one, as FlowingFluid.getNewLiquid
+		// takes the amount of a falling fluid, which is 8, for the highest
+		// neighbour. The liquid it spreads sideways, one less than a full
+		// one, would otherwise find no source around, and drain.
+		if neighbour[1] == pos[1]+1 || source(side) || side.LiquidFalling() || side.LiquidDepth() > b.LiquidDepth() {
 			sourcePresent = true
 		}
 	}, tx.Range())

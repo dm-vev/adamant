@@ -354,6 +354,7 @@ func (h BeeNest) RandomTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 }
 func tickBeehive(pos cube.Pos, h Beehive, tx *world.Tx, r *rand.Rand) {
 	current := tx.Block(pos)
+	released := false
 	if h.hasNearbyFire(pos, tx) {
 		releaseHiveOccupants(pos, h.Occupants, tx, true)
 		h.Occupants = nil
@@ -390,6 +391,7 @@ func tickBeehive(pos cube.Pos, h Beehive, tx *world.Tx, r *rand.Rand) {
 					h.HoneyLevel += increase
 				}
 				h.Occupants = append(h.Occupants[:i], h.Occupants[i+1:]...)
+				released = true
 				continue
 			}
 			if !source {
@@ -399,7 +401,14 @@ func tickBeehive(pos cube.Pos, h Beehive, tx *world.Tx, r *rand.Rand) {
 		o["TicksLeftToStay"] = int32(left)
 		i++
 	}
-	tx.SetBlock(pos, currentWithBeehive(current, h), nil)
+	if released {
+		tx.SetBlock(pos, currentWithBeehive(current, h), nil)
+	} else {
+		// BeehiveBlockEntity.serverTick calls setChanged only for a bee it
+		// released: the time the bees stayed counts on without a word to
+		// the viewers, who were sent the hive again every tick.
+		tx.SetBlockEntity(pos, currentWithBeehive(current, h))
+	}
 	if len(h.Occupants) > 0 {
 		tx.ScheduleBlockUpdate(pos, currentWithBeehive(current, h), time.Second/20)
 	}
