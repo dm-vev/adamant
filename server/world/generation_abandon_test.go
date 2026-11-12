@@ -300,3 +300,20 @@ func TestGenerationQueueDropsAbandonedTasks(t *testing.T) {
 		t.Fatal("started an abandoned column")
 	}
 }
+
+// TestGenerationQueuePrioritizesLiveTask checks that the chunk the owner
+// waits for is the column loaded at its position, not the abandoned one
+// whose task still waits beside it.
+func TestGenerationQueuePrioritizesLiveTask(t *testing.T) {
+	t.Parallel()
+	q := newGenerationQueue()
+	old, live := newQueuedColumn(), newQueuedColumn()
+	q.push(generationTask{pos: ChunkPos{0, 0}})
+	q.push(generationTask{pos: ChunkPos{5, 5}, col: old})
+	q.push(generationTask{pos: ChunkPos{5, 5}, col: live})
+	old.abandonGeneration()
+	q.prioritize(ChunkPos{5, 5})
+	if task, _ := q.pop(); task.col != live {
+		t.Fatalf("task = %v of %p, want the live column %p", task.pos, task.col, live)
+	}
+}

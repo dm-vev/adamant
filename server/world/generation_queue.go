@@ -215,8 +215,10 @@ func (q *generationQueue) prioritize(pos ChunkPos) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	for i := range q.tasks {
-		if q.tasks[i].task.pos == pos {
-			q.tasks[i].awaited = true
+		// The task of a column abandoned at pos may still wait beside the
+		// one of the column loaded there since.
+		if t := &q.tasks[i]; t.task.pos == pos && (t.task.col == nil || !t.task.col.abandoned()) {
+			t.awaited = true
 			return
 		}
 	}
