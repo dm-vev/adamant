@@ -45,7 +45,10 @@ func TestSettingTheStateABlockHasChangesNothing(t *testing.T) {
 	set("setting dirt", 1, func(tx *world.Tx) { tx.SetBlock(pos, block.Dirt{}, nil) })
 	set("setting air over air", 0, func(tx *world.Tx) { tx.SetBlock(pos.Side(cube.FaceUp), nil, nil) })
 	water := block.Water{Depth: 3, Still: true}
-	set("flowing water", 1, func(tx *world.Tx) { tx.SetBlock(pos.Add(cube.Pos{2, 0, 0}), nil, nil); tx.SetLiquid(pos.Add(cube.Pos{2, 0, 0}), water) })
+	set("flowing water", 1, func(tx *world.Tx) {
+		tx.SetBlock(pos.Add(cube.Pos{2, 0, 0}), nil, nil)
+		tx.SetLiquid(pos.Add(cube.Pos{2, 0, 0}), water)
+	})
 	set("the same water again", 0, func(tx *world.Tx) { tx.SetLiquid(pos.Add(cube.Pos{2, 0, 0}), water) })
 	set("water one deeper", 1, func(tx *world.Tx) { tx.SetLiquid(pos.Add(cube.Pos{2, 0, 0}), block.Water{Depth: 4, Still: true}) })
 }

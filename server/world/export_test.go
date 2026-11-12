@@ -91,4 +91,4 @@ func (tx *Tx) RaidSpawnPosition(center cube.Pos, cooldown int) (cube.Pos, bool) 
 
 // StrikeLightning exposes one lightning strike on the chunk at pos to
 // world_test.
-func (w *World) StrikeLightning(tx *Tx, pos ChunkPos) { w.weather.strikeLightning(tx, pos) }
+func (w *World) StrikeLightning(tx *Tx, pos ChunkPos) { w.strikeLightning(tx, pos) }
