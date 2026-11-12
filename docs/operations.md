@@ -196,6 +196,29 @@ startupProbe:
   failureThreshold: 60
 ```
 
+## Memory
+
+Set `GOMEMLIMIT` to about 80% of the memory the process is given (of the container, or of the machine if it has it
+to itself): `GOMEMLIMIT=6400MiB` for 8 GiB. Go's collector lets the heap in use grow to twice the live heap
+(`GOGC` 100) before it collects, and a server that holds loaded columns has a live heap that is big and changes
+slowly. In a load test of up to 100 players in the town and of explorers who load new columns without end, the RSS
+of the process ran at 1.6 to 2.1 times its live heap: 602 MiB of live heap, 1.66 GB in use and 1.8 GB of RSS
+for 50 players in the town at view distance 32. The collector costs 1 to 10% of the CPU there and pauses less than
+a millisecond, so making it work earlier near the limit costs little, and a process that the system kills for
+using more than it was given loses what it did not save.
+
+The limit is a soft one: near it the collector runs more often, and a heap that is live and above it is collected
+all the time, so size the memory by what is live, and leave the other 20% to what Go does not count (the stacks,
+the buffers of the network and of the world's database).
+
+What is live is about 150 to 163 KiB for each loaded column at view distance 32: the blocks of it (44 KiB), the
+chunk payloads kept for the next player who sees it (32 to 34), the scheduled ticks of the leaves its generation
+left (32), what the generator keeps and the light, and the players themselves, about 1.5 MiB each. The loaded
+columns are what the views of the players cover together (`adamant_world_chunks_loaded`): the players of one town at
+view 32 share about 3,700 of them, 600 MiB; every player who explores alone loads about 3,200 more. A smaller view
+distance gives each player fewer columns, but each column then costs more of the players' own memory: at view 12
+it was 296 KiB.
+
 ## Metrics
 
 `/metrics` writes the text format 0.0.4 of Prometheus: the metrics of the network stack, of the logs and of the
