@@ -71,8 +71,8 @@
   # writes every loaded chunk, changed or not, at every save: use it while pregenerating a world.
   SaveChunks = "modified"
   # GeneratorWorkers controls how many background workers are dedicated to generating chunks.
-  # Set this to 0 to use every logical CPU but one (GOMAXPROCS-1), and at least two; on hosts of 24
-  # or more logical CPUs GeneratorProfile "many-cores" leaves two instead. Under heavy
+  # Set this to 0 to let GeneratorProfile choose: one worker per physical core (half of GOMAXPROCS) for
+  # "fast-cores", every logical CPU but two for "many-cores". Under heavy
   # world generation load you may need to increase both this value and GeneratorQueueSize to avoid
   # backpressure; profile first if chunk generation is bottlenecked by LevelDB or other I/O.
   GeneratorWorkers = 0

@@ -14,12 +14,12 @@ const (
 	// others.
 	GeneratorProfileAuto GeneratorProfile = iota
 	// GeneratorProfileFastCores suits a few fast cores, such as a desktop
-	// CPU or a small virtual server. It runs a worker on every logical CPU
-	// but one, and at least two, and generates each chunk on its worker
-	// alone: a fast core finishes a chunk soon enough, and the CPU left over
-	// keeps the world tick and the network responsive. On four CPUs, three
-	// workers generate twice what two do, for 9 ms more of a busy tick at
-	// p95; four leave the owner of the world waiting for a CPU.
+	// CPU. It runs one worker per physical core, assuming two logical CPUs
+	// per core, and generates each chunk on its worker alone: a fast core
+	// finishes a chunk soon enough, and the logical CPUs left over keep the
+	// world tick and the network responsive. On four CPUs with 50 players, a
+	// third worker generated 45% more but left the owner of the world 0.8 of a
+	// CPU: 17.7 TPS and a mspt p95 of 74 ms, against 20 TPS and 51 ms with two.
 	GeneratorProfileFastCores
 	// GeneratorProfileManyCores suits many slower cores, such as multi-socket
 	// servers. It runs a worker on every logical CPU but two, sizes the
@@ -73,9 +73,9 @@ func (p GeneratorProfile) resolve(cpus int) GeneratorProfile {
 // profile p on a host with cpus logical CPUs.
 func (p GeneratorProfile) workers(cpus int) int {
 	if p == GeneratorProfileManyCores {
-		return max(2, cpus-2)
+		return max(1, cpus-2)
 	}
-	return max(2, cpus-1)
+	return max(1, cpus/2)
 }
 
 // GenerationTuning describes how a World runs its generator.

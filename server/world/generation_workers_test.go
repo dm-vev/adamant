@@ -43,15 +43,16 @@ func TestLightFillsLeaveProcessorsToTheOwner(t *testing.T) {
 	}
 }
 
-// TestGeneratorWorkersLeaveOneCPU checks the default worker counts: every
-// logical CPU but one, and at least two.
-func TestGeneratorWorkersLeaveOneCPU(t *testing.T) {
-	for cpus, want := range map[int]int{1: 2, 2: 2, 3: 2, 4: 3, 8: 7, 16: 15} {
+// TestGeneratorWorkersLeaveTheOwnerACore checks the default worker counts:
+// fast-cores runs one worker per physical core, as a third worker on four
+// CPUs left the owner of a world with 50 players too little of one.
+func TestGeneratorWorkersLeaveTheOwnerACore(t *testing.T) {
+	for cpus, want := range map[int]int{1: 1, 2: 1, 4: 2, 8: 4, 16: 8} {
 		if got := GeneratorProfileFastCores.workers(cpus); got != want {
 			t.Errorf("fast-cores: %d workers on %d CPUs, want %d", got, cpus, want)
 		}
 	}
-	for cpus, want := range map[int]int{2: 2, 24: 22, 64: 62} {
+	for cpus, want := range map[int]int{24: 22, 64: 62} {
 		if got := GeneratorProfileManyCores.workers(cpus); got != want {
 			t.Errorf("many-cores: %d workers on %d CPUs, want %d", got, cpus, want)
 		}

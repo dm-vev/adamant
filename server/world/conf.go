@@ -60,9 +60,9 @@ type Config struct {
 	// number of logical CPUs.
 	GeneratorProfile GeneratorProfile
 	// GeneratorWorkers specifies the number of background workers used to run
-	// chunk generation. If set to 0 or lower, GeneratorProfile selects it:
-	// every processor of the scheduler but one, and at least two, or every one
-	// but two for GeneratorProfileManyCores.
+	// chunk generation. If set to 0 or lower, GeneratorProfile selects it: one
+	// per physical core, or every logical CPU but two for
+	// GeneratorProfileManyCores.
 	// Large terrain preloads may benefit from a higher worker count, but
 	// profiling is recommended when the generator is constrained by external
 	// I/O (for example LevelDB access).
