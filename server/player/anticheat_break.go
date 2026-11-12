@@ -2,6 +2,7 @@ package player
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -28,6 +29,16 @@ type breakState struct {
 // least a tick's worth: a block that breaks at once takes 0, a tick.
 func (p *Player) breakTicks(pos cube.Pos) float64 {
 	return max(float64(p.breakTime(pos))/float64(anticheatTick), 0)
+}
+
+// breakTicksText describes a break time for the detail of a violation: a
+// block that cannot be broken, as air, has the longest time there is, which
+// is no number of ticks to name.
+func breakTicksText(d time.Duration) string {
+	if d == math.MaxInt64 {
+		return "no time: it cannot be broken"
+	}
+	return fmt.Sprintf("%.1f ticks", max(float64(d)/float64(anticheatTick), 0))
 }
 
 // tickProgress returns the part of the break of the block at pos a tick
@@ -109,7 +120,7 @@ func (p *Player) finishBreakEarly() (refused bool) {
 		return false
 	}
 	name, _ := p.tx.Block(p.breakingPos).EncodeBlock()
-	act := p.violate(ac, anticheat.BreakTime, "early", tolerance-progress, fmt.Sprintf("%s at %.2f of %.1f ticks", name, progress, p.breakTicks(p.breakingPos)))
+	act := p.violate(ac, anticheat.BreakTime, "early", tolerance-progress, fmt.Sprintf("%s at %.2f of %s", name, progress, breakTicksText(p.breakTime(p.breakingPos))))
 	switch act {
 	case anticheat.Log:
 		return false
@@ -152,7 +163,7 @@ func (p *Player) refuseDestroy(pos cube.Pos) bool {
 	var act anticheat.Action
 	switch {
 	case p.breakTicks(pos) > 1:
-		act = p.violate(ac, anticheat.BreakTime, "instant", p.breakTicks(pos), fmt.Sprintf("%s takes %.1f ticks", name, p.breakTicks(pos)))
+		act = p.violate(ac, anticheat.BreakTime, "instant", p.breakTicks(pos), fmt.Sprintf("%s takes %s", name, breakTicksText(p.breakTime(pos))))
 	case !ac.breaking.instant.Take(p.inputArrival(ac), conf.InstantPerSecond, conf.InstantBurst):
 		act = p.violate(ac, anticheat.BreakTime, "rate", 1, fmt.Sprintf("%s beyond %v a second", name, conf.InstantPerSecond))
 	default:

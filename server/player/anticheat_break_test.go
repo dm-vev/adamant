@@ -1,6 +1,7 @@
 package player
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -154,4 +155,23 @@ func TestBreakTimeOff(t *testing.T) {
 			t.Fatal("obsidian did not break at once with BreakTime off")
 		}
 	})
+}
+
+// TestBreakTimeDetailNamesAnUnbreakableBlock checks the detail of a violation
+// for a block that cannot be broken, as air, does not name a number of ticks
+// made of the longest duration there is.
+func TestBreakTimeDetailNamesAnUnbreakableBlock(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		d    time.Duration
+		want string
+	}{
+		{math.MaxInt64, "no time: it cannot be broken"},
+		{15 * anticheatTick, "15.0 ticks"},
+		{0, "0.0 ticks"},
+	} {
+		if got := breakTicksText(test.d); got != test.want {
+			t.Errorf("breakTicksText(%v) = %q, want %q", test.d, got, test.want)
+		}
+	}
 }
