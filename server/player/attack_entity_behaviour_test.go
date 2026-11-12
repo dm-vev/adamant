@@ -162,7 +162,10 @@ func runAttackCase(t *testing.T, tr *transcript, c attackCase) {
 			report(names[i], b)
 		}
 		held, _ := p.HeldItems()
-		name, meta := held.Item().EncodeItem()
+		name, meta := "empty", int16(0)
+		if !held.Empty() {
+			name, meta = held.Item().EncodeItem()
+		}
 		tr.linef("player held=%s/%d count=%d durability=%d exhaustion=%.4f strength=%d fall=%.4f velocity=%s lastHurtMob=%v",
 			name, meta, held.Count(), held.Durability(), p.hunger.exhaustionLevel, p.attackStrengthTicks, p.fallDistance, describeArg(p.Velocity()), lastHurtMobType(p))
 	})

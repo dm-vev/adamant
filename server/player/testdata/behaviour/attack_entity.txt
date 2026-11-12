@@ -9,6 +9,7 @@ target health=9.0000 dead=false closed=false velocity=(0.4500 0.0000 0.0000) fir
 beside health=10.0000 dead=false closed=false velocity=(0.0000 0.0000 0.0000) fire=false
 beyond health=10.0000 dead=false closed=false velocity=(0.0000 0.0000 0.0000) fire=false
 aside health=10.0000 dead=false closed=false velocity=(0.0000 0.0000 0.0000) fire=false
+player held=empty/0 count=0 durability=-1 exhaustion=0.1000 strength=0 fall=0.0000 velocity=(0.0000 0.0000 0.0000) lastHurtMob=minecraft:cow
 == sword uncharged
 event AttackEntity minecraft:cow@(2.5000 100.0000 0.5000) force=0.4500 height=0.3608 critical=false
 event ItemDamage item.Sword damage=1
@@ -732,6 +733,7 @@ target closed=false
 beside health=10.0000 dead=false closed=false velocity=(0.0000 0.0000 0.0000) fire=false
 beyond health=10.0000 dead=false closed=false velocity=(0.0000 0.0000 0.0000) fire=false
 aside health=10.0000 dead=false closed=false velocity=(0.0000 0.0000 0.0000) fire=false
+player held=empty/0 count=0 durability=-1 exhaustion=0.1000 strength=0 fall=0.0000 velocity=(0.0000 0.0000 0.0000) lastHurtMob=none
 == out of reach
 result false
 target health=10.0000 dead=false closed=false velocity=(0.0000 0.0000 0.0000) fire=false
