@@ -37,3 +37,40 @@ func TestGenerationQueueTakesChunkNearestLoaderFirst(t *testing.T) {
 		}
 	}
 }
+
+// TestGenerationQueueKeepsWorkerOnItsFrontier checks that a worker takes the
+// task next to the chunk it generated last among those about as near to a
+// loader as the nearest, but not one far behind the nearest, and that it
+// takes the nearest to a loader again after frontierRun chunks in a row.
+func TestGenerationQueueKeepsWorkerOnItsFrontier(t *testing.T) {
+	t.Parallel()
+	q := newGenerationQueue()
+	// Two loaders, at 0,0 and 100,0: the tasks at 10,0 and 112,0 wait
+	// about as long, the one at 130,0 much longer.
+	for _, pos := range []ChunkPos{{10, 0}, {112, 0}, {130, 0}} {
+		q.push(generationTask{pos: pos})
+	}
+	q.setFocus([]ChunkPos{{0, 0}, {100, 0}})
+	cursor := generationCursor{last: ChunkPos{131, 0}, run: 1}
+	if task, _ := q.popNear(&cursor); task.pos != (ChunkPos{112, 0}) {
+		t.Fatalf("task = %v, want the one on the worker's frontier, [112 0]", task.pos)
+	}
+	if task, _ := q.popNear(&cursor); task.pos != (ChunkPos{10, 0}) {
+		t.Fatalf("task = %v, want the one nearest to a loader, [10 0]", task.pos)
+	}
+	q.prioritize(ChunkPos{130, 0})
+	q.push(generationTask{pos: ChunkPos{1, 0}})
+	if task, _ := q.popNear(&cursor); task.pos != (ChunkPos{130, 0}) {
+		t.Fatalf("task = %v, want the awaited one, [130 0]", task.pos)
+	}
+
+	// At the end of its run, the worker leaves its frontier.
+	q.push(generationTask{pos: ChunkPos{110, 0}})
+	cursor = generationCursor{last: ChunkPos{111, 0}, run: frontierRun}
+	if task, _ := q.popNear(&cursor); task.pos != (ChunkPos{1, 0}) {
+		t.Fatalf("task = %v after a run of %d, want the one nearest to a loader, [1 0]", task.pos, frontierRun)
+	}
+	if cursor.run != 1 || cursor.last != (ChunkPos{1, 0}) {
+		t.Fatalf("cursor = %+v, want a run of 1 from [1 0]", cursor)
+	}
+}

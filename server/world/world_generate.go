@@ -78,8 +78,9 @@ func (w *World) generatorWorker() {
 	defer w.running.Done()
 	defer w.generatorRunning.Done()
 
+	var cursor generationCursor
 	for {
-		task, ok := w.generatorQueue.pop()
+		task, ok := w.generatorQueue.popNear(&cursor)
 		if !ok {
 			return
 		}
