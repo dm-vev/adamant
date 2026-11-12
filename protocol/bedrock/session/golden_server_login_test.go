@@ -53,18 +53,11 @@ func TestGoldenServerLogin(t *testing.T) {
 	if isolated(t) {
 		return
 	}
-	// The address of the links is only known once listening: take a port.
-	probe, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	proxyAddr := probe.Addr().String()
-	_ = probe.Close()
 	s := newServerScenario(t, "server_login", serverConfig{brief: true, network: true, user: func(uc *server.UserConfig) {
 		uc.Whitelist.Enabled = true
 	}, bedrock: func(uc *bedrockadapter.UserConfig) {
 		uc.Network.Address = "127.0.0.1:0"
-		uc.Proxy.Address, uc.Proxy.Secret = proxyAddr, proxySecret
+		uc.Proxy.Address, uc.Proxy.Secret = "127.0.0.1:0", proxySecret
 	}})
 	for _, name := range []string{"Member", "Banned", "Addressed"} {
 		if _, err := s.srv.WhitelistAdd(name); err != nil {
@@ -85,6 +78,8 @@ func TestGoldenServerLogin(t *testing.T) {
 	if _, err := s.srv.BanIP("203.0.113.9", "spam"); err != nil {
 		t.Fatal(err)
 	}
+	// The address of the links is only known once listening.
+	proxyAddr := s.proxyAddr()
 	link, err := proxy.Dial(proxyAddr, []byte(proxySecret))
 	if err != nil {
 		t.Fatal(err)

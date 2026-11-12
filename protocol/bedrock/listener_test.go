@@ -27,6 +27,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/protocol/bedrock/session"
@@ -266,6 +267,11 @@ func testNetherNetOnLAN(t *testing.T, primary *versions.Protocol, want int32) {
 	_ = nn.Close()
 }
 
+// proxiesLogged is the message the listener logs the address of its proxy
+// listener with, which a test that has it listen on a port of the system
+// takes the address from.
+const proxiesLogged = "Proxies may carry players to the server."
+
 // TestNetherNetListenerTakesProxies serves the links of proxies the config
 // names: a player a proxy opens on one logs in, and a secret short enough
 // to guess keeps the server from starting.
@@ -281,19 +287,17 @@ func TestNetherNetListenerTakesProxies(t *testing.T) {
 		t.Fatal("the server started with a secret of 5 characters")
 	}
 
-	// The address of the links is only known once listening: take a port.
-	probe, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	c.Proxy.Address = probe.Addr().String()
-	_ = probe.Close()
+	// The address of the links is only known once listening.
+	c.Proxy.Address = "127.0.0.1:0"
 	c.Proxy.Secret = strings.Repeat("s", minProxySecret)
+	var proxyAddr func() string
+	conf.Log, proxyAddr = testfixture.CaptureAddr(nil, proxiesLogged)
 	l, err := c.netherNetListener(conf, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer l.Close()
+	c.Proxy.Address = proxyAddr()
 	accepted := make(chan session.Conn, 1)
 	go func() {
 		if c, err := l.Accept(); err == nil {
@@ -489,18 +493,15 @@ func TestNetherNetListenerCapsAddresses(t *testing.T) {
 	c.Network.Address = "127.0.0.1:0"
 	c.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
 	c.Network.MaxConnectionsPerIP = 1
-	probe, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	c.Proxy.Address = probe.Addr().String()
-	_ = probe.Close()
+	c.Proxy.Address = "127.0.0.1:0"
 	c.Proxy.Secret = strings.Repeat("s", minProxySecret)
-	l, err := c.netherNetListener(server.Config{Log: slog.New(slog.DiscardHandler), StatusProvider: nameStatus{name: "Adamant"}}, nil)
+	log, proxyAddr := testfixture.CaptureAddr(nil, proxiesLogged)
+	l, err := c.netherNetListener(server.Config{Log: log, StatusProvider: nameStatus{name: "Adamant"}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer l.Close()
+	c.Proxy.Address = proxyAddr()
 	link, err := proxy.Dial(c.Proxy.Address, []byte(c.Proxy.Secret))
 	if err != nil {
 		t.Fatal(err)
@@ -553,18 +554,16 @@ func TestNetherNetListenerLetsOperatorsJoinFull(t *testing.T) {
 	c := testNetherNetConfig()
 	c.Network.Address = "127.0.0.1:0"
 	c.Network.IdentityFile = filepath.Join(dir, "identity.pem")
-	probe, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	c.Proxy.Address = probe.Addr().String()
-	_ = probe.Close()
+	c.Proxy.Address = "127.0.0.1:0"
 	c.Proxy.Secret = strings.Repeat("s", minProxySecret)
+	var proxyAddr func() string
+	conf.Log, proxyAddr = testfixture.CaptureAddr(nil, proxiesLogged)
 	l, err := c.netherNetListener(conf, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer l.Close()
+	c.Proxy.Address = proxyAddr()
 	link, err := proxy.Dial(c.Proxy.Address, []byte(c.Proxy.Secret))
 	if err != nil {
 		t.Fatal(err)

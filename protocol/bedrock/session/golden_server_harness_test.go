@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/protocol/bedrock"
 	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/protocol/bedrock/session"
@@ -229,6 +230,9 @@ type serverScenario struct {
 	players *goldenPlayers
 	loader  *world.Loader
 	brief   bool
+	// proxyAddr returns the address the proxy listener of the program listens
+	// on, once the server is made, if its config has one.
+	proxyAddr func() string
 
 	out  strings.Builder
 	norm *normaliser
@@ -338,7 +342,21 @@ func newServerScenario(t *testing.T, name string, conf serverConfig) *serverScen
 		return session.Listen(s.l, session.ListenConfig{Log: c.Log, EmoteChatMuted: bc.MuteEmoteChat, Blocks: c.Blocks, Primary: bc.Primary}), nil
 	}
 	if conf.network {
-		c.Listeners = append(c.Listeners, bc.Listener, test)
+		// The listener of the program listens on the ports of the system its
+		// config names with port 0: the proxy address is the one it logs, as
+		// a port found free and closed again may be taken by the time the
+		// listener listens on it.
+		log, proxyAddr := testfixture.CaptureAddr(goldenLog().Handler(), "Proxies may carry players to the server.")
+		s.proxyAddr = proxyAddr
+		network := func(c server.Config, h server.Host) (server.Listener, error) {
+			c.Log = log
+			l, err := bc.Listener(c, h)
+			if err != nil {
+				t.Fatalf("create the listener of the program: %v", err)
+			}
+			return l, nil
+		}
+		c.Listeners = append(c.Listeners, network, test)
 	} else {
 		c.Listeners = []func(server.Config, server.Host) (server.Listener, error){test}
 	}
