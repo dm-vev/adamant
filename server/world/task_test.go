@@ -425,3 +425,51 @@ func testContext(t *testing.T) context.Context {
 	t.Cleanup(cancel)
 	return ctx
 }
+
+// TestDoRunsWhileTheQueueNeverEmpties checks that a task queued while the
+// queue was full runs although the queue never empties after, as the ticks
+// and requests of an owner that cannot keep up keep it: the barrier of a
+// checkpoint is such a task.
+func TestDoRunsWhileTheQueueNeverEmpties(t *testing.T) {
+	w := New()
+	defer w.Close()
+
+	entered, proceed := make(chan struct{}), make(chan struct{})
+	w.exec(func(*Tx) {
+		close(entered)
+		<-proceed
+	})
+	<-entered
+	for full := false; !full; {
+		select {
+		case w.queue <- normalTransaction{c: make(chan struct{}), f: func(*Tx) {}}:
+		default:
+			full = true
+		}
+	}
+	ran := make(chan struct{})
+	w.Do(func(*Tx) { close(ran) })
+
+	stop, stopped := make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(stopped)
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			w.exec(func(*Tx) { time.Sleep(50 * time.Microsecond) })
+		}
+	}()
+	defer func() {
+		close(stop)
+		<-stopped
+	}()
+	close(proceed)
+	select {
+	case <-ran:
+	case <-time.After(5 * time.Second):
+		t.Fatal("a task in the overflow did not run while the queue stayed full")
+	}
+}

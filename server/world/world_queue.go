@@ -139,6 +139,18 @@ func (w *World) nextOverflowTransaction() (transaction, bool) {
 	return tx, true
 }
 
+// runOverflowTransaction runs the oldest transaction of the overflow, if
+// any, and reports whether it ran one.
+func (w *World) runOverflowTransaction() bool {
+	tx, ok := w.nextOverflowTransaction()
+	if !ok {
+		return false
+	}
+	w.runTransaction(tx)
+	w.scheduling.Done()
+	return true
+}
+
 // handleTransactions continuously reads transactions from the queue and runs
 // them.
 func (w *World) handleTransactions() {
@@ -149,17 +161,20 @@ func (w *World) handleTransactions() {
 		select {
 		case tx := <-w.queue:
 			w.runTransaction(tx)
+			// A queue that never empties, as the ticks and requests of an
+			// owner that cannot keep up keep it, must not starve the
+			// overflow: one of it runs after each transaction of the queue.
+			w.runOverflowTransaction()
 			continue
 		default:
 		}
-		if tx, ok := w.nextOverflowTransaction(); ok {
-			w.runTransaction(tx)
-			w.scheduling.Done()
+		if w.runOverflowTransaction() {
 			continue
 		}
 		select {
 		case tx := <-w.queue:
 			w.runTransaction(tx)
+			w.runOverflowTransaction()
 		case <-w.queueWake:
 		case <-w.queueClosing:
 			w.queueing.Done()
