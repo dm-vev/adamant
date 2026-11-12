@@ -204,7 +204,7 @@ Settings live in `config.toml`.
 > [!WARNING]
 > Adamant versions before the seed fix wrote a timestamp to `level.dat.RandomSeed`. Back up such worlds and restore their original generation seed before upgrading. See [World seed and saved settings](docs/verification.md#world-seed-and-saved-settings).
 
-**Generator.** `GeneratorProfile = "auto"` picks `many-cores` on hosts with 24 or more logical CPUs. `GeneratorQueueSize` defaults to four times `GeneratorWorkers`. If the logs warn `world generator queue saturated`, raise both values.
+**Generator.** `GeneratorProfile = "auto"` picks `many-cores` on hosts with 24 or more logical CPUs. `GeneratorWorkers = 0` runs a worker on every logical CPU the Go scheduler uses (`GOMAXPROCS`) but one, and at least two (`fast-cores`), or on every one but two (`many-cores`). `GeneratorQueueSize` defaults to four times `GeneratorWorkers`. If the logs warn `world generator queue saturated`, raise both values.
 
 **Saving chunks.** `SaveChunks = "modified"` writes a chunk when it was generated or changed since its last save, or holds entities or block entities. `SaveChunks = "all"` writes every loaded chunk at every save and unload, changed or not, for pregenerating a world. A chunk that failed to load is never written over in either mode.
 

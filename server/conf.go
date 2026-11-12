@@ -112,7 +112,8 @@ type Config struct {
 	GeneratorProfile world.GeneratorProfile
 	// GeneratorWorkers controls the number of asynchronous workers dedicated
 	// to generating chunks. If set to 0 or lower, GeneratorProfile selects the
-	// worker count from the host's available CPUs. Consider raising this when
+	// worker count from the processors of the scheduler: all but one, and at
+	// least two, or all but two for the many-cores profile. Consider raising this when
 	// pre-generating terrain heavily, but profile if the generator is limited
 	// by I/O (for example LevelDB operations).
 	GeneratorWorkers int
@@ -582,7 +583,8 @@ type UserConfig struct {
 		GeneratorProfile string
 		// GeneratorWorkers is the number of background workers that should be
 		// dedicated to generating chunks. Set to 0 to let GeneratorProfile
-		// select it from the host's CPU count.
+		// select it from the host's CPU count: every logical CPU but one, and
+		// at least two, or every one but two for "many-cores".
 		GeneratorWorkers int
 		// GeneratorQueueSize is how many chunk generation jobs may wait for a
 		// worker before a backlog warning is logged. Set to 0 to use an
