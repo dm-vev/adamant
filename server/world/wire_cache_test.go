@@ -482,7 +482,7 @@ func TestWireCacheConcurrentRegionInvalidation(t *testing.T) {
 func TestWireCacheWorldLifecycle(t *testing.T) {
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
-	w.wireCache.setMaxBytes(8 << 10)
+	w.setMaxBytes(8 << 10)
 
 	done := w.Exec(func(tx *Tx) {
 		payload := make([]byte, 4<<10)

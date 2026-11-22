@@ -107,7 +107,7 @@ func (countingLateBlock) EncodeBlock() (string, map[string]any) {
 func (countingLateBlock) Hash() (uint64, uint64) { return 0xABCD1234, 0x1234ABCD }
 func (countingLateBlock) Model() BlockModel      { return unknownModel{} }
 func (b countingLateBlock) RedstoneCircuit() RedstoneCircuitState {
-	return countingLateState{calls: b.calls}
+	return countingLateState(b)
 }
 func (countingLateBlock) RedstoneCircuitOutput(out Block) Block { return out }
 

@@ -11,9 +11,9 @@ import (
 
 var (
 	// ErrNoPlayerFound is Java's commands.generic.player.notFound error text.
-	ErrNoPlayerFound = errors.New("No player was found")
+	ErrNoPlayerFound = errors.New("No player was found") //nolint:staticcheck // Java Minecraft command error text.
 	// ErrNoEntityFound is Java's commands.generic.entity.notFound error text.
-	ErrNoEntityFound = errors.New("No entity was found")
+	ErrNoEntityFound = errors.New("No entity was found") //nolint:staticcheck // Java Minecraft command error text.
 )
 
 // Selector is a parsed target selector or player name passed to ForEach. It is

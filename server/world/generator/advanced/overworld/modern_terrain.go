@@ -263,13 +263,14 @@ func fillSubchunkBiomes(storage *chunk.PalettedStorage, work *modernTerrainScrat
 		} else if b != firstVal {
 			allSame = false
 		}
-		if domVotes == 0 {
+		switch {
+		case domVotes == 0:
 			domIdx, domVotes = b, n
-		} else if domIdx == b {
+		case domIdx == b:
 			domVotes += n
-		} else if domVotes >= n {
+		case domVotes >= n:
 			domVotes -= n
-		} else {
+		default:
 			domIdx, domVotes = b, n-domVotes
 		}
 	}

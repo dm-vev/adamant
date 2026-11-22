@@ -236,7 +236,7 @@ func (s *pushScratch) appendOverlaps(i int, dst []int32) []int32 {
 			}
 		}
 		span := s.cellSpans[cid]
-		if span.head == span.tail && span.head == i32 {
+		if span.head == i32 && span.tail == i32 {
 			return dst
 		}
 		for j := span.head; j >= 0; j = spatial[j].next {
