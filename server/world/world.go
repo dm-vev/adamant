@@ -34,6 +34,7 @@ type World struct {
 	saveState
 	viewerState
 	faultState
+	wireCache
 	conf Config
 	// log is the logger of the world; genLog and saveLog are those of its
 	// generation, lighting and saves. Each is the logger of the Config

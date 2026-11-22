@@ -138,6 +138,8 @@ type Column struct {
 	// key, Cache(nil), and caches those of the keys adapters asked for.
 	ownCache ColumnCache
 	caches   map[*SlotKey]*ColumnCache
+	// wire links the column into its world's bounded LRU wire payload cache.
+	wire wireCacheNode
 
 	viewers map[Viewer]struct{}
 	loaders []*Loader
@@ -159,7 +161,7 @@ type Column struct {
 
 // newColumn returns a new Column wrapper around the chunk.Chunk passed.
 func newColumn(c *chunk.Chunk) *Column {
-	return &Column{
+	col := &Column{
 		blockVersion:             blockVersionClock.Add(1),
 		Chunk:                    c,
 		snowRandomValue:          0x283ae83,
@@ -169,6 +171,8 @@ func newColumn(c *chunk.Chunk) *Column {
 		readyCh:                  make(chan struct{}),
 		viewers:                  make(map[Viewer]struct{}),
 	}
+	col.ownCache.col = col
+	return col
 }
 
 // newQueuedColumn returns a Column to be generated. The worker that generates
@@ -301,33 +305,67 @@ func (c *Column) updateBlockEntity(pos cube.Pos, b Block) {
 }
 
 func (c *Column) invalidateSubChunkHeightMaps() {
+	if len(c.subChunkHeightMaps) == 0 {
+		return
+	}
+	var freed int64
+	for _, hm := range c.subChunkHeightMaps {
+		if hm.ready {
+			freed += int64(len(hm.mapData))
+		}
+	}
 	clear(c.subChunkHeightMaps)
+	c.subWireBytes(freed)
 }
 
 func (c *Column) invalidateNetworkBiomePayload() {
-	c.networkBiomePayload = cachedBlockEntityPayload{}
-	c.limitedChunkPayload = cachedBlockEntityPayload{}
-	c.invalidateKeyedPayloads(false)
+	var freed int64
+	if c.networkBiomePayload.ready {
+		freed += int64(len(c.networkBiomePayload.payload))
+		c.networkBiomePayload = cachedBlockEntityPayload{}
+	}
+	if c.limitedChunkPayload.ready {
+		freed += int64(len(c.limitedChunkPayload.payload))
+		c.limitedChunkPayload = cachedBlockEntityPayload{}
+	}
+	freed += c.invalidateKeyedPayloads(false)
+	c.subWireBytes(freed)
 }
 
 func (c *Column) invalidateNetworkSubChunkPayloads() {
-	c.invalidateKeyedPayloads(true)
+	c.subWireBytes(c.invalidateKeyedPayloads(true))
 }
 
 func (c *Column) invalidateBlockEntityPayloads() {
-	c.chunkBlockEntityPayload = cachedBlockEntityPayload{}
-	c.chunkBlockEntityPayloadNoBorder = cachedBlockEntityPayload{}
-	clear(c.subChunkBlockEntityPayloads)
-	c.invalidateKeyedPayloads(false)
+	var freed int64
+	if c.chunkBlockEntityPayload.ready {
+		freed += int64(len(c.chunkBlockEntityPayload.payload))
+		c.chunkBlockEntityPayload = cachedBlockEntityPayload{}
+	}
+	if c.chunkBlockEntityPayloadNoBorder.ready {
+		freed += int64(len(c.chunkBlockEntityPayloadNoBorder.payload))
+		c.chunkBlockEntityPayloadNoBorder = cachedBlockEntityPayload{}
+	}
+	if len(c.subChunkBlockEntityPayloads) > 0 {
+		for _, p := range c.subChunkBlockEntityPayloads {
+			if p.ready {
+				freed += int64(len(p.payload))
+			}
+		}
+		clear(c.subChunkBlockEntityPayloads)
+	}
+	freed += c.invalidateKeyedPayloads(false)
+	c.subWireBytes(freed)
 }
 
 // invalidateKeyedPayloads clears the payload of the chunk of every key, and
-// those of its sub-chunks if subChunks is set.
-func (c *Column) invalidateKeyedPayloads(subChunks bool) {
-	c.ownCache.invalidate(subChunks)
+// those of its sub-chunks if subChunks is set, returning the bytes freed.
+func (c *Column) invalidateKeyedPayloads(subChunks bool) int64 {
+	freed := c.ownCache.invalidate(subChunks)
 	for _, cache := range c.caches {
-		cache.invalidate(subChunks)
+		freed += cache.invalidate(subChunks)
 	}
+	return freed
 }
 
 // CachedSubChunkHeightMap returns cached height map data for a sub-chunk.
@@ -336,29 +374,46 @@ func (c *Column) CachedSubChunkHeightMap(ind int16) (byte, []int8, bool) {
 		return 0, nil, false
 	}
 	heightMap, ok := c.subChunkHeightMaps[ind]
-	return heightMap.mapType, heightMap.mapData, ok && heightMap.ready
+	if ok && heightMap.ready {
+		c.touchWireCache()
+		return heightMap.mapType, heightMap.mapData, true
+	}
+	return heightMap.mapType, heightMap.mapData, false
 }
 
 // CacheSubChunkHeightMap stores height map data for a sub-chunk.
 func (c *Column) CacheSubChunkHeightMap(ind int16, mapType byte, mapData []int8) {
+	var oldLen int
 	if c.subChunkHeightMaps == nil {
 		c.subChunkHeightMaps = make(map[int16]cachedSubChunkHeightMap, 4)
+	} else if prev, ok := c.subChunkHeightMaps[ind]; ok && prev.ready {
+		oldLen = len(prev.mapData)
 	}
 	c.subChunkHeightMaps[ind] = cachedSubChunkHeightMap{
 		mapType: mapType,
 		mapData: mapData,
 		ready:   true,
 	}
+	c.recordWireDelta(int64(len(mapData)) - int64(oldLen))
 }
 
 // CachedNetworkBiomePayload returns the cached network biome payload for the column.
 func (c *Column) CachedNetworkBiomePayload() ([]byte, bool) {
-	return c.networkBiomePayload.payload, c.networkBiomePayload.ready
+	if c.networkBiomePayload.ready {
+		c.touchWireCache()
+		return c.networkBiomePayload.payload, true
+	}
+	return c.networkBiomePayload.payload, false
 }
 
 // CacheNetworkBiomePayload stores the network biome payload for the column.
 func (c *Column) CacheNetworkBiomePayload(payload []byte) {
+	var oldLen int
+	if c.networkBiomePayload.ready {
+		oldLen = len(c.networkBiomePayload.payload)
+	}
 	c.networkBiomePayload = cachedBlockEntityPayload{payload: payload, ready: true}
+	c.recordWireDelta(int64(len(payload)) - int64(oldLen))
 }
 
 // CachedNetworkSubChunkPayload returns the cached encoded network payload
@@ -370,17 +425,29 @@ func (c *Column) CachedNetworkSubChunkPayload(ind int16) ([]byte, bool) {
 // CacheNetworkSubChunkPayload stores the encoded network payload for a
 // sub-chunk, that of Cache(nil).
 func (c *Column) CacheNetworkSubChunkPayload(ind int16, payload []byte) {
+	if c.ownCache.col == nil {
+		c.ownCache.col = c
+	}
 	c.ownCache.CacheNetworkSubChunkPayload(ind, payload)
 }
 
 // CachedLimitedChunkPayload returns the cached limited chunk raw payload.
 func (c *Column) CachedLimitedChunkPayload() ([]byte, bool) {
-	return c.limitedChunkPayload.payload, c.limitedChunkPayload.ready
+	if c.limitedChunkPayload.ready {
+		c.touchWireCache()
+		return c.limitedChunkPayload.payload, true
+	}
+	return c.limitedChunkPayload.payload, false
 }
 
 // CacheLimitedChunkPayload stores the limited chunk raw payload.
 func (c *Column) CacheLimitedChunkPayload(payload []byte) {
+	var oldLen int
+	if c.limitedChunkPayload.ready {
+		oldLen = len(c.limitedChunkPayload.payload)
+	}
 	c.limitedChunkPayload = cachedBlockEntityPayload{payload: payload, ready: true}
+	c.recordWireDelta(int64(len(payload)) - int64(oldLen))
 }
 
 // CachedFullChunkPayload returns the cached full chunk raw payload, that
@@ -392,25 +459,37 @@ func (c *Column) CachedFullChunkPayload() ([]byte, bool) {
 // CacheFullChunkPayload stores the full chunk raw payload, that of
 // Cache(nil).
 func (c *Column) CacheFullChunkPayload(payload []byte) {
+	if c.ownCache.col == nil {
+		c.ownCache.col = c
+	}
 	c.ownCache.CacheFullChunkPayload(payload)
 }
 
 // CachedChunkBlockEntityPayload returns a cached encoded block entity payload for the column.
 func (c *Column) CachedChunkBlockEntityPayload(noBorder bool) ([]byte, bool) {
+	entry := c.chunkBlockEntityPayload
 	if noBorder {
-		return c.chunkBlockEntityPayloadNoBorder.payload, c.chunkBlockEntityPayloadNoBorder.ready
+		entry = c.chunkBlockEntityPayloadNoBorder
 	}
-	return c.chunkBlockEntityPayload.payload, c.chunkBlockEntityPayload.ready
+	if entry.ready {
+		c.touchWireCache()
+		return entry.payload, true
+	}
+	return entry.payload, false
 }
 
 // CacheChunkBlockEntityPayload stores an encoded block entity payload for the column.
 func (c *Column) CacheChunkBlockEntityPayload(noBorder bool, payload []byte) {
-	entry := cachedBlockEntityPayload{payload: payload, ready: true}
+	slot := &c.chunkBlockEntityPayload
 	if noBorder {
-		c.chunkBlockEntityPayloadNoBorder = entry
-		return
+		slot = &c.chunkBlockEntityPayloadNoBorder
 	}
-	c.chunkBlockEntityPayload = entry
+	var oldLen int
+	if slot.ready {
+		oldLen = len(slot.payload)
+	}
+	*slot = cachedBlockEntityPayload{payload: payload, ready: true}
+	c.recordWireDelta(int64(len(payload)) - int64(oldLen))
 }
 
 // CachedSubChunkBlockEntityPayload returns a cached encoded block entity payload for a sub-chunk.
@@ -419,15 +498,23 @@ func (c *Column) CachedSubChunkBlockEntityPayload(ind int16) ([]byte, bool) {
 		return nil, false
 	}
 	payload, ok := c.subChunkBlockEntityPayloads[ind]
-	return payload.payload, ok && payload.ready
+	if ok && payload.ready {
+		c.touchWireCache()
+		return payload.payload, true
+	}
+	return payload.payload, false
 }
 
 // CacheSubChunkBlockEntityPayload stores an encoded block entity payload for a sub-chunk.
 func (c *Column) CacheSubChunkBlockEntityPayload(ind int16, payload []byte) {
+	var oldLen int
 	if c.subChunkBlockEntityPayloads == nil {
 		c.subChunkBlockEntityPayloads = make(map[int16]cachedBlockEntityPayload, 4)
+	} else if prev, ok := c.subChunkBlockEntityPayloads[ind]; ok && prev.ready {
+		oldLen = len(prev.payload)
 	}
 	c.subChunkBlockEntityPayloads[ind] = cachedBlockEntityPayload{payload: payload, ready: true}
+	c.recordWireDelta(int64(len(payload)) - int64(oldLen))
 }
 
 func (c *Column) randomTickSubChunkIndices(br BlockRegistry) []int {

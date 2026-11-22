@@ -393,6 +393,7 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 		_ = e.Close()
 	}
 	c.resetEntities()
+	c.releaseWireCache()
 	if w.lastChunkPos == pos {
 		w.lastChunk = nil
 	}

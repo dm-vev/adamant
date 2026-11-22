@@ -65,7 +65,11 @@ func (c *Column) enlist() {
 // and lists it if it already needs saving, as a column taken back from
 // staging does.
 func (w *World) placeColumn(pos ChunkPos, col *Column) {
+	if old := w.chunks[pos]; old != nil && old != col {
+		old.releaseWireCache()
+	}
 	col.pos, col.dirty = pos, &w.dirty
+	col.attachWireCache(&w.wireCache)
 	w.chunks[pos] = col
 	if col.needsSave() {
 		col.enlist()
