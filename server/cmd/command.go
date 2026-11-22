@@ -153,15 +153,28 @@ func (cmd Command) Execute(args string, source Source, tx *world.Tx) {
 	if source == nil {
 		panic("execute: invalid command source: source must not be nil")
 	}
-	output := &Output{}
+	output := &Output{inExecute: true}
 	// ran is the runnable that ran, if any.
 	var ran Runnable
-	if observer.Load() != nil {
-		e := Execution{Source: source, Command: cmd, Args: args, Output: output}
-		// Deferred first, the observer runs after the output was sent.
-		defer func() { observe(cmd.observed(e, ran)) }()
-	}
-	defer source.SendCommandOutput(output)
+	defer func() {
+		var onObserve func(Source)
+		if f := observer.Load(); f != nil && *f != nil {
+			e := cmd.observed(Execution{Source: source, Command: cmd, Args: args, Output: output}, ran)
+			onObserve = func(finalSrc Source) {
+				if finalSrc != nil {
+					e.Source = finalSrc
+				}
+				observe(e)
+			}
+		}
+		if output.finishExecute(tx, onObserve) {
+			return
+		}
+		source.SendCommandOutput(output)
+		if onObserve != nil {
+			onObserve(nil)
+		}
+	}()
 
 	var leastErroneous error
 	var leastArgsLeft *Line

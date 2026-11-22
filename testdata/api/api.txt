@@ -6348,6 +6348,7 @@ server/cmd	func	ExecuteLine	func(source server/cmd.Source, commandLine string, t
 server/cmd	func	ExecutionContextOf	func(src server/cmd.Source) (server/cmd.ExecutionContext, bool)
 server/cmd	func	HasLevel	func(id github.com/google/uuid.UUID, l server/cmd.Level) bool
 server/cmd	func	IsOperator	func(id github.com/google/uuid.UUID) bool
+server/cmd	func	Later	func(src server/cmd.Source) func(tx *server/world.Tx, o *server/cmd.Output)
 server/cmd	func	New	func(name string, description string, aliases []string, r ...server/cmd.Runnable) server/cmd.Command
 server/cmd	func	NewBlockSource	func(pos server/block/cube.Pos, w *server/world.World, name string) *server/cmd.BlockSource
 server/cmd	func	ParseNumber	func(s string, bitSize int) (float64, error)
@@ -6361,6 +6362,7 @@ server/cmd	func	SetAdminFeedback	func(f func(src server/cmd.Source, name string,
 server/cmd	func	SetObserver	func(f func(server/cmd.Execution))
 server/cmd	func	SetOperatorChecker	func(f func(id github.com/google/uuid.UUID) bool)
 server/cmd	func	SetPermissions	func(p server/cmd.Permissions)
+server/cmd	func	SetWorlds	func(w server/cmd.Worlds)
 server/cmd	func	SourceLevel	func(src server/cmd.Source) server/cmd.Level
 server/cmd	func	WithContext	func(src server/cmd.Source, context server/cmd.ExecutionContext) server/cmd.ContextSource
 server/cmd	method	BlockSource.BlockPosition	func() server/block/cube.Pos
@@ -6427,7 +6429,7 @@ server/cmd	type	Leveled	interface{PermissionLevel() server/cmd.Level}
 server/cmd	type	Line	struct{args []string; seen []string; src server/cmd.Source; cmd server/cmd.Command}
 server/cmd	type	NamedTarget	interface{Name() string; server/cmd.Target}
 server/cmd	type	Optional	struct{val T; set bool}
-server/cmd	type	Output	struct{errors []error; messages []fmt.Stringer; result int; resultSet bool}
+server/cmd	type	Output	struct{errors []error; messages []fmt.Stringer; result int; resultSet bool; inExecute bool; hold *server/cmd.outputHold}
 server/cmd	type	ParamDescriber	interface{DescribeParams(src server/cmd.Source) []server/cmd.ParamInfo}
 server/cmd	type	ParamInfo	struct{Name string; Value any; Optional bool; Suffix string}
 server/cmd	type	ParamOption	uint8
@@ -6440,6 +6442,7 @@ server/cmd	type	Source	interface{SendCommandOutput(o *server/cmd.Output); server
 server/cmd	type	SubCommand	struct{}
 server/cmd	type	Target	interface{Position() github.com/go-gl/mathgl/mgl64.Vec3}
 server/cmd	type	Varargs	string
+server/cmd	type	Worlds	interface{Online() []*server/world.EntityHandle; PlayerByName(name string) (*server/world.EntityHandle, bool); Worlds() []*server/world.World}
 server/cmd	type	Wrapper	interface{Unwrap() server/cmd.Source}
 server/cmd	var	MessageBooleanInvalid	server/player/chat.Translation
 server/cmd	var	MessageNoTargets	server/player/chat.Translation

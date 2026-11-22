@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"runtime"
 	"runtime/debug"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -953,4 +954,35 @@ func (srv *Server) registerWorld(dim world.Dimension, w *world.World) {
 		return
 	}
 	srv.dimensions[dim] = w
+	cmd.SetWorlds(serverWorlds{srv: srv})
+}
+
+// serverWorlds exposes a Server's loaded worlds and online players to the cmd
+// package so selectors can resolve across worlds without waiting.
+type serverWorlds struct{ srv *Server }
+
+// Worlds returns the server's loaded worlds in Java's search order: overworld
+// first, followed by the default world (if different), nether, and end.
+func (w serverWorlds) Worlds() []*world.World {
+	var out []*world.World
+	add := func(wr *world.World) {
+		if wr != nil && !slices.Contains(out, wr) {
+			out = append(out, wr)
+		}
+	}
+	add(w.srv.dimensions[world.Overworld])
+	add(w.srv.World())
+	add(w.srv.Nether())
+	add(w.srv.End())
+	return out
+}
+
+// Online returns the handles of all online players in join order without waiting.
+func (w serverWorlds) Online() []*world.EntityHandle {
+	return w.srv.players.handles()
+}
+
+// PlayerByName finds an online player by name, in any case.
+func (w serverWorlds) PlayerByName(name string) (*world.EntityHandle, bool) {
+	return w.srv.PlayerByName(name)
 }

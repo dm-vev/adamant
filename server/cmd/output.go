@@ -3,7 +3,10 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"sync"
+
 	"github.com/df-mc/dragonfly/server/player/chat"
+	"github.com/df-mc/dragonfly/server/world"
 	"golang.org/x/text/language"
 )
 
@@ -14,6 +17,113 @@ type Output struct {
 	messages  []fmt.Stringer
 	result    int
 	resultSet bool
+	inExecute bool
+	hold      *outputHold
+}
+
+// outputHold coordinates deferred delivery of a held Output across goroutines.
+// Keeping it behind a pointer allows Output to be copied by value (e.g.
+// WithoutMessages) without copying a sync.Mutex.
+type outputHold struct {
+	mu        sync.Mutex
+	count     int
+	aborted   bool
+	later     func(tx *world.Tx, o *Output)
+	onObserve func(Source)
+	lastSrc   Source
+}
+
+// acquire increments the hold count of o, calling Later(src) on the first hold.
+// When o was created by Command.Execute, the initial acquire takes an extra
+// hold for Command.Execute itself so delivery waits until both Execute and
+// every async step finish.
+func (o *Output) acquire(src Source) {
+	if o.hold == nil {
+		initial := 1
+		if o.inExecute {
+			initial = 2
+		}
+		o.hold = &outputHold{count: initial, later: Later(src)}
+		return
+	}
+	o.hold.mu.Lock()
+	o.hold.count++
+	o.hold.mu.Unlock()
+}
+
+// release decrements the hold count of o and delivers it (and notifies the
+// observer) once the last hold is released.
+func (o *Output) release(tx *world.Tx, src Source) {
+	h := o.hold
+	if h == nil {
+		return
+	}
+	h.mu.Lock()
+	h.lastSrc = src
+	h.count--
+	done := h.count == 0
+	aborted := h.aborted
+	later, obs := h.later, h.onObserve
+	h.mu.Unlock()
+	if !done {
+		return
+	}
+	if aborted {
+		later(nil, nil)
+		return
+	}
+	if obs != nil {
+		obs(src)
+	}
+	later(tx, o)
+}
+
+// abort marks o aborted (e.g. context world closed before then) and releases
+// one hold. When the last hold releases, Later is called with a nil Output so
+// any Deferrer's done callback still runs.
+func (o *Output) abort() {
+	h := o.hold
+	if h == nil {
+		return
+	}
+	h.mu.Lock()
+	h.aborted = true
+	h.count--
+	done := h.count == 0
+	later := h.later
+	h.mu.Unlock()
+	if done {
+		later(nil, nil)
+	}
+}
+
+// finishExecute releases Command.Execute's hold if o was held during Run.
+// It returns false if o was never held, letting Command.Execute send and
+// observe synchronously without locking.
+func (o *Output) finishExecute(tx *world.Tx, onObserve func(Source)) bool {
+	h := o.hold
+	if h == nil {
+		return false
+	}
+	h.mu.Lock()
+	h.onObserve = onObserve
+	h.count--
+	done := h.count == 0
+	aborted := h.aborted
+	later, src := h.later, h.lastSrc
+	h.mu.Unlock()
+	if !done {
+		return true
+	}
+	if aborted {
+		later(nil, nil)
+		return true
+	}
+	if onObserve != nil {
+		onObserve(src)
+	}
+	later(tx, o)
+	return true
 }
 
 // SetResult records the command's integer result, as returned by a Java
@@ -42,6 +152,8 @@ func (o *Output) Success() bool { return len(o.errors) == 0 }
 func (o *Output) WithoutMessages() *Output {
 	c := *o
 	c.messages = nil
+	c.hold = nil
+	c.inExecute = false
 	return &c
 }
 

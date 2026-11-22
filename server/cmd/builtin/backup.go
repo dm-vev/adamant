@@ -82,7 +82,7 @@ func actorOf(srv serverAdapter, src cmd.Source) server.Actor {
 // source how it ended once it did.
 func (c backupCmd) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
 	o.Print("Backing up...")
-	send, by := outputLater(src), actorOf(c.srv, src)
+	send, by := cmd.Later(src), actorOf(c.srv, src)
 	go func() {
 		info, err := c.srv.Backup(context.Background(), by, "manual")
 		out := &cmd.Output{}
@@ -173,7 +173,7 @@ func (c backupVerifyCmd) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
 		how = "full"
 	}
 	o.Printf("Verifying %s (%s)...", c.Name, how)
-	send := outputLater(src)
+	send := cmd.Later(src)
 	go func() {
 		info, err := c.srv.VerifyBackup(c.Name, full)
 		out := &cmd.Output{}
@@ -225,7 +225,7 @@ func (c saveQueryCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 // Run deletes the files of the save held, off the transaction of the
 // command, which a copy being prepared would hold up as it stops.
 func (c saveResumeCmd) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
-	send := outputLater(src)
+	send := cmd.Later(src)
 	go func() {
 		out := &cmd.Output{}
 		if err := c.srv.ResumeSave(); err != nil {

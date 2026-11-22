@@ -358,7 +358,7 @@ func (c banListCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 // Run saves every dimension off the command's world, whose owner it would
 // otherwise have to wait for, and tells the source once they were saved.
 func (c saveAllCmd) Run(src cmd.Source, _ *cmd.Output, tx *world.Tx) {
-	send := outputLater(src)
+	send := cmd.Later(src)
 	c.srv.SaveAllFrom(tx, func(tx *world.Tx, err error) {
 		o := &cmd.Output{}
 		if err != nil {
@@ -370,48 +370,6 @@ func (c saveAllCmd) Run(src cmd.Source, _ *cmd.Output, tx *world.Tx) {
 	})
 }
 
-// outputLater returns a function that sends output to src from a later
-// transaction, or from none, once the transaction of the command ended, to
-// be called once. A source that is an entity, as a player, is valid only in
-// the transaction of the command: it is found again by its handle,
-// wherever it is then. A source that is a cmd.Deferrer is told output
-// follows, and that it was sent once it was.
-func outputLater(src cmd.Source) func(tx *world.Tx, o *cmd.Output) {
-	base := src
-	for {
-		w, ok := base.(cmd.Wrapper)
-		if !ok {
-			break
-		}
-		base = w.Unwrap()
-	}
-	if d, ok := base.(cmd.Deferrer); ok {
-		done := d.Defer()
-		return func(_ *world.Tx, o *cmd.Output) {
-			defer done()
-			base.SendCommandOutput(o)
-		}
-	}
-	e, ok := base.(world.Entity)
-	if !ok {
-		return func(_ *world.Tx, o *cmd.Output) { base.SendCommandOutput(o) }
-	}
-	h := e.H()
-	sendTo := func(e world.Entity, o *cmd.Output) {
-		if s, ok := e.(cmd.Source); ok {
-			s.SendCommandOutput(o)
-		}
-	}
-	return func(tx *world.Tx, o *cmd.Output) {
-		if tx != nil {
-			if e, ok := h.Entity(tx); ok {
-				sendTo(e, o)
-				return
-			}
-		}
-		h.Do(func(_ *world.Tx, e world.Entity) { sendTo(e, o) })
-	}
-}
 func (c saveToggleCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	c.srv.SaveEnabled(c.enabled)
 	if c.enabled {
