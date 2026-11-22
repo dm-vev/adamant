@@ -37,12 +37,13 @@ type lightQueue struct {
 // runs while keeping the queue transient and able to grow for larger chunks.
 const initialLightQueueCapacity = 1024
 
-// newLightQueue creates an empty queue sized to capacity (at least 1).
+// newLightQueue creates an empty queue sized to the next power of two >= capacity.
 func newLightQueue(capacity int) *lightQueue {
-	if capacity < 1 {
-		capacity = 1
+	n := 1
+	for n < capacity {
+		n <<= 1
 	}
-	return &lightQueue{nodes: make([]lightNode, capacity)}
+	return &lightQueue{nodes: make([]lightNode, n)}
 }
 
 // push appends a node to the tail, growing storage if full.
@@ -51,7 +52,7 @@ func (q *lightQueue) push(n lightNode) {
 		q.grow()
 	}
 	q.nodes[q.tail] = n
-	q.tail = (q.tail + 1) % len(q.nodes)
+	q.tail = (q.tail + 1) & (len(q.nodes) - 1)
 	q.size++
 }
 
@@ -61,7 +62,7 @@ func (q *lightQueue) pop() (lightNode, bool) {
 		return lightNode{}, false
 	}
 	n := q.nodes[q.head]
-	q.head = (q.head + 1) % len(q.nodes)
+	q.head = (q.head + 1) & (len(q.nodes) - 1)
 	q.size--
 	return n, true
 }
@@ -102,6 +103,19 @@ func newLevelQueue() *levelQueue {
 		q.buckets[i] = newLightQueue(64)
 	}
 	return q
+}
+
+func putLevelQueue(q *levelQueue) {
+	q.top = 0
+	q.size = 0
+	for i, b := range q.buckets {
+		if len(b.nodes) > 4096 {
+			q.buckets[i] = newLightQueue(64)
+		} else {
+			b.head, b.tail, b.size = 0, 0, 0
+		}
+	}
+	relightLevelQueues.Put(q)
 }
 
 // push adds a node to the bucket of its level.
@@ -156,7 +170,8 @@ func LightArea(c []*Chunk, baseX, baseZ int) *lightArea {
 // individual chunks within the lightArea itself, without light crossing chunk borders.
 func (a *lightArea) Fill() {
 	a.initialiseLightSlices()
-	queue := newLevelQueue()
+	queue := relightLevelQueues.Get().(*levelQueue)
+	defer putLevelQueue(queue)
 	a.insertBlockLightNodes(queue)
 	a.insertSkyLightNodes(queue)
 
@@ -174,7 +189,8 @@ func (a *lightArea) Fill() {
 // mask: bit i is set if it changed the light of the chunk at index i of those the lightArea was made of.
 func (a *lightArea) Spread() uint16 {
 	a.changed = 0
-	queue := newLevelQueue()
+	queue := relightLevelQueues.Get().(*levelQueue)
+	defer putLevelQueue(queue)
 	a.insertLightSpreadingNodes(queue, BlockLight)
 	a.insertLightSpreadingNodes(queue, SkyLight)
 
@@ -190,14 +206,13 @@ func (a *lightArea) Spread() uint16 {
 }
 
 // shareUniformLight makes the sub chunks of c whose light is the same in
-// every block, none or full skylight, use the light slices all such sub
+// every block, none or full light, use the light slices all such sub
 // chunks share. The light stays the same, but spreading then skips the
 // edges between sub chunks sharing a slice, along which nothing can spread.
 func shareUniformLight(c *Chunk) {
 	for _, sub := range c.sub {
 		sub.skyLight = sharedLight(sub.skyLight, true)
-		// Block light is copied on write only from the empty slice.
-		sub.blockLight = sharedLight(sub.blockLight, false)
+		sub.blockLight = sharedLight(sub.blockLight, true)
 	}
 }
 
@@ -415,7 +430,7 @@ func (a *lightArea) relight(changed []cube.Pos, lt light, source func(pos cube.P
 	removal, refill, spread := relightQueues.Get().(*lightQueue), relightQueues.Get().(*lightQueue), relightLevelQueues.Get().(*levelQueue)
 	defer relightQueues.Put(removal)
 	defer relightQueues.Put(refill)
-	defer relightLevelQueues.Put(spread)
+	defer putLevelQueue(spread)
 	for _, pos := range changed {
 		if !a.inside(pos) {
 			continue
@@ -425,11 +440,12 @@ func (a *lightArea) relight(changed []cube.Pos, lt light, source func(pos cube.P
 	}
 	for !removal.empty() {
 		n, _ := removal.pop()
-		if level := source(n.pos); level > 0 {
-			spread.push(node(n.pos, level, lt))
+		npos := n.pos()
+		if level := source(npos); level > 0 {
+			spread.push(node(npos, level, lt))
 		}
 		for _, face := range cube.Faces() {
-			pos := n.pos.Side(face)
+			pos := npos.Side(face)
 			if !a.inside(pos) {
 				continue
 			}
@@ -448,7 +464,8 @@ func (a *lightArea) relight(changed []cube.Pos, lt light, source func(pos cube.P
 	}
 	for !refill.empty() {
 		n, _ := refill.pop()
-		a.spreadFrom(spread, n.pos, lt, a.light(n.pos, lt))
+		npos := n.pos()
+		a.spreadFrom(spread, npos, lt, a.light(npos, lt))
 	}
 	for !spread.empty() {
 		a.propagate(spread)

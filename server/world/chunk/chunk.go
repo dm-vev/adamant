@@ -118,12 +118,21 @@ func (chunk *Chunk) clearMissingBlockState(pos cube.Pos, layer uint8) {
 // New initialises a new chunk and returns it, so that it may be used.
 // The BlockRegistry passed must be finalized and must correspond to the runtime IDs used in the chunk's storages.
 func New(br BlockRegistry, r cube.Range) *Chunk {
+	return newChunk(br, r, true)
+}
+
+func newChunk(br BlockRegistry, r cube.Range, initBiomes bool) *Chunk {
 	n := (r.Height() >> 4) + 1
-	sub, biomes := make([]*SubChunk, n), make([]*PalettedStorage, n)
+	sub := make([]*SubChunk, n)
+	subBacking := make([]SubChunk, n)
+	biomes := make([]*PalettedStorage, n)
 	air := br.AirRuntimeID()
-	for i := 0; i < n; i++ {
-		sub[i] = NewSubChunk(air)
-		biomes[i] = emptyStorage(0)
+	for i := range n {
+		subBacking[i].air = air
+		sub[i] = &subBacking[i]
+		if initBiomes {
+			biomes[i] = zeroBiomeStorage
+		}
 	}
 	return &Chunk{
 		r:                    r,
@@ -132,30 +141,72 @@ func New(br BlockRegistry, r cube.Range) *Chunk {
 		sub:                  sub,
 		biomes:               biomes,
 		recalculateHeightMap: true,
-		heightMap:            make(HeightMap, 256),
 	}
+}
+
+// cloneBiomes clones a chunk's biome slice while preserving intra-chunk pointer
+// sharing, without sharing any mutable storage between source and clone.
+func cloneBiomes(src []*PalettedStorage) []*PalettedStorage {
+	dst := make([]*PalettedStorage, len(src))
+	for i, b := range src {
+		if b == zeroBiomeStorage {
+			dst[i] = zeroBiomeStorage
+			continue
+		}
+		if i > 0 && b == src[i-1] {
+			dst[i-1].markShared()
+			dst[i] = dst[i-1]
+			continue
+		}
+		if b.isShared() {
+			reused := false
+			for j := range i {
+				if src[j] == b {
+					dst[j].markShared()
+					dst[i] = dst[j]
+					reused = true
+					break
+				}
+			}
+			if reused {
+				continue
+			}
+		}
+		dst[i] = b.Clone()
+	}
+	return dst
 }
 
 // Clone returns an independent copy of the Chunk.
 func (chunk *Chunk) Clone() *Chunk {
+	n := len(chunk.sub)
+	sub := make([]*SubChunk, n)
+	subBacking := make([]SubChunk, n)
+	for i, s := range chunk.sub {
+		s.cloneInto(&subBacking[i])
+		sub[i] = &subBacking[i]
+	}
+	recalc := chunk.recalculateHeightMap
+	var hm HeightMap
+	if !recalc && len(chunk.heightMap) != 0 {
+		hm = slices.Clone(chunk.heightMap)
+	} else {
+		recalc = true
+	}
 	clone := &Chunk{
 		r:                    chunk.r,
 		br:                   chunk.br,
 		air:                  chunk.air,
-		recalculateHeightMap: chunk.recalculateHeightMap,
-		heightMap:            slices.Clone(chunk.heightMap),
-		sub:                  make([]*SubChunk, len(chunk.sub)),
-		biomes:               make([]*PalettedStorage, len(chunk.biomes)),
+		recalculateHeightMap: recalc,
+		heightMap:            hm,
+		sub:                  sub,
+		biomes:               cloneBiomes(chunk.biomes),
 	}
-	for i, sub := range chunk.sub {
-		clone.sub[i] = sub.Clone()
-	}
-	for i, biomes := range chunk.biomes {
-		clone.biomes[i] = biomes.Clone()
-	}
-	clone.missingBlockStates = maps.Clone(chunk.missingBlockStates)
-	for key, properties := range clone.missingBlockStates {
-		clone.missingBlockStates[key] = slices.Clone(properties)
+	if len(chunk.missingBlockStates) != 0 {
+		clone.missingBlockStates = maps.Clone(chunk.missingBlockStates)
+		for key, properties := range clone.missingBlockStates {
+			clone.missingBlockStates[key] = slices.Clone(properties)
+		}
 	}
 	return clone
 }
@@ -165,24 +216,26 @@ func (chunk *Chunk) Clone() *Chunk {
 // encodings that store a chunk leave its light out, and copying the light
 // would double what the copy costs.
 func (chunk *Chunk) CloneBlocks() *Chunk {
+	n := len(chunk.sub)
+	sub := make([]*SubChunk, n)
+	subBacking := make([]SubChunk, n)
+	for i, s := range chunk.sub {
+		s.cloneBlocksInto(&subBacking[i])
+		sub[i] = &subBacking[i]
+	}
 	clone := &Chunk{
 		r:                    chunk.r,
 		br:                   chunk.br,
 		air:                  chunk.air,
-		recalculateHeightMap: chunk.recalculateHeightMap,
-		heightMap:            slices.Clone(chunk.heightMap),
-		sub:                  make([]*SubChunk, len(chunk.sub)),
-		biomes:               make([]*PalettedStorage, len(chunk.biomes)),
+		recalculateHeightMap: true,
+		sub:                  sub,
+		biomes:               cloneBiomes(chunk.biomes),
 	}
-	for i, sub := range chunk.sub {
-		clone.sub[i] = sub.cloneBlocks()
-	}
-	for i, biomes := range chunk.biomes {
-		clone.biomes[i] = biomes.Clone()
-	}
-	clone.missingBlockStates = maps.Clone(chunk.missingBlockStates)
-	for key, properties := range clone.missingBlockStates {
-		clone.missingBlockStates[key] = slices.Clone(properties)
+	if len(chunk.missingBlockStates) != 0 {
+		clone.missingBlockStates = maps.Clone(chunk.missingBlockStates)
+		for key, properties := range clone.missingBlockStates {
+			clone.missingBlockStates[key] = slices.Clone(properties)
+		}
 	}
 	return clone
 }
@@ -323,7 +376,11 @@ func (chunk *Chunk) LayerStorageWithTwoRuntimeIDs(y int16, layer uint8, runtimeI
 			valuesCopy[writeIndex] = runtimeID2
 		}
 		size := paletteSizeFor(valueCount)
-		storage := newPalettedStorage(make([]uint32, size.uint32s()), newPalette(size, valuesCopy))
+		var indices []uint32
+		if n := size.uint32s(); n > 0 {
+			indices = make([]uint32, n)
+		}
+		storage := newPalettedStorageWithValues(indices, size, valuesCopy)
 
 		currentLayers := uint8(len(sub.storages))
 		for currentLayers < layer {
@@ -357,7 +414,16 @@ func (chunk *Chunk) Biome(x uint8, y int16, z uint8) uint32 {
 
 // SetBiome sets the biome ID at a specific column in the chunk.
 func (chunk *Chunk) SetBiome(x uint8, y int16, z uint8, biome uint32) {
-	chunk.biomes[chunk.SubIndex(y)].Set(x, uint8(y), z, biome)
+	idx := chunk.SubIndex(y)
+	storage := chunk.biomes[idx]
+	if storage.isShared() {
+		if storage.At(x, uint8(y), z) == biome {
+			return
+		}
+		storage = storage.Clone()
+		chunk.biomes[idx] = storage
+	}
+	storage.Set(x, uint8(y), z, biome)
 }
 
 // FillBiomes2D fills all biome storages in the chunk from a 16x16 biome grid.
@@ -369,7 +435,8 @@ func (chunk *Chunk) FillBiomes2D(biomes []uint32) {
 	}
 
 	var columnPaletteIndex [16 * 16]uint16
-	paletteValues := make([]uint32, 0, 16)
+	var paletteBuf [16]uint32
+	paletteValues := paletteBuf[:0]
 	for i, biome := range biomes[:16*16] {
 		index := uint16(0xffff)
 		for j, v := range paletteValues {
@@ -386,23 +453,71 @@ func (chunk *Chunk) FillBiomes2D(biomes []uint32) {
 	}
 
 	size := paletteSizeFor(len(paletteValues))
-	paletteCopyBuf := make([]uint32, len(paletteValues)*len(chunk.biomes))
-	for i := range chunk.biomes {
-		valuesCopy := paletteCopyBuf[i*len(paletteValues) : (i+1)*len(paletteValues)]
+	var storage *PalettedStorage
+	if size == 0 && paletteValues[0] == 0 {
+		storage = zeroBiomeStorage
+	} else if size == 0 {
+		storage = emptyStorage(paletteValues[0])
+		if len(chunk.biomes) > 1 {
+			storage.markShared()
+		}
+	} else {
+		valuesCopy := make([]uint32, len(paletteValues))
 		copy(valuesCopy, paletteValues)
+		storage = newPalettedStorageWithValues(make([]uint32, size.uint32s()), size, valuesCopy)
+		fillColumns2D(storage, &columnPaletteIndex)
+		if len(chunk.biomes) > 1 {
+			storage.markShared()
+		}
+	}
+	for i := range chunk.biomes {
+		chunk.biomes[i] = storage
+	}
+}
 
-		storage := newPalettedStorage(make([]uint32, size.uint32s()), newPalette(size, valuesCopy))
-		if size != 0 {
-			for x := byte(0); x < 16; x++ {
-				for z := byte(0); z < 16; z++ {
-					index := columnPaletteIndex[int(x)+int(z)*16]
-					for y := byte(0); y < 16; y++ {
-						storage.setPaletteIndex(x, y, z, index)
-					}
+func fillColumns2D(storage *PalettedStorage, colIdx *[16 * 16]uint16) {
+	switch storage.bitsPerIndex {
+	case 1:
+		for x := range 16 {
+			for halfZ := range 8 {
+				z := halfZ << 1
+				lo := uint32(colIdx[x+z*16]) * 0x0000ffff
+				hi := uint32(colIdx[x+(z+1)*16]) * 0xffff0000
+				storage.indices[(x<<3)|halfZ] = lo | hi
+			}
+		}
+	case 2:
+		for x := range 16 {
+			for z := range 16 {
+				storage.indices[(x<<4)|z] = uint32(colIdx[x+z*16]) * 0x55555555
+			}
+		}
+	case 4:
+		for x := range 16 {
+			for z := range 16 {
+				w := uint32(colIdx[x+z*16]) * 0x11111111
+				base := ((x << 4) | z) << 1
+				storage.indices[base], storage.indices[base+1] = w, w
+			}
+		}
+	case 8:
+		for x := range 16 {
+			for z := range 16 {
+				w := uint32(colIdx[x+z*16]) * 0x01010101
+				base := ((x << 4) | z) << 2
+				storage.indices[base], storage.indices[base+1] = w, w
+				storage.indices[base+2], storage.indices[base+3] = w, w
+			}
+		}
+	default:
+		for x := byte(0); x < 16; x++ {
+			for z := byte(0); z < 16; z++ {
+				index := colIdx[int(x)+int(z)*16]
+				for y := byte(0); y < 16; y++ {
+					storage.setPaletteIndex(x, y, z, index)
 				}
 			}
 		}
-		chunk.biomes[i] = storage
 	}
 }
 
@@ -506,6 +621,9 @@ func (chunk *Chunk) HighestBlocks(heights *[256]int16) {
 // next call to this function.
 func (chunk *Chunk) HeightMap() HeightMap {
 	if chunk.recalculateHeightMap {
+		if len(chunk.heightMap) == 0 {
+			chunk.heightMap = make(HeightMap, 256)
+		}
 		for x := uint8(0); x < 16; x++ {
 			for z := uint8(0); z < 16; z++ {
 				chunk.heightMap.Set(x, z, chunk.highestLightBlocker(x, z, true, true))
@@ -522,6 +640,43 @@ func (chunk *Chunk) HeightMap() HeightMap {
 func (chunk *Chunk) Compact() {
 	for i := range chunk.sub {
 		chunk.sub[i].compact()
+	}
+	chunk.deduplicateBiomes()
+}
+
+// deduplicateBiomes shares pointers among equal biome storages in the chunk
+// using copy-on-write without altering any palette or bit width.
+func (chunk *Chunk) deduplicateBiomes() {
+	for i, b := range chunk.biomes {
+		if b == nil || b == zeroBiomeStorage {
+			continue
+		}
+		if b.bitsPerIndex == 0 && len(b.palette.values) == 1 && b.palette.values[0] == 0 {
+			chunk.biomes[i] = zeroBiomeStorage
+			continue
+		}
+		if i > 0 {
+			prev := chunk.biomes[i-1]
+			if b == prev {
+				continue
+			}
+			if b.Equal(prev) {
+				prev.markShared()
+				chunk.biomes[i] = prev
+				continue
+			}
+		}
+		for j := range i {
+			other := chunk.biomes[j]
+			if b == other {
+				break
+			}
+			if b.Equal(other) {
+				other.markShared()
+				chunk.biomes[i] = other
+				break
+			}
+		}
 	}
 }
 

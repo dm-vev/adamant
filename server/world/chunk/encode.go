@@ -53,14 +53,19 @@ func Encode(c *Chunk, e Encoding) SerialisedData {
 
 // EncodeSubChunk encodes a sub-chunk from a chunk into bytes, in the Encoding passed.
 func EncodeSubChunk(c *Chunk, e Encoding, ind int) []byte {
+	s := c.sub[ind]
+	if len(s.storages) == 0 {
+		return []byte{SubChunkVersion, 0, uint8(ind + (c.r[0] >> 4))}
+	}
 	buf := pool.Get().(*bytes.Buffer)
 	defer func() {
 		buf.Reset()
 		pool.Put(buf)
 	}()
 
-	s := c.sub[ind]
-	_, _ = buf.Write([]byte{SubChunkVersion, byte(len(s.storages)), uint8(ind + (c.r[0] >> 4))})
+	_ = buf.WriteByte(SubChunkVersion)
+	_ = buf.WriteByte(byte(len(s.storages)))
+	_ = buf.WriteByte(uint8(ind + (c.r[0] >> 4)))
 	for _, storage := range s.storages {
 		pe := paletteEncoding(BlockPaletteEncoding{Blocks: c.br})
 		if e.network() == 0 && (len(storage.missingStateEntries) != 0 || len(storage.javaStateIDs) != 0) {
@@ -99,17 +104,26 @@ func EncodeBiomes(c *Chunk, e Encoding) []byte {
 // of the PalettedStorage.
 func encodePalettedStorage(buf *bytes.Buffer, storage, previous *PalettedStorage, e Encoding, pe paletteEncoding) {
 	if storage.Equal(previous) {
-		_, _ = buf.Write([]byte{0x7f<<1 | e.network()})
+		_ = buf.WriteByte(0x7f<<1 | e.network())
 		return
 	}
-	b := make([]byte, len(storage.indices)*4+1)
-	b[0] = byte(storage.bitsPerIndex<<1) | e.network()
-
-	for i, v := range storage.indices {
-		// Explicitly don't use the binary package to greatly improve performance of writing the uint32s.
-		b[i*4+1], b[i*4+2], b[i*4+3], b[i*4+4] = byte(v), byte(v>>8), byte(v>>16), byte(v>>24)
+	_ = buf.WriteByte(byte(storage.bitsPerIndex<<1) | e.network())
+	if len(storage.indices) != 0 {
+		buf.Grow(len(storage.indices) * 4)
+		var chunkBuf [512]byte
+		indices := storage.indices
+		for len(indices) != 0 {
+			n := min(len(indices), len(chunkBuf)/4)
+			for i, v := range indices[:n] {
+				chunkBuf[i*4] = byte(v)
+				chunkBuf[i*4+1] = byte(v >> 8)
+				chunkBuf[i*4+2] = byte(v >> 16)
+				chunkBuf[i*4+3] = byte(v >> 24)
+			}
+			_, _ = buf.Write(chunkBuf[:n*4])
+			indices = indices[n:]
+		}
 	}
-	_, _ = buf.Write(b)
 
 	e.encodePalette(buf, storage.palette, pe)
 }

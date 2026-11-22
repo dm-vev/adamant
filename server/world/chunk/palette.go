@@ -28,6 +28,11 @@ func newPalette(size paletteSize, values []uint32) *Palette {
 	return &Palette{size: size, values: values, last: math.MaxUint32}
 }
 
+// initPalette initialises an existing Palette in place without allocating.
+func initPalette(p *Palette, size paletteSize, values []uint32) {
+	*p = Palette{size: size, values: values, last: math.MaxUint32}
+}
+
 // Clone returns an independent copy of the Palette.
 func (palette *Palette) Clone() *Palette {
 	return &Palette{
@@ -73,6 +78,12 @@ func (palette *Palette) Replace(f func(v uint32) uint32) {
 // Index loops through the values of the Palette and looks for the index of the given value. If the value could
 // not be found, -1 is returned.
 func (palette *Palette) Index(runtimeID uint32) int16 {
+	if len(palette.values) == 1 {
+		if palette.values[0] == runtimeID {
+			return 0
+		}
+		return -1
+	}
 	if runtimeID == palette.last {
 		// Fast path out.
 		return palette.lastIndex

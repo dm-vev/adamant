@@ -12,27 +12,31 @@ import (
 //
 // The BlockRegistry passed must be finalized and must correspond to the runtime IDs used in the chunk data.
 func DiskDecode(br BlockRegistry, data SerialisedData, r cube.Range) (*Chunk, error) {
-	c := New(br, r)
+	c := newChunk(br, r, len(data.Biomes) == 0)
 
-	err := decodeBiomes(bytes.NewBuffer(data.Biomes), c, DiskEncoding)
-	if err != nil {
-		return nil, err
+	if len(data.Biomes) != 0 {
+		if err := decodeBiomes(bytes.NewBuffer(data.Biomes), c, DiskEncoding); err != nil {
+			return nil, err
+		}
 	}
 	for i, sub := range data.SubChunks {
 		if len(sub) == 0 {
 			// No data for this sub chunk.
 			continue
 		}
+		if len(sub) == 3 && sub[0] == 9 && sub[1] == 0 {
+			index := uint8(int8(sub[2]) - int8(c.r[0]>>4))
+			if int(index) >= len(c.sub) {
+				return nil, fmt.Errorf("invalid sub-chunk index %d: chunk range has %d sub-chunks", index, len(c.sub))
+			}
+			c.sub[index].storages = nil
+			continue
+		}
 		index := uint8(i)
-		decoded, decodeErr := decodeSubChunk(bytes.NewBuffer(sub), c, &index, DiskEncoding)
-		if decodeErr != nil {
+		if decodeErr := decodeSubChunkInto(bytes.NewBuffer(sub), c, &index, DiskEncoding); decodeErr != nil {
 			return nil, decodeErr
 		}
-		if int(index) >= len(c.sub) {
-			return nil, fmt.Errorf("invalid sub-chunk index %d: chunk range has %d sub-chunks", index, len(c.sub))
-		}
-		c.sub[index] = decoded
-		c.recordMissingBlockStates(index, decoded)
+		c.recordMissingBlockStates(index, c.sub[index])
 	}
 	return c, nil
 }
@@ -63,47 +67,56 @@ func (c *Chunk) recordMissingBlockStates(subIndex uint8, sub *SubChunk) {
 	}
 }
 
-// decodeSubChunk decodes a SubChunk from a bytes.Buffer. The Encoding passed defines how the block storages of the
-// SubChunk are decoded.
-func decodeSubChunk(buf *bytes.Buffer, c *Chunk, index *byte, e Encoding) (*SubChunk, error) {
+// decodeSubChunkInto decodes a SubChunk from a bytes.Buffer directly into c.sub[*index].
+func decodeSubChunkInto(buf *bytes.Buffer, c *Chunk, index *byte, e Encoding) error {
 	ver, err := buf.ReadByte()
 	if err != nil {
-		return nil, fmt.Errorf("error reading version: %w", err)
+		return fmt.Errorf("error reading version: %w", err)
 	}
-	sub := NewSubChunk(c.air)
 	switch ver {
 	default:
-		return nil, fmt.Errorf("unknown sub chunk version %v: can't decode", ver)
+		return fmt.Errorf("unknown sub chunk version %v: can't decode", ver)
 	case 1:
+		if int(*index) >= len(c.sub) {
+			return fmt.Errorf("invalid sub-chunk index %d: chunk range has %d sub-chunks", *index, len(c.sub))
+		}
 		storage, err := decodeBlockStorage(buf, e, c.br)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		sub.storages = append(sub.storages, storage)
+		c.sub[*index].storages = []*PalettedStorage{storage}
 	case 8, 9:
 		// Version 8 allows up to 256 layers for one sub chunk.
 		storageCount, err := buf.ReadByte()
 		if err != nil {
-			return nil, fmt.Errorf("error reading storage count: %w", err)
+			return fmt.Errorf("error reading storage count: %w", err)
 		}
 		if ver == 9 {
 			uIndex, err := buf.ReadByte()
 			if err != nil {
-				return nil, fmt.Errorf("error reading sub-chunk index: %w", err)
+				return fmt.Errorf("error reading sub-chunk index: %w", err)
 			}
 			// The index as written here isn't the actual index of the sub-chunk within the chunk. Rather, it is the Y
 			// value of the sub-chunk. This means that we need to translate it to an index.
 			*index = uint8(int8(uIndex) - int8(c.r[0]>>4))
 		}
-		sub.storages = make([]*PalettedStorage, storageCount)
+		if int(*index) >= len(c.sub) {
+			return fmt.Errorf("invalid sub-chunk index %d: chunk range has %d sub-chunks", *index, len(c.sub))
+		}
+		if storageCount == 0 {
+			c.sub[*index].storages = nil
+			return nil
+		}
+		storages := make([]*PalettedStorage, storageCount)
 		for i := byte(0); i < storageCount; i++ {
-			sub.storages[i], err = decodeBlockStorage(buf, e, c.br)
+			storages[i], err = decodeBlockStorage(buf, e, c.br)
 			if err != nil {
-				return nil, err
+				return err
 			}
 		}
+		c.sub[*index].storages = storages
 	}
-	return sub, nil
+	return nil
 }
 
 func decodeBlockStorage(buf *bytes.Buffer, e Encoding, br BlockRegistry) (*PalettedStorage, error) {
@@ -138,8 +151,12 @@ func decodeBiomes(buf *bytes.Buffer, c *Chunk, e Encoding) error {
 			if b == nil {
 				// This means this paletted storage had the flag pointing to the previous one. It basically means we should
 				// inherit whatever palette we decoded last.
+				last.markShared()
 				b = last
 			} else {
+				if b.bitsPerIndex == 0 && len(b.palette.values) == 1 && b.palette.values[0] == 0 {
+					b = zeroBiomeStorage
+				}
 				last = b
 			}
 			c.biomes[i] = b
@@ -166,17 +183,38 @@ func decodePalettedStorage(buf *bytes.Buffer, e Encoding, pe paletteEncoding) (*
 	}
 	uint32Count := size.uint32s()
 
-	uint32s := make([]uint32, uint32Count)
-	byteCount := uint32Count * 4
+	var uint32s []uint32
+	if uint32Count > 0 {
+		byteCount := uint32Count * 4
+		data := buf.Next(byteCount)
+		if len(data) != byteCount {
+			return nil, fmt.Errorf("cannot read paletted storage (size=%v) %T: not enough block data present: expected %v bytes, got %v", blockSize, pe, byteCount, len(data))
+		}
+		uint32s = make([]uint32, uint32Count)
+		for i := 0; i < uint32Count; i++ {
+			// Explicitly don't use the binary package to greatly improve performance of reading the uint32s.
+			uint32s[i] = uint32(data[i*4]) | uint32(data[i*4+1])<<8 | uint32(data[i*4+2])<<16 | uint32(data[i*4+3])<<24
+		}
+	}
 
-	data := buf.Next(byteCount)
-	if len(data) != byteCount {
-		return nil, fmt.Errorf("cannot read paletted storage (size=%v) %T: not enough block data present: expected %v bytes, got %v", blockSize, pe, byteCount, len(data))
+	if _, ok := e.(diskEncoding); ok {
+		if size == 0 {
+			u := &uniformPalettedStorage{}
+			u.palette.values = u.val[:1:1]
+			u.storage.palette = &u.palette
+			if err := decodeDiskPaletteInto(buf, size, pe, &u.palette); err != nil {
+				return &u.storage, err
+			}
+			return &u.storage, nil
+		}
+		pair := &palettedStorageWithPalette{}
+		pair.storage.palette = &pair.palette
+		pair.storage.initIndices(uint32s)
+		if err := decodeDiskPaletteInto(buf, size, pe, &pair.palette); err != nil {
+			return &pair.storage, err
+		}
+		return &pair.storage, nil
 	}
-	for i := 0; i < uint32Count; i++ {
-		// Explicitly don't use the binary package to greatly improve performance of reading the uint32s.
-		uint32s[i] = uint32(data[i*4]) | uint32(data[i*4+1])<<8 | uint32(data[i*4+2])<<16 | uint32(data[i*4+3])<<24
-	}
-	p, err := e.decodePalette(buf, paletteSize(blockSize), pe)
+	p, err := e.decodePalette(buf, size, pe)
 	return newPalettedStorage(uint32s, p), err
 }

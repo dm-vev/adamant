@@ -201,17 +201,24 @@ func (a *lightArea) spreadAcross(queue *levelQueue, lt light, la, lb uint8, pa, 
 	}
 }
 
+func lightBasePtr(l []uint8) *uint8 {
+	if len(l) == 0 {
+		return noLightPtr
+	}
+	return &l[0]
+}
+
 // nodesNeeded checks if any light nodes of a specific light type are needed between two neighbouring SubChunks when
 // spreading light between them.
 func (a *lightArea) nodesNeeded(lt light) func(sa, sb *SubChunk) bool {
 	if lt == SkyLight {
 		return func(sa, sb *SubChunk) bool {
-			return &sa.skyLight[0] != &sb.skyLight[0]
+			return lightBasePtr(sa.skyLight) != lightBasePtr(sb.skyLight)
 		}
 	}
 	return func(sa, sb *SubChunk) bool {
 		// Don't add nodes if both sub chunks are either both fully filled with light or have no light at all.
-		return &sa.blockLight[0] != &sb.blockLight[0]
+		return lightBasePtr(sa.blockLight) != lightBasePtr(sb.blockLight)
 	}
 }
 
@@ -259,12 +266,13 @@ func (a *lightArea) propagate(queue *levelQueue) {
 	if !ok {
 		return
 	}
-	if a.light(n.pos, n.lt) >= n.level {
+	pos, lt := n.pos(), n.lightType()
+	if a.light(pos, lt) >= n.level {
 		return
 	}
-	a.setLight(n.pos, n.lt, n.level)
-	a.changed |= 1 << a.chunkIndex((n.pos[0]-a.baseX)>>4, (n.pos[2]-a.baseZ)>>4)
-	a.spreadFrom(queue, n.pos, n.lt, n.level)
+	a.setLight(pos, lt, n.level)
+	a.changed |= 1 << a.chunkIndex((pos[0]-a.baseX)>>4, (pos[2]-a.baseZ)>>4)
+	a.spreadFrom(queue, pos, lt, n.level)
 }
 
 // spreadFrom queues the neighbours of pos that the light of the level passed
@@ -303,14 +311,26 @@ func (a *lightArea) spreadFrom(queue *levelQueue, pos cube.Pos, lt light, level 
 
 // lightNode is a node pushed to the queue which is used to propagate light.
 type lightNode struct {
-	pos   cube.Pos
-	lt    light
-	level uint8
+	x, y, z int32
+	level   uint8
+	sky     bool
+}
+
+func (n lightNode) pos() cube.Pos {
+	return cube.Pos{int(n.x), int(n.y), int(n.z)}
+}
+
+func (n lightNode) lightType() light {
+	if n.sky {
+		return SkyLight
+	}
+	return BlockLight
 }
 
 // node creates a new lightNode using the position, level and light type passed.
 func node(pos cube.Pos, level uint8, lt light) lightNode {
-	return lightNode{pos: pos, level: level, lt: lt}
+	_, sky := lt.(skyLight)
+	return lightNode{x: int32(pos[0]), y: int32(pos[1]), z: int32(pos[2]), level: level, sky: sky}
 }
 
 // FacesOcclude reports if light going from a cell with the properties from

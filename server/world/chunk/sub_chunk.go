@@ -33,36 +33,40 @@ func NewSubChunk(air uint32) *SubChunk {
 
 // Clone returns an independent copy of the SubChunk.
 func (sub *SubChunk) Clone() *SubChunk {
-	clone := &SubChunk{
-		air:        sub.air,
-		storages:   make([]*PalettedStorage, len(sub.storages)),
-		blockLight: cloneLight(sub.blockLight),
-		skyLight:   cloneLight(sub.skyLight),
-	}
-	for i, storage := range sub.storages {
-		clone.storages[i] = storage.Clone()
-	}
+	clone := &SubChunk{}
+	sub.cloneInto(clone)
 	return clone
+}
+
+func (sub *SubChunk) cloneInto(dst *SubChunk) {
+	dst.air = sub.air
+	if len(sub.storages) != 0 {
+		dst.storages = make([]*PalettedStorage, len(sub.storages))
+		for i, storage := range sub.storages {
+			dst.storages[i] = storage.Clone()
+		}
+	}
+	dst.blockLight = cloneLight(sub.blockLight)
+	dst.skyLight = cloneLight(sub.skyLight)
 }
 
 // cloneBlocks returns a copy of the sub-chunk with its blocks and no light,
 // sharing the read-only array of no light.
-func (sub *SubChunk) cloneBlocks() *SubChunk {
-	clone := &SubChunk{
-		air:        sub.air,
-		storages:   make([]*PalettedStorage, len(sub.storages)),
-		blockLight: noLight,
-		skyLight:   noLight,
+func (sub *SubChunk) cloneBlocksInto(dst *SubChunk) {
+	dst.air = sub.air
+	if len(sub.storages) != 0 {
+		dst.storages = make([]*PalettedStorage, len(sub.storages))
+		for i, storage := range sub.storages {
+			dst.storages[i] = storage.Clone()
+		}
 	}
-	for i, storage := range sub.storages {
-		clone.storages[i] = storage.Clone()
-	}
-	return clone
+	dst.blockLight = noLight
+	dst.skyLight = noLight
 }
 
 func cloneLight(light []uint8) []uint8 {
 	if len(light) == 0 {
-		return slices.Clone(light)
+		return nil
 	}
 	switch &light[0] {
 	case noLightPtr:
@@ -112,15 +116,33 @@ func (sub *SubChunk) SetBlock(x, y, z byte, layer uint8, block uint32) {
 
 // SetBlockLight sets the block light value at a specific position in the sub chunk.
 func (sub *SubChunk) SetBlockLight(x, y, z byte, level uint8) {
-	if ptr := &sub.blockLight[0]; ptr == noLightPtr {
-		// Copy the block light as soon as it is changed to create a COW system.
-		sub.blockLight = append([]byte(nil), sub.blockLight...)
+	if len(sub.blockLight) == 0 || &sub.blockLight[0] == noLightPtr || &sub.blockLight[0] == fullLightPtr {
+		if !sub.ensureBlockLightWritable(level) {
+			return
+		}
 	}
 	index := (uint16(x) << 8) | (uint16(z) << 4) | uint16(y)
 
 	i := index >> 1
 	bit := (index & 1) << 2
 	sub.blockLight[i] = (sub.blockLight[i] & (0xf0 >> bit)) | (level << bit)
+}
+
+func (sub *SubChunk) ensureBlockLightWritable(level uint8) bool {
+	if len(sub.blockLight) == 0 || &sub.blockLight[0] == noLightPtr {
+		if level == 0 {
+			return false
+		}
+		sub.blockLight = make([]uint8, 2048)
+		return true
+	}
+	if &sub.blockLight[0] == fullLightPtr {
+		if level == 15 {
+			return false
+		}
+		sub.blockLight = slices.Clone(fullLight)
+	}
+	return true
 }
 
 // BlockLight returns the block light at a position. Unlit generation subchunks
@@ -135,9 +157,10 @@ func (sub *SubChunk) BlockLight(x, y, z byte) uint8 {
 
 // SetSkyLight sets the skylight value at a specific position in the sub chunk.
 func (sub *SubChunk) SetSkyLight(x, y, z byte, level uint8) {
-	if ptr := &sub.skyLight[0]; ptr == fullLightPtr || ptr == noLightPtr {
-		// Copy the skylight as soon as it is changed to create a COW system.
-		sub.skyLight = append([]byte(nil), sub.skyLight...)
+	if len(sub.skyLight) == 0 || &sub.skyLight[0] == noLightPtr || &sub.skyLight[0] == fullLightPtr {
+		if !sub.ensureSkyLightWritable(level) {
+			return
+		}
 	}
 	index := (uint16(x) << 8) | (uint16(z) << 4) | uint16(y)
 
@@ -146,8 +169,28 @@ func (sub *SubChunk) SetSkyLight(x, y, z byte, level uint8) {
 	sub.skyLight[i] = (sub.skyLight[i] & (0xf0 >> bit)) | (level << bit)
 }
 
+func (sub *SubChunk) ensureSkyLightWritable(level uint8) bool {
+	if len(sub.skyLight) == 0 || &sub.skyLight[0] == noLightPtr {
+		if level == 0 {
+			return false
+		}
+		sub.skyLight = make([]uint8, 2048)
+		return true
+	}
+	if &sub.skyLight[0] == fullLightPtr {
+		if level == 15 {
+			return false
+		}
+		sub.skyLight = slices.Clone(fullLight)
+	}
+	return true
+}
+
 // SkyLight returns the skylight value at a specific value at a specific position in the sub chunk.
 func (sub *SubChunk) SkyLight(x, y, z byte) uint8 {
+	if len(sub.skyLight) == 0 {
+		return 0
+	}
 	index := (uint16(x) << 8) | (uint16(z) << 4) | uint16(y)
 	return (sub.skyLight[index>>1] >> ((index & 1) << 2)) & 0xf
 }
@@ -155,14 +198,24 @@ func (sub *SubChunk) SkyLight(x, y, z byte) uint8 {
 // Compact cleans the garbage from all block storages that sub chunk contains, so that they may be
 // cleanly written to a database.
 func (sub *SubChunk) compact() {
-	newStorages := make([]*PalettedStorage, 0, len(sub.storages))
-	for _, storage := range sub.storages {
-		storage.compact()
-		if len(storage.palette.values) == 1 && storage.palette.values[0] == sub.air {
-			// If the palette has only air in it, it means the storage is empty, so we can ignore it.
-			continue
+	if len(sub.storages) != 0 {
+		write := 0
+		for _, storage := range sub.storages {
+			storage.compact()
+			if len(storage.palette.values) == 1 && storage.palette.values[0] == sub.air {
+				// If the palette has only air in it, it means the storage is empty, so we can ignore it.
+				continue
+			}
+			sub.storages[write] = storage
+			write++
 		}
-		newStorages = append(newStorages, storage)
+		if write == 0 {
+			sub.storages = nil
+		} else if write < len(sub.storages) {
+			clear(sub.storages[write:])
+			sub.storages = sub.storages[:write]
+		}
 	}
-	sub.storages = newStorages
+	sub.skyLight = sharedLight(sub.skyLight, true)
+	sub.blockLight = sharedLight(sub.blockLight, true)
 }
