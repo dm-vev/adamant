@@ -12,7 +12,7 @@ func (e *Encoder) marshalReflect(val reflect.Value, tagName string) error {
 	if val.Kind() == reflect.Interface {
 		val = val.Elem()
 	}
-	if val.Kind() == reflect.Ptr {
+	if val.Kind() == reflect.Pointer {
 		val = val.Elem()
 	}
 	t := tagFromType(val.Type())
