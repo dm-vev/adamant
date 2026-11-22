@@ -7,6 +7,11 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
+type placementFrame struct {
+	position featurePos
+	modifier int
+}
+
 // placeModifiedPositions follows FeaturePlacer's depth-first work stack. A
 // modifier finishes emitting before its children run, but sibling positions do
 // not advance together: feature execution consumes the same random stream.
@@ -14,35 +19,83 @@ func (f *ModernFeatures) placeModifiedPositions(region *featureRegion, modifiers
 	if len(modifiers) == 0 {
 		return place(origin)
 	}
-	type frame struct {
-		position featurePos
-		modifier int
-	}
-	var pendingBuffer [32]frame
-	pending := append(pendingBuffer[:0], frame{origin, 0})
-	var outputBuffer [32]featurePos
-	output := outputBuffer[:0]
-	placed := false
-	for len(pending) != 0 {
-		current := pending[len(pending)-1]
-		pending = pending[:len(pending)-1]
-		output = f.modifyPlacement(region, current.position, modifiers[current.modifier], random, placedName, output[:0])
-		next := current.modifier + 1
-		if next == len(modifiers) {
-			for _, p := range output {
-				placed = place(p) || placed
-			}
-		} else {
-			for i := len(output) - 1; i >= 0; i-- {
-				pending = append(pending, frame{output[i], next})
+	if region == nil {
+		var pendingBuffer [32]placementFrame
+		pending := append(pendingBuffer[:0], placementFrame{origin, 0})
+		var outputBuffer [32]featurePos
+		output := outputBuffer[:0]
+		placed := false
+		for len(pending) != 0 {
+			current := pending[len(pending)-1]
+			pending = pending[:len(pending)-1]
+			output = f.modifyPlacement(nil, current.position, modifiers[current.modifier], random, placedName, output[:0])
+			next := current.modifier + 1
+			if next == len(modifiers) {
+				for _, p := range output {
+					placed = place(p) || placed
+				}
+			} else {
+				for i := len(output) - 1; i >= 0; i-- {
+					pending = append(pending, placementFrame{output[i], next})
+				}
 			}
 		}
+		return placed
 	}
+	pendingBase := len(region.placementPending)
+	outBase := len(region.placementOut)
+	region.placementPending = append(region.placementPending, placementFrame{origin, 0})
+	placed := false
+	for len(region.placementPending) > pendingBase {
+		top := len(region.placementPending) - 1
+		current := region.placementPending[top]
+		region.placementPending = region.placementPending[:top]
+		region.placementOut = f.modifyPlacement(region, current.position, modifiers[current.modifier], random, placedName, region.placementOut[:outBase])
+		next := current.modifier + 1
+		if next == len(modifiers) {
+			outEnd := len(region.placementOut)
+			for i := outBase; i < outEnd; i++ {
+				placed = place(region.placementOut[i]) || placed
+			}
+		} else {
+			for i := len(region.placementOut) - 1; i >= outBase; i-- {
+				region.placementPending = append(region.placementPending, placementFrame{region.placementOut[i], next})
+			}
+		}
+		region.placementOut = region.placementOut[:outBase]
+	}
+	region.placementPending = region.placementPending[:pendingBase]
 	return placed
 }
 
 func (f *ModernFeatures) placeWithModifiers(region *featureRegion, feature any, modifiers []map[string]any, origin featurePos, random *vanilla.Random, placedName string) bool {
-	return f.placeModifiedPositions(region, modifiers, origin, random, placedName, func(p featurePos) bool { return region.PlaceValue(feature, p, random) })
+	if len(modifiers) == 0 {
+		return region.PlaceValue(feature, origin, random)
+	}
+	pendingBase := len(region.placementPending)
+	outBase := len(region.placementOut)
+	region.placementPending = append(region.placementPending, placementFrame{origin, 0})
+	placed := false
+	for len(region.placementPending) > pendingBase {
+		top := len(region.placementPending) - 1
+		current := region.placementPending[top]
+		region.placementPending = region.placementPending[:top]
+		region.placementOut = f.modifyPlacement(region, current.position, modifiers[current.modifier], random, placedName, region.placementOut[:outBase])
+		next := current.modifier + 1
+		if next == len(modifiers) {
+			outEnd := len(region.placementOut)
+			for i := outBase; i < outEnd; i++ {
+				placed = region.PlaceValue(feature, region.placementOut[i], random) || placed
+			}
+		} else {
+			for i := len(region.placementOut) - 1; i >= outBase; i-- {
+				region.placementPending = append(region.placementPending, placementFrame{region.placementOut[i], next})
+			}
+		}
+		region.placementOut = region.placementOut[:outBase]
+	}
+	region.placementPending = region.placementPending[:pendingBase]
+	return placed
 }
 
 func inlinePlacementModifiers(value any) []map[string]any {
@@ -62,6 +115,18 @@ func inlinePlacementModifiers(value any) []map[string]any {
 		modifiers[i] = modifier
 	}
 	return modifiers
+}
+
+func (r *featureRegion) placementHeightFast(x, z int32, heightmap string) int32 {
+	if r.base != nil {
+		switch heightmap {
+		case "WORLD_SURFACE_WG":
+			return r.worldgenHeight(x, z, 1)
+		case "OCEAN_FLOOR_WG":
+			return r.worldgenHeight(x, z, 3)
+		}
+	}
+	return r.placementHeight(x, z, heightmap)
 }
 
 func (f *ModernFeatures) modifyPlacement(region *featureRegion, p featurePos, modifier map[string]any, r *vanilla.Random, placedName string, out []featurePos) []featurePos {
@@ -95,8 +160,8 @@ func (f *ModernFeatures) modifyPlacement(region *featureRegion, p featurePos, mo
 		if !ok {
 			panic("overworld: malformed heightmap placement")
 		}
-		p.y = region.placementHeight(p.x, p.z, name)
-		if p.y <= region.MinY() {
+		p.y = region.placementHeightFast(p.x, p.z, name)
+		if p.y <= region.minY {
 			return out
 		}
 	case "height_range":
@@ -104,10 +169,9 @@ func (f *ModernFeatures) modifyPlacement(region *featureRegion, p featurePos, mo
 		if !ok {
 			panic("overworld: malformed height_range placement")
 		}
-		p.y = sampleHeight(provider, r, region.MinY(), region.MaxY()+1, region.f.source.SeaLevel())
+		p.y = sampleHeight(provider, r, region.minY, region.maxY+1, region.f.source.SeaLevel())
 	case "environment_scan":
-		input := [1]featurePos{p}
-		return append(out, environmentScanPlacement(region, input[:], modifier, region.MinY(), region.MaxY()+1)...)
+		return environmentScanSingle(region, p, modifier, region.minY, region.maxY+1, out)
 	case "rarity_filter":
 		chance := featureNumber(modifier["chance"])
 		if chance <= 0 {
@@ -154,7 +218,7 @@ func (f *ModernFeatures) modifyPlacement(region *featureRegion, p featurePos, mo
 		if n, ok := modifier["max_inclusive"].(float64); ok {
 			max = int64(int32(n))
 		}
-		height := int64(region.placementHeight(p.x, p.z, heightmap))
+		height := int64(region.placementHeightFast(p.x, p.z, heightmap))
 		if int64(p.y) < height+min || int64(p.y) > height+max {
 			return out
 		}

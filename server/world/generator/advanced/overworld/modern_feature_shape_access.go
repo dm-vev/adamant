@@ -3,6 +3,7 @@ package overworld
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
@@ -13,12 +14,34 @@ import (
 
 var _ world.GenerationShapeAccess = (*featureRegion)(nil)
 
+type regionRandomFactoryKey struct {
+	seed   int64
+	legacy bool
+}
+
+var regionRandomFactoryCache sync.Map // regionRandomFactoryKey -> vanilla.PositionalFactory
+
+func regionRandomFactory(seed int64, legacy bool) vanilla.PositionalFactory {
+	key := regionRandomFactoryKey{seed: seed, legacy: legacy}
+	if cached, ok := regionRandomFactoryCache.Load(key); ok {
+		return cached.(vanilla.PositionalFactory)
+	}
+	root := vanilla.NewXoroshiroRandom(seed)
+	if legacy {
+		root = vanilla.NewLegacyRandom(seed)
+	}
+	named := root.ForkPositional().FromHashOf("minecraft:worldgen_region_random")
+	factory := named.ForkPositional()
+	actual, _ := regionRandomFactoryCache.LoadOrStore(key, factory)
+	return actual.(vanilla.PositionalFactory)
+}
+
 func (r *featureRegion) BlockStateID(pos cube.Pos) (uint32, error) {
-	if int32(pos[1]) < r.MinY() || int32(pos[1]) > r.MaxY() {
+	if int32(pos[1]) < r.minY || int32(pos[1]) > r.maxY {
 		return gamedata.BlockStateID("minecraft:void_air", nil)
 	}
 	state := r.nativeState(featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])})
-	if id := state.CanonicalID(r.c.BlockRegistry()); id != 0 {
+	if id := state.CanonicalID(r.registry); id != 0 {
 		return id, nil
 	}
 	return 0, fmt.Errorf("overworld: native-only generation state at %v has no identity", pos)
@@ -34,12 +57,7 @@ func (r *featureRegion) RegionRandom() *vanilla.Random {
 	if random := r.regionRandoms[key]; random != nil {
 		return random
 	}
-	root := vanilla.NewXoroshiroRandom(r.f.seed)
-	if r.f.source.UseLegacyRandomSource() {
-		root = vanilla.NewLegacyRandom(r.f.seed)
-	}
-	named := root.ForkPositional().FromHashOf("minecraft:worldgen_region_random")
-	factory := named.ForkPositional()
+	factory := regionRandomFactory(r.f.seed, r.f.source.UseLegacyRandomSource())
 	random := factory.At(key[0]*16, 0, key[1]*16)
 	r.regionRandoms[key] = &random
 	return &random
@@ -80,8 +98,10 @@ func (r *featureRegion) reserveTick(tick chunk.ScheduledTick) bool {
 
 func (r *featureRegion) HasBlockTick(pos cube.Pos, name string) bool {
 	name = canonicalResource(name)
-	if _, scheduled := r.scheduledTicks[featureTickReservation{pos: pos, kind: chunk.BlockTick, typeName: name}]; scheduled {
-		return true
+	if len(r.scheduledTicks) != 0 {
+		if _, scheduled := r.scheduledTicks[featureTickReservation{pos: pos, kind: chunk.BlockTick, typeName: name}]; scheduled {
+			return true
+		}
 	}
 	return r.result.HasScheduledTick(pos, chunk.BlockTick, name)
 }

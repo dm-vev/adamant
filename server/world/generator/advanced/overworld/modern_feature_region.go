@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
@@ -12,6 +14,104 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
+
+const (
+	featFlagComputed uint32 = 1 << iota
+	featFlagAir
+	featFlagExactAir
+	featFlagWorldSurface
+	featFlagMotion
+	featFlagMushroom
+	featFlagBubbleBase
+	featFlagStoneOre
+	featFlagDeepslateOre
+	featFlagBaseStone
+	featFlagHeightSpecificOre
+	featFlagSolid
+	featFlagReplaceable
+	featFlagShapeOK
+	featFlagCanonicalErr
+	featFlagSturdyShift = 16 // 6 bits: cube.Face 0..5
+)
+
+var defaultFeatureMeta = sync.OnceValue(func() []atomic.Uint32 {
+	return make([]atomic.Uint32, world.DefaultBlockRegistry.BlockCount())
+})
+
+var defaultFeatureNames = sync.OnceValue(func() []atomic.Pointer[string] {
+	return make([]atomic.Pointer[string], world.DefaultBlockRegistry.BlockCount())
+})
+
+func featureMetaForDefaultRID(rid uint32) uint32 {
+	table := defaultFeatureMeta()
+	if int(rid) >= len(table) {
+		return featFlagCanonicalErr
+	}
+	if flags := table[rid].Load(); flags != 0 {
+		return flags
+	}
+	airRID := world.DefaultBlockRegistry.AirRuntimeID()
+	ns := world.NativeState{Block: rid, Liquid: airRID}
+	flags := featFlagComputed
+	if id := ns.CanonicalID(world.DefaultBlockRegistry); id != 0 {
+		if rawName, ok := gamedata.BlockStateName(id); ok {
+			name := normalizeResource(rawName)
+			s := rawName
+			defaultFeatureNames()[rid].Store(&s)
+			if name == "air" {
+				flags |= featFlagExactAir | featFlagAir
+			} else if treeIsAirName(rawName) {
+				flags |= featFlagAir
+			}
+			if name == "brown_mushroom" || name == "red_mushroom" {
+				flags |= featFlagMushroom
+			}
+			if name == "soul_sand" || name == "magma_block" {
+				flags |= featFlagBubbleBase
+			}
+			if blockTagContains("stone_ore_replaceables", name) {
+				flags |= featFlagStoneOre
+			}
+			if blockTagContains("deepslate_ore_replaceables", name) {
+				flags |= featFlagDeepslateOre
+			}
+			if blockTagContains("base_stone_overworld", name) {
+				flags |= featFlagBaseStone
+			}
+			if blockTagContains("height_specific_ore_replaceables", name) {
+				flags |= featFlagHeightSpecificOre
+			}
+		}
+		if shape, err := gamedata.BlockGenerationShapeID(id); err == nil {
+			flags |= featFlagShapeOK | (uint32(shape.Sturdy) << featFlagSturdyShift)
+			if shape.Replaceable {
+				flags |= featFlagReplaceable
+			}
+		}
+	}
+	if canonical, err := world.CanonicalState(world.DefaultBlockRegistry, ns); err == nil {
+		if defaultFeatureNames()[rid].Load() == nil {
+			s := canonical.Name
+			defaultFeatureNames()[rid].Store(&s)
+		}
+		name := normalizeResource(canonical.Name)
+		if name != "air" && name != "cave_air" && name != "void_air" {
+			flags |= featFlagWorldSurface
+		}
+		if blockTagContains("minecraft:blocks_motion_in_heightmap", name) {
+			flags |= featFlagMotion
+		}
+		if solid, err := gamedata.BlockIsSolid(name); err == nil && solid {
+			flags |= featFlagSolid
+		} else if err != nil {
+			flags |= featFlagCanonicalErr
+		}
+	} else {
+		flags |= featFlagCanonicalErr
+	}
+	table[rid].Store(flags)
+	return flags
+}
 
 type featureTickReservation struct {
 	pos      cube.Pos
@@ -22,6 +122,11 @@ type featureTickReservation struct {
 type featureRegion struct {
 	f            *ModernFeatures
 	c            *chunk.Chunk
+	registry     chunk.BlockRegistry
+	minY, maxY   int32
+	airRID       uint32
+	blockCount   uint32
+	isDefaultReg bool
 	writeOriginX int32
 	writeOriginZ int32
 	target       world.ChunkPos
@@ -45,21 +150,66 @@ type featureRegion struct {
 	// by featureColumnKey.
 	columns map[uint64]featureColumn
 	// base is the source of the region when it is the generated terrain,
-	// whose immutable chunks baseChunks keeps once read.
-	base        *modernTerrainSource
-	baseChunks  map[world.ChunkPos]*chunk.Chunk
-	lastBasePos world.ChunkPos
-	lastBase    *chunk.Chunk
+	// whose immutable chunks baseGrid and baseChunks keep once read.
+	base            *modernTerrainSource
+	baseGridOriginX int32
+	baseGridOriginZ int32
+	baseGridValid   bool
+	baseGrid        [25]*chunk.Chunk
+	heightsGrid     [25]*worldgenHeights
+	baseChunks      map[world.ChunkPos]*chunk.Chunk
+	lastBasePos     world.ChunkPos
+	lastBase        *chunk.Chunk
+	lastBaseMinY    int32
+	lastBaseMaxY    int32
 	// lastHeights holds the WORLDGEN heightmaps of the base terrain of the
 	// chunk at lastHeightsPos, last read by worldgenHeight.
 	lastHeightsPos          world.ChunkPos
 	lastHeights             *worldgenHeights
+	placementPending        []placementFrame
+	placementOut            []featurePos
+	currentOreName          string
+	lastOreName             string
+	lastOreTargets          [2]fastOreTarget
+	lastOreCount            int
+	lastOreAllFast          bool
+	lastOreMask             uint32
 	regionRandoms           map[[2]int32]*vanilla.Random
 	scheduledTicks          map[featureTickReservation]struct{}
 	blockActorRecords       map[cube.Pos]structure.Block
 	blockActorData          map[cube.Pos]map[string]any
 	nativeProjections       map[cube.Pos]struct{}
 	treeDecorationPositions *treePositionSet
+}
+
+var featureRegionPool = sync.Pool{New: func() any {
+	return &featureRegion{
+		columns:           make(map[uint64]featureColumn, 128),
+		placementPending:  make([]placementFrame, 0, 256),
+		placementOut:      make([]featurePos, 0, 256),
+		scheduledTicks:    make(map[featureTickReservation]struct{}),
+		blockActorRecords: make(map[cube.Pos]structure.Block),
+		blockActorData:    make(map[cube.Pos]map[string]any),
+		nativeProjections: make(map[cube.Pos]struct{}),
+		regionRandoms:     make(map[[2]int32]*vanilla.Random),
+	}
+}}
+
+type recordingChunkKey struct {
+	registry chunk.BlockRegistry
+	r        cube.Range
+}
+
+var recordingChunkCache sync.Map // recordingChunkKey -> *chunk.Chunk
+
+func recordingDummyChunk(registry chunk.BlockRegistry, r cube.Range) *chunk.Chunk {
+	key := recordingChunkKey{registry: registry, r: r}
+	if cached, ok := recordingChunkCache.Load(key); ok {
+		return cached.(*chunk.Chunk)
+	}
+	c := chunk.New(registry, r)
+	actual, _ := recordingChunkCache.LoadOrStore(key, c)
+	return actual.(*chunk.Chunk)
 }
 
 func newFeatureRegion(f *ModernFeatures, c *chunk.Chunk, target world.ChunkPos, result *world.GenerationResult) *featureRegion {
@@ -70,33 +220,96 @@ func newFeatureRegion(f *ModernFeatures, c *chunk.Chunk, target world.ChunkPos, 
 	if source, ok := f.source.(modernTerrainSource); ok && source.generator != nil {
 		base = &source
 	}
-	return &featureRegion{
-		f: f, c: c, target: target, hasTarget: true, result: result, base: base,
-		scheduledTicks:    make(map[featureTickReservation]struct{}),
-		blockActorRecords: make(map[cube.Pos]structure.Block),
-		blockActorData:    make(map[cube.Pos]map[string]any),
-		nativeProjections: make(map[cube.Pos]struct{}),
-		regionRandoms:     make(map[[2]int32]*vanilla.Random),
-	}
+	reg := c.BlockRegistry()
+	cr := c.Range()
+	r := featureRegionPool.Get().(*featureRegion)
+	r.f = f
+	r.c = c
+	r.registry = reg
+	r.minY, r.maxY = int32(cr[0]), int32(cr[1])
+	r.airRID = reg.AirRuntimeID()
+	r.blockCount = uint32(reg.BlockCount())
+	r.isDefaultReg = reg == world.DefaultBlockRegistry
+	r.writeOriginX, r.writeOriginZ = 0, 0
+	r.target = target
+	r.hasTarget = true
+	r.recording = nil
+	r.recordBeyondOrigin = false
+	r.structureRecording = nil
+	r.result = result
+	r.base = base
+	r.baseGridOriginX, r.baseGridOriginZ = target[0]-2, target[1]-2
+	r.baseGridValid = true
+	r.lastBasePos, r.lastBase = world.ChunkPos{}, nil
+	r.lastBaseMinY, r.lastBaseMaxY = 0, 0
+	r.lastHeightsPos, r.lastHeights = world.ChunkPos{}, nil
+	r.placementPending = r.placementPending[:0]
+	r.placementOut = r.placementOut[:0]
+	r.currentOreName = ""
+	r.lastOreName = ""
+	r.treeDecorationPositions = nil
+	return r
 }
 
 // release returns the pooled memory of the region. The region must not be
 // used afterwards.
 func (r *featureRegion) release() {
 	r.overlay.release()
+	if len(r.columns) > 2048 {
+		r.columns = make(map[uint64]featureColumn, 128)
+	} else {
+		clear(r.columns)
+	}
+	if cap(r.placementPending) > 4096 {
+		r.placementPending = make([]placementFrame, 0, 256)
+	} else {
+		r.placementPending = r.placementPending[:0]
+	}
+	if cap(r.placementOut) > 4096 {
+		r.placementOut = make([]featurePos, 0, 256)
+	} else {
+		r.placementOut = r.placementOut[:0]
+	}
+	clear(r.baseChunks)
+	clear(r.regionRandoms)
+	clear(r.scheduledTicks)
+	clear(r.blockActorRecords)
+	clear(r.blockActorData)
+	clear(r.nativeProjections)
+	r.baseGrid = [25]*chunk.Chunk{}
+	r.heightsGrid = [25]*worldgenHeights{}
+	r.f = nil
+	r.c = nil
+	r.registry = nil
+	r.recording = nil
+	r.structureRecording = nil
+	r.result = nil
+	r.base = nil
+	r.lastBase = nil
+	r.lastHeights = nil
+	r.currentOreName = ""
+	r.lastOreName = ""
+	r.lastOreTargets = [2]fastOreTarget{}
+	r.treeDecorationPositions = nil
+	featureRegionPool.Put(r)
 }
 
 // newRecordingRegion returns a region without a target chunk, which records
 // what an origin's features write. registry and r describe the chunks the
 // records are applied to.
 func newRecordingRegion(f *ModernFeatures, registry chunk.BlockRegistry, r cube.Range) *featureRegion {
-	region := newFeatureRegion(f, chunk.New(registry, r), world.ChunkPos{}, &world.GenerationResult{})
+	region := newFeatureRegion(f, recordingDummyChunk(registry, r), world.ChunkPos{}, &world.GenerationResult{})
 	region.hasTarget = false
+	region.baseGridValid = false
 	return region
 }
 
 func (r *featureRegion) SetOrigin(chunkX, chunkZ int32) {
 	r.writeOriginX, r.writeOriginZ = chunkX, chunkZ
+	if !r.hasTarget && !r.baseGridValid {
+		r.baseGridOriginX, r.baseGridOriginZ = chunkX-2, chunkZ-2
+		r.baseGridValid = true
+	}
 }
 
 // inTarget reports whether p lies in the target chunk.
@@ -162,22 +375,48 @@ func absFeatureInt(v int32) uint32 {
 // other read of the same state and must not be modified: copy them first.
 func (r *featureRegion) State(p featurePos) (string, map[string]any) {
 	state := r.nativeState(p)
-	if id := state.CanonicalID(r.c.BlockRegistry()); id != 0 {
+	if id := state.CanonicalID(r.registry); id != 0 {
 		if name, properties, ok := gamedata.BlockStateView(id); ok {
 			return name, properties
 		}
 	}
-	canonicalState, err := world.CanonicalState(r.c.BlockRegistry(), state)
+	canonicalState, err := world.CanonicalState(r.registry, state)
 	if err != nil {
 		panic(err)
 	}
 	return canonicalState.Name, canonicalState.Properties
 }
 
+func (r *featureRegion) stateName(p featurePos) string {
+	state := r.nativeState(p)
+	if r.isDefaultReg && state.Liquid == r.airRID && state.StateID == 0 {
+		names := defaultFeatureNames()
+		if int(state.Block) < len(names) {
+			if ptr := names[state.Block].Load(); ptr != nil {
+				return *ptr
+			}
+			featureMetaForDefaultRID(state.Block)
+			if ptr := names[state.Block].Load(); ptr != nil {
+				return *ptr
+			}
+		}
+	}
+	if id := state.CanonicalID(r.registry); id != 0 {
+		if name, ok := gamedata.BlockStateName(id); ok {
+			return name
+		}
+	}
+	canonicalState, err := world.CanonicalState(r.registry, state)
+	if err != nil {
+		panic(err)
+	}
+	return canonicalState.Name
+}
+
 // StateID returns the canonical Java state ID at p, or zero for a native
 // state without one.
 func (r *featureRegion) StateID(p featurePos) uint32 {
-	return r.nativeState(p).CanonicalID(r.c.BlockRegistry())
+	return r.nativeState(p).CanonicalID(r.registry)
 }
 
 // featureColumnKey packs the column x, z for the maps of a region.
@@ -186,14 +425,15 @@ func featureColumnKey(x, z int32) uint64 {
 }
 
 func (r *featureRegion) nativeState(p featurePos) world.NativeState {
-	if p.y < r.MinY() || p.y > r.MaxY() {
+	if p.y < r.minY || p.y > r.maxY {
 		return r.f.source.BaseState(p.x, p.y, p.z)
 	}
 	if state, ok := r.overlay.get(p); ok {
 		return state
 	}
-	if r.inTarget(p) {
-		return world.NativeStateAt(r.c, uint8(p.x&15), int16(p.y), uint8(p.z&15))
+	if r.hasTarget && p.x>>4 == r.target[0] && p.z>>4 == r.target[1] {
+		b, l, id := r.c.Native(uint8(p.x&15), int16(p.y), uint8(p.z&15))
+		return world.NativeState{Block: b, Liquid: l, StateID: id}
 	}
 	return r.baseState(p)
 }
@@ -203,11 +443,16 @@ func (r *featureRegion) baseState(p featurePos) world.NativeState {
 	if r.base == nil {
 		return r.f.source.BaseState(p.x, p.y, p.z)
 	}
-	c := r.baseChunk(world.ChunkPos{p.x >> 4, p.z >> 4})
-	if p.y < int32(c.Range().Min()) || p.y > int32(c.Range().Max()) {
+	pos := world.ChunkPos{p.x >> 4, p.z >> 4}
+	c := r.lastBase
+	if c == nil || r.lastBasePos != pos {
+		c = r.baseChunkSlow(pos)
+	}
+	if p.y < r.lastBaseMinY || p.y > r.lastBaseMaxY {
 		return r.f.source.BaseState(p.x, p.y, p.z)
 	}
-	return world.NativeStateAt(c, uint8(p.x&15), int16(p.y), uint8(p.z&15))
+	b, l, id := c.Native(uint8(p.x&15), int16(p.y), uint8(p.z&15))
+	return world.NativeState{Block: b, Liquid: l, StateID: id}
 }
 
 // baseChunk returns the base chunk at pos, looking it up in the source once
@@ -216,7 +461,27 @@ func (r *featureRegion) baseChunk(pos world.ChunkPos) *chunk.Chunk {
 	if r.lastBase != nil && r.lastBasePos == pos {
 		return r.lastBase
 	}
-	c, ok := r.baseChunks[pos]
+	return r.baseChunkSlow(pos)
+}
+
+func (r *featureRegion) baseChunkSlow(pos world.ChunkPos) *chunk.Chunk {
+	var c *chunk.Chunk
+	if r.baseGridValid {
+		gx, gz := uint32(pos[0]-r.baseGridOriginX), uint32(pos[1]-r.baseGridOriginZ)
+		if gx < 5 && gz < 5 {
+			idx := gx*5 + gz
+			c = r.baseGrid[idx]
+			if c == nil {
+				c = r.base.BaseChunk(pos)
+				r.baseGrid[idx] = c
+			}
+			cr := c.Range()
+			r.lastBasePos, r.lastBase, r.lastBaseMinY, r.lastBaseMaxY = pos, c, int32(cr[0]), int32(cr[1])
+			return c
+		}
+	}
+	var ok bool
+	c, ok = r.baseChunks[pos]
 	if !ok {
 		c = r.base.BaseChunk(pos)
 		if r.baseChunks == nil {
@@ -224,13 +489,14 @@ func (r *featureRegion) baseChunk(pos world.ChunkPos) *chunk.Chunk {
 		}
 		r.baseChunks[pos] = c
 	}
-	r.lastBasePos, r.lastBase = pos, c
+	cr := c.Range()
+	r.lastBasePos, r.lastBase, r.lastBaseMinY, r.lastBaseMaxY = pos, c, int32(cr[0]), int32(cr[1])
 	return c
 }
 
 func (r *featureRegion) Block(p featurePos) world.Block {
 	state := r.nativeState(p)
-	registry, ok := r.c.BlockRegistry().(world.BlockRegistry)
+	registry, ok := r.registry.(world.BlockRegistry)
 	if !ok {
 		panic("overworld: feature region registry cannot resolve native blocks")
 	}
@@ -249,81 +515,140 @@ func (r *featureRegion) withinWriteArea(p featurePos) bool {
 	return absFeatureInt(p.x>>4-r.writeOriginX) <= 1 && absFeatureInt(p.z>>4-r.writeOriginZ) <= 1
 }
 
+func (r *featureRegion) noteOverlayAndInvalidateHeight(p featurePos, inTarget bool) {
+	needOverlayTop := !inTarget
+	if needOverlayTop && r.base != nil {
+		if h := r.cachedWorldgenHeights(world.ChunkPos{p.x >> 4, p.z >> 4}); h != nil {
+			if p.y < int32(h.height[0][(p.x&15)|(p.z&15)<<4]) {
+				needOverlayTop = false
+			}
+		}
+	}
+	if !needOverlayTop {
+		if len(r.columns) == 0 {
+			return
+		}
+		key := featureColumnKey(p.x, p.z)
+		if column, ok := r.columns[key]; ok && column.known&^heightmapFrozenKinds != 0 {
+			column.known &= heightmapFrozenKinds
+			r.columns[key] = column
+		}
+		return
+	}
+	key := featureColumnKey(p.x, p.z)
+	column, ok := r.columns[key]
+	dirty := false
+	if !ok || !column.hasOverlay || column.overlayTop < p.y {
+		column.overlayTop, column.hasOverlay = p.y, true
+		dirty = true
+	}
+	if column.known&^heightmapFrozenKinds != 0 {
+		column.known &= heightmapFrozenKinds
+		dirty = true
+	}
+	if dirty {
+		if r.columns == nil {
+			r.columns = make(map[uint64]featureColumn, 128)
+		}
+		r.columns[key] = column
+	}
+}
+
 func (r *featureRegion) setWithFlags(p featurePos, state world.NativeState, flags int) bool {
-	if p.y < r.MinY() || p.y > r.MaxY() {
+	return r.setWithFlagsPrev(p, state, world.NativeState{}, false, flags)
+}
+
+func (r *featureRegion) setWithFlagsPrev(p featurePos, state, prev world.NativeState, hasPrev bool, flags int) bool {
+	if p.y < r.minY || p.y > r.maxY {
 		return false
 	}
-	if count := uint32(r.c.BlockRegistry().BlockCount()); state.Block >= count {
+	if state.Block >= r.blockCount {
 		panic("overworld: feature region cannot set unknown primary block runtime ID")
-	} else if state.Liquid >= count {
+	} else if state.Liquid >= r.blockCount {
 		panic("overworld: feature region cannot set unknown liquid runtime ID")
 	}
 	if !r.withinWriteArea(p) {
 		return false
 	}
-	pos := cube.Pos{int(p.x), int(p.y), int(p.z)}
-	if _, projected := r.nativeProjections[pos]; projected {
-		delete(r.nativeProjections, pos)
-		r.removeBlockEntityPayloads(pos)
+	inTarget := r.hasTarget && p.x>>4 == r.target[0] && p.z>>4 == r.target[1]
+	recording := r.recordingAt(p)
+	if len(r.nativeProjections) != 0 {
+		pos := cube.Pos{int(p.x), int(p.y), int(p.z)}
+		if _, projected := r.nativeProjections[pos]; projected {
+			delete(r.nativeProjections, pos)
+			r.removeBlockEntityPayloads(pos)
+		}
 	}
-	previous := r.nativeState(p)
-	oldID, newID := previous.CanonicalID(r.c.BlockRegistry()), state.CanonicalID(r.c.BlockRegistry())
-	oldName, _ := gamedata.BlockStateName(oldID)
-	newName, _ := gamedata.BlockStateName(newID)
-	changedBlock := oldName != newName
-	if oldName == "" && newName == "" {
-		changedBlock = previous.Block != state.Block
+	hasActors := len(r.blockActorRecords) != 0 || len(r.blockActorData) != 0 || len(r.result.BlockEntities) != 0 || (recording != nil && len(recording.actors) != 0)
+	previous := prev
+	if !hasPrev && (recording != nil || hasActors) {
+		previous = r.nativeState(p)
 	}
-	if changedBlock {
-		r.removeBlockEntityPayloads(cube.Pos{int(p.x), int(p.y), int(p.z)})
+	changedBlock := true
+	if hasActors {
+		oldID, newID := previous.CanonicalID(r.registry), state.CanonicalID(r.registry)
+		oldName, _ := gamedata.BlockStateName(oldID)
+		newName, _ := gamedata.BlockStateName(newID)
+		changedBlock = oldName != newName
+		if oldName == "" && newName == "" {
+			changedBlock = previous.Block != state.Block
+		}
+		if changedBlock {
+			r.removeBlockEntityPayloads(cube.Pos{int(p.x), int(p.y), int(p.z)})
+		}
 	}
 	r.overlay.set(p, state)
-	r.noteOverlay(p)
-	r.invalidatePlacementHeight(p)
-	if r.inTarget(p) {
-		x, z := uint8(p.x&15), uint8(p.z&15)
-		world.SetNativeState(r.c, x, int16(p.y), z, state)
+	r.noteOverlayAndInvalidateHeight(p, inTarget)
+	if inTarget {
+		world.SetNativeState(r.c, uint8(p.x&15), int16(p.y), uint8(p.z&15), state)
 	}
-	if recording := r.recordingAt(p); recording != nil {
+	if recording != nil {
 		recording.write(p, previous, state)
 	}
-	if r.recordsAt(p) && flags&16 == 0 {
+	if (inTarget || recording != nil) && flags&16 == 0 {
 		r.markBlockPostProcessing(p, state)
 	}
-	if !changedBlock {
-		if _, exists := r.blockActorRecords[cube.Pos{int(p.x), int(p.y), int(p.z)}]; exists {
-			canonicalState, err := world.CanonicalState(r.c.BlockRegistry(), state)
+	if hasActors && !changedBlock {
+		pos := cube.Pos{int(p.x), int(p.y), int(p.z)}
+		if _, exists := r.blockActorRecords[pos]; exists {
+			canonicalState, err := world.CanonicalState(r.registry, state)
 			if err != nil {
 				panic(err)
 			}
-			r.refreshTemplateActorState(cube.Pos{int(p.x), int(p.y), int(p.z)}, canonicalState)
+			r.refreshTemplateActorState(pos, canonicalState)
 		}
 	}
 	return true
 }
 
 func (r *featureRegion) removeBlockEntityPayloads(pos cube.Pos) {
-	delete(r.blockActorRecords, pos)
-	delete(r.blockActorData, pos)
-	if recording := r.recordingAt(featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}); recording != nil {
+	if len(r.blockActorRecords) != 0 {
+		delete(r.blockActorRecords, pos)
+	}
+	if len(r.blockActorData) != 0 {
+		delete(r.blockActorData, pos)
+	}
+	if recording := r.recordingAt(featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}); recording != nil && len(recording.actors) != 0 {
 		delete(recording.actors, pos)
 	}
-	entities := r.result.BlockEntities
-	kept := entities[:0]
-	for _, actor := range entities {
-		if actor.Pos != pos {
-			kept = append(kept, actor)
+	if len(r.result.BlockEntities) != 0 {
+		entities := r.result.BlockEntities
+		kept := entities[:0]
+		for _, actor := range entities {
+			if actor.Pos != pos {
+				kept = append(kept, actor)
+			}
 		}
+		r.result.BlockEntities = kept
 	}
-	r.result.BlockEntities = kept
 }
 
 func (r *featureRegion) Height(x, z int32, oceanFloor bool) int32 {
 	return r.f.source.BaseHeight(x, z, oceanFloor)
 }
 
-func (r *featureRegion) MinY() int32 { return int32(r.c.Range()[0]) }
-func (r *featureRegion) MaxY() int32 { return int32(r.c.Range()[1]) }
+func (r *featureRegion) MinY() int32 { return r.minY }
+func (r *featureRegion) MaxY() int32 { return r.maxY }
 
 func featureSetNativeBlockFlag2(region *featureRegion, p featurePos, state world.NativeState, actor world.Block) bool {
 	if !region.setWithFlags(p, state, 2) {
@@ -366,7 +691,13 @@ func (r *featureRegion) SampleNativeState(provider any, p featurePos, random *va
 	return state, actor, true
 }
 func (r *featureRegion) resolveFeatureBlock(placement structure.Block, p featurePos) (world.NativeState, world.Block) {
-	state, err := placement.ResolveNative(r.c.BlockRegistry(), r.nativeState(p))
+	var state world.NativeState
+	var err error
+	if placement.NativeBlock == nil {
+		state, err = placement.ResolveNative(r.registry)
+	} else {
+		state, err = placement.ResolveNative(r.registry, r.nativeState(p))
+	}
 	if err != nil {
 		panic(err)
 	}
@@ -387,7 +718,22 @@ func featureStateHasFluid(c *chunk.Chunk, state world.NativeState) bool {
 }
 
 func (r *featureRegion) markBlockPostProcessing(p featurePos, state world.NativeState) {
-	id := state.CanonicalID(r.c.BlockRegistry())
+	if r.isDefaultReg && state.Liquid == r.airRID && state.StateID == 0 {
+		flags := featureMetaForDefaultRID(state.Block)
+		if flags&(featFlagMushroom|featFlagBubbleBase) == 0 {
+			return
+		}
+		if flags&featFlagMushroom != 0 {
+			r.markPostProcessing(cube.Pos{int(p.x), int(p.y), int(p.z)})
+			return
+		}
+		above := featurePos{p.x, p.y + 1, p.z}
+		if !r.isAirPos(above) {
+			r.markPostProcessing(cube.Pos{int(above.x), int(above.y), int(above.z)})
+		}
+		return
+	}
+	id := state.CanonicalID(r.registry)
 	if id == 0 {
 		// Native-only placements, including flowing-fluid palette variants,
 		// have no Java block callback. They retain their native capabilities.
@@ -402,19 +748,28 @@ func (r *featureRegion) markBlockPostProcessing(p featurePos, state world.Native
 		r.markPostProcessing(cube.Pos{int(p.x), int(p.y), int(p.z)})
 	case "soul_sand", "magma_block":
 		above := featurePos{p.x, p.y + 1, p.z}
-		name, _ := r.State(above)
-		if normalizeResource(name) != "air" && normalizeResource(name) != "cave_air" && normalizeResource(name) != "void_air" {
+		if !r.isAirPos(above) {
 			r.markPostProcessing(cube.Pos{int(above.x), int(above.y), int(above.z)})
 		}
 	}
 }
 
+func (r *featureRegion) isAirPos(p featurePos) bool {
+	ns := r.nativeState(p)
+	if r.isDefaultReg && ns.Liquid == r.airRID && ns.StateID == 0 {
+		if ns.Block == r.airRID {
+			return true
+		}
+		return featureMetaForDefaultRID(ns.Block)&featFlagAir != 0
+	}
+	name, _ := gamedata.BlockStateName(ns.CanonicalID(r.registry))
+	return treeIsAirName(name)
+}
+
 func (r *featureRegion) markAboveForPostProcessing(p featurePos) {
 	for offset := int32(1); offset <= 2; offset++ {
 		marked := featurePos{p.x, p.y + offset, p.z}
-		name, _ := r.State(marked)
-		name = normalizeResource(name)
-		if name == "air" || name == "cave_air" || name == "void_air" {
+		if r.isAirPos(marked) {
 			return
 		}
 		r.markPostProcessing(cube.Pos{int(marked.x), int(marked.y), int(marked.z)})
@@ -461,9 +816,16 @@ func (r *featureRegion) PlacePlacedFeature(value any, origin [3]int32, random *v
 }
 
 func (f *ModernFeatures) placeConfiguredRegion(region *featureRegion, name string, origin featurePos, random *vanilla.Random) bool {
-	config, ok := f.configured[normalizeResource(name)]
+	normName := normalizeResource(name)
+	config, ok := f.configured[normName]
 	if !ok {
 		panic("overworld: missing configured feature " + name)
+	}
+	if config.typeName == "ore" {
+		region.currentOreName = normName
+		placed := placeModernOreRegion(region, config.config, origin, random)
+		region.currentOreName = ""
+		return placed
 	}
 	return f.placeConfiguredData(region, config.typeName, config.config, origin, random)
 }
@@ -682,29 +1044,141 @@ func (r *featureRegion) freezeTopLayerRegion(origin featurePos) bool {
 	}
 	return true
 }
-func placeModernOreRegion(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
-	size := int32(featureNumber(config["size"]))
-	targets, ok := config["targets"].([]any)
-	if !ok || size < 0 || size > 64 {
-		panic("overworld: malformed ore configuration")
+
+type fastOreTarget struct {
+	rid           world.NativeState
+	actor         world.Block
+	predicate     map[string]any
+	tagFlag       uint32
+	heightTagFlag uint32
+	heightMin     int32
+	heightMax     int32
+}
+
+func classifyOreTagName(tag string) uint32 {
+	switch normalizeResource(tag) {
+	case "stone_ore_replaceables":
+		return featFlagStoneOre
+	case "deepslate_ore_replaceables":
+		return featFlagDeepslateOre
+	case "base_stone_overworld":
+		return featFlagBaseStone
+	case "height_specific_ore_replaceables":
+		return featFlagHeightSpecificOre
+	default:
+		return 0
 	}
-	var targetBuffer [2]modernOreTarget
-	oreTargets := targetBuffer[:0]
-	if len(targets) > len(targetBuffer) {
-		oreTargets = make([]modernOreTarget, 0, len(targets))
+}
+
+func classifyOreTagMatch(rule map[string]any) uint32 {
+	typeName, _ := rule["predicate_type"].(string)
+	if normalizeResource(typeName) != "tag_match" {
+		return 0
 	}
+	tag, _ := rule["tag"].(string)
+	return classifyOreTagName(tag)
+}
+
+func classifyOreRule(rule map[string]any) (tagFlag, heightTagFlag uint32, heightMin, heightMax int32) {
+	if flag := classifyOreTagMatch(rule); flag != 0 {
+		return flag, 0, 0, 0
+	}
+	typeName, _ := rule["predicate_type"].(string)
+	if normalizeResource(typeName) != "any_of" {
+		return 0, 0, 0, 0
+	}
+	branches, ok := rule["rules"].([]any)
+	if !ok || len(branches) != 2 {
+		return 0, 0, 0, 0
+	}
+	b0, ok0 := branches[0].(map[string]any)
+	b1, ok1 := branches[1].(map[string]any)
+	if !ok0 || !ok1 || normalizeResource(stringValue(b0["predicate_type"])) != "all_of" || normalizeResource(stringValue(b1["predicate_type"])) != "all_of" {
+		return 0, 0, 0, 0
+	}
+	r0, ok0 := b0["rules"].([]any)
+	r1, ok1 := b1["rules"].([]any)
+	if !ok0 || !ok1 || len(r0) != 2 || len(r1) != 2 {
+		return 0, 0, 0, 0
+	}
+	r00, _ := r0[0].(map[string]any)
+	r01, _ := r0[1].(map[string]any)
+	r10, _ := r1[0].(map[string]any)
+	r11, _ := r1[1].(map[string]any)
+	hFlag := classifyOreTagMatch(r00)
+	if hFlag == 0 || normalizeResource(stringValue(r01["predicate_type"])) != "height_match" {
+		return 0, 0, 0, 0
+	}
+	if normalizeResource(stringValue(r10["predicate_type"])) != "not" {
+		return 0, 0, 0, 0
+	}
+	negInner, _ := r10["rule"].(map[string]any)
+	if classifyOreTagMatch(negInner) != hFlag {
+		return 0, 0, 0, 0
+	}
+	baseFlag := classifyOreTagMatch(r11)
+	if baseFlag == 0 {
+		return 0, 0, 0, 0
+	}
+	return baseFlag, hFlag, int32(featureNumber(r01["min_inclusive"])), int32(featureNumber(r01["max_inclusive"]))
+}
+
+func (r *featureRegion) isOreAirExposed(x, y, z int32) bool {
+	for _, offset := range [6]featurePos{{y: -1}, {y: 1}, {z: -1}, {z: 1}, {x: -1}, {x: 1}} {
+		if r.isAirPos(featurePos{x + offset.x, y + offset.y, z + offset.z}) {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *featureRegion) resolveOreTargets(targets []any, origin featurePos, buf *[2]fastOreTarget) ([]fastOreTarget, bool, uint32) {
+	if r.currentOreName != "" && r.lastOreName == r.currentOreName {
+		return r.lastOreTargets[:r.lastOreCount], r.lastOreAllFast, r.lastOreMask
+	}
+	oreTargets := buf[:0]
+	if len(targets) > len(buf) {
+		oreTargets = make([]fastOreTarget, 0, len(targets))
+	}
+	allFastTags := true
+	cacheable := r.currentOreName != "" && len(targets) <= len(r.lastOreTargets)
+	var combinedMask uint32
 	for _, raw := range targets {
 		entry := raw.(map[string]any)
 		placement, ok := featureStateBlock(entry["state"])
 		if !ok {
 			panic("overworld: malformed ore target state")
 		}
-		state, actor := region.resolveFeatureBlock(placement, origin)
+		state, actor := r.resolveFeatureBlock(placement, origin)
+		if actor != nil {
+			cacheable = false
+		}
 		predicate, ok := entry["target"].(map[string]any)
 		if !ok {
 			panic("overworld: malformed ore target predicate")
 		}
-		oreTargets = append(oreTargets, modernOreTarget{rid: state, actor: actor, predicate: predicate})
+		tagFlag, hFlag, hMin, hMax := classifyOreRule(predicate)
+		if tagFlag == 0 {
+			allFastTags = false
+		}
+		combinedMask |= tagFlag | hFlag
+		oreTargets = append(oreTargets, fastOreTarget{rid: state, actor: actor, predicate: predicate, tagFlag: tagFlag, heightTagFlag: hFlag, heightMin: hMin, heightMax: hMax})
+	}
+	if cacheable {
+		r.lastOreName = r.currentOreName
+		r.lastOreCount = len(oreTargets)
+		r.lastOreAllFast = allFastTags
+		r.lastOreMask = combinedMask
+		copy(r.lastOreTargets[:], oreTargets)
+	}
+	return oreTargets, allFastTags, combinedMask
+}
+
+func placeModernOreRegion(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
+	size := int32(featureNumber(config["size"]))
+	targets, ok := config["targets"].([]any)
+	if !ok || size < 0 || size > 64 {
+		panic("overworld: malformed ore configuration")
 	}
 	// OreFeature samples the entire ellipsoid chain before examining blocks.
 	// The source codec caps size at 64; both scratch buffers fit on the stack.
@@ -723,7 +1197,13 @@ func placeModernOreRegion(region *featureRegion, config map[string]any, origin f
 	belowSurface := false
 	for x := xStart; x <= xStart+sizeXZ && !belowSurface; x++ {
 		for z := zStart; z <= zStart+sizeXZ; z++ {
-			if yStart <= region.placementHeight(x, z, "OCEAN_FLOOR_WG") {
+			var h int32
+			if region.base != nil {
+				h = region.worldgenHeight(x, z, 3)
+			} else {
+				h = region.placementHeight(x, z, "OCEAN_FLOOR_WG")
+			}
+			if yStart <= h {
 				belowSurface = true
 				break
 			}
@@ -732,6 +1212,8 @@ func placeModernOreRegion(region *featureRegion, config map[string]any, origin f
 	if !belowSurface {
 		return false
 	}
+	var targetBuffer [2]fastOreTarget
+	oreTargets, allFastTags, combinedMask := region.resolveOreTargets(targets, origin, &targetBuffer)
 	var spheres [64]struct{ x, y, z, radius float64 }
 	for i := int32(0); i < size; i++ {
 		step := float32(i) / float32(size)
@@ -766,6 +1248,10 @@ func placeModernOreRegion(region *featureRegion, config map[string]any, origin f
 	var tested [148]uint64
 	discard := float32(number(config["discard_chance_on_air_exposure"]))
 	placed := false
+	minRegionY, maxRegionY := region.minY, region.maxY
+	writeMinX, writeMaxX := (region.writeOriginX-1)<<4, (region.writeOriginX+2)<<4-1
+	writeMinZ, writeMaxZ := (region.writeOriginZ-1)<<4, (region.writeOriginZ+2)<<4-1
+	zStride := sizeXZ * sizeY
 	for i := int32(0); i < size; i++ {
 		sphere := &spheres[i]
 		radius := sphere.radius
@@ -775,68 +1261,86 @@ func placeModernOreRegion(region *featureRegion, config map[string]any, origin f
 		minX := max(int32(math.Floor(sphere.x-radius)), xStart)
 		minY := max(int32(math.Floor(sphere.y-radius)), yStart)
 		minZ := max(int32(math.Floor(sphere.z-radius)), zStart)
-		maxX := max(int32(math.Floor(sphere.x+radius)), minX)
-		maxY := max(int32(math.Floor(sphere.y+radius)), minY)
-		maxZ := max(int32(math.Floor(sphere.z+radius)), minZ)
+		maxX := min(max(int32(math.Floor(sphere.x+radius)), minX), writeMaxX)
+		maxY := min(max(int32(math.Floor(sphere.y+radius)), minY), maxRegionY)
+		maxZ := min(max(int32(math.Floor(sphere.z+radius)), minZ), writeMaxZ)
+		minX, minY, minZ = max(minX, writeMinX), max(minY, minRegionY), max(minZ, writeMinZ)
 		for x := minX; x <= maxX; x++ {
 			dx := (float64(x) + .5 - sphere.x) / radius
-			if dx*dx >= 1 {
+			dx2 := dx * dx
+			if dx2 >= 1 {
 				continue
 			}
 			for y := minY; y <= maxY; y++ {
 				dy := (float64(y) + .5 - sphere.y) / radius
-				if dx*dx+dy*dy >= 1 {
+				dx2dy2 := dx2 + dy*dy
+				if dx2dy2 >= 1 {
 					continue
 				}
+				xyIdx := x - xStart + (y-yStart)*sizeXZ
 				for z := minZ; z <= maxZ; z++ {
-					dz := (float64(z) + .5 - sphere.z) / radius
-					if dx*dx+dy*dy+dz*dz >= 1 || y < region.MinY() || y > region.MaxY() {
-						continue
-					}
-					index := x - xStart + (y-yStart)*sizeXZ + (z-zStart)*sizeXZ*sizeY
+					index := xyIdx + (z-zStart)*zStride
 					word, bit := index>>6, uint64(1)<<uint(index&63)
 					if tested[word]&bit != 0 {
 						continue
 					}
-					tested[word] |= bit
-					p := featurePos{x, y, z}
-					// BulkSectionAccess checks the source-origin write window
-					// before predicates or air-exposure RNG consume the stream.
-					if !region.withinWriteArea(p) {
+					dz := (float64(z) + .5 - sphere.z) / radius
+					if dx2dy2+dz*dz >= 1 {
 						continue
 					}
-					stateID := region.nativeState(p).CanonicalID(region.c.BlockRegistry())
-					for _, target := range oreTargets {
-						if !featureRuleMatches(p, target.predicate, stateID, random) {
-							continue
-						}
-						if discard > 0 && (discard >= 1 || random.NextFloat() < discard) {
-							exposed := false
-							for _, offset := range [6]featurePos{{y: -1}, {y: 1}, {z: -1}, {z: 1}, {x: -1}, {x: 1}} {
-								neighbour := featurePos{x + offset.x, y + offset.y, z + offset.z}
-								name, _ := gamedata.BlockStateName(region.nativeState(neighbour).CanonicalID(region.c.BlockRegistry()))
-								if treeIsAirName(name) {
-									exposed = true
-									break
-								}
-							}
-							if exposed {
-								continue
-							}
-						}
-						// Java writes through BulkSectionAccess, not WorldGenLevel:
-						// no automatic postprocessing, but native actor payloads remain valid.
-						if region.setWithFlags(p, target.rid, 16) && target.actor != nil {
-							region.recordTemplateActor(structure.Block{Pos: [3]int32{p.x, p.y, p.z}, NativeBlock: target.actor})
-						}
+					tested[word] |= bit
+					if region.placeOreVoxel(featurePos{x, y, z}, oreTargets, allFastTags, combinedMask, discard, random) {
 						placed = true
-						break
 					}
 				}
 			}
 		}
 	}
 	return placed
+}
+
+func (r *featureRegion) placeOreVoxel(p featurePos, oreTargets []fastOreTarget, allFastTags bool, combinedMask uint32, discard float32, random *vanilla.Random) bool {
+	ns := r.nativeState(p)
+	useFast := r.isDefaultReg && ns.Liquid == r.airRID && ns.StateID == 0
+	var fastMeta uint32
+	if useFast {
+		if ns.Block == r.airRID && allFastTags {
+			return false
+		}
+		fastMeta = featureMetaForDefaultRID(ns.Block)
+		if allFastTags && fastMeta&combinedMask == 0 {
+			return false
+		}
+	}
+	var stateID uint32
+	hasStateID := false
+	for _, target := range oreTargets {
+		if useFast && target.tagFlag != 0 {
+			if target.heightTagFlag != 0 && fastMeta&target.heightTagFlag != 0 {
+				if p.y < target.heightMin || p.y > target.heightMax {
+					continue
+				}
+			} else if fastMeta&target.tagFlag == 0 {
+				continue
+			}
+		} else {
+			if !hasStateID {
+				stateID = ns.CanonicalID(r.registry)
+				hasStateID = true
+			}
+			if !featureRuleMatches(p, target.predicate, stateID, random) {
+				continue
+			}
+		}
+		if discard > 0 && (discard >= 1 || random.NextFloat() < discard) && r.isOreAirExposed(p.x, p.y, p.z) {
+			continue
+		}
+		if r.setWithFlagsPrev(p, target.rid, ns, true, 16) && target.actor != nil {
+			r.recordTemplateActor(structure.Block{Pos: [3]int32{p.x, p.y, p.z}, NativeBlock: target.actor})
+		}
+		return true
+	}
+	return false
 }
 func placeModernDiskRegion(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	radius := sampleInt(config["radius"], random)
@@ -845,6 +1349,8 @@ func placeModernDiskRegion(region *featureRegion, config map[string]any, origin 
 	if !ok {
 		panic("overworld: malformed disk target predicate")
 	}
+	var predArena fastPredArena
+	predRoot := predArena.compile(predicate)
 	placed := false
 	// BlockPos.betweenClosed advances X before Z; each column runs top-down.
 	for zi := range int(2*radius + 1) {
@@ -858,7 +1364,7 @@ func placeModernDiskRegion(region *featureRegion, config map[string]any, origin 
 			for yi := range int(2*halfHeight + 1) {
 				dy := halfHeight - int32(yi)
 				p := featurePos{origin.x + dx, origin.y + dy, origin.z + dz}
-				if !featurePredicate(region, p, predicate) {
+				if !predArena.eval(region, p, predRoot) {
 					placedAbove = false
 					continue
 				}
@@ -866,11 +1372,8 @@ func placeModernDiskRegion(region *featureRegion, config map[string]any, origin 
 				if !ok {
 					continue
 				}
-				state, err := block.ResolveNative(region.c.BlockRegistry(), region.nativeState(p))
-				if err != nil {
-					panic(err)
-				}
-				featureSetNativeBlockFlag2(region, p, state, block.NativeBlock)
+				state, actor := region.resolveFeatureBlock(block, p)
+				featureSetNativeBlockFlag2(region, p, state, actor)
 				if !placedAbove {
 					region.markAboveForPostProcessing(p)
 				}
@@ -1042,7 +1545,255 @@ func placeModernBlockColumnRegion(region *featureRegion, config map[string]any, 
 	return true
 }
 
-func environmentScanPlacement(region *featureRegion, in []featurePos, modifier map[string]any, minY, maxY int32) []featurePos {
+const (
+	fpFallback uint8 = iota
+	fpTrue
+	fpSolid
+	fpReplaceable
+	fpSturdyFace
+	fpAirTag
+	fpExactAir
+	fpTagFlag
+	fpTagName
+	fpBlockHolder
+	fpNot
+	fpAllOf
+	fpAnyOf
+)
+
+type fastPredNode struct {
+	kind       uint8
+	face       cube.Face
+	childCount uint8
+	children   [4]uint8
+	offset     [3]int32
+	tagFlag    uint32
+	tagName    string
+	holder     any
+	raw        map[string]any
+}
+
+type fastPredArena struct {
+	nodes [12]fastPredNode
+	count uint8
+}
+
+func (a *fastPredArena) addFallback(raw map[string]any) uint8 {
+	idx := a.count
+	a.count++
+	a.nodes[idx] = fastPredNode{kind: fpFallback, raw: raw}
+	return idx
+}
+
+func parsePredOffset(predicate map[string]any) ([3]int32, bool) {
+	var offset [3]int32
+	raw, exists := predicate["offset"]
+	if !exists {
+		return offset, true
+	}
+	values, ok := raw.([]any)
+	if !ok || len(values) != 3 {
+		return offset, false
+	}
+	for i, v := range values {
+		n, ok := v.(float64)
+		if !ok || n < -16 || n > 16 || n != math.Trunc(n) {
+			return offset, false
+		}
+		offset[i] = int32(n)
+	}
+	return offset, true
+}
+
+func (a *fastPredArena) compileList(kind uint8, predicate map[string]any) fastPredNode {
+	values, ok := predicate["predicates"].([]any)
+	if !ok || len(values) > 4 || int(a.count)+len(values) > len(a.nodes) {
+		return fastPredNode{kind: fpFallback, raw: predicate}
+	}
+	node := fastPredNode{kind: kind, childCount: uint8(len(values))}
+	for i, v := range values {
+		childMap, ok := v.(map[string]any)
+		if !ok {
+			return fastPredNode{kind: fpFallback, raw: predicate}
+		}
+		cIdx := a.compile(childMap)
+		if cIdx == 0xFF {
+			return fastPredNode{kind: fpFallback, raw: predicate}
+		}
+		node.children[i] = cIdx
+	}
+	return node
+}
+
+func (a *fastPredArena) compile(predicate map[string]any) uint8 {
+	if int(a.count) >= len(a.nodes) {
+		return 0xFF
+	}
+	typeName, ok := predicate["type"].(string)
+	if !ok {
+		return a.addFallback(predicate)
+	}
+	kind := normalizeResource(typeName)
+	var offset [3]int32
+	switch kind {
+	case "matching_blocks", "matching_block_tag", "has_sturdy_face", "solid", "replaceable":
+		offset, ok = parsePredOffset(predicate)
+		if !ok {
+			return a.addFallback(predicate)
+		}
+	}
+	idx := a.count
+	a.count++
+	switch kind {
+	case "true":
+		a.nodes[idx] = fastPredNode{kind: fpTrue}
+	case "solid":
+		a.nodes[idx] = fastPredNode{kind: fpSolid, offset: offset}
+	case "replaceable":
+		a.nodes[idx] = fastPredNode{kind: fpReplaceable, offset: offset}
+	case "has_sturdy_face":
+		dir, ok := predicate["direction"].(string)
+		if !ok {
+			a.nodes[idx] = fastPredNode{kind: fpFallback, raw: predicate}
+			return idx
+		}
+		face, ok := parseSturdyFace(dir)
+		if !ok {
+			a.nodes[idx] = fastPredNode{kind: fpFallback, raw: predicate}
+			return idx
+		}
+		a.nodes[idx] = fastPredNode{kind: fpSturdyFace, face: face, offset: offset}
+	case "matching_block_tag":
+		tag, ok := predicate["tag"].(string)
+		if !ok {
+			a.nodes[idx] = fastPredNode{kind: fpFallback, raw: predicate}
+			return idx
+		}
+		a.nodes[idx] = compileTagNode(tag, offset)
+	case "matching_blocks":
+		holder := predicate["blocks"]
+		if s, ok := holder.(string); ok {
+			if tag, isTag := strings.CutPrefix(s, "#"); isTag {
+				a.nodes[idx] = compileTagNode(tag, offset)
+				return idx
+			}
+			if s == "minecraft:air" || s == "air" {
+				a.nodes[idx] = fastPredNode{kind: fpExactAir, offset: offset}
+				return idx
+			}
+		}
+		a.nodes[idx] = fastPredNode{kind: fpBlockHolder, holder: holder, offset: offset}
+	case "not":
+		child, ok := predicate["predicate"].(map[string]any)
+		if !ok || int(a.count) >= len(a.nodes) {
+			a.nodes[idx] = fastPredNode{kind: fpFallback, raw: predicate}
+			return idx
+		}
+		cIdx := a.compile(child)
+		if cIdx == 0xFF {
+			a.nodes[idx] = fastPredNode{kind: fpFallback, raw: predicate}
+			return idx
+		}
+		a.nodes[idx] = fastPredNode{kind: fpNot, childCount: 1, children: [4]uint8{cIdx}}
+	case "all_of":
+		a.nodes[idx] = a.compileList(fpAllOf, predicate)
+	case "any_of":
+		a.nodes[idx] = a.compileList(fpAnyOf, predicate)
+	default:
+		a.nodes[idx] = fastPredNode{kind: fpFallback, raw: predicate}
+	}
+	return idx
+}
+
+func parseSturdyFace(direction string) (cube.Face, bool) {
+	switch direction {
+	case "down":
+		return cube.FaceDown, true
+	case "up":
+		return cube.FaceUp, true
+	case "north":
+		return cube.FaceNorth, true
+	case "south":
+		return cube.FaceSouth, true
+	case "west":
+		return cube.FaceWest, true
+	case "east":
+		return cube.FaceEast, true
+	default:
+		return 0, false
+	}
+}
+
+func compileTagNode(tag string, offset [3]int32) fastPredNode {
+	norm := normalizeResource(tag)
+	if norm == "air" {
+		return fastPredNode{kind: fpAirTag, offset: offset}
+	}
+	if flag := classifyOreTagName(norm); flag != 0 {
+		return fastPredNode{kind: fpTagFlag, tagFlag: flag, tagName: norm, offset: offset}
+	}
+	return fastPredNode{kind: fpTagName, tagName: norm, offset: offset}
+}
+
+func (a *fastPredArena) eval(region *featureRegion, p featurePos, idx uint8) bool {
+	n := &a.nodes[idx]
+	switch n.kind {
+	case fpTrue:
+		return true
+	case fpSolid:
+		return region.isSolidPos(featurePos{p.x + n.offset[0], p.y + n.offset[1], p.z + n.offset[2]})
+	case fpReplaceable:
+		return region.isReplaceablePos(featurePos{p.x + n.offset[0], p.y + n.offset[1], p.z + n.offset[2]})
+	case fpSturdyFace:
+		return region.hasSturdyFacePos(featurePos{p.x + n.offset[0], p.y + n.offset[1], p.z + n.offset[2]}, n.face)
+	case fpAirTag:
+		return region.isAirPos(featurePos{p.x + n.offset[0], p.y + n.offset[1], p.z + n.offset[2]})
+	case fpExactAir:
+		q := featurePos{p.x + n.offset[0], p.y + n.offset[1], p.z + n.offset[2]}
+		if region.isDefaultReg {
+			ns := region.nativeState(q)
+			if ns.Liquid == region.airRID && ns.StateID == 0 {
+				return ns.Block == region.airRID || featureMetaForDefaultRID(ns.Block)&featFlagExactAir != 0
+			}
+		}
+		return normalizeResource(region.stateName(q)) == "air"
+	case fpTagFlag:
+		q := featurePos{p.x + n.offset[0], p.y + n.offset[1], p.z + n.offset[2]}
+		if region.isDefaultReg {
+			ns := region.nativeState(q)
+			if ns.Liquid == region.airRID && ns.StateID == 0 {
+				return featureMetaForDefaultRID(ns.Block)&n.tagFlag != 0
+			}
+		}
+		return blockTagContains(n.tagName, normalizeResource(region.stateName(q)))
+	case fpTagName:
+		q := featurePos{p.x + n.offset[0], p.y + n.offset[1], p.z + n.offset[2]}
+		return blockTagContains(n.tagName, normalizeResource(region.stateName(q)))
+	case fpBlockHolder:
+		q := featurePos{p.x + n.offset[0], p.y + n.offset[1], p.z + n.offset[2]}
+		return featureBlockHolderContains(n.holder, normalizeResource(region.stateName(q)))
+	case fpNot:
+		return !a.eval(region, p, n.children[0])
+	case fpAllOf:
+		for i := uint8(0); i < n.childCount; i++ {
+			if !a.eval(region, p, n.children[i]) {
+				return false
+			}
+		}
+		return true
+	case fpAnyOf:
+		for i := uint8(0); i < n.childCount; i++ {
+			if a.eval(region, p, n.children[i]) {
+				return true
+			}
+		}
+		return false
+	default:
+		return featurePredicate(region, p, n.raw)
+	}
+}
+
+func environmentScanSingle(region *featureRegion, origin featurePos, modifier map[string]any, minY, maxY int32, out []featurePos) []featurePos {
 	direction, ok := modifier["direction_of_search"].(string)
 	if !ok {
 		panic("overworld: malformed environment_scan direction")
@@ -1069,39 +1820,51 @@ func environmentScanPlacement(region *featureRegion, in []featurePos, modifier m
 		panic("overworld: malformed environment_scan max_steps")
 	}
 	maxSteps := int32(maxStepsValue)
+	var allowedArena fastPredArena
+	var allowedRoot uint8
+	if hasAllowed {
+		allowedRoot = allowedArena.compile(allowed)
+		if !allowedArena.eval(region, origin, allowedRoot) {
+			return out
+		}
+	}
+	var targetArena fastPredArena
+	targetRoot := targetArena.compile(target)
+	pos := origin
+	found, outside := false, false
+	for range maxSteps {
+		if targetArena.eval(region, pos, targetRoot) {
+			out = append(out, pos)
+			found = true
+			break
+		}
+		pos.y += step
+		if pos.y < minY || pos.y >= maxY {
+			outside = true
+			break
+		}
+		if hasAllowed && !allowedArena.eval(region, pos, allowedRoot) {
+			break
+		}
+	}
+	if !found && !outside && targetArena.eval(region, pos, targetRoot) {
+		out = append(out, pos)
+	}
+	return out
+}
+
+func environmentScanPlacement(region *featureRegion, in []featurePos, modifier map[string]any, minY, maxY int32) []featurePos {
 	out := make([]featurePos, 0, len(in))
 	for _, origin := range in {
-		if hasAllowed && !featurePredicate(region, origin, allowed) {
-			continue
-		}
-		pos := origin
-		found, outside := false, false
-		for range maxSteps {
-			if featurePredicate(region, pos, target) {
-				out = append(out, pos)
-				found = true
-				break
-			}
-			pos.y += step
-			if pos.y < minY || pos.y >= maxY {
-				outside = true
-				break
-			}
-			if hasAllowed && !featurePredicate(region, pos, allowed) {
-				break
-			}
-		}
-		if !found && !outside && featurePredicate(region, pos, target) {
-			out = append(out, pos)
-		}
+		out = environmentScanSingle(region, origin, modifier, minY, maxY, out)
 	}
 	return out
 }
 
 func featureFluidName(region *featureRegion, p featurePos, properties map[string]any) string {
 	state := region.nativeState(p)
-	registry := region.c.BlockRegistry()
-	if state.Liquid != registry.AirRuntimeID() {
+	registry := region.registry
+	if state.Liquid != region.airRID {
 		name, fluidProperties, ok := runtimeIDStateView(registry, state.Liquid)
 		if !ok {
 			panic("overworld: invalid native liquid runtime ID in fluid predicate")
@@ -1200,6 +1963,100 @@ func featureFluidHolderContains(raw any, fluid string) bool {
 	}
 }
 
+func (r *featureRegion) isSolidPos(p featurePos) bool {
+	ns := r.nativeState(p)
+	if r.isDefaultReg && ns.Liquid == r.airRID && ns.StateID == 0 {
+		flags := featureMetaForDefaultRID(ns.Block)
+		if flags&featFlagCanonicalErr == 0 {
+			return flags&featFlagSolid != 0
+		}
+	}
+	return featureSolid(normalizeResource(r.stateName(p)))
+}
+
+func (r *featureRegion) hasSturdyFacePos(p featurePos, face cube.Face) bool {
+	state := r.nativeState(p)
+	if r.isDefaultReg && state.Liquid == r.airRID && state.StateID == 0 {
+		flags := featureMetaForDefaultRID(state.Block)
+		if flags&featFlagShapeOK != 0 {
+			return flags&(1<<(featFlagSturdyShift+uint(face))) != 0
+		}
+	}
+	if id := state.CanonicalID(r.registry); id != 0 {
+		shape, err := gamedata.BlockGenerationShapeID(id)
+		if err != nil {
+			panic(err)
+		}
+		return shape.Sturdy&(1<<uint(face)) != 0
+	}
+	canonicalState, err := world.CanonicalState(r.registry, state)
+	if err != nil {
+		panic(err)
+	}
+	shape, err := gamedata.BlockGenerationShape(normalizeResource(canonicalState.Name), canonicalState.Properties)
+	if err != nil {
+		panic(err)
+	}
+	return shape.Sturdy&(1<<uint(face)) != 0
+}
+
+func (r *featureRegion) isReplaceablePos(p featurePos) bool {
+	state := r.nativeState(p)
+	if r.isDefaultReg && state.Liquid == r.airRID && state.StateID == 0 {
+		flags := featureMetaForDefaultRID(state.Block)
+		if flags&featFlagShapeOK != 0 {
+			return flags&featFlagReplaceable != 0
+		}
+	}
+	shape, err := gamedata.BlockGenerationShapeID(state.CanonicalID(r.registry))
+	if err != nil {
+		panic(err)
+	}
+	return shape.Replaceable
+}
+
+func (r *featureRegion) matchesBlockTag(p featurePos, tag string) bool {
+	normTag := normalizeResource(tag)
+	var flag uint32
+	switch normTag {
+	case "air":
+		return r.isAirPos(p)
+	case "stone_ore_replaceables":
+		flag = featFlagStoneOre
+	case "deepslate_ore_replaceables":
+		flag = featFlagDeepslateOre
+	case "base_stone_overworld":
+		flag = featFlagBaseStone
+	case "height_specific_ore_replaceables":
+		flag = featFlagHeightSpecificOre
+	}
+	if flag != 0 && r.isDefaultReg {
+		ns := r.nativeState(p)
+		if ns.Liquid == r.airRID && ns.StateID == 0 {
+			return featureMetaForDefaultRID(ns.Block)&flag != 0
+		}
+	}
+	return blockTagContains(normTag, normalizeResource(r.stateName(p)))
+}
+
+func (r *featureRegion) matchesBlockHolder(p featurePos, holder any) bool {
+	if s, ok := holder.(string); ok {
+		if tag, isTag := strings.CutPrefix(s, "#"); isTag {
+			return r.matchesBlockTag(p, tag)
+		}
+		if (s == "minecraft:air" || s == "air") && r.isDefaultReg {
+			ns := r.nativeState(p)
+			if ns.Liquid == r.airRID && ns.StateID == 0 {
+				if ns.Block == r.airRID {
+					return true
+				}
+				return featureMetaForDefaultRID(ns.Block)&featFlagExactAir != 0
+			}
+		}
+	}
+	return featureBlockHolderContains(holder, normalizeResource(r.stateName(p)))
+}
+
 func featurePredicate(region *featureRegion, p featurePos, predicate map[string]any) bool {
 	typeName, ok := predicate["type"].(string)
 	if !ok {
@@ -1219,11 +2076,11 @@ func featurePredicate(region *featureRegion, p featurePos, predicate map[string]
 	case "true":
 		return true
 	case "inside_world_bounds":
-		return p.y >= region.MinY() && p.y <= region.MaxY()
+		return p.y >= region.minY && p.y <= region.maxY
 	case "height_range":
 		seaLevel := region.f.source.SeaLevel()
-		minY := featureBound(predicate["min_inclusive"], region.MinY(), region.MaxY()+1, seaLevel)
-		maxY := featureBound(predicate["max_inclusive"], region.MinY(), region.MaxY()+1, seaLevel)
+		minY := featureBound(predicate["min_inclusive"], region.minY, region.maxY+1, seaLevel)
+		maxY := featureBound(predicate["max_inclusive"], region.minY, region.maxY+1, seaLevel)
 		return float64(p.y) >= minY && float64(p.y) <= maxY
 	case "would_survive":
 		return featureWouldSurvive(region, p, predicate["state"])
@@ -1249,11 +2106,7 @@ func featurePredicate(region *featureRegion, p featurePos, predicate map[string]
 	case "matching_biomes":
 		return featureBiomeHolderContains(predicate["biomes"], region.f.source.BiomeAt(p.x, p.y, p.z))
 	case "replaceable":
-		shape, err := gamedata.BlockGenerationShapeID(region.nativeState(p).CanonicalID(region.c.BlockRegistry()))
-		if err != nil {
-			panic(err)
-		}
-		return shape.Replaceable
+		return region.isReplaceablePos(p)
 	case "unobstructed":
 		// WorldGenRegion's entity queries are empty. EntityGetter therefore
 		// accepts the unit shape; Source also deliberately ignores offset.
@@ -1278,24 +2131,16 @@ func featurePredicate(region *featureRegion, p featurePos, predicate map[string]
 			}
 		}
 		return true
-	}
-	name, properties := region.State(p)
-	name = normalizeResource(name)
-	switch kind {
-	case "matching_fluids":
-		fluids, exists := predicate["fluids"]
-		if !exists {
-			panic("overworld: matching_fluids predicate has no fluid holder set")
-		}
-		return featureFluidHolderContains(fluids, featureFluidName(region, p, properties))
+	case "solid":
+		return region.isSolidPos(p)
 	case "matching_blocks":
-		return featureBlockHolderContains(predicate["blocks"], name)
+		return region.matchesBlockHolder(p, predicate["blocks"])
 	case "matching_block_tag":
 		tag, ok := predicate["tag"].(string)
 		if !ok {
 			panic("overworld: malformed matching_block_tag predicate")
 		}
-		return blockTagContains(normalizeResource(tag), normalizeResource(name))
+		return region.matchesBlockTag(p, tag)
 	case "has_sturdy_face":
 		direction, ok := predicate["direction"].(string)
 		if !ok {
@@ -1318,13 +2163,14 @@ func featurePredicate(region *featureRegion, p featurePos, predicate map[string]
 		default:
 			panic("overworld: unsupported has_sturdy_face direction " + direction)
 		}
-		shape, err := gamedata.BlockGenerationShape(name, properties)
-		if err != nil {
-			panic(err)
+		return region.hasSturdyFacePos(p, face)
+	case "matching_fluids":
+		fluids, exists := predicate["fluids"]
+		if !exists {
+			panic("overworld: matching_fluids predicate has no fluid holder set")
 		}
-		return shape.Sturdy&(1<<uint(face)) != 0
-	case "solid":
-		return featureSolid(name)
+		_, properties := region.State(p)
+		return featureFluidHolderContains(fluids, featureFluidName(region, p, properties))
 	default:
 		panic("overworld: unsupported block predicate " + normalizeResource(typeName))
 	}

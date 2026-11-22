@@ -69,7 +69,7 @@ func NewOverworld(seed int64) *Overworld {
 		rawCache:     newPreviewCache(128),
 		previewCache: newPreviewCache(previewCacheSize),
 	}
-	g.modernPool.New = func() any { return new(modernTerrainScratch) }
+	g.modernPool.New = func() any { return newModernTerrainScratch() }
 	g.modernSurface = newModernSurface(seed)
 	g.modernStructures = newModernStructures(seed, modernTerrainSource{generator: g, raw: true})
 	g.modernFeatures = NewModernFeatures(seed, modernTerrainSource{generator: g})

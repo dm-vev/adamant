@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 	"math/bits"
+	"sync"
+	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
@@ -17,14 +19,64 @@ type ModernCarverAquifer interface {
 	CarveTopMaterial(x, y, z int32, hasFluid bool) (material world.Block, ok bool)
 }
 
+const (
+	carverFlagComputed uint32 = 1 << iota
+	carverFlagUncarvable
+	carverFlagGrassOrMycelium
+	carverFlagDirt
+	carverFlagFluid
+)
+
+var defaultCarverFlags = sync.OnceValue(func() []atomic.Uint32 {
+	return make([]atomic.Uint32, world.DefaultBlockRegistry.BlockCount())
+})
+
+func carverFlagsForDefaultRID(rid uint32) uint32 {
+	table := defaultCarverFlags()
+	if int(rid) >= len(table) {
+		return 0
+	}
+	if flags := table[rid].Load(); flags != 0 {
+		return flags
+	}
+	airRID := world.DefaultBlockRegistry.AirRuntimeID()
+	canonical, err := world.CanonicalState(world.DefaultBlockRegistry, world.NativeState{Block: rid, Liquid: airRID})
+	if err != nil {
+		panic(err)
+	}
+	flags := carverFlagComputed
+	if blockTagContains("uncarvable", normalizeResource(canonical.Name)) {
+		flags |= carverFlagUncarvable
+	}
+	if canonical.Name == "minecraft:grass_block" || canonical.Name == "minecraft:mycelium" {
+		flags |= carverFlagGrassOrMycelium
+	}
+	if canonical.Name == "minecraft:dirt" {
+		flags |= carverFlagDirt
+	}
+	if name, _, ok := world.DefaultBlockRegistry.RuntimeIDToState(rid); ok {
+		n := normalizeResource(name)
+		if n == "water" || n == "lava" {
+			flags |= carverFlagFluid
+		}
+	}
+	table[rid].Store(flags)
+	return flags
+}
+
 // Carve applies each biome's configured Java carvers from the full 17x17 source-chunk neighborhood.
 func (f *ModernFeatures) Carve(pos world.ChunkPos, c *chunk.Chunk, aquifer ModernCarverAquifer) world.GenerationResult {
 	if aquifer == nil {
 		panic("overworld: nil carver aquifer")
 	}
 	minY, maxY := int32(c.Range()[0])+1, int32(c.Range()[1])-7
-	mask := newCarvingMask(minY, maxY)
+	mask := acquireCarvingMask(minY, maxY)
+	defer releaseCarvingMask(mask)
 	result := world.GenerationResult{}
+	var seedCache [8]struct {
+		ready bool
+		x, z  int64
+	}
 	for dx := int32(-8); dx <= 8; dx++ {
 		for dz := int32(-8); dz <= 8; dz++ {
 			sourceX, sourceZ := int32(pos[0])+dx, int32(pos[1])+dz
@@ -38,7 +90,19 @@ func (f *ModernFeatures) Carve(pos world.ChunkPos, c *chunk.Chunk, aquifer Moder
 				if !ok {
 					panic("overworld: missing configured carver " + name)
 				}
-				r := largeFeatureRandom(f.seed+int64(index), sourceX, sourceZ)
+				var r vanilla.Random
+				seed := f.seed + int64(index)
+				if index < len(seedCache) {
+					entry := &seedCache[index]
+					if !entry.ready {
+						tmp := vanilla.NewLegacyRandom(seed)
+						entry.x, entry.z = tmp.NextLong(), tmp.NextLong()
+						entry.ready = true
+					}
+					r = vanilla.NewLegacyRandom(int64(sourceX)*entry.x ^ int64(sourceZ)*entry.z ^ seed)
+				} else {
+					r = largeFeatureRandom(seed, sourceX, sourceZ)
+				}
 				probability, ok := cfg.config["probability"].(float64)
 				if !ok {
 					panic("overworld: malformed carver probability " + name)
@@ -71,6 +135,27 @@ func newCarvingMask(minY, maxY int32) *carvingMask {
 	height := maxY - minY + 1
 	bitCount := int(256 * height)
 	return &carvingMask{minY: minY, height: height, bits: make([]uint64, (bitCount+63)/64)}
+}
+
+var carvingMaskPool = sync.Pool{New: func() any { return &carvingMask{} }}
+
+func acquireCarvingMask(minY, maxY int32) *carvingMask {
+	m := carvingMaskPool.Get().(*carvingMask)
+	height := maxY - minY + 1
+	words := (int(256*height) + 63) / 64
+	if cap(m.bits) < words {
+		m.bits = make([]uint64, words)
+	} else {
+		m.bits = m.bits[:words]
+		clear(m.bits)
+	}
+	m.minY = minY
+	m.height = height
+	return m
+}
+
+func releaseCarvingMask(m *carvingMask) {
+	carvingMaskPool.Put(m)
 }
 
 func (m *carvingMask) set(x, y, z int32) {
@@ -115,6 +200,8 @@ func (m *carvingMask) nextClearBit(start int) int {
 }
 
 func (m *carvingMask) apply(pos world.ChunkPos, c *chunk.Chunk, aquifer ModernCarverAquifer, result *world.GenerationResult) {
+	nativeAquifer, useFast := aquifer.(modernCarverFluid)
+	useFast = useFast && c.BlockRegistry() == world.DefaultBlockRegistry
 	for start := m.nextSetBit(0); start >= 0; {
 		end := m.nextClearBit(start) - 1
 		startColumn, endColumn := start/int(m.height), end/int(m.height)
@@ -123,9 +210,83 @@ func (m *carvingMask) apply(pos world.ChunkPos, c *chunk.Chunk, aquifer ModernCa
 			base := column * int(m.height)
 			bottom := int32(maxInt(start-base, 0)) + m.minY
 			top := int32(minInt(end-base, int(m.height)-1)) + m.minY
-			m.applySpan(pos, c, x, z, bottom, top, aquifer, result)
+			if useFast {
+				m.applySpanNative(pos, c, x, z, bottom, top, nativeAquifer, result)
+			} else {
+				m.applySpan(pos, c, x, z, bottom, top, aquifer, result)
+			}
 		}
 		start = m.nextSetBit(end + 1)
+	}
+}
+
+func (m *carvingMask) applySpanNative(pos world.ChunkPos, c *chunk.Chunk, x, z, bottomY, topY int32, aquifer modernCarverFluid, result *world.GenerationResult) {
+	hasGrass := false
+	worldX, worldZ := int32(pos[0])<<4+x, int32(pos[1])<<4+z
+	lx, lz := uint8(x), uint8(z)
+	airRID := world.DefaultBlockRegistry.AirRuntimeID()
+	chunkMinY := int32(c.Range()[0])
+	r := c.Range()
+	for y := topY; y >= bottomY; y-- {
+		blk, liq, stateID := c.Native(lx, int16(y), lz)
+		if liq == airRID && stateID == 0 {
+			flags := carverFlagsForDefaultRID(blk)
+			if flags&carverFlagUncarvable != 0 {
+				continue
+			}
+			if flags&carverFlagGrassOrMycelium != 0 {
+				hasGrass = true
+			}
+		} else {
+			currentCanonical, err := world.CanonicalState(world.DefaultBlockRegistry, world.NativeState{Block: blk, Liquid: liq, StateID: stateID})
+			if err != nil {
+				panic(err)
+			}
+			if blockTagContains("uncarvable", normalizeResource(currentCanonical.Name)) {
+				continue
+			}
+			if currentCanonical.Name == "minecraft:grass_block" || currentCanonical.Name == "minecraft:mycelium" {
+				hasGrass = true
+			}
+		}
+		rid, isFluid, schedule, ok := aquifer.carveNativeSubstance(worldX, y, worldZ, 0)
+		if !ok {
+			continue
+		}
+		if liq == airRID && stateID == 0 {
+			c.SetBlock(lx, int16(y), lz, 0, rid)
+		} else {
+			world.SetNativeState(c, lx, int16(y), lz, world.NativeState{Block: rid, Liquid: airRID})
+		}
+		if schedule && isFluid {
+			result.MarkForPostProcessing(cube.Pos{int(worldX), int(y), int(worldZ)}, r)
+		}
+		if hasGrass && y > chunkMinY {
+			belowY := y - 1
+			bBlk, bLiq, bStateID := c.Native(lx, int16(belowY), lz)
+			isDirt := false
+			if bLiq == airRID && bStateID == 0 {
+				isDirt = carverFlagsForDefaultRID(bBlk)&carverFlagDirt != 0
+			} else {
+				belowCanonical, err := world.CanonicalState(world.DefaultBlockRegistry, world.NativeState{Block: bBlk, Liquid: bLiq, StateID: bStateID})
+				if err != nil {
+					panic(err)
+				}
+				isDirt = belowCanonical.Name == "minecraft:dirt"
+			}
+			if isDirt {
+				if topRID, ok := aquifer.carveNativeTopMaterial(worldX, belowY, worldZ, isFluid); ok {
+					if bLiq == airRID && bStateID == 0 {
+						c.SetBlock(lx, int16(belowY), lz, 0, topRID)
+					} else {
+						world.SetNativeState(c, lx, int16(belowY), lz, world.NativeState{Block: topRID, Liquid: airRID})
+					}
+					if carverFlagsForDefaultRID(topRID)&carverFlagFluid != 0 {
+						result.MarkForPostProcessing(cube.Pos{int(worldX), int(belowY), int(worldZ)}, r)
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -179,42 +340,58 @@ func largeFeatureRandom(seed int64, chunkX, chunkZ int32) vanilla.Random {
 
 func (f *ModernFeatures) carveCave(c *chunk.Chunk, target world.ChunkPos, config map[string]any, sourceX, sourceZ int32, r *vanilla.Random, minY, maxY int32, mask *carvingMask) {
 	count := sampleInt(config["count"], r)
+	if count <= 0 {
+		return
+	}
+	yCfg := config["y"].(map[string]any)
+	horizCfg := config["horizontal_radius_multiplier"].(map[string]any)
+	vertCfg := config["vertical_radius_multiplier"].(map[string]any)
+	startVertRaw, hasStartVert := config["start_vertical_radius_multiplier"]
+	var startVertCfg map[string]any
+	if hasStartVert {
+		startVertCfg = startVertRaw.(map[string]any)
+	}
+	floorCfg := config["floor_level"].(map[string]any)
+	roomVertCfg := config["room_vertical_radius_multiplier"].(map[string]any)
+	thickCfg := config["thickness"].(map[string]any)
+	weirdBias := config["weird_thickness_bias"] == true
+	cMinY, cMaxYPlus1 := int32(c.Range()[0]), int32(c.Range()[1])+1
+	seaLevel := f.source.SeaLevel()
 	for range count {
 		x := float64((sourceX << 4) + int32(r.NextInt(16)))
-		y := float64(sampleHeight(config["y"].(map[string]any), r, int32(c.Range()[0]), int32(c.Range()[1])+1, f.source.SeaLevel()))
+		y := float64(sampleHeight(yCfg, r, cMinY, cMaxYPlus1, seaLevel))
 		z := float64((sourceZ << 4) + int32(r.NextInt(16)))
-		horizontal := sampleFloat(config["horizontal_radius_multiplier"].(map[string]any), r)
-		vertical := sampleFloat(config["vertical_radius_multiplier"].(map[string]any), r)
+		horizontal := sampleFloat(horizCfg, r)
+		vertical := sampleFloat(vertCfg, r)
 		startVertical := float32(1)
-		if raw, exists := config["start_vertical_radius_multiplier"]; exists {
-			startVertical = sampleFloat(raw.(map[string]any), r)
+		if hasStartVert {
+			startVertical = sampleFloat(startVertCfg, r)
 		}
-		floor := float64(sampleFloat(config["floor_level"].(map[string]any), r))
-		skip := func(xd, yd, zd float64, _ int32) bool { return yd <= floor || xd*xd+yd*yd+zd*zd >= 1 }
+		floor := float64(sampleFloat(floorCfg, r))
 		tunnels := 1
 		if r.NextInt(4) == 0 {
-			yScale := float64(sampleFloat(config["room_vertical_radius_multiplier"].(map[string]any), r))
+			yScale := float64(sampleFloat(roomVertCfg, r))
 			thickness := float32(1 + r.NextFloat()*6)
 			horizontalRadius := 1.5 + float64(thickness)
-			carveEllipsoid(target, x+1, y, z, horizontalRadius, horizontalRadius*yScale, skip, minY, maxY, mask)
+			carveCaveEllipsoid(target, x+1, y, z, horizontalRadius, horizontalRadius*yScale, floor, minY, maxY, mask)
 			tunnels += int(r.NextInt(4))
 		}
 		for range tunnels {
 			horizontalRotation := r.NextFloat() * float32(2*math.Pi)
 			verticalRotation := (r.NextFloat() - 0.5) / 4
-			thickness := sampleFloat(config["thickness"].(map[string]any), r)
-			if config["weird_thickness_bias"] == true && r.NextInt(10) == 0 {
+			thickness := sampleFloat(thickCfg, r)
+			if weirdBias && r.NextInt(10) == 0 {
 				thickness *= r.NextFloat()*r.NextFloat()*3 + 1
 			}
 			maxDistance := int32(112)
 			distance := maxDistance - r.NextInt(maxDistance/4)
 			tunnelRandom := r.NextLong()
-			f.caveTunnel(c, target, tunnelRandom, x, y, z, float64(horizontal), float64(vertical), float32(thickness), horizontalRotation, verticalRotation, 0, distance, float64(startVertical), skip, minY, maxY, mask)
+			f.caveTunnel(target, tunnelRandom, x, y, z, float64(horizontal), float64(vertical), float32(thickness), horizontalRotation, verticalRotation, 0, distance, float64(startVertical), floor, minY, maxY, mask)
 		}
 	}
 }
 
-func (f *ModernFeatures) caveTunnel(c *chunk.Chunk, target world.ChunkPos, seed int64, x, y, z, horizontalRadiusMultiplier, verticalRadiusMultiplier float64, thickness, horizontalRotation, verticalRotation float32, step, distance int32, yScale float64, skip func(float64, float64, float64, int32) bool, minY, maxY int32, mask *carvingMask) {
+func (f *ModernFeatures) caveTunnel(target world.ChunkPos, seed int64, x, y, z, horizontalRadiusMultiplier, verticalRadiusMultiplier float64, thickness, horizontalRotation, verticalRotation float32, step, distance int32, yScale, floor float64, minY, maxY int32, mask *carvingMask) {
 	r := vanilla.NewLegacyRandom(seed)
 	split := r.NextInt(distance/2) + distance/4
 	steep := r.NextInt(6) == 0
@@ -238,15 +415,15 @@ func (f *ModernFeatures) caveTunnel(c *chunk.Chunk, target world.ChunkPos, seed 
 		xRota += (r.NextFloat() - r.NextFloat()) * r.NextFloat() * 2
 		yRota += (r.NextFloat() - r.NextFloat()) * r.NextFloat() * 4
 		if current == split && thickness > 1 {
-			f.caveTunnel(c, target, r.NextLong(), x, y, z, horizontalRadiusMultiplier, verticalRadiusMultiplier, r.NextFloat()*.5+.5, horizontalRotation-float32(math.Pi/2), verticalRotation/3, current, distance, 1, skip, minY, maxY, mask)
-			f.caveTunnel(c, target, r.NextLong(), x, y, z, horizontalRadiusMultiplier, verticalRadiusMultiplier, r.NextFloat()*.5+.5, horizontalRotation+float32(math.Pi/2), verticalRotation/3, current, distance, 1, skip, minY, maxY, mask)
+			f.caveTunnel(target, r.NextLong(), x, y, z, horizontalRadiusMultiplier, verticalRadiusMultiplier, r.NextFloat()*.5+.5, horizontalRotation-float32(math.Pi/2), verticalRotation/3, current, distance, 1, floor, minY, maxY, mask)
+			f.caveTunnel(target, r.NextLong(), x, y, z, horizontalRadiusMultiplier, verticalRadiusMultiplier, r.NextFloat()*.5+.5, horizontalRotation+float32(math.Pi/2), verticalRotation/3, current, distance, 1, floor, minY, maxY, mask)
 			return
 		}
 		if r.NextInt(4) != 0 {
 			if !carverCanReach(target, x, z, current, distance, thickness) {
 				return
 			}
-			carveEllipsoid(target, x, y, z, hr*horizontalRadiusMultiplier, vr*verticalRadiusMultiplier, skip, minY, maxY, mask)
+			carveCaveEllipsoid(target, x, y, z, hr*horizontalRadiusMultiplier, vr*verticalRadiusMultiplier, floor, minY, maxY, mask)
 		}
 	}
 }
@@ -259,7 +436,7 @@ func carverCanReach(target world.ChunkPos, x, z float64, current, total int32, t
 	return dx*dx+dz*dz-remaining*remaining <= rr*rr
 }
 
-func carveEllipsoid(target world.ChunkPos, x, y, z, horizontalRadius, verticalRadius float64, skip func(float64, float64, float64, int32) bool, minY, maxY int32, mask *carvingMask) {
+func carveCaveEllipsoid(target world.ChunkPos, x, y, z, horizontalRadius, verticalRadius, floor float64, minY, maxY int32, mask *carvingMask) {
 	centerX, centerZ := float64((int32(target[0])<<4)+8), float64((int32(target[1])<<4)+8)
 	if math.Abs(x-centerX) > 16+horizontalRadius*2 || math.Abs(z-centerZ) > 16+horizontalRadius*2 {
 		return
@@ -271,20 +448,78 @@ func carveEllipsoid(target world.ChunkPos, x, y, z, horizontalRadius, verticalRa
 	maxZ := minInt(int(math.Floor(z+horizontalRadius))-int(chunkMinZ), 15)
 	minCarveY := int32(maxInt(int(math.Floor(y-verticalRadius))-1, int(minY)))
 	maxCarveY := int32(minInt(int(math.Floor(y+verticalRadius))+1, int(maxY)))
+	mHeight, mMinY := int(mask.height), int(mask.minY)
+	mBits := mask.bits
 	for lx := minX; lx <= maxX; lx++ {
 		wx := chunkMinX + int32(lx)
 		xd := (float64(wx) + .5 - x) / horizontalRadius
+		xd2 := xd * xd
+		if xd2 >= 1 {
+			continue
+		}
 		for lz := minZ; lz <= maxZ; lz++ {
 			wz := chunkMinZ + int32(lz)
 			zd := (float64(wz) + .5 - z) / horizontalRadius
-			if xd*xd+zd*zd >= 1 {
+			zd2 := zd * zd
+			if xd2+zd2 >= 1 {
 				continue
 			}
+			colBase := (lz+(lx<<4))*mHeight - mMinY
 			for wy := maxCarveY; wy > minCarveY; wy-- {
 				yd := (float64(wy) - .5 - y) / verticalRadius
-				if !skip(xd, yd, zd, wy) {
-					mask.set(int32(lx), wy, int32(lz))
+				if yd <= floor || xd2+yd*yd+zd2 >= 1 {
+					continue
 				}
+				idx := colBase + int(wy)
+				mBits[idx>>6] |= uint64(1) << uint(idx&63)
+			}
+		}
+	}
+}
+
+func carveCanyonEllipsoid(target world.ChunkPos, x, y, z, horizontalRadius, verticalRadius float64, cMinY int32, width []float32, minY, maxY int32, mask *carvingMask) {
+	centerX, centerZ := float64((int32(target[0])<<4)+8), float64((int32(target[1])<<4)+8)
+	if math.Abs(x-centerX) > 16+horizontalRadius*2 || math.Abs(z-centerZ) > 16+horizontalRadius*2 {
+		return
+	}
+	chunkMinX, chunkMinZ := int32(target[0])<<4, int32(target[1])<<4
+	minX := maxInt(int(math.Floor(x-horizontalRadius))-int(chunkMinX)-1, 0)
+	maxX := minInt(int(math.Floor(x+horizontalRadius))-int(chunkMinX), 15)
+	minZ := maxInt(int(math.Floor(z-horizontalRadius))-int(chunkMinZ)-1, 0)
+	maxZ := minInt(int(math.Floor(z+horizontalRadius))-int(chunkMinZ), 15)
+	minCarveY := int32(maxInt(int(math.Floor(y-verticalRadius))-1, int(minY)))
+	maxCarveY := int32(minInt(int(math.Floor(y+verticalRadius))+1, int(maxY)))
+	if maxCarveY > cMinY+int32(len(width)) {
+		maxCarveY = cMinY + int32(len(width))
+	}
+	mHeight, mMinY := int(mask.height), int(mask.minY)
+	mBits := mask.bits
+	for lx := minX; lx <= maxX; lx++ {
+		wx := chunkMinX + int32(lx)
+		xd := (float64(wx) + .5 - x) / horizontalRadius
+		xd2 := xd * xd
+		if xd2 >= 1 {
+			continue
+		}
+		for lz := minZ; lz <= maxZ; lz++ {
+			wz := chunkMinZ + int32(lz)
+			zd := (float64(wz) + .5 - z) / horizontalRadius
+			xz2 := xd2 + zd*zd
+			if xz2 >= 1 {
+				continue
+			}
+			colBase := (lz+(lx<<4))*mHeight - mMinY
+			for wy := maxCarveY; wy > minCarveY; wy-- {
+				idxW := wy - cMinY - 1
+				if idxW < 0 {
+					break
+				}
+				yd := (float64(wy) - .5 - y) / verticalRadius
+				if xz2*float64(width[idxW])+yd*yd/6 >= 1 {
+					continue
+				}
+				idx := colBase + int(wy)
+				mBits[idx>>6] |= uint64(1) << uint(idx&63)
 			}
 		}
 	}
@@ -581,7 +816,15 @@ func (f *ModernFeatures) canyonTunnel(c *chunk.Chunk, target world.ChunkPos, see
 		return
 	}
 	r := vanilla.NewLegacyRandom(seed)
-	width := make([]float32, c.Range()[1]-c.Range()[0]+1)
+	cMinY := int32(c.Range()[0])
+	height := int(c.Range()[1] - c.Range()[0] + 1)
+	var widthBuf [512]float32
+	var width []float32
+	if height <= len(widthBuf) {
+		width = widthBuf[:height]
+	} else {
+		width = make([]float32, height)
+	}
 	factor := float32(1)
 	smooth := int32(featureNumber(shape["width_smoothness"]))
 	if smooth <= 0 {
@@ -593,15 +836,17 @@ func (f *ModernFeatures) canyonTunnel(c *chunk.Chunk, target world.ChunkPos, see
 		}
 		width[i] = factor * factor
 	}
+	horizFactorCfg := shape["horizontal_radius_factor"].(map[string]any)
+	vDefault, _ := shape["vertical_radius_default_factor"].(float64)
+	vCenter, _ := shape["vertical_radius_center_factor"].(float64)
+	vDef32, vCen32 := float32(vDefault), float32(vCenter)
 	var yRota, xRota float32
 	for current := step; current < distance; current++ {
 		hr := 1.5 + float64(vanilla.Sin(float64(float32(current)*float32(math.Pi)/float32(distance)))*thickness)
 		vr := hr * yScale
-		hr *= float64(sampleFloat(shape["horizontal_radius_factor"].(map[string]any), &r))
+		hr *= float64(sampleFloat(horizFactorCfg, &r))
 		center := float32(1) - float32(math.Abs(float64(float32(.5)-float32(current)/float32(distance))))*2
-		vDefault, _ := shape["vertical_radius_default_factor"].(float64)
-		vCenter, _ := shape["vertical_radius_center_factor"].(float64)
-		factor := float32(vDefault) + float32(vCenter)*center
+		factor := vDef32 + vCen32*center
 		vr = float64(factor) * vr * float64(float32(.75)+float32(.25)*r.NextFloat())
 		cosV := vanilla.Cos(float64(vertical))
 		sinV := vanilla.Sin(float64(vertical))
@@ -619,14 +864,7 @@ func (f *ModernFeatures) canyonTunnel(c *chunk.Chunk, target world.ChunkPos, see
 			if !carverCanReach(target, x, z, current, distance, thickness) {
 				return
 			}
-			skip := func(xd, yd, zd float64, wy int32) bool {
-				idx := wy - int32(c.Range()[0]) - 1
-				if idx < 0 || idx >= int32(len(width)) {
-					return true
-				}
-				return (xd*xd+zd*zd)*float64(width[idx])+yd*yd/6 >= 1
-			}
-			carveEllipsoid(target, x, y, z, hr, vr, skip, minY, maxY, mask)
+			carveCanyonEllipsoid(target, x, y, z, hr, vr, cMinY, width, minY, maxY, mask)
 		}
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"sync"
 
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
@@ -23,41 +24,48 @@ type modernSurfaceSource interface {
 }
 
 type modernSurface struct {
-	random, oreRandom                                           vanilla.PositionalFactory
-	surface, surfaceSecondary, clayBandsOffset                  *vanilla.NormalNoise
-	badlandsPillar, badlandsPillarRoof, badlandsSurface          *vanilla.NormalNoise
-	icebergPillar, icebergPillarRoof, icebergSurface             *vanilla.NormalNoise
-	sulfurGradient, swamp, calcite, gravel, smallPatch            *vanilla.NormalNoise
-	powderSnow, packedIce, ice                                   *vanilla.NormalNoise
-	biomeInfo                                                    *vanilla.SimplexNoise
-	frozenTemperatureLayers                                      [3]*vanilla.SimplexNoise
-	clayBands                                                    [192]string
+	random, oreRandom, bedrockRandom, deepslateRandom   vanilla.PositionalFactory
+	surface, surfaceSecondary, clayBandsOffset          *vanilla.NormalNoise
+	badlandsPillar, badlandsPillarRoof, badlandsSurface *vanilla.NormalNoise
+	icebergPillar, icebergPillarRoof, icebergSurface    *vanilla.NormalNoise
+	sulfurGradient, swamp, calcite, gravel, smallPatch  *vanilla.NormalNoise
+	powderSnow, packedIce, ice                          *vanilla.NormalNoise
+	biomeInfo                                           *vanilla.SimplexNoise
+	frozenTemperatureLayers                             [3]*vanilla.SimplexNoise
+	clayBands                                           [192]string
+	clayBandIDs                                         [192]uint8
+	defaultBlocksOnce                                   sync.Once
+	defaultBlocks                                       surfaceBlocks
 }
 
 func newModernSurface(seed int64) *modernSurface {
 	n := vanilla.NewOverworldMaterialNoises(seed)
 	oreRandom := n.Random.FromHashOf("minecraft:ore")
+	bedrockRandom := n.Random.FromHashOf("minecraft:bedrock_floor")
+	deepslateRandom := n.Random.FromHashOf("minecraft:deepslate")
 	s := &modernSurface{
-		random: n.Random,
-		oreRandom: oreRandom.ForkPositional(),
-		surface: n.Surface,
-		surfaceSecondary: n.SurfaceSecondary,
-		clayBandsOffset: n.ClayBandsOffset,
-		badlandsPillar: n.BadlandsPillar,
-		badlandsPillarRoof: n.BadlandsPillarRoof,
-		badlandsSurface: n.BadlandsSurface,
-		icebergPillar: n.IcebergPillar,
-		icebergPillarRoof: n.IcebergPillarRoof,
-		icebergSurface: n.IcebergSurface,
-		sulfurGradient: n.SulfurCaveGradient,
-		swamp: n.Swamp,
-		calcite: n.Calcite,
-		gravel: n.Gravel,
-		powderSnow: n.PowderSnow,
-		packedIce: n.PackedIce,
-		ice: n.Ice,
-		smallPatch: n.SmallPatch,
-		biomeInfo: n.BiomeInfo,
+		random:                  n.Random,
+		oreRandom:               oreRandom.ForkPositional(),
+		bedrockRandom:           bedrockRandom.ForkPositional(),
+		deepslateRandom:         deepslateRandom.ForkPositional(),
+		surface:                 n.Surface,
+		surfaceSecondary:        n.SurfaceSecondary,
+		clayBandsOffset:         n.ClayBandsOffset,
+		badlandsPillar:          n.BadlandsPillar,
+		badlandsPillarRoof:      n.BadlandsPillarRoof,
+		badlandsSurface:         n.BadlandsSurface,
+		icebergPillar:           n.IcebergPillar,
+		icebergPillarRoof:       n.IcebergPillarRoof,
+		icebergSurface:          n.IcebergSurface,
+		sulfurGradient:          n.SulfurCaveGradient,
+		swamp:                   n.Swamp,
+		calcite:                 n.Calcite,
+		gravel:                  n.Gravel,
+		powderSnow:              n.PowderSnow,
+		packedIce:               n.PackedIce,
+		ice:                     n.Ice,
+		smallPatch:              n.SmallPatch,
+		biomeInfo:               n.BiomeInfo,
 		frozenTemperatureLayers: n.FrozenTemperatureLayers,
 	}
 	s.makeClayBands()
@@ -177,10 +185,12 @@ func (s *modernSurface) Apply(pos world.ChunkPos, c *chunk.Chunk, source modernS
 		}
 	}
 }
+
 // TopMaterial evaluates the same Overworld material rule at a single post-carver
 // position, using the depth and fluid context from Java MaterialSystem.topMaterial.
 func (s *modernSurface) TopMaterial(pos world.ChunkPos, c *chunk.Chunk, source modernSurfaceSource, x, y, z int32, hasFluid bool) (uint32, bool) {
 	registry := c.BlockRegistry()
+	blocks := s.blocksFor(registry)
 	minY, maxY := int(c.Range()[0]), int(c.Range()[1])
 	if minY < modernMinY {
 		minY = modernMinY
@@ -194,51 +204,55 @@ func (s *modernSurface) TopMaterial(pos world.ChunkPos, c *chunk.Chunk, source m
 	gradientX := surfaceHeight(c, min(localX+1, 15), localZ, minY, maxY, air) - surfaceHeight(c, max(localX-1, 0), localZ, minY, maxY, air)
 	gradientZ := surfaceHeight(c, localX, min(localZ+1, 15), minY, maxY, air) - surfaceHeight(c, localX, max(localZ-1, 0), minY, maxY, air)
 	columnRandom := s.random.At(x, 0, z)
-	surfaceDepth := int(s.surface.Sample64(float64(x), 0, float64(z))*2.75 + 3 + columnRandom.NextDouble()*0.25)
+	bandNoise := s.surface.Sample64(float64(x), 0, float64(z))
+	surfaceDepth := int(bandNoise*2.75 + 3 + columnRandom.NextDouble()*0.25)
 	waterHeight := math.MinInt
 	if hasFluid {
 		waterHeight = int(y) + 1
 	}
 	stoneAbove, stoneBelow := 1, 1
-	biome := biomeName(source.BiomeAt(x, y, z))
+	biome := surfaceBiomeTagOf(biomeName(source.BiomeAt(x, y, z)))
 	if s.verticalGradient("bedrock_floor", x, y, z, minY, minY+5) {
-		return resolveSurfaceBlockID(registry, "bedrock"), true
+		return blocks[surfaceBedrock], true
 	}
-	copper, iron, richness, gap := source.OreVein(x, y, z)
-	if ore, ok := s.oreVeinMaterial(x, y, z, copper, iron, richness, gap); ok {
-		return resolveSurfaceBlockID(registry, ore), true
+	if y >= -60 && y < 50 && (y < -8 || y >= 0) {
+		copper, iron, richness, gap := source.OreVein(x, y, z)
+		if mat := s.oreVeinMaterialIdx(x, y, z, copper, iron, richness, gap); mat != surfaceNone {
+			return blocks[mat], true
+		}
 	}
 	if int(y) < int(source.PreliminarySurfaceHeight(x, z))+surfaceDepth-8 {
-		if biome == "sulfur_caves" {
-			if material := s.sulfurMaterial(int(x), int(y), int(z)); material != "" {
-				return resolveSurfaceBlockID(registry, material), true
+		if biome == sbSulfurCaves {
+			if mat := s.sulfurMaterialIdx(int(x), int(y), int(z)); mat != surfaceNone {
+				return blocks[mat], true
 			}
 		}
 		if s.verticalGradient("deepslate", x, y, z, 0, 8) {
-			return resolveSurfaceBlockID(registry, "deepslate"), true
+			return blocks[surfaceDeepslate], true
 		}
 		return 0, false
 	}
 	notUnderwater := waterHeight == math.MinInt || int(y) >= waterHeight-1
 	notUnderDeepWater := waterHeight == math.MinInt || int(y)+stoneAbove >= waterHeight-6-surfaceDepth
 	underFloor := stoneAbove <= 1+surfaceDepth
-	deepUnderFloor := stoneAbove <= 1+surfaceDepth+surfaceSecondaryDepth(s, int(x), int(z), 6)
-	veryDeepUnderFloor := stoneAbove <= 1+surfaceDepth+surfaceSecondaryDepth(s, int(x), int(z), 30)
-	material := s.surfaceMaterial(biome, int(x), int(y), int(z), stoneAbove, stoneBelow, surfaceDepth, notUnderwater, notUnderDeepWater, true, underFloor, deepUnderFloor, veryDeepUnderFloor, gradientX, gradientZ)
-	if material != "" {
-		return resolveSurfaceBlockID(registry, material), true
+	secondaryNoise := s.surfaceSecondary.Sample64(float64(x), 0, float64(z))
+	secondaryDepth := int((secondaryNoise + 1) * 0.5 * 6)
+	deepSecondaryDepth := int((secondaryNoise + 1) * 0.5 * 30)
+	deepUnderFloor := stoneAbove <= 1+surfaceDepth+secondaryDepth
+	veryDeepUnderFloor := stoneAbove <= 1+surfaceDepth+deepSecondaryDepth
+	if mat := s.surfaceMaterialIdx(biome, int(x), int(y), int(z), stoneAbove, stoneBelow, surfaceDepth, notUnderwater, notUnderDeepWater, true, underFloor, deepUnderFloor, veryDeepUnderFloor, gradientX, gradientZ, bandNoise); mat != surfaceNone {
+		return blocks[mat], true
 	}
-	if biome == "sulfur_caves" {
-		if material := s.sulfurMaterial(int(x), int(y), int(z)); material != "" {
-			return resolveSurfaceBlockID(registry, material), true
+	if biome == sbSulfurCaves {
+		if mat := s.sulfurMaterialIdx(int(x), int(y), int(z)); mat != surfaceNone {
+			return blocks[mat], true
 		}
 	}
 	if s.verticalGradient("deepslate", x, y, z, 0, 8) {
-		return resolveSurfaceBlockID(registry, "deepslate"), true
+		return blocks[surfaceDeepslate], true
 	}
 	return 0, false
 }
-
 
 func biomeName(name string) string { return strings.TrimPrefix(name, "minecraft:") }
 
@@ -302,43 +316,80 @@ func resolveSurfaceBlocks(registry chunk.BlockRegistry) surfaceBlocks {
 
 func surfaceBlockIndex(name string) int {
 	switch name {
-	case "air": return surfaceAir
-	case "bedrock": return surfaceBedrock
-	case "deepslate": return surfaceDeepslate
-	case "stone": return surfaceStone
-	case "dirt": return surfaceDirt
-	case "grass_block": return surfaceGrass
-	case "podzol": return surfacePodzol
-	case "coarse_dirt": return surfaceCoarseDirt
-	case "mycelium": return surfaceMycelium
-	case "calcite": return surfaceCalcite
-	case "gravel": return surfaceGravel
-	case "sand": return surfaceSand
-	case "sandstone": return surfaceSandstone
-	case "red_sand": return surfaceRedSand
-	case "red_sandstone": return surfaceRedSandstone
-	case "terracotta": return surfaceTerracotta
-	case "orange_terracotta": return surfaceOrangeTerracotta
-	case "white_terracotta": return surfaceWhiteTerracotta
-	case "yellow_terracotta": return surfaceYellowTerracotta
-	case "brown_terracotta": return surfaceBrownTerracotta
-	case "red_terracotta": return surfaceRedTerracotta
-	case "light_gray_terracotta": return surfaceLightGrayTerracotta
-	case "packed_ice": return surfacePackedIce
-	case "snow_block": return surfaceSnowBlock
-	case "mud": return surfaceMud
-	case "powder_snow": return surfacePowderSnow
-	case "ice": return surfaceIce
-	case "water": return surfaceWater
-	case "cinnabar": return surfaceCinnabar
-	case "sulfur": return surfaceSulfur
-	case "copper_ore": return surfaceCopperOre
-	case "raw_copper_block": return surfaceRawCopperBlock
-	case "granite": return surfaceGranite
-	case "deepslate_iron_ore": return surfaceDeepslateIronOre
-	case "raw_iron_block": return surfaceRawIronBlock
-	case "tuff": return surfaceTuff
-	default: panic("unknown modern surface material " + name)
+	case "air":
+		return surfaceAir
+	case "bedrock":
+		return surfaceBedrock
+	case "deepslate":
+		return surfaceDeepslate
+	case "stone":
+		return surfaceStone
+	case "dirt":
+		return surfaceDirt
+	case "grass_block":
+		return surfaceGrass
+	case "podzol":
+		return surfacePodzol
+	case "coarse_dirt":
+		return surfaceCoarseDirt
+	case "mycelium":
+		return surfaceMycelium
+	case "calcite":
+		return surfaceCalcite
+	case "gravel":
+		return surfaceGravel
+	case "sand":
+		return surfaceSand
+	case "sandstone":
+		return surfaceSandstone
+	case "red_sand":
+		return surfaceRedSand
+	case "red_sandstone":
+		return surfaceRedSandstone
+	case "terracotta":
+		return surfaceTerracotta
+	case "orange_terracotta":
+		return surfaceOrangeTerracotta
+	case "white_terracotta":
+		return surfaceWhiteTerracotta
+	case "yellow_terracotta":
+		return surfaceYellowTerracotta
+	case "brown_terracotta":
+		return surfaceBrownTerracotta
+	case "red_terracotta":
+		return surfaceRedTerracotta
+	case "light_gray_terracotta":
+		return surfaceLightGrayTerracotta
+	case "packed_ice":
+		return surfacePackedIce
+	case "snow_block":
+		return surfaceSnowBlock
+	case "mud":
+		return surfaceMud
+	case "powder_snow":
+		return surfacePowderSnow
+	case "ice":
+		return surfaceIce
+	case "water":
+		return surfaceWater
+	case "cinnabar":
+		return surfaceCinnabar
+	case "sulfur":
+		return surfaceSulfur
+	case "copper_ore":
+		return surfaceCopperOre
+	case "raw_copper_block":
+		return surfaceRawCopperBlock
+	case "granite":
+		return surfaceGranite
+	case "deepslate_iron_ore":
+		return surfaceDeepslateIronOre
+	case "raw_iron_block":
+		return surfaceRawIronBlock
+	case "tuff":
+		return surfaceTuff
+	default:
+		panic("unknown modern surface material " + name)
 	}
 }
 
@@ -358,7 +409,7 @@ func resolveSurfaceBlock(registry chunk.BlockRegistry, name string) uint32 {
 
 func (s *modernSurface) oreVeinMaterial(x, y, z int32, copper, iron, richness, gap float32) (string, bool) {
 	for _, vein := range [...]struct {
-		density       float32
+		density        float32
 		ore, raw, fill string
 	}{
 		{copper, "copper_ore", "raw_copper_block", "granite"},
@@ -498,64 +549,110 @@ func (s *modernSurface) surfaceMaterial(b string, x, y, z, stoneAbove, stoneBelo
 	return ""
 }
 
+func (s *modernSurface) frozenPeaksSurface(x, z, gx, gz int) string {
+	if surfaceSteep(gx, gz) {
+		return "packed_ice"
+	}
+	if n := s.packedIce.Sample64(float64(x), 0, float64(z)); n >= 0 && n <= 0.2 {
+		return "packed_ice"
+	}
+	if n := s.ice.Sample64(float64(x), 0, float64(z)); n >= 0 && n <= 0.025 {
+		return "ice"
+	}
+	return "snow_block"
+}
+
 func (s *modernSurface) biomeSurface(b string, x, y, z, gx, gz int, ceiling, notUnderwater bool) string {
 	surface := s.surface.Sample64(float64(x), 0, float64(z)) / 8.25
 	switch b {
 	case "frozen_peaks":
-		if surfaceSteep(gx, gz) { return "packed_ice" }
-		if n := s.packedIce.Sample64(float64(x), 0, float64(z)); n >= 0 && n <= 0.2 { return "packed_ice" }
-		if n := s.ice.Sample64(float64(x), 0, float64(z)); n >= 0 && n <= 0.025 { return "ice" }
-		return "snow_block"
+		return s.frozenPeaksSurface(x, z, gx, gz)
 	case "snowy_slopes":
-		if surfaceSteep(gx, gz) { return "stone" }
-		if n := s.powderSnow.Sample64(float64(x), 0, float64(z)); n >= 0.35 && n <= 0.6 { return "powder_snow" }
+		if surfaceSteep(gx, gz) {
+			return "stone"
+		}
+		if n := s.powderSnow.Sample64(float64(x), 0, float64(z)); n >= 0.35 && n <= 0.6 {
+			return "powder_snow"
+		}
 		return "snow_block"
 	case "jagged_peaks":
-		if surfaceSteep(gx, gz) { return "stone" }
+		if surfaceSteep(gx, gz) {
+			return "stone"
+		}
 		return "snow_block"
 	case "grove":
-		if n := s.powderSnow.Sample64(float64(x), 0, float64(z)); n >= 0.35 && n <= 0.6 { return "powder_snow" }
+		if n := s.powderSnow.Sample64(float64(x), 0, float64(z)); n >= 0.35 && n <= 0.6 {
+			return "powder_snow"
+		}
 		return "snow_block"
 	case "stony_peaks":
-		if n := s.calcite.Sample64(float64(x), 0, float64(z)); n >= -0.0125 && n <= 0.0125 { return "calcite" }
+		if n := s.calcite.Sample64(float64(x), 0, float64(z)); n >= -0.0125 && n <= 0.0125 {
+			return "calcite"
+		}
 		return "stone"
 	case "stony_shore":
 		if n := s.gravel.Sample64(float64(x), 0, float64(z)); n >= -0.05 && n <= 0.05 {
-			if ceiling { return "stone" }
+			if ceiling {
+				return "stone"
+			}
 			return "gravel"
 		}
 		return "stone"
 	case "windswept_hills":
-		if surface >= 1 { return "stone" }
+		if surface >= 1 {
+			return "stone"
+		}
 	case "beach", "snowy_beach", "warm_ocean", "desert":
-		if ceiling { return "sandstone" }
+		if ceiling {
+			return "sandstone"
+		}
 		return "sand"
 	case "dripstone_caves":
 		return "stone"
 	case "sulfur_caves":
-		if material := s.sulfurMaterial(x, y, z); material != "" { return material }
+		if material := s.sulfurMaterial(x, y, z); material != "" {
+			return material
+		}
 		return "stone"
 	case "windswept_savanna":
-		if surface >= 1.75 { return "stone" }
-		if surface >= -0.5 { return "coarse_dirt" }
+		if surface >= 1.75 {
+			return "stone"
+		}
+		if surface >= -0.5 {
+			return "coarse_dirt"
+		}
 	case "windswept_gravelly_hills":
 		if surface >= 2 {
-			if ceiling { return "stone" }
+			if ceiling {
+				return "stone"
+			}
 			return "gravel"
 		}
-		if surface >= 1 { return "stone" }
-		if surface >= -1 { return "grass_block" }
+		if surface >= 1 {
+			return "stone"
+		}
+		if surface >= -1 {
+			return "grass_block"
+		}
 	case "old_growth_pine_taiga", "old_growth_spruce_taiga":
-		if surface >= 1.75 { return "coarse_dirt" }
-		if surface >= -0.95 { return "podzol" }
+		if surface >= 1.75 {
+			return "coarse_dirt"
+		}
+		if surface >= -0.95 {
+			return "podzol"
+		}
 	case "ice_spikes":
 		return "snow_block"
 	case "mushroom_fields":
 		return "mycelium"
 	case "dappled_forest":
-		if s.smallPatch.Sample64(float64(x), 0, float64(z)) >= 1.2 { return "coarse_dirt" }
+		if s.smallPatch.Sample64(float64(x), 0, float64(z)) >= 1.2 {
+			return "coarse_dirt"
+		}
 	}
-	if notUnderwater { return "grass_block" }
+	if notUnderwater {
+		return "grass_block"
+	}
 	return "dirt"
 }
 
@@ -563,51 +660,87 @@ func (s *modernSurface) underBiomeSurface(b string, x, y, z, gx, gz int, ceiling
 	surface := s.surface.Sample64(float64(x), 0, float64(z)) / 8.25
 	switch b {
 	case "frozen_peaks":
-		if surfaceSteep(gx, gz) { return "packed_ice" }
-		if n := s.packedIce.Sample64(float64(x), 0, float64(z)); n >= -0.5 && n <= 0.2 { return "packed_ice" }
-		if n := s.ice.Sample64(float64(x), 0, float64(z)); n >= -0.0625 && n <= 0.025 { return "ice" }
-		if notUnderwater { return "snow_block" }
+		if surfaceSteep(gx, gz) {
+			return "packed_ice"
+		}
+		if n := s.packedIce.Sample64(float64(x), 0, float64(z)); n >= -0.5 && n <= 0.2 {
+			return "packed_ice"
+		}
+		if n := s.ice.Sample64(float64(x), 0, float64(z)); n >= -0.0625 && n <= 0.025 {
+			return "ice"
+		}
+		if notUnderwater {
+			return "snow_block"
+		}
 	case "snowy_slopes":
-		if surfaceSteep(gx, gz) { return "stone" }
-		if n := s.powderSnow.Sample64(float64(x), 0, float64(z)); n >= 0.45 && n <= 0.58 && notUnderwater { return "powder_snow" }
-		if notUnderwater { return "snow_block" }
+		if surfaceSteep(gx, gz) {
+			return "stone"
+		}
+		if n := s.powderSnow.Sample64(float64(x), 0, float64(z)); n >= 0.45 && n <= 0.58 && notUnderwater {
+			return "powder_snow"
+		}
+		if notUnderwater {
+			return "snow_block"
+		}
 	case "jagged_peaks":
 		return "stone"
 	case "grove":
-		if n := s.powderSnow.Sample64(float64(x), 0, float64(z)); n >= 0.45 && n <= 0.58 && notUnderwater { return "powder_snow" }
+		if n := s.powderSnow.Sample64(float64(x), 0, float64(z)); n >= 0.45 && n <= 0.58 && notUnderwater {
+			return "powder_snow"
+		}
 	case "stony_peaks":
-		if n := s.calcite.Sample64(float64(x), 0, float64(z)); n >= -0.0125 && n <= 0.0125 { return "calcite" }
+		if n := s.calcite.Sample64(float64(x), 0, float64(z)); n >= -0.0125 && n <= 0.0125 {
+			return "calcite"
+		}
 		return "stone"
 	case "stony_shore":
 		if n := s.gravel.Sample64(float64(x), 0, float64(z)); n >= -0.05 && n <= 0.05 {
-			if ceiling { return "stone" }
+			if ceiling {
+				return "stone"
+			}
 			return "gravel"
 		}
 		return "stone"
 	case "windswept_hills":
-		if surface >= 1 { return "stone" }
+		if surface >= 1 {
+			return "stone"
+		}
 	case "beach", "snowy_beach", "warm_ocean", "desert":
 		// SurfaceRuleData shares its sand and sandstone rule between the
 		// floor and the blocks under it.
-		if ceiling { return "sandstone" }
+		if ceiling {
+			return "sandstone"
+		}
 		return "sand"
 	case "dripstone_caves":
 		return "stone"
 	case "sulfur_caves":
-		if material := s.sulfurMaterial(x, y, z); material != "" { return material }
+		if material := s.sulfurMaterial(x, y, z); material != "" {
+			return material
+		}
 		return "stone"
 	case "mangrove_swamp":
 		return "mud"
 	case "windswept_savanna":
-		if surface >= 1.75 { return "stone" }
+		if surface >= 1.75 {
+			return "stone"
+		}
 	case "windswept_gravelly_hills":
 		if surface >= 2 {
-			if ceiling { return "stone" }
+			if ceiling {
+				return "stone"
+			}
 			return "gravel"
 		}
-		if surface >= 1 { return "stone" }
-		if surface >= -1 { return "dirt" }
-		if ceiling { return "stone" }
+		if surface >= 1 {
+			return "stone"
+		}
+		if surface >= -1 {
+			return "dirt"
+		}
+		if ceiling {
+			return "stone"
+		}
 		return "gravel"
 	}
 	return "dirt"
@@ -617,9 +750,15 @@ func surfaceSteep(gx, gz int) bool { return gx <= -4 || gz >= 4 }
 
 func (s *modernSurface) sulfurMaterial(x, y, z int) string {
 	n := s.sulfurGradient.Sample64(float64(x), float64(y), float64(z))
-	if n >= -0.4 && n <= -0.1 { return "cinnabar" }
-	if n >= 0 && n <= 0.4 { return "sulfur" }
-	if n >= 0.4 { return "cinnabar" }
+	if n >= -0.4 && n <= -0.1 {
+		return "cinnabar"
+	}
+	if n >= 0 && n <= 0.4 {
+		return "sulfur"
+	}
+	if n >= 0.4 {
+		return "cinnabar"
+	}
 	return ""
 }
 
@@ -629,11 +768,15 @@ func (s *modernSurface) band(y, x, z int) string {
 }
 
 func (s *modernSurface) makeClayBands() {
-	for i := range s.clayBands { s.clayBands[i] = "terracotta" }
+	for i := range s.clayBands {
+		s.clayBands[i] = "terracotta"
+	}
 	r := s.random.FromHashOf("minecraft:clay_bands")
 	for i := 0; i < len(s.clayBands); i++ {
 		i += int(r.NextInt(5)) + 1
-		if i < len(s.clayBands) { s.clayBands[i] = "orange_terracotta" }
+		if i < len(s.clayBands) {
+			s.clayBands[i] = "orange_terracotta"
+		}
 	}
 	s.makeBands(&r, 1, "yellow_terracotta")
 	s.makeBands(&r, 2, "brown_terracotta")
@@ -641,8 +784,15 @@ func (s *modernSurface) makeClayBands() {
 	count := int(r.NextInt(7)) + 9
 	for start, n := 0, 0; n < count && start < len(s.clayBands); start, n = start+int(r.NextInt(16))+4, n+1 {
 		s.clayBands[start] = "white_terracotta"
-		if start-1 > 0 && r.NextBoolean() { s.clayBands[start-1] = "light_gray_terracotta" }
-		if start+1 < len(s.clayBands) && r.NextBoolean() { s.clayBands[start+1] = "light_gray_terracotta" }
+		if start-1 > 0 && r.NextBoolean() {
+			s.clayBands[start-1] = "light_gray_terracotta"
+		}
+		if start+1 < len(s.clayBands) && r.NextBoolean() {
+			s.clayBands[start+1] = "light_gray_terracotta"
+		}
+	}
+	for i, name := range s.clayBands {
+		s.clayBandIDs[i] = uint8(surfaceBlockIndex(name))
 	}
 }
 
@@ -651,30 +801,52 @@ func (s *modernSurface) makeBands(r *vanilla.Random, width int, name string) {
 	for range count {
 		bandWidth := width + int(r.NextInt(3))
 		start := int(r.NextInt(192))
-		for p := range min(bandWidth, len(s.clayBands)-start) { s.clayBands[start+p] = name }
+		for p := range min(bandWidth, len(s.clayBands)-start) {
+			s.clayBands[start+p] = name
+		}
 	}
 }
 
 func (s *modernSurface) verticalGradient(name string, x, y, z int32, minY, maxY int) bool {
-	if int(y) <= minY { return true }
-	if int(y) >= maxY { return false }
-	named := s.random.FromHashOf("minecraft:" + name)
-	random := named.ForkPositional().At(x, y, z)
+	if int(y) <= minY {
+		return true
+	}
+	if int(y) >= maxY {
+		return false
+	}
+	var random vanilla.Random
+	switch name {
+	case "bedrock_floor":
+		random = s.bedrockRandom.At(x, y, z)
+	case "deepslate":
+		random = s.deepslateRandom.At(x, y, z)
+	default:
+		named := s.random.FromHashOf("minecraft:" + name)
+		random = named.ForkPositional().At(x, y, z)
+	}
 	probability := float64(maxY-int(y)) / float64(maxY-minY)
 	return float64(random.NextFloat()) < probability
 }
 
 func (s *modernSurface) erodedBadlands(c *chunk.Chunk, x, z uint8, wx, wz int32, height, minY, maxY int, b surfaceBlocks, air uint32) {
 	pillar := math.Min(math.Abs(s.badlandsSurface.Sample64(float64(wx), 0, float64(wz))*8.25), s.badlandsPillar.Sample64(float64(wx)*0.2, 0, float64(wz)*0.2)*15)
-	if pillar <= 0 { return }
+	if pillar <= 0 {
+		return
+	}
 	roof := math.Abs(s.badlandsPillarRoof.Sample64(float64(wx)*0.75, 0, float64(wz)*0.75) * 1.5)
 	top := 64 + math.Min(pillar*pillar*2.5, math.Ceil(roof*50)+24)
 	start := int(math.Floor(top))
-	if height > start { return }
+	if height > start {
+		return
+	}
 	for y := min(start, maxY); y >= minY; y-- {
 		rid := c.Block(x, int16(y), z, 0)
-		if rid == b.id("stone") { break }
-		if rid == b.id("water") { return }
+		if rid == b.id("stone") {
+			break
+		}
+		if rid == b.id("water") {
+			return
+		}
 	}
 	for y := min(start, maxY); y >= minY && c.Block(x, int16(y), z, 0) == air; y-- {
 		c.SetBlock(x, int16(y), z, 0, b.id("stone"))
@@ -683,11 +855,17 @@ func (s *modernSurface) erodedBadlands(c *chunk.Chunk, x, z uint8, wx, wz int32,
 
 func (s *modernSurface) frozenOcean(c *chunk.Chunk, x, z uint8, wx, wz int32, height, minY, minSurface int, biome string, b surfaceBlocks) {
 	iceberg := math.Min(math.Abs(s.icebergSurface.Sample64(float64(wx), 0, float64(wz))*8.25), s.icebergPillar.Sample64(float64(wx)*1.28, 0, float64(wz)*1.28)*15)
-	if iceberg <= 1.8 { return }
+	if iceberg <= 1.8 {
+		return
+	}
 	roof := math.Abs(s.icebergPillarRoof.Sample64(float64(wx)*1.17, 0, float64(wz)*1.17) * 1.5)
 	top := math.Min(iceberg*iceberg*1.2, math.Ceil(roof*40)+14)
-	if s.icebergTemperature(wx, wz, biome) > 0.1 { top -= 2 }
-	if top <= 2 { return }
+	if s.icebergTemperature(wx, wz, biome) > 0.1 {
+		top -= 2
+	}
+	if top <= 2 {
+		return
+	}
 	bottom := float64(modernSeaLevel) - top - 7
 	upper := float64(modernSeaLevel) + top
 	r := s.random.At(wx, 0, wz)
@@ -695,12 +873,16 @@ func (s *modernSurface) frozenOcean(c *chunk.Chunk, x, z uint8, wx, wz int32, he
 	minSnow := modernSeaLevel + 18 + int(r.NextInt(10))
 	snow := 0
 	start := max(height, int(upper)+1)
-	if start > modernMaxY { start = modernMaxY }
+	if start > modernMaxY {
+		start = modernMaxY
+	}
 	endY := max(minSurface, minY)
 	for y := start; y >= endY; y-- {
 		rid := c.Block(x, int16(y), z, 0)
 		replace := rid == c.BlockRegistry().AirRuntimeID() && y < int(upper) && r.NextDouble() > 0.01 || rid == b.id("water") && y > int(bottom) && y < modernSeaLevel && r.NextDouble() > 0.15
-		if !replace { continue }
+		if !replace {
+			continue
+		}
 		if snow <= maxSnow && y > minSnow {
 			c.SetBlock(x, int16(y), z, 0, b.id("snow_block"))
 			snow++
@@ -712,11 +894,15 @@ func (s *modernSurface) frozenOcean(c *chunk.Chunk, x, z uint8, wx, wz int32, he
 
 func (s *modernSurface) icebergTemperature(x, z int32, biome string) float32 {
 	base := float32(0)
-	if biome == "deep_frozen_ocean" { base = 0.5 }
-	large := s.frozenTemperatureLayers[0].Sample2D(float64(x)*0.05, float64(z)*0.05)*float64(float32(0.14285715))
-	large += s.frozenTemperatureLayers[1].Sample2D(float64(x)*0.025, float64(z)*0.025)*float64(float32(0.2857143))
-	large += s.frozenTemperatureLayers[2].Sample2D(float64(x)*0.0125, float64(z)*0.0125)*float64(float32(0.5714286))
+	if biome == "deep_frozen_ocean" {
+		base = 0.5
+	}
+	large := s.frozenTemperatureLayers[0].Sample2D(float64(x)*0.05, float64(z)*0.05) * float64(float32(0.14285715))
+	large += s.frozenTemperatureLayers[1].Sample2D(float64(x)*0.025, float64(z)*0.025) * float64(float32(0.2857143))
+	large += s.frozenTemperatureLayers[2].Sample2D(float64(x)*0.0125, float64(z)*0.0125) * float64(float32(0.5714286))
 	icePatches := large*7 + s.biomeInfo.Sample2D(float64(x)*0.2, float64(z)*0.2)
-	if icePatches < 0.3 && s.biomeInfo.Sample2D(float64(x)*0.09, float64(z)*0.09) < 0.8 { return 0.2 }
+	if icePatches < 0.3 && s.biomeInfo.Sample2D(float64(x)*0.09, float64(z)*0.09) < 0.8 {
+		return 0.2
+	}
 	return base
 }
