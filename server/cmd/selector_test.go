@@ -86,7 +86,7 @@ func TestSelectorSyntax(t *testing.T) {
 		"@e[x_rotation=-90..0,y_rotation=170..-170]",
 	}
 	for _, s := range valid {
-		if _, err := parseSelector(s, testSource{}, nil); err != nil {
+		if _, err := parseSelector(s, testSource{}); err != nil {
 			t.Errorf("%s: %v", s, err)
 		}
 	}
@@ -102,7 +102,7 @@ func TestSelectorSyntax(t *testing.T) {
 		"@a[nbt={a:}]", "@a[nbt={a:1}b]",
 	}
 	for _, s := range invalid {
-		if _, err := parseSelector(s, testSource{}, nil); err == nil {
+		if _, err := parseSelector(s, testSource{}); err == nil {
 			t.Errorf("%s was accepted", s)
 		}
 	}
@@ -127,7 +127,7 @@ func TestSplitSelectorOptions(t *testing.T) {
 // targets it selects from the candidates, in order.
 func selectNames(t *testing.T, selector string, src Source, candidates ...*selectorTarget) []string {
 	t.Helper()
-	s, err := parseSelector(selector, src, nil)
+	s, err := parseSelector(selector, src)
 	if err != nil {
 		t.Fatalf("%s: %v", selector, err)
 	}
@@ -137,7 +137,7 @@ func selectNames(t *testing.T, selector string, src Source, candidates ...*selec
 		entities, players = append(entities, c), append(players, c)
 	}
 	var names []string
-	for _, target := range s.selectTargets(src, entities, players) {
+	for _, target := range s.selectTargets(src, nil, entities, players) {
 		names = append(names, target.(NamedTarget).Name())
 	}
 	return names
@@ -212,11 +212,11 @@ func TestSelectorSelfInExecuteContext(t *testing.T) {
 	if got := selectNames(t, "@s", WithContext(near, ExecutionContext{}), near); len(got) != 0 {
 		t.Fatalf("@s without an executor = %q", got)
 	}
-	s, err := parseSelector("@s", testSource{}, nil)
+	s, err := parseSelector("@s", testSource{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := s.selectTargets(nil, nil, nil); len(got) != 0 {
+	if got := s.selectTargets(nil, nil, nil, nil); len(got) != 0 {
 		t.Fatalf("@s of a nil source = %v", got)
 	}
 }
@@ -324,7 +324,7 @@ func TestSelectorRefusesWhatJavaRefuses(t *testing.T) {
 		{"@a[limit=0]", "The minimum number allowed is 1"},
 		{"@a[bogus=1]", "Unknown option 'bogus'"},
 	} {
-		_, err := parseSelector(c.selector, testSource{}, nil)
+		_, err := parseSelector(c.selector, testSource{})
 		if err == nil || err.Error() != c.want {
 			t.Errorf("%s: error %v, want %q", c.selector, err, c.want)
 		}
@@ -334,7 +334,7 @@ func TestSelectorRefusesWhatJavaRefuses(t *testing.T) {
 		"@a[name=!A,name=!B]", "@e[type=!pig,type=!cow]", "@e[type=#boats,type=!pig]", "@e[type=#a,type=#b]",
 		"@a[gamemode=!creative,gamemode=!survival]", "@a[tag=a,tag=b]",
 	} {
-		if _, err := parseSelector(accepted, testSource{}, nil); err != nil {
+		if _, err := parseSelector(accepted, testSource{}); err != nil {
 			t.Errorf("%s: %v", accepted, err)
 		}
 	}
@@ -352,7 +352,7 @@ func TestSelectorRefusesUnknownEntityTypes(t *testing.T) {
 		{"@e[type=other:pig]", "Invalid or unknown entity type 'other:pig'"},
 		{"@e[type=pig,type=pigg]", "Option 'type' isn't applicable here"},
 	} {
-		_, err := parseSelector(c.selector, testSource{}, nil)
+		_, err := parseSelector(c.selector, testSource{})
 		if err == nil || err.Error() != c.want {
 			t.Errorf("%s: error %v, want %q", c.selector, err, c.want)
 		}
@@ -361,8 +361,157 @@ func TestSelectorRefusesUnknownEntityTypes(t *testing.T) {
 		"@e[type=pig]", "@e[type=minecraft:pig]", "@e[type=!minecraft:zombified_piglin]", "@e[type=player]",
 		"@e[type=#no_such_tag]", "@e[type=!#no:such_tag]", "@e[type=minecraft:villager]", "@e[type=!armor_stand]",
 	} {
-		if _, err := parseSelector(accepted, testSource{}, nil); err != nil {
+		if _, err := parseSelector(accepted, testSource{}); err != nil {
 			t.Errorf("%s: %v", accepted, err)
+		}
+	}
+}
+
+// TestSelectorScopes checks Java's world-limiting options (x, y, z, dx, dy, dz,
+// distance), player-narrowing options (gamemode, level, positive type=player),
+// @s ignoring world limits, named targets, and the bounded flag.
+func TestSelectorScopes(t *testing.T) {
+	for _, c := range []struct {
+		input   string
+		scope   selectorScope
+		bounded bool
+	}{
+		// Self: @s always has scopeSelf and is never bounded, even with distance/x.
+		{"@s", scopeSelf, false},
+		{"@s[distance=..5]", scopeSelf, false},
+		{"@s[x=1,y=2,z=3]", scopeSelf, false},
+		{"@s[dx=1,dy=1,dz=1]", scopeSelf, false},
+		// Named: player names and UUIDs.
+		{"Alice", scopeNamed, false},
+		{"550e8400-e29b-41d4-a716-446655440000", scopeNamed, false},
+		// Seven world-limiting options (§1.2).
+		{"@a[x=1]", scopeWorld, false},
+		{"@a[y=64]", scopeWorld, false},
+		{"@a[z=-3]", scopeWorld, false},
+		{"@a[dx=5]", scopeWorld, false},
+		{"@a[dy=2]", scopeWorld, false},
+		{"@a[dz=5]", scopeWorld, false},
+		{"@a[distance=..10]", scopeWorld, false},
+		{"@e[x=0]", scopeWorld, false},
+		{"@e[distance=1..5]", scopeWorld, false},
+		{"@p[distance=..10]", scopeWorld, true},
+		{"@r[dx=1]", scopeWorld, true},
+		{"@n[dy=1]", scopeWorld, true},
+		// Players scope: @a, @p, @r, and @e/@n narrowed by gamemode, level, or positive type=player.
+		{"@a", scopePlayers, false},
+		{"@a[tag=red,team=blue,name=!Bob,scores={k=1..},nbt={}]", scopePlayers, false},
+		{"@a[x_rotation=0..90,y_rotation=-90..90]", scopePlayers, false},
+		{"@a[sort=arbitrary]", scopePlayers, false},
+		{"@a[limit=2]", scopePlayers, true},
+		{"@a[sort=nearest]", scopePlayers, true},
+		{"@a[sort=furthest]", scopePlayers, true},
+		{"@a[sort=random]", scopePlayers, true},
+		{"@p", scopePlayers, true},
+		{"@r", scopePlayers, true},
+		{"@e[gamemode=survival]", scopePlayers, false},
+		{"@e[gamemode=!creative]", scopePlayers, false},
+		{"@e[level=1..]", scopePlayers, false},
+		{"@e[type=player]", scopePlayers, false},
+		{"@e[type=minecraft:player]", scopePlayers, false},
+		{"@n[type=player]", scopePlayers, true},
+		{"@n[gamemode=adventure]", scopePlayers, true},
+		{"@n[level=0]", scopePlayers, true},
+		// Entities scope: @e, @n, and non-player-narrowing options.
+		{"@e", scopeEntities, false},
+		{"@e[type=pig]", scopeEntities, false},
+		{"@e[type=!player]", scopeEntities, false},
+		{"@e[type=#boats]", scopeEntities, false},
+		{"@e[tag=foo,name=Bob,team=red,scores={a=1},nbt={}]", scopeEntities, false},
+		{"@e[x_rotation=0..10,y_rotation=0..10]", scopeEntities, false},
+		{"@e[limit=1]", scopeEntities, true},
+		{"@e[sort=nearest]", scopeEntities, true},
+		{"@n", scopeEntities, true},
+	} {
+		s, err := parseSelectorInput(c.input, testSource{}, false, false)
+		if err != nil {
+			t.Fatalf("%s: unexpected error: %v", c.input, err)
+		}
+		if got := s.scope(); got != c.scope {
+			t.Errorf("%s: scope = %v, want %v", c.input, got, c.scope)
+		}
+		if got := s.bounded(); got != c.bounded {
+			t.Errorf("%s: bounded = %v, want %v", c.input, got, c.bounded)
+		}
+	}
+}
+
+// TestArgumentKindsRefuse checks the three Java EntityArgument parse errors
+// word for word across entities, entity, players and player kinds (§1.4).
+func TestArgumentKindsRefuse(t *testing.T) {
+	const (
+		notSingleEntity = "Only one entity is allowed, but the provided selector allows more than one"
+		notSinglePlayer = "Only one player is allowed, but the provided selector allows more than one"
+		onlyPlayers     = "Only players may be affected by this command, but the provided selector includes entities"
+	)
+	for _, c := range []struct {
+		input       string
+		playersOnly bool
+		single      bool
+		want        string
+	}{
+		// entity()
+		{"@e", false, true, notSingleEntity},
+		{"@a", false, true, notSingleEntity},
+		{"@p[limit=2]", false, true, notSingleEntity},
+		{"@n[limit=2]", false, true, notSingleEntity},
+		{"@e[limit=3]", false, true, notSingleEntity},
+		// players()
+		{"@e", true, false, onlyPlayers},
+		{"@n", true, false, onlyPlayers},
+		{"@e[type=pig]", true, false, onlyPlayers},
+		{"@e[type=!player]", true, false, onlyPlayers},
+		{"@e[distance=..5]", true, false, onlyPlayers},
+		{"550e8400-e29b-41d4-a716-446655440000", true, false, onlyPlayers},
+		// player()
+		{"@a", true, true, notSinglePlayer},
+		{"@e", true, true, notSinglePlayer},
+		{"@p[limit=2]", true, true, notSinglePlayer},
+		{"@r[limit=2]", true, true, notSinglePlayer},
+		{"@e[type=player]", true, true, notSinglePlayer},
+		{"@e[limit=1]", true, true, onlyPlayers},
+		{"@n", true, true, onlyPlayers},
+		{"550e8400-e29b-41d4-a716-446655440000", true, true, onlyPlayers},
+	} {
+		_, err := parseSelectorInput(c.input, testSource{}, c.playersOnly, c.single)
+		if err == nil || err.Error() != c.want {
+			t.Errorf("%s (playersOnly=%v, single=%v): error = %v, want %q", c.input, c.playersOnly, c.single, err, c.want)
+		}
+	}
+	for _, c := range []struct {
+		input       string
+		playersOnly bool
+		single      bool
+	}{
+		{"@e", false, false},
+		{"@a", false, false},
+		{"@s", false, true},
+		{"@p", false, true},
+		{"@n", false, true},
+		{"@e[limit=1]", false, true},
+		{"Alice", false, true},
+		{"550e8400-e29b-41d4-a716-446655440000", false, true},
+		{"@a", true, false},
+		{"@p", true, false},
+		{"@r", true, false},
+		{"@s", true, false},
+		{"Alice", true, false},
+		{"@e[type=player]", true, false},
+		{"@e[gamemode=survival]", true, false},
+		{"@e[level=1..]", true, false},
+		{"@p", true, true},
+		{"@r", true, true},
+		{"@s", true, true},
+		{"Alice", true, true},
+		{"@a[limit=1]", true, true},
+		{"@e[type=player,limit=1]", true, true},
+	} {
+		if _, err := parseSelectorInput(c.input, testSource{}, c.playersOnly, c.single); err != nil {
+			t.Errorf("%s (playersOnly=%v, single=%v): unexpected error: %v", c.input, c.playersOnly, c.single, err)
 		}
 	}
 }

@@ -14,12 +14,10 @@ import (
 )
 
 // selectorParse is the state of parsing the option list of one selector: the
-// selector so far, which options were given, the extent of the volume and the
-// transaction the filters read the scoreboard and entities of.
+// selector so far, which options were given and the extent of the volume.
 type selectorParse struct {
 	s      *entitySelector
 	opts   *selectorOptions
-	tx     *world.Tx
 	extent [3]*float64
 }
 
@@ -75,13 +73,21 @@ func newEntitySelector(text string, src Source) (*entitySelector, error) {
 		// A bare @: Java's argument.entity.selector.missing.
 		return nil, selectorError("Missing selector type")
 	}
-	s := &entitySelector{kind: text[1], origin: src.Position(), sort: "arbitrary", limit: math.MaxInt}
+	var origin mgl64.Vec3
+	if src != nil {
+		origin = src.Position()
+	}
+	s := &entitySelector{kind: text[1], origin: origin, sort: "arbitrary", limit: math.MaxInt}
 	switch s.kind {
-	case 'p', 'n':
+	case 'p':
 		s.sort, s.limit = "nearest", 1
+	case 'n':
+		s.sort, s.limit, s.includesEntities = "nearest", 1, true
 	case 'r':
 		s.sort, s.limit = "random", 1
-	case 'a', 'e', 's':
+	case 'e':
+		s.includesEntities = true
+	case 'a', 's':
 	default:
 		return nil, MessageParameterInvalid.F(text)
 	}
@@ -89,8 +95,8 @@ func newEntitySelector(text string, src Source) (*entitySelector, error) {
 }
 
 // parseSelector parses a selector such as @e[type=cow,limit=1] by the table of
-// the parsers of its options.
-func parseSelector(text string, src Source, tx *world.Tx) (*entitySelector, error) {
+// the parsers of its options. It does not require a transaction.
+func parseSelector(text string, src Source) (*entitySelector, error) {
 	s, err := newEntitySelector(text, src)
 	if err != nil {
 		return nil, err
@@ -102,7 +108,7 @@ func parseSelector(text string, src Source, tx *world.Tx) (*entitySelector, erro
 	if !strings.HasPrefix(body, "[") || !strings.HasSuffix(body, "]") {
 		return nil, MessageParameterInvalid.F(text)
 	}
-	p := &selectorParse{s: s, opts: newSelectorOptions(), tx: tx}
+	p := &selectorParse{s: s, opts: newSelectorOptions()}
 	for _, option := range splitSelectorOptions(body[1 : len(body)-1]) {
 		if err := p.parseOption(option); err != nil {
 			return nil, err
@@ -160,6 +166,7 @@ func parseSelectorOrigin(o selectorOption) error {
 		return selectorFinal{MessageNumberInvalid.F(o.value)}
 	}
 	o.s.origin[o.key[0]-'x'] = v
+	o.s.worldLimited = true
 	return nil
 }
 
@@ -170,6 +177,7 @@ func parseSelectorExtent(o selectorOption) error {
 		return selectorFinal{MessageNumberInvalid.F(o.value)}
 	}
 	o.extent[o.key[1]-'x'] = &v
+	o.s.worldLimited = true
 	return nil
 }
 
@@ -183,6 +191,9 @@ func parseSelectorDistance(o selectorOption) error {
 	if err == nil && o.s.distance.negative() {
 		return selectorError("Distance cannot be negative")
 	}
+	if err == nil {
+		o.s.worldLimited = true
+	}
 	return err
 }
 
@@ -192,6 +203,9 @@ func parseSelectorLevel(o selectorOption) error {
 	o.s.level, err = parseIntRange(o.value)
 	if err == nil && o.s.level.negative() {
 		return selectorError("Level shouldn't be negative")
+	}
+	if err == nil {
+		o.s.includesEntities = false
 	}
 	return err
 }
@@ -211,7 +225,7 @@ func parseSelectorRotation(o selectorOption, pitch bool) error {
 func parseSelectorScoresOption(o selectorOption) error {
 	expected, err := parseSelectorScores(o.value)
 	if err == nil && len(expected) > 0 {
-		o.s.scoresFilter(expected, o.tx)
+		o.s.scoresFilter(expected)
 	}
 	return err
 }
@@ -219,7 +233,7 @@ func parseSelectorScoresOption(o selectorOption) error {
 // parseSelectorTeam is team, the name of a team or none.
 func parseSelectorTeam(o selectorOption) error {
 	err := o.opts.element(o.key, o.negate)
-	o.s.teamFilter(o.value, o.negate, o.tx)
+	o.s.teamFilter(o.value, o.negate)
 	return err
 }
 
@@ -229,8 +243,7 @@ func parseSelectorNBT(o selectorOption) error {
 	if err != nil || strings.TrimSpace(o.value[end:]) != "" {
 		return selectorFinal{MessageParameterInvalid.F(o.option)}
 	}
-	tx := o.tx
-	o.s.filter(o.negate, func(t Target) bool {
+	o.s.filter(o.negate, func(tx *world.Tx, t Target) bool {
 		e, ok := t.(world.Entity)
 		return ok && nbtContains(expected, e.H().NBT(tx))
 	})
@@ -263,6 +276,6 @@ func parseSelectorSort(o selectorOption) error {
 func parseSelectorName(o selectorOption) error {
 	err := o.opts.element(o.key, o.negate)
 	value := o.value
-	o.s.filter(o.negate, func(t Target) bool { return selectorName(t) == strings.Trim(value, `"`) })
+	o.s.filter(o.negate, func(_ *world.Tx, t Target) bool { return selectorName(t) == strings.Trim(value, `"`) })
 	return err
 }

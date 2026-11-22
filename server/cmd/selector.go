@@ -13,6 +13,7 @@ import (
 	"github.com/df-mc/dragonfly/server/scoreboard"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/google/uuid"
 )
 
 // ResolveTargets resolves a Java selector or player name relative to src, as
@@ -131,7 +132,7 @@ func wrapDegrees(angle float64) float64 {
 // rotationFilter ports EntitySelectorParser.createRotationPredicate: open
 // ends default to 0 and 359 degrees, and a range whose wrapped minimum
 // exceeds its maximum matches across the wrap.
-func rotationFilter(r selectorRange, pitch bool) func(Target) bool {
+func rotationFilter(r selectorRange, pitch bool) func(*world.Tx, Target) bool {
 	lo, hi := 0.0, 359.0
 	if !math.IsInf(r.min, -1) {
 		lo = r.min
@@ -140,7 +141,7 @@ func rotationFilter(r selectorRange, pitch bool) func(Target) bool {
 		hi = r.max
 	}
 	lo, hi = wrapDegrees(lo), wrapDegrees(hi)
-	return func(t Target) bool {
+	return func(_ *world.Tx, t Target) bool {
 		rotated, ok := t.(interface{ Rotation() cube.Rotation })
 		if !ok {
 			return false
@@ -272,24 +273,139 @@ func scoreboardOf(tx *world.Tx) *scoreboard.Model {
 	return tx.World().Scoreboard()
 }
 
+// selectorScope classifies where a parsed selector searches for candidates.
+type selectorScope uint8
+
+const (
+	// scopeSelf selects the executor of the command (@s).
+	scopeSelf selectorScope = iota
+	// scopeNamed selects one player by name or one entity by UUID.
+	scopeNamed
+	// scopeWorld searches only the context world (x, y, z, dx, dy, dz, distance).
+	scopeWorld
+	// scopePlayers searches online players in join order.
+	scopePlayers
+	// scopeEntities searches all entities across every world, overworld first.
+	scopeEntities
+)
+
+// Java EntityArgument parse-time refusals (§1.4).
+const (
+	errNotSingleEntity    = selectorError("Only one entity is allowed, but the provided selector allows more than one")
+	errNotSinglePlayer    = selectorError("Only one player is allowed, but the provided selector allows more than one")
+	errOnlyPlayersAllowed = selectorError("Only players may be affected by this command, but the provided selector includes entities")
+)
+
 // entitySelector holds the parsed Java EntitySelectorOptions that have
 // Bedrock-side state: position/volume/distance, rotation, type and type tags,
 // name, tag, team, scores, nbt, gamemode, level, limit and sort. Predicates
 // and advancements belong to datapacks, which are not supported.
 type entitySelector struct {
-	kind     byte
-	origin   mgl64.Vec3
-	volume   *mgl64.Vec3
-	distance selectorRange
-	level    selectorRange
-	limit    int
-	sort     string
-	filters  []func(Target) bool
+	kind             byte
+	name             string
+	entityUUID       uuid.UUID
+	hasUUID          bool
+	origin           mgl64.Vec3
+	volume           *mgl64.Vec3
+	distance         selectorRange
+	level            selectorRange
+	limit            int
+	sort             string
+	worldLimited     bool
+	includesEntities bool
+	playersOnly      bool
+	filters          []func(*world.Tx, Target) bool
 }
 
-func (s *entitySelector) filter(negate bool, f func(Target) bool) {
+// scope returns the candidate scope of the selector. @s ignores world limits.
+func (s *entitySelector) scope() selectorScope {
+	switch {
+	case s.kind == 's':
+		return scopeSelf
+	case s.name != "" || s.hasUUID:
+		return scopeNamed
+	case s.worldLimited:
+		return scopeWorld
+	case !s.includesEntities:
+		return scopePlayers
+	default:
+		return scopeEntities
+	}
+}
+
+// bounded reports whether cross-world resolution must gather candidates before
+// acting: any non-arbitrary sort or explicit/default limit requires a global
+// sort/limit pass. Single self/named selectors never need two rounds.
+func (s *entitySelector) bounded() bool {
+	if s.kind == 's' || s.name != "" || s.hasUUID {
+		return false
+	}
+	return s.sort != "arbitrary" || s.limit != math.MaxInt
+}
+
+// single reports whether the selector can match at most one target.
+func (s *entitySelector) single() bool {
+	return s.kind == 's' || s.name != "" || s.hasUUID || s.limit <= 1
+}
+
+// validateKind checks Java EntityArgument.parse constraints (single and
+// playersOnly) against the parsed selector.
+func (s *entitySelector) validateKind(playersOnly, single bool) error {
+	if single && !s.single() {
+		if playersOnly {
+			return errNotSinglePlayer
+		}
+		return errNotSingleEntity
+	}
+	if playersOnly && s.includesEntities && s.kind != 's' {
+		return errOnlyPlayersAllowed
+	}
+	s.playersOnly = playersOnly
+	return nil
+}
+
+// parseSelectorInput parses a selector (@...), entity UUID, or player name and
+// validates it against the argument kind constraints without needing a tx.
+func parseSelectorInput(text string, src Source, playersOnly, single bool) (*entitySelector, error) {
+	var (
+		s   *entitySelector
+		err error
+	)
+	if strings.HasPrefix(text, "@") {
+		s, err = parseSelector(text, src)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		s = parseNameOrUUID(text, src)
+	}
+	if err := s.validateKind(playersOnly, single); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// parseNameOrUUID parses a non-@ target token as a hyphenated UUID (Java
+// UUID.fromString) or a player name.
+func parseNameOrUUID(text string, src Source) *entitySelector {
+	var origin mgl64.Vec3
+	if src != nil {
+		origin = src.Position()
+	}
+	s := &entitySelector{origin: origin, sort: "arbitrary", limit: 1}
+	if len(text) == 36 && strings.Count(text, "-") == 4 {
+		if id, err := uuid.Parse(text); err == nil {
+			s.entityUUID, s.hasUUID, s.includesEntities = id, true, true
+			return s
+		}
+	}
+	s.name = text
+	return s
+}
+
+func (s *entitySelector) filter(negate bool, f func(*world.Tx, Target) bool) {
 	if negate {
-		s.filters = append(s.filters, func(t Target) bool { return !f(t) })
+		s.filters = append(s.filters, func(tx *world.Tx, t Target) bool { return !f(tx, t) })
 		return
 	}
 	s.filters = append(s.filters, f)
@@ -330,7 +446,17 @@ func selectorName(t Target) string {
 	return ""
 }
 
-func (s *entitySelector) matches(t Target) bool {
+// isPlayerTarget reports whether t is a player entity (or, for non-entity test
+// targets, implements NamedTarget).
+func isPlayerTarget(t Target) bool {
+	if e, ok := t.(world.Entity); ok {
+		return e.H().Type().EncodeEntity() == "minecraft:player"
+	}
+	_, ok := t.(NamedTarget)
+	return ok
+}
+
+func (s *entitySelector) matches(tx *world.Tx, t Target) bool {
 	pos := t.Position()
 	if !s.distance.contains(pos.Sub(s.origin).Len()) {
 		return false
@@ -352,7 +478,7 @@ func (s *entitySelector) matches(t Target) bool {
 		}
 	}
 	for _, f := range s.filters {
-		if !f(t) {
+		if !f(tx, t) {
 			return false
 		}
 	}
@@ -360,7 +486,7 @@ func (s *entitySelector) matches(t Target) bool {
 }
 
 // selectTargets applies EntitySelector.findEntities: filter, sort, then limit.
-func (s *entitySelector) selectTargets(src Source, entities []Target, players []NamedTarget) []Target {
+func (s *entitySelector) selectTargets(src Source, tx *world.Tx, entities []Target, players []NamedTarget) []Target {
 	var candidates []Target
 	switch s.kind {
 	case 's':
@@ -378,10 +504,15 @@ func (s *entitySelector) selectTargets(src Source, entities []Target, players []
 	}
 	result := make([]Target, 0, len(candidates))
 	for _, t := range candidates {
-		if s.matches(t) {
+		if s.matches(tx, t) {
 			result = append(result, t)
 		}
 	}
+	return s.sortAndLimitTargets(result)
+}
+
+// sortAndLimitTargets sorts result according to s.sort and truncates to s.limit.
+func (s *entitySelector) sortAndLimitTargets(result []Target) []Target {
 	switch s.sort {
 	case "nearest":
 		slices.SortStableFunc(result, func(a, b Target) int {

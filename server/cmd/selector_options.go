@@ -113,9 +113,9 @@ func (o *selectorOptions) element(key string, negate bool) error {
 	return nil
 }
 
-func (s *entitySelector) scoresFilter(expected map[string]selectorRange, tx *world.Tx) {
-	board := scoreboardOf(tx)
-	s.filters = append(s.filters, func(t Target) bool {
+func (s *entitySelector) scoresFilter(expected map[string]selectorRange) {
+	s.filters = append(s.filters, func(tx *world.Tx, t Target) bool {
+		board := scoreboardOf(tx)
 		holder := ScoreHolderName(t)
 		for objective, r := range expected {
 			if board == nil {
@@ -130,9 +130,9 @@ func (s *entitySelector) scoresFilter(expected map[string]selectorRange, tx *wor
 	})
 }
 
-func (s *entitySelector) teamFilter(value string, negate bool, tx *world.Tx) {
-	board := scoreboardOf(tx)
-	s.filter(negate, func(t Target) bool {
+func (s *entitySelector) teamFilter(value string, negate bool) {
+	s.filter(negate, func(tx *world.Tx, t Target) bool {
+		board := scoreboardOf(tx)
 		current := ""
 		if board != nil {
 			if team, ok := board.TeamFor(ScoreHolderName(t)); ok {
@@ -144,7 +144,7 @@ func (s *entitySelector) teamFilter(value string, negate bool, tx *world.Tx) {
 }
 
 func (s *entitySelector) tagFilter(value string, negate bool) {
-	s.filter(negate, func(t Target) bool {
+	s.filter(negate, func(_ *world.Tx, t Target) bool {
 		tagged, ok := t.(interface{ CommandTags() []string })
 		if !ok {
 			return value == ""
@@ -168,7 +168,8 @@ func (s *entitySelector) gameModeFilter(opts *selectorOptions, value string, neg
 		return selectorError(fmt.Sprintf("Unknown or illegal game mode '%s'", value))
 	}
 	opts.sets["gamemode"].markElement(negate)
-	s.filter(negate, func(t Target) bool {
+	s.includesEntities = false
+	s.filter(negate, func(_ *world.Tx, t Target) bool {
 		p, ok := t.(interface{ GameMode() world.GameMode })
 		if !ok {
 			return false
@@ -198,8 +199,11 @@ func (s *entitySelector) typeFilter(opts *selectorOptions, value string, negate 
 			return selectorError(fmt.Sprintf("Invalid or unknown entity type '%s'", id))
 		}
 		set.markElement(negate)
+		if !negate && id == "minecraft:player" {
+			s.includesEntities = false
+		}
 	}
-	s.filter(negate, func(t Target) bool {
+	s.filter(negate, func(_ *world.Tx, t Target) bool {
 		e, ok := t.(world.Entity)
 		if !ok {
 			return false

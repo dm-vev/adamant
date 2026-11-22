@@ -184,7 +184,7 @@ var selectorCaptureSources = []string{"source", "cow"}
 
 // runSelectorCapture parses every line for every source with parse and
 // returns what it written down.
-func runSelectorCapture(t *testing.T, parse func(text string, src Source, tx *world.Tx) (*entitySelector, error)) string {
+func runSelectorCapture(t *testing.T, parse func(text string, src Source) (*entitySelector, error)) string {
 	t.Helper()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
@@ -206,8 +206,8 @@ func runSelectorCapture(t *testing.T, parse func(text string, src Source, tx *wo
 }
 
 // write parses text and writes down the selector it parsed to.
-func (c *selectorCandidates) write(b *strings.Builder, text string, src Source, parse func(string, Source, *world.Tx) (*entitySelector, error)) {
-	s, err := parse(text, src, c.tx)
+func (c *selectorCandidates) write(b *strings.Builder, text string, src Source, parse func(string, Source) (*entitySelector, error)) {
+	s, err := parse(text, src)
 	if err != nil {
 		fmt.Fprintf(b, "error: %s\n", err)
 		return
@@ -220,16 +220,16 @@ func (c *selectorCandidates) write(b *strings.Builder, text string, src Source, 
 	for i, f := range s.filters {
 		fmt.Fprintf(b, "filter %d:", i)
 		for _, t := range c.entities {
-			fmt.Fprintf(b, " %s=%v", c.labels[t], f(t))
+			fmt.Fprintf(b, " %s=%v", c.labels[t], f(c.tx, t))
 		}
 		b.WriteString("\n")
 	}
 	b.WriteString("matches:")
 	for _, t := range c.entities {
-		fmt.Fprintf(b, " %s=%v", c.labels[t], s.matches(t))
+		fmt.Fprintf(b, " %s=%v", c.labels[t], s.matches(c.tx, t))
 	}
 	b.WriteString("\n")
-	selected := s.selectTargets(src, c.entities, c.players)
+	selected := s.selectTargets(src, c.tx, c.entities, c.players)
 	var labels []string
 	for _, t := range selected {
 		label, ok := c.labels[t]

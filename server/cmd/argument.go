@@ -397,11 +397,11 @@ func (p parser) parseTargets(line *Line, tx *world.Tx) ([]Target, error) {
 		if tx == nil {
 			return nil, MessageNoTargets.F()
 		}
-		selector, err := parseSelector(first, line.src, tx)
+		selector, err := parseSelector(first, line.src)
 		if err != nil {
 			return nil, err
 		}
-		return selector.selectTargets(line.src, entities, players), nil
+		return selector.selectTargets(line.src, tx, entities, players), nil
 	}
 	target, err := p.parsePlayer(first, players)
 	if err != nil {
