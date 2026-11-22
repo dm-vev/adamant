@@ -15,7 +15,7 @@ func TestMovedPlayersFoundWhereTheyAre(t *testing.T) {
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {
-		p := tx.AddEntity(world.EntitySpawnOpts{Position: mgl64.Vec3{0, 64, 0}}.New(Type, Config{Name: "Mover", GameMode: world.GameModeCreative})).(*Player)
+		p := tx.AddEntity(world.EntitySpawnOpts{Position: mgl64.Vec3{0, 64, 0}}.New(Type, Config{Name: "Mover", Position: mgl64.Vec3{0, 64, 0}, GameMode: world.GameModeCreative})).(*Player)
 		found := func(pos mgl64.Vec3) bool {
 			for e := range tx.PlayersNear(pos, 8) {
 				if e.H() == p.H() {
