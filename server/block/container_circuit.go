@@ -111,10 +111,6 @@ func (h Hopper) RedstoneCircuitOutput(output world.Block) world.Block {
 	return nil
 }
 
-type containerLightDiffuser interface {
-	LightDiffusionLevel() uint8
-}
-
 // containerStrongConductor matches world's strong-power conductor rules so
 // containerCircuit avoids allocating a PowerFrom BFS when no power can reach
 // the container through face.
@@ -125,7 +121,7 @@ func containerStrongConductor(pos cube.Pos, b world.Block, tx *world.Tx, face cu
 	if _, ok := b.(world.RedstoneNonConductive); ok {
 		return false
 	}
-	if diffuser, ok := b.(containerLightDiffuser); ok && diffuser.LightDiffusionLevel() == 0 {
+	if diffuser, ok := b.(LightDiffuser); ok && diffuser.LightDiffusionLevel() == 0 {
 		return false
 	}
 	return true
