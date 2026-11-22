@@ -511,6 +511,15 @@ func (s *entitySelector) selectTargets(src Source, tx *world.Tx, entities []Targ
 	return s.sortAndLimitTargets(result)
 }
 
+// matchesTarget enforces the argument kind's players-only constraint (such as
+// @s in a Players argument) in addition to s.matches.
+func (s *entitySelector) matchesTarget(tx *world.Tx, t Target) bool {
+	if s.playersOnly && !isPlayerTarget(t) {
+		return false
+	}
+	return s.matches(tx, t)
+}
+
 // sortAndLimitTargets sorts result according to s.sort and truncates to s.limit.
 func (s *entitySelector) sortAndLimitTargets(result []Target) []Target {
 	switch s.sort {
@@ -529,4 +538,39 @@ func (s *entitySelector) sortAndLimitTargets(result []Target) []Target {
 		result = result[:s.limit]
 	}
 	return result
+}
+
+// selectedCandidate is a Round-1 match of a bounded cross-world selector.
+type selectedCandidate struct {
+	worldIdx int
+	localIdx int
+	handle   *world.EntityHandle
+	pos      mgl64.Vec3
+}
+
+// sortAndLimitCandidates orders candidates across dimensions (Java compares
+// coordinates only, ignoring dimension) and truncates to s.limit.
+func (s *entitySelector) sortAndLimitCandidates(candidates []selectedCandidate) []selectedCandidate {
+	slices.SortFunc(candidates, func(a, b selectedCandidate) int {
+		if c := cmp.Compare(a.worldIdx, b.worldIdx); c != 0 {
+			return c
+		}
+		return cmp.Compare(a.localIdx, b.localIdx)
+	})
+	switch s.sort {
+	case "nearest":
+		slices.SortStableFunc(candidates, func(a, b selectedCandidate) int {
+			return cmp.Compare(a.pos.Sub(s.origin).Len(), b.pos.Sub(s.origin).Len())
+		})
+	case "furthest":
+		slices.SortStableFunc(candidates, func(a, b selectedCandidate) int {
+			return cmp.Compare(b.pos.Sub(s.origin).Len(), a.pos.Sub(s.origin).Len())
+		})
+	case "random":
+		rand.Shuffle(len(candidates), func(i, j int) { candidates[i], candidates[j] = candidates[j], candidates[i] })
+	}
+	if len(candidates) > s.limit {
+		candidates = candidates[:s.limit]
+	}
+	return candidates
 }

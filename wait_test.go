@@ -589,6 +589,15 @@ func noWait(_ cmd.Source, tx *world.Tx) {
 	schedule(tx.World(), nil) // violation: R5.2
 }
 
+func forEachWait(src cmd.Source, o *cmd.Output, tx *world.Tx, sel cmd.Players, other *world.World) {
+	cmd.ForEach(src, o, tx, sel,
+		func(*world.Tx, cmd.Target) int {
+			_, _ = world.Call(context.Background(), other, func(*world.Tx) (int, error) { return 0, nil }) // violation: R5.1
+			return 1
+		},
+		func(cmd.Source, *cmd.Output, *world.Tx, []cmd.Result[int]) {})
+}
+
 func main() {
 	wait(nil)
 }

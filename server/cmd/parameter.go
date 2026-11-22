@@ -162,7 +162,7 @@ func typeNameOf(i any, name string) string {
 		return "bool"
 	case mgl64.Vec3:
 		return "x y z"
-	case []Target:
+	case []Target, Entities, OneEntity, Players, OnePlayer:
 		return "target"
 	case SubCommand:
 		return name

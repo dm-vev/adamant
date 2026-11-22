@@ -121,6 +121,14 @@ func (p parser) parseArgument(line *Line, v reflect.Value, optional bool, name s
 		err = p.varargs(line, v)
 	case []Target:
 		err = p.targets(line, v, tx)
+	case Entities:
+		err = p.selector(line, v, false, false)
+	case OneEntity:
+		err = p.selector(line, v, false, true)
+	case Players:
+		err = p.selector(line, v, true, false)
+	case OnePlayer:
+		err = p.selector(line, v, true, true)
 	case SubCommand:
 		err = p.sub(line, name)
 	default:
@@ -418,4 +426,29 @@ func (p parser) parsePlayer(name string, players []NamedTarget) (Target, error) 
 		return players[ind], nil
 	}
 	return nil, MessagePlayerNotFound.F()
+}
+
+// selector parses a target selector, entity UUID or player name without a
+// transaction and stores it in v as one of Entities, OneEntity, Players or
+// OnePlayer.
+func (p parser) selector(line *Line, v reflect.Value, playersOnly, single bool) error {
+	first, ok := line.Next()
+	if !ok {
+		return line.UsageError()
+	}
+	sel, err := parseSelectorInput(first, line.src, playersOnly, single)
+	if err != nil {
+		return err
+	}
+	switch v.Interface().(type) {
+	case Entities:
+		v.Set(reflect.ValueOf(Entities{sel: sel}))
+	case OneEntity:
+		v.Set(reflect.ValueOf(OneEntity{sel: sel}))
+	case Players:
+		v.Set(reflect.ValueOf(Players{sel: sel}))
+	case OnePlayer:
+		v.Set(reflect.ValueOf(OnePlayer{sel: sel}))
+	}
+	return nil
 }

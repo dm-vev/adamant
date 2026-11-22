@@ -7,8 +7,10 @@ import (
 	"slices"
 )
 
-// Target represents the target of a command. A []Target may be used as command parameter
-// types to allow passing targets to the command.
+// Target represents the target of a command. A []Target parameter resolves
+// targets synchronously within the command's transaction only. Commands that
+// should reach targets in other worlds should use Entities, OneEntity, Players
+// or OnePlayer together with ForEach.
 type Target interface {
 	// Position returns the position of the Target as an mgl64.Vec3.
 	Position() mgl64.Vec3

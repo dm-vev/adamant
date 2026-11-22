@@ -1,6 +1,8 @@
 package builtin
 
 import (
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/cmd"
@@ -39,4 +41,33 @@ func TestExecuteStopsAtMaxCommandForks(t *testing.T) {
 			t.Fatalf("max_command_forks 3 with 3 forks: runs=%d errors=%v", forkCountProbeRuns, out.Errors())
 		}
 	})
+}
+
+func TestExecuteForksConcurrentAdmit(t *testing.T) {
+	forks := &executeForks{limit: 50, counts: map[int]int{}}
+	out := &cmd.Output{}
+
+	var (
+		wg       sync.WaitGroup
+		admitted atomic.Int32
+	)
+	for range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for range 20 {
+				if forks.admit(out, 3, 1) {
+					admitted.Add(1)
+				}
+			}
+		}()
+	}
+	wg.Wait()
+
+	if got := admitted.Load(); got != 49 {
+		t.Fatalf("admitted = %d, want 49 (limit-1)", got)
+	}
+	if got := out.ErrorCount(); got != 1 {
+		t.Fatalf("error count = %d, want 1", got)
+	}
 }

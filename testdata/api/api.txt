@@ -6346,6 +6346,7 @@ server/cmd	func	CommandBlockLevel	func() server/cmd.Level
 server/cmd	func	Commands	func() map[string]server/cmd.Command
 server/cmd	func	ExecuteLine	func(source server/cmd.Source, commandLine string, tx *server/world.Tx, before func(server/cmd.Command, []string) bool)
 server/cmd	func	ExecutionContextOf	func(src server/cmd.Source) (server/cmd.ExecutionContext, bool)
+server/cmd	func	ForEach	func[R any](src server/cmd.Source, o *server/cmd.Output, tx *server/world.Tx, sel server/cmd.Selector, each func(tx *server/world.Tx, t server/cmd.Target) R, then func(src server/cmd.Source, o *server/cmd.Output, tx *server/world.Tx, results []server/cmd.Result[R]))
 server/cmd	func	HasLevel	func(id github.com/google/uuid.UUID, l server/cmd.Level) bool
 server/cmd	func	IsOperator	func(id github.com/google/uuid.UUID) bool
 server/cmd	func	Later	func(src server/cmd.Source) func(tx *server/world.Tx, o *server/cmd.Output)
@@ -6359,11 +6360,13 @@ server/cmd	func	ResolveCoordinates	func(args []string, src server/cmd.Source) (g
 server/cmd	func	ResolveTargets	func(selector string, src server/cmd.Source, tx *server/world.Tx) ([]server/cmd.Target, error)
 server/cmd	func	ScoreHolderName	func(t server/cmd.Target) string
 server/cmd	func	SetAdminFeedback	func(f func(src server/cmd.Source, name string, message string) bool)
+server/cmd	func	SetCrossWorldTimeout	func(d time.Duration)
 server/cmd	func	SetObserver	func(f func(server/cmd.Execution))
 server/cmd	func	SetOperatorChecker	func(f func(id github.com/google/uuid.UUID) bool)
 server/cmd	func	SetPermissions	func(p server/cmd.Permissions)
 server/cmd	func	SetWorlds	func(w server/cmd.Worlds)
 server/cmd	func	SourceLevel	func(src server/cmd.Source) server/cmd.Level
+server/cmd	func	TallyOf	func(results []server/cmd.Result[int]) server/cmd.Tally
 server/cmd	func	WithContext	func(src server/cmd.Source, context server/cmd.ExecutionContext) server/cmd.ContextSource
 server/cmd	method	BlockSource.BlockPosition	func() server/block/cube.Pos
 server/cmd	method	BlockSource.Name	func() string
@@ -6412,6 +6415,7 @@ server/cmd	method	Output.Result	func() int
 server/cmd	method	Output.SetResult	func(v int)
 server/cmd	method	Output.Success	func() bool
 server/cmd	method	Output.WithoutMessages	func() *server/cmd.Output
+server/cmd	method	Tally.Feedback	func(o *server/cmd.Output, failed error, single func(who string) string, multiple func(who string) string)
 server/cmd	type	Allower	interface{Allow(src server/cmd.Source) bool}
 server/cmd	type	Anchor	uint8
 server/cmd	type	BlockSource	struct{pos server/block/cube.Pos; world *server/world.World; name string; output *server/cmd.Output}
@@ -6420,6 +6424,7 @@ server/cmd	type	ConstrainedEnum	interface{Constraints(option string) []server/cm
 server/cmd	type	ContextSource	struct{server/cmd.Source; Context server/cmd.ExecutionContext}
 server/cmd	type	Deferrer	interface{Defer() (done func())}
 server/cmd	type	DynamicEnum	interface{Dynamic() bool; server/cmd.Enum}
+server/cmd	type	Entities	struct{sel *server/cmd.entitySelector}
 server/cmd	type	Enum	interface{Options(source server/cmd.Source) []string; Type() string}
 server/cmd	type	EnumConstraint	uint8
 server/cmd	type	Execution	struct{Source server/cmd.Source; Command server/cmd.Command; Args string; Output *server/cmd.Output; Level server/cmd.Level; Denied bool}
@@ -6428,6 +6433,8 @@ server/cmd	type	Level	uint8
 server/cmd	type	Leveled	interface{PermissionLevel() server/cmd.Level}
 server/cmd	type	Line	struct{args []string; seen []string; src server/cmd.Source; cmd server/cmd.Command}
 server/cmd	type	NamedTarget	interface{Name() string; server/cmd.Target}
+server/cmd	type	OneEntity	struct{sel *server/cmd.entitySelector}
+server/cmd	type	OnePlayer	struct{sel *server/cmd.entitySelector}
 server/cmd	type	Optional	struct{val T; set bool}
 server/cmd	type	Output	struct{errors []error; messages []fmt.Stringer; result int; resultSet bool; inExecute bool; hold *server/cmd.outputHold}
 server/cmd	type	ParamDescriber	interface{DescribeParams(src server/cmd.Source) []server/cmd.ParamInfo}
@@ -6436,14 +6443,20 @@ server/cmd	type	ParamOption	uint8
 server/cmd	type	ParamOptioner	interface{ParamOptions() server/cmd.ParamOption}
 server/cmd	type	Parameter	interface{Parse(line *server/cmd.Line, v reflect.Value) error; Type() string}
 server/cmd	type	Permissions	interface{CommandBlockLevel() server/cmd.Level; CommandLevel(command string, declared server/cmd.Level) server/cmd.Level; PlayerLevel(id github.com/google/uuid.UUID) server/cmd.Level}
+server/cmd	type	Players	struct{sel *server/cmd.entitySelector}
 server/cmd	type	Requirer	interface{RequiredLevel() server/cmd.Level}
+server/cmd	type	Result	struct{Name string; Handle *server/world.EntityHandle; Value R}
 server/cmd	type	Runnable	interface{Run(src server/cmd.Source, o *server/cmd.Output, tx *server/world.Tx)}
+server/cmd	type	Selector	interface{selector() *server/cmd.entitySelector}
 server/cmd	type	Source	interface{SendCommandOutput(o *server/cmd.Output); server/cmd.Target}
 server/cmd	type	SubCommand	struct{}
+server/cmd	type	Tally	struct{Total int; Count int; NonZero int; Only string; OnlyNonZero string}
 server/cmd	type	Target	interface{Position() github.com/go-gl/mathgl/mgl64.Vec3}
 server/cmd	type	Varargs	string
 server/cmd	type	Worlds	interface{Online() []*server/world.EntityHandle; PlayerByName(name string) (*server/world.EntityHandle, bool); Worlds() []*server/world.World}
 server/cmd	type	Wrapper	interface{Unwrap() server/cmd.Source}
+server/cmd	var	ErrNoEntityFound	error
+server/cmd	var	ErrNoPlayerFound	error
 server/cmd	var	MessageBooleanInvalid	server/player/chat.Translation
 server/cmd	var	MessageNoTargets	server/player/chat.Translation
 server/cmd	var	MessageNumberInvalid	server/player/chat.Translation

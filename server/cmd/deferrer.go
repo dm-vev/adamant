@@ -64,11 +64,9 @@ func Later(src Source) func(tx *world.Tx, o *Output) {
 		if o == nil {
 			return
 		}
-		if tx != nil {
-			if e, ok := h.Entity(tx); ok {
-				sendTo(e, o)
-				return
-			}
+		if e, ok := handleEntityInTx(h, tx); ok {
+			sendTo(e, o)
+			return
 		}
 		h.Do(func(_ *world.Tx, e world.Entity) { sendTo(e, o) })
 	}

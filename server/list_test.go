@@ -26,18 +26,19 @@ import (
 	"golang.org/x/text/language"
 )
 
-// netherProvider is a player.Provider that loads the players of the UUIDs
-// it holds in the Nether, and every other player nowhere, so that the server
-// spawns it in its default world.
-type netherProvider struct{ nether map[uuid.UUID]bool }
+// dimProvider is a player.Provider that loads players in the configured
+// dimension by UUID, and every other player nowhere so the server spawns them
+// in its default world.
+type dimProvider struct{ dims map[uuid.UUID]world.Dimension }
 
-func (p netherProvider) Save(uuid.UUID, player.Config, *world.World) error { return nil }
-func (p netherProvider) Close() error                                      { return nil }
-func (p netherProvider) Load(id uuid.UUID, dim func(world.Dimension) *world.World) (player.Config, *world.World, error) {
-	if !p.nether[id] {
+func (p dimProvider) Save(uuid.UUID, player.Config, *world.World) error { return nil }
+func (p dimProvider) Close() error                                      { return nil }
+func (p dimProvider) Load(id uuid.UUID, dim func(world.Dimension) *world.World) (player.Config, *world.World, error) {
+	d, ok := p.dims[id]
+	if !ok {
 		return player.Config{}, nil, errors.New("no data")
 	}
-	return player.Config{}, dim(world.Nether), nil
+	return player.Config{}, dim(d), nil
 }
 
 // outputSource is the player of a command that records its output.
@@ -55,9 +56,16 @@ type twoWorlds struct {
 	alice, bob *world.EntityHandle
 }
 
-// newTwoWorlds starts a twoWorlds and joins Alice and Bob. The server logs
-// to log, if not nil.
-func newTwoWorlds(t *testing.T, log slog.Handler) *twoWorlds {
+// threeWorlds is a server of Overworld, Nether and End, which generate no
+// terrain, with Alice in the Overworld, Bob in the Nether and Carol in the End.
+type threeWorlds struct {
+	srv               *server.Server
+	alice, bob, carol *world.EntityHandle
+}
+
+// newTestWorlds starts a server with the given player dimensions and joins
+// each named player in order, returning their handles in join order.
+func newTestWorlds(t *testing.T, log slog.Handler, disableEnd bool, names []string, dims map[uuid.UUID]world.Dimension) (*server.Server, []*world.EntityHandle) {
 	t.Helper()
 	l := clienttest.NewListener()
 	login := func(name string) *clienttest.Join {
@@ -67,40 +75,57 @@ func newTwoWorlds(t *testing.T, log slog.Handler) *twoWorlds {
 			Addr:     &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 19132},
 		}}
 	}
-	alice, bob := login("Alice"), login("Bob")
 	if log == nil {
 		log = slog.NewTextHandler(io.Discard, nil)
 	}
 	conf := server.Config{
 		Log: slog.New(log),
 		// A server without sign-in keeps the data of a player by its name.
-		PlayerProvider: netherProvider{nether: map[uuid.UUID]bool{identity.OfflineUUID("Bob"): true}},
-		DisableEnd:     true,
+		PlayerProvider: dimProvider{dims: dims},
+		DisableEnd:     disableEnd,
 		Generator:      func(world.Dimension, int64) world.Generator { return world.NopGenerator{} },
 		Listeners:      []func(server.Config, server.Host) (server.Listener, error){func(server.Config, server.Host) (server.Listener, error) { return l, nil }},
 	}
-	tw := &twoWorlds{srv: conf.New()}
-	tw.srv.Listen()
-	spawned := make(chan *world.EntityHandle, 2)
+	srv := conf.New()
+	srv.Listen()
+	spawned := make(chan *world.EntityHandle, len(names))
 	go func() {
-		for p := range tw.srv.Accept() {
+		for p := range srv.Accept() {
 			spawned <- p.H()
 		}
 	}()
-	for _, j := range []*clienttest.Join{alice, bob} {
-		l.Send(j)
+	handles := make([]*world.EntityHandle, len(names))
+	for i, name := range names {
+		l.Send(login(name))
 		select {
 		case h := <-spawned:
-			if j == alice {
-				tw.alice = h
-			} else {
-				tw.bob = h
-			}
+			handles[i] = h
 		case <-time.After(10 * time.Second):
-			t.Fatalf("%s did not spawn", j.L.Identity.Name)
+			t.Fatalf("%s did not spawn", name)
 		}
 	}
-	return tw
+	return srv, handles
+}
+
+// newTwoWorlds starts a twoWorlds and joins Alice and Bob. The server logs
+// to log, if not nil.
+func newTwoWorlds(t *testing.T, log slog.Handler) *twoWorlds {
+	t.Helper()
+	srv, hs := newTestWorlds(t, log, true, []string{"Alice", "Bob"}, map[uuid.UUID]world.Dimension{
+		identity.OfflineUUID("Bob"): world.Nether,
+	})
+	return &twoWorlds{srv: srv, alice: hs[0], bob: hs[1]}
+}
+
+// newThreeWorlds starts a threeWorlds and joins Alice (overworld), Bob
+// (Nether) and Carol (End) in join order.
+func newThreeWorlds(t *testing.T, log slog.Handler) *threeWorlds {
+	t.Helper()
+	srv, hs := newTestWorlds(t, log, false, []string{"Alice", "Bob", "Carol"}, map[uuid.UUID]world.Dimension{
+		identity.OfflineUUID("Bob"):   world.Nether,
+		identity.OfflineUUID("Carol"): world.End,
+	})
+	return &threeWorlds{srv: srv, alice: hs[0], bob: hs[1], carol: hs[2]}
 }
 
 // listHelperEnv runs TestListHelper in a subprocess of TestListDoesNotWaitOnOtherWorlds.

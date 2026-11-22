@@ -3650,7 +3650,16 @@ server/cmd.Command	server/cmd/builtin.namedSource	value
 server/cmd.ContextSource	server/cmd.Source	value
 server/cmd.ContextSource	server/cmd.Target	value
 server/cmd.ContextSource	server/cmd.Wrapper	value
+server/cmd.Entities	server/cmd.Selector	value
+server/cmd.OneEntity	server/cmd.Selector	value
+server/cmd.OnePlayer	server/cmd.Selector	value
 server/cmd.Optional	server/cmd.optionalT	value
+server/cmd.Players	server/cmd.Selector	value
+server/cmd.standInSource	server/cmd.Leveled	value
+server/cmd.standInSource	server/cmd.NamedTarget	value
+server/cmd.standInSource	server/cmd.Source	value
+server/cmd.standInSource	server/cmd.Target	value
+server/cmd.standInSource	server/cmd/builtin.namedSource	value
 server/cmd.str	server/player/chat.TranslationString	value
 server/cmd/builtin.aboutCommand	server/cmd.Runnable	value
 server/cmd/builtin.admin	server/cmd.Requirer	value

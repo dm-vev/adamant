@@ -270,9 +270,13 @@ func (cmd Command) Params(src Source) [][]ParamInfo {
 		var fields []ParamInfo
 		for _, t := range exportedFields(elem) {
 			field := elem.FieldByName(t.Name)
+			val := unwrap(field).Interface()
+			if _, ok := val.(Selector); ok {
+				val = []Target(nil)
+			}
 			fields = append(fields, ParamInfo{
 				Name:     name(t),
-				Value:    unwrap(field).Interface(),
+				Value:    val,
 				Optional: optional(field),
 				Suffix:   suffix(t),
 			})

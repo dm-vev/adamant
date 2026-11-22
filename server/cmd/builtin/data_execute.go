@@ -7,6 +7,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/cmd"
@@ -58,6 +59,7 @@ func (c executeCommand) Run(src cmd.Source, out *cmd.Output, tx *world.Tx) {
 // at one stage of an execute chain reach max_command_forks, the command fails
 // with "Maximum number of contexts reached" and no further branch runs.
 type executeForks struct {
+	mu       sync.Mutex
 	limit    int
 	counts   map[int]int
 	exceeded bool
@@ -65,6 +67,8 @@ type executeForks struct {
 
 // admit records n contexts forked at the stage with remaining words.
 func (f *executeForks) admit(out *cmd.Output, remaining, n int) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.exceeded {
 		return false
 	}
