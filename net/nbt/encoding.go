@@ -2,7 +2,6 @@ package nbt
 
 import (
 	"math"
-	"unsafe"
 )
 
 // Encoding is an encoding variant of NBT. In general, there are three different encodings of NBT, which are
@@ -23,6 +22,32 @@ type Encoding interface {
 	WriteFloat32(w *offsetWriter, x float32) error
 	WriteFloat64(w *offsetWriter, x float64) error
 	WriteString(w *offsetWriter, x string) error
+}
+
+// encodingKind identifies the concrete built-in Encoding to avoid interface dispatch and escape analysis overhead.
+type encodingKind uint8
+
+const (
+	encOther encodingKind = iota
+	encLittleEndian
+	encNetworkLittleEndian
+	encBigEndian
+	encNetworkBigEndian
+)
+
+func encodingKindOf(e Encoding) encodingKind {
+	switch e.(type) {
+	case littleEndian:
+		return encLittleEndian
+	case networkLittleEndian:
+		return encNetworkLittleEndian
+	case bigEndian:
+		return encBigEndian
+	case networkBigEndian:
+		return encNetworkBigEndian
+	default:
+		return encOther
+	}
 }
 
 var (
@@ -61,14 +86,33 @@ func (networkLittleEndian) WriteInt32(w *offsetWriter, x int32) error {
 	if x < 0 {
 		ux = ^ux
 	}
-	for ux >= 0x80 {
-		if err := w.WriteByte(byte(ux) | 0x80); err != nil {
-			return FailedWriteError{Op: "WriteInt32", Off: w.off}
+	if w.useRaw {
+		if ux < 0x80 {
+			w.raw = append(w.raw, byte(ux))
+			return nil
 		}
-		ux >>= 7
+		for ux >= 0x80 {
+			w.raw = append(w.raw, byte(ux)|0x80)
+			ux >>= 7
+		}
+		w.raw = append(w.raw, byte(ux))
+		return nil
 	}
-	if err := w.WriteByte(byte(ux)); err != nil {
-		return FailedWriteError{Op: "WriteInt32", Off: w.off}
+	if ux < 0x80 {
+		if err := w.writeByte(byte(ux)); err != nil {
+			return FailedWriteError{Op: "WriteInt32", Off: w.offset()}
+		}
+		return nil
+	}
+	i := 0
+	for ux >= 0x80 {
+		w.buf[i] = byte(ux) | 0x80
+		ux >>= 7
+		i++
+	}
+	w.buf[i] = byte(ux)
+	if err := w.writeBytes(w.buf[:i+1]); err != nil {
+		return FailedWriteError{Op: "WriteInt32", Off: w.offset()}
 	}
 	return nil
 }
@@ -79,14 +123,33 @@ func (networkLittleEndian) WriteInt64(w *offsetWriter, x int64) error {
 	if x < 0 {
 		ux = ^ux
 	}
-	for ux >= 0x80 {
-		if err := w.WriteByte(byte(ux) | 0x80); err != nil {
-			return FailedWriteError{Op: "WriteInt64", Off: w.off}
+	if w.useRaw {
+		if ux < 0x80 {
+			w.raw = append(w.raw, byte(ux))
+			return nil
 		}
-		ux >>= 7
+		for ux >= 0x80 {
+			w.raw = append(w.raw, byte(ux)|0x80)
+			ux >>= 7
+		}
+		w.raw = append(w.raw, byte(ux))
+		return nil
 	}
-	if err := w.WriteByte(byte(ux)); err != nil {
-		return FailedWriteError{Op: "WriteInt64", Off: w.off}
+	if ux < 0x80 {
+		if err := w.writeByte(byte(ux)); err != nil {
+			return FailedWriteError{Op: "WriteInt64", Off: w.offset()}
+		}
+		return nil
+	}
+	i := 0
+	for ux >= 0x80 {
+		w.buf[i] = byte(ux) | 0x80
+		ux >>= 7
+		i++
+	}
+	w.buf[i] = byte(ux)
+	if err := w.writeBytes(w.buf[:i+1]); err != nil {
+		return FailedWriteError{Op: "WriteInt64", Off: w.offset()}
 	}
 	return nil
 }
@@ -94,32 +157,97 @@ func (networkLittleEndian) WriteInt64(w *offsetWriter, x int64) error {
 // WriteString ...
 func (networkLittleEndian) WriteString(w *offsetWriter, x string) error {
 	if len(x) > maxStringSize {
-		return InvalidStringError{Off: w.off, N: uint(len(x)), Err: errStringTooLong}
+		return InvalidStringError{Off: w.offset(), N: uint(len(x)), Err: errStringTooLong}
 	}
 	ux := uint32(len(x))
-	for ux >= 0x80 {
-		if err := w.WriteByte(byte(ux) | 0x80); err != nil {
-			return FailedWriteError{Op: "WriteString", Off: w.off}
+	if w.useRaw {
+		if ux < 0x80 {
+			w.raw = append(w.raw, byte(ux))
+			w.raw = append(w.raw, x...)
+			return nil
 		}
-		ux >>= 7
+		for ux >= 0x80 {
+			w.raw = append(w.raw, byte(ux)|0x80)
+			ux >>= 7
+		}
+		w.raw = append(w.raw, byte(ux))
+		w.raw = append(w.raw, x...)
+		return nil
 	}
-	if err := w.WriteByte(byte(ux)); err != nil {
-		return FailedWriteError{Op: "WriteString", Off: w.off}
+	if ux < 0x80 {
+		if err := w.writeByte(byte(ux)); err != nil {
+			return FailedWriteError{Op: "WriteString", Off: w.offset()}
+		}
+	} else {
+		i := 0
+		for ux >= 0x80 {
+			w.buf[i] = byte(ux) | 0x80
+			ux >>= 7
+			i++
+		}
+		w.buf[i] = byte(ux)
+		if err := w.writeBytes(w.buf[:i+1]); err != nil {
+			return FailedWriteError{Op: "WriteString", Off: w.offset()}
+		}
 	}
-	// Use unsafe conversion from a string to a byte slice to prevent copying.
-	if _, err := w.Write(unsafe.Slice(unsafe.StringData(x), len(x))); err != nil {
-		return FailedWriteError{Op: "WriteString", Off: w.off}
+	if err := w.writeStringBytes(x); err != nil {
+		return FailedWriteError{Op: "WriteString", Off: w.offset()}
 	}
 	return nil
 }
 
+var (
+	errOverrunInt16   error = BufferOverrunError{Op: "Int16"}
+	errOverrunInt32   error = BufferOverrunError{Op: "Int32"}
+	errOverrunInt64   error = BufferOverrunError{Op: "Int64"}
+	errOverrunFloat32 error = BufferOverrunError{Op: "Float32"}
+	errOverrunFloat64 error = BufferOverrunError{Op: "Float64"}
+)
+
 // Int32 ...
 func (networkLittleEndian) Int32(r *offsetReader) (int32, error) {
+	if r.useData {
+		rem := r.rem
+		if len(rem) == 0 {
+			return 0, errOverrunInt32
+		}
+		b := rem[0]
+		if b < 0x80 {
+			r.rem = rem[1:]
+			ux := uint32(b)
+			x := int32(ux >> 1)
+			if ux&1 != 0 {
+				x = ^x
+			}
+			return x, nil
+		}
+		var ux uint32
+		pos := 0
+		for i := uint(0); i < 35; i += 7 {
+			if pos >= len(rem) {
+				r.rem = rem[pos:]
+				return 0, errOverrunInt32
+			}
+			b = rem[pos]
+			pos++
+			ux |= uint32(b&0x7f) << i
+			if b&0x80 == 0 {
+				r.rem = rem[pos:]
+				x := int32(ux >> 1)
+				if ux&1 != 0 {
+					x = ^x
+				}
+				return x, nil
+			}
+		}
+		r.rem = rem[pos:]
+		return 0, InvalidVarintError{N: 5, Off: r.offset()}
+	}
 	var ux uint32
 	for i := uint(0); i < 35; i += 7 {
-		b, err := r.ReadByte()
+		b, err := r.readByte()
 		if err != nil {
-			return 0, BufferOverrunError{Op: "Int32"}
+			return 0, errOverrunInt32
 		}
 		ux |= uint32(b&0x7f) << i
 		if b&0x80 == 0 {
@@ -130,16 +258,53 @@ func (networkLittleEndian) Int32(r *offsetReader) (int32, error) {
 			return x, nil
 		}
 	}
-	return 0, InvalidVarintError{N: 5, Off: r.off}
+	return 0, InvalidVarintError{N: 5, Off: r.offset()}
 }
 
 // Int64 ...
 func (networkLittleEndian) Int64(r *offsetReader) (int64, error) {
+	if r.useData {
+		rem := r.rem
+		if len(rem) == 0 {
+			return 0, errOverrunInt64
+		}
+		b := rem[0]
+		if b < 0x80 {
+			r.rem = rem[1:]
+			ux := uint64(b)
+			x := int64(ux >> 1)
+			if ux&1 != 0 {
+				x = ^x
+			}
+			return x, nil
+		}
+		var ux uint64
+		pos := 0
+		for i := uint(0); i < 70; i += 7 {
+			if pos >= len(rem) {
+				r.rem = rem[pos:]
+				return 0, errOverrunInt64
+			}
+			b = rem[pos]
+			pos++
+			ux |= uint64(b&0x7f) << i
+			if b&0x80 == 0 {
+				r.rem = rem[pos:]
+				x := int64(ux >> 1)
+				if ux&1 != 0 {
+					x = ^x
+				}
+				return x, nil
+			}
+		}
+		r.rem = rem[pos:]
+		return 0, InvalidVarintError{N: 10, Off: r.offset()}
+	}
 	var ux uint64
 	for i := uint(0); i < 70; i += 7 {
-		b, err := r.ReadByte()
+		b, err := r.readByte()
 		if err != nil {
-			return 0, BufferOverrunError{Op: "Int64"}
+			return 0, errOverrunInt64
 		}
 		ux |= uint64(b&0x7f) << i
 		if b&0x80 == 0 {
@@ -150,7 +315,7 @@ func (networkLittleEndian) Int64(r *offsetReader) (int64, error) {
 			return x, nil
 		}
 	}
-	return 0, InvalidVarintError{N: 10, Off: r.off}
+	return 0, InvalidVarintError{N: 10, Off: r.offset()}
 }
 
 // String ...
@@ -160,20 +325,64 @@ func (e networkLittleEndian) String(r *offsetReader) (string, error) {
 		return "", err
 	}
 	if length > maxStringSize {
-		return "", InvalidStringError{N: uint(length), Off: r.off, Err: errStringTooLong}
+		return "", InvalidStringError{N: uint(length), Off: r.offset(), Err: errStringTooLong}
 	}
-	data := make([]byte, length)
-	if _, err := r.Read(data); err != nil {
+	s, err := r.readOwnedString(int(length))
+	if err != nil {
 		return "", BufferOverrunError{Op: "String"}
 	}
-	return *(*string)(unsafe.Pointer(&data)), nil
+	return s, nil
+}
+
+// stringBytes reads a string into a temporary byte slice valid until the next read on r.
+func (e networkLittleEndian) stringBytes(r *offsetReader) ([]byte, error) {
+	length, err := e.stringLength(r)
+	if err != nil {
+		return nil, err
+	}
+	if length > maxStringSize {
+		return nil, InvalidStringError{N: uint(length), Off: r.offset(), Err: errStringTooLong}
+	}
+	b, err := r.readTempBytes(int(length))
+	if err != nil {
+		return nil, BufferOverrunError{Op: "String"}
+	}
+	return b, nil
 }
 
 // stringLength reads the length of a string as a varuint32.
 func (networkLittleEndian) stringLength(r *offsetReader) (uint32, error) {
+	if r.useData {
+		rem := r.rem
+		if len(rem) == 0 {
+			return 0, BufferOverrunError{Op: "StringLength"}
+		}
+		b := rem[0]
+		if b < 0x80 {
+			r.rem = rem[1:]
+			return uint32(b), nil
+		}
+		var ux uint32
+		pos := 0
+		for i := uint(0); i < 35; i += 7 {
+			if pos >= len(rem) {
+				r.rem = rem[pos:]
+				return 0, BufferOverrunError{Op: "StringLength"}
+			}
+			b = rem[pos]
+			pos++
+			ux |= uint32(b&0x7f) << i
+			if b&0x80 == 0 {
+				r.rem = rem[pos:]
+				return ux, nil
+			}
+		}
+		r.rem = rem[pos:]
+		return 0, InvalidVarintError{N: 5, Off: r.offset()}
+	}
 	var ux uint32
 	for i := uint(0); i < 35; i += 7 {
-		b, err := r.ReadByte()
+		b, err := r.readByte()
 		if err != nil {
 			return 0, BufferOverrunError{Op: "StringLength"}
 		}
@@ -182,7 +391,7 @@ func (networkLittleEndian) stringLength(r *offsetReader) (uint32, error) {
 			return ux, nil
 		}
 	}
-	return 0, InvalidVarintError{N: 5, Off: r.off}
+	return 0, InvalidVarintError{N: 5, Off: r.offset()}
 }
 
 // Int32Slice ...
