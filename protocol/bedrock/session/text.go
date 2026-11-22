@@ -78,6 +78,17 @@ func (s *Session) SendToast(title, message text.Text) {
 	})
 }
 
+var (
+	emptyScoreboardName      string
+	emptyScoreboardLineSlice []string
+	// colours holds a list of colour codes to be filled out for empty lines in a scoreboard.
+	colours = [15]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"}
+	// emptyScoreboardLines holds the colour-code placeholders for empty lines in a scoreboard.
+	emptyScoreboardLines = [15]string{"§1", "§2", "§3", "§4", "§5", "§6", "§7", "§8", "§9", "§a", "§b", "§c", "§d", "§e", "§f"}
+)
+
+const scoreboardSpaces = "                                                                "
+
 // SendScoreboard ...
 func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 	if s == Nop || sb == nil {
@@ -87,12 +98,10 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 	currentLinesPtr := s.currentLines.Load()
 	if currentScoreboard == nil || currentLinesPtr == nil {
 		// Ensure scoreboard state is initialized to avoid nil dereferences if the session was not built via New().
-		var name string
-		var lines []string
-		s.currentScoreboard.Store(&name)
-		s.currentLines.Store(&lines)
-		currentScoreboard = &name
-		currentLinesPtr = &lines
+		s.currentScoreboard.Store(&emptyScoreboardName)
+		s.currentLines.Store(&emptyScoreboardLineSlice)
+		currentScoreboard = &emptyScoreboardName
+		currentLinesPtr = &emptyScoreboardLineSlice
 	}
 	currentName, currentLines := *currentScoreboard, *currentLinesPtr
 	name := bedrocktext.String(sb.Name())
@@ -112,59 +121,65 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 			pk.SortOrder = mc.ScoreboardSortOrderAscending
 		}
 		s.writePacket(pk)
-	} else {
+		nameCopy := name
+		s.currentScoreboard.Store(&nameCopy)
+	} else if len(currentLines) > 0 {
 		// Remove all current lines from the scoreboard. We can't replace them without removing them.
-		pk := &mc.SetScorePacket{}
-		for i := range currentLines {
-			pk.Entries = append(pk.Entries, mc.ScoreboardEntry{
+		entries := make([]mc.ScoreboardEntry, len(currentLines))
+		for i := range entries {
+			entries[i] = mc.ScoreboardEntry{
 				IdentityType:  mc.ScoreboardIdentityRemove,
 				EntryID:       int64(i),
 				ObjectiveName: currentName,
 				Score:         int32(i),
-			})
+			}
 		}
-		if len(pk.Entries) > 0 {
-			s.writePacket(pk)
+		s.writePacket(&mc.SetScorePacket{Entries: entries})
+	}
+	if len(lines) > 0 {
+		entries := make([]mc.ScoreboardEntry, len(lines))
+		for k, line := range lines {
+			if len(line) == 0 {
+				line = emptyScoreboardLines[k]
+				lines[k] = line
+			}
+			entries[k] = mc.ScoreboardEntry{
+				EntryID:       int64(k),
+				ObjectiveName: name,
+				Score:         int32(k),
+				IdentityType:  mc.ScoreboardIdentityFakePlayer,
+				DisplayName:   line,
+			}
 		}
+		s.writePacket(&mc.SetScorePacket{Entries: entries})
+		s.currentLines.Store(&lines)
+	} else {
+		s.currentLines.Store(&emptyScoreboardLineSlice)
 	}
-	pk := &mc.SetScorePacket{}
-	displayLines := make([]string, len(lines))
-	for k, line := range lines {
-		if len(line) == 0 {
-			line = "§" + colours[k]
-		}
-		displayLines[k] = line
-		pk.Entries = append(pk.Entries, mc.ScoreboardEntry{
-			EntryID:       int64(k),
-			ObjectiveName: name,
-			Score:         int32(k),
-			IdentityType:  mc.ScoreboardIdentityFakePlayer,
-			DisplayName:   line,
-		})
-	}
-	if len(pk.Entries) > 0 {
-		s.writePacket(pk)
-	}
-	// Store the last sent state so subsequent updates remove the right entries.
-	s.currentScoreboard.Store(&name)
-	s.currentLines.Store(&displayLines)
 }
 
 // scoreboardLines renders the lines of a scoreboard of the name passed, as rendered, in the order the
 // client shows them: padded with a space at their start, and at their end up to the width of the name, in
 // bytes, if padding is set, and reversed if the scoreboard is descending.
 func scoreboardLines(lines []text.Text, name string, padding, descending bool) []string {
+	if len(lines) == 0 {
+		return nil
+	}
 	out := make([]string, len(lines))
 	for i, line := range lines {
 		out[i] = bedrocktext.String(line)
 	}
 	if padding {
 		for i, line := range out {
-			if len(name)-len(line)-2 <= 0 {
+			pad := len(name) - len(line) - 2
+			switch {
+			case pad <= 0:
 				out[i] = " " + line + " "
-				continue
+			case pad <= len(scoreboardSpaces):
+				out[i] = " " + line + scoreboardSpaces[:pad]
+			default:
+				out[i] = " " + line + strings.Repeat(" ", pad)
 			}
-			out[i] = " " + line + strings.Repeat(" ", len(name)-len(line)-2)
 		}
 	}
 	if descending {
@@ -172,9 +187,6 @@ func scoreboardLines(lines []text.Text, name string, padding, descending bool) [
 	}
 	return out
 }
-
-// colours holds a list of colour codes to be filled out for empty lines in a scoreboard.
-var colours = [15]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"}
 
 // RemoveScoreboard ...
 func (s *Session) RemoveScoreboard() {
@@ -186,10 +198,8 @@ func (s *Session) RemoveScoreboard() {
 		return
 	}
 	s.writePacket(&mc.RemoveObjectivePacket{ObjectiveName: *current})
-	var name string
-	var lines []string
-	s.currentScoreboard.Store(&name)
-	s.currentLines.Store(&lines)
+	s.currentScoreboard.Store(&emptyScoreboardName)
+	s.currentLines.Store(&emptyScoreboardLineSlice)
 }
 
 // SendBossBar sends a boss bar using the default identifier.

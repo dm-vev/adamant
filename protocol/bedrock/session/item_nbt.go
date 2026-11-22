@@ -21,14 +21,15 @@ func networkItemNBT(s item.Stack) map[string]any {
 		return tag
 	}
 	damage := s.MaxDurability() - s.Durability()
-	if tag["Damage"] != any(int16(damage)) {
+	tagDamage, ok := tag["Damage"].(int16)
+	if !ok || tagDamage != int16(damage) {
 		// The NBT of the item holds a damage of its own, which WriteTag
 		// kept.
 		return tag
 	}
 	if damage != 0 {
 		if nbter, ok := s.Item().(world.NBTer); ok {
-			if own, ok := nbter.EncodeNBT()["Damage"]; ok && own == tag["Damage"] {
+			if own, ok := nbter.EncodeNBT()["Damage"].(int16); ok && own == tagDamage {
 				// The NBT of the item holds the same damage, as an int16,
 				// which WriteTag kept.
 				return tag
@@ -51,11 +52,15 @@ func readNetworkItemNBT(tag map[string]any, s item.Stack) item.Stack {
 // readNetworkTag applies item NBT a client sent to s as readNetworkItemNBT
 // does, lore lines and all.
 func readNetworkTag(tag map[string]any, s item.Stack) item.Stack {
-	damage, _ := tag["Damage"].(int32)
-	tag = maps.Clone(tag)
-	if tag == nil {
-		tag = map[string]any{}
+	if len(tag) == 0 {
+		return item.ReadTag(nil, s)
 	}
+	rawDamage, hasDamage := tag["Damage"]
+	if !hasDamage {
+		return item.ReadTag(tag, s)
+	}
+	damage, _ := rawDamage.(int32)
+	tag = maps.Clone(tag)
 	switch {
 	case damage >= math.MinInt16 && damage <= math.MaxInt16:
 		tag["Damage"] = int16(damage)
@@ -94,6 +99,9 @@ func tradeItemNBT(s item.Stack) map[string]any {
 // stays, so readNetworkItemNBT reads what a client sends back of the stack
 // as s.
 func showJavaOnlyEnchantments(tag map[string]any, s item.Stack) {
+	if _, ok := tag["adamant:ench"]; !ok {
+		return
+	}
 	lines := javaOnlyLore(s)
 	if len(lines) == 0 {
 		return
@@ -115,8 +123,12 @@ func showJavaOnlyEnchantments(tag map[string]any, s item.Stack) {
 // javaOnlyLore gives for the Java-only enchantments s was read with from
 // adamant:ench.
 func withoutJavaOnlyLore(s item.Stack) item.Stack {
+	lore := s.Lore()
+	if len(lore) == 0 {
+		return s
+	}
 	lines := javaOnlyLore(s)
-	if lore := s.Lore(); len(lines) != 0 && len(lore) >= len(lines) && slices.Equal(lore[:len(lines)], lines) {
+	if len(lines) != 0 && len(lore) >= len(lines) && slices.Equal(lore[:len(lines)], lines) {
 		return s.WithLore(lore[len(lines):]...)
 	}
 	return s
@@ -129,28 +141,33 @@ func withoutJavaOnlyLore(s item.Stack) item.Stack {
 func javaOnlyLore(s item.Stack) []string {
 	var lines []string
 	for _, e := range s.Enchantments() {
-		if !item.IsJavaOnlyEnchantment(e.Type()) {
+		t := e.Type()
+		if !item.IsJavaOnlyEnchantment(t) {
 			continue
 		}
 		// The reset drops the style a client gives lore of its own.
-		line := "§r§7"
-		if c, ok := e.Type().(interface{ Curse() bool }); ok && c.Curse() {
-			line = "§r§c"
+		prefix := "§r§7"
+		if c, ok := t.(interface{ Curse() bool }); ok && c.Curse() {
+			prefix = "§r§c"
 		}
-		line += e.Type().Name()
-		if e.Level() != 1 || e.Type().MaxLevel() != 1 {
-			line += " " + enchantmentLevel(e.Level())
+		var line string
+		if e.Level() != 1 || t.MaxLevel() != 1 {
+			line = prefix + t.Name() + " " + enchantmentLevel(e.Level())
+		} else {
+			line = prefix + t.Name()
 		}
 		lines = append(lines, line)
 	}
 	return lines
 }
 
+var romanLevels = [10]string{"I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"}
+
 // enchantmentLevel returns a level as the enchantment.level.N texts of Java
 // name it, I to X, and as a number past X, which Java has no text for.
 func enchantmentLevel(level int) string {
-	if level >= 1 && level <= 10 {
-		return [...]string{"I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"}[level-1]
+	if level >= 1 && level <= len(romanLevels) {
+		return romanLevels[level-1]
 	}
 	return strconv.Itoa(level)
 }

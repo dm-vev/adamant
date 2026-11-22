@@ -53,10 +53,6 @@ var actorPropertyTypes = map[string][]actorProperty{
 	"minecraft:zombie_nautilus": {{name: "minecraft:variant", enum: []string{"default", "coral"}}},
 }
 
-// bedrockSoundVariants renames the sound variants that Bedrock calls
-// differently.
-var bedrockSoundVariants = map[string]string{"classic": "default", "angry": "mad"}
-
 // declaration returns the property as SyncActorProperty carries it.
 func (p actorProperty) declaration() map[string]any {
 	switch {
@@ -72,22 +68,22 @@ func (p actorProperty) declaration() map[string]any {
 	return map[string]any{"name": p.name, "type": int32(0), "min": int32(0), "max": p.max}
 }
 
-// value converts the value of the property as an entity reports it to the
-// value sent to clients. Unknown values leave the default.
-func (p actorProperty) value(v any) int32 {
-	switch v := v.(type) {
-	case string:
-		for i, name := range p.enum {
-			if name == v {
-				return int32(i)
-			}
+// stringValue converts a string enum value to the wire integer index, or p.def
+// if unknown.
+func (p actorProperty) stringValue(v string) int32 {
+	for i, name := range p.enum {
+		if name == v {
+			return int32(i)
 		}
-	case bool:
-		return int32(boolByte(v))
-	case int32:
-		if v >= 0 && (p.enum != nil && int(v) < len(p.enum) || p.enum == nil && v <= p.max) {
-			return v
-		}
+	}
+	return p.def
+}
+
+// int32Value validates an integer/enum property value, returning p.def if out
+// of range.
+func (p actorProperty) int32Value(v int32) int32 {
+	if v >= 0 && (p.enum != nil && int(v) < len(p.enum) || p.enum == nil && v <= p.max) {
+		return v
 	}
 	return p.def
 }
@@ -114,22 +110,17 @@ func (s *Session) sendActorProperties(w *world.World) {
 // entityProperties returns the values of all properties of the type of an
 // entity.
 func entityProperties(e world.Entity) mc.EntityProperties {
-	props, ok := actorPropertyTypes[networkID(e.H().Type())]
-	if !ok {
+	props := entityTypeMetaOf(e.H().Type()).props
+	if len(props) == 0 {
 		return mc.EntityProperties{}
-	}
-	values := make(map[string]any)
-	actorPropertyValues(e, values)
-	if beh, ok := e.(interface{ Behaviour() entity.Behaviour }); ok {
-		actorPropertyValues(beh.Behaviour(), values)
 	}
 	integers := make([]mc.IntegerEntityProperty, len(props))
 	for i, p := range props {
-		v := p.def
-		if reported, ok := values[p.name]; ok {
-			v = p.value(reported)
-		}
-		integers[i] = mc.IntegerEntityProperty{Index: uint32(i), Value: v}
+		integers[i] = mc.IntegerEntityProperty{Index: uint32(i), Value: p.def}
+	}
+	fillActorProperties(e, props, integers)
+	if beh, ok := e.(interface{ Behaviour() entity.Behaviour }); ok {
+		fillActorProperties(beh.Behaviour(), props, integers)
 	}
 	return mc.EntityProperties{IntegerProperties: integers}
 }
@@ -138,39 +129,70 @@ type creakingState interface {
 	CreakingState() (state int32, swayTicks int32)
 }
 
-// actorPropertyValues adds the property values that an entity or its
-// behaviour reports to values, by property name.
-func actorPropertyValues(e any, values map[string]any) {
+func setActorPropertyString(props []actorProperty, out []mc.IntegerEntityProperty, name, v string) {
+	for i, p := range props {
+		if p.name == name {
+			out[i].Value = p.stringValue(v)
+			return
+		}
+	}
+}
+
+func setActorPropertyBool(props []actorProperty, out []mc.IntegerEntityProperty, name string, v bool) {
+	for i, p := range props {
+		if p.name == name {
+			out[i].Value = int32(boolByte(v))
+			return
+		}
+	}
+}
+
+func setActorPropertyInt32(props []actorProperty, out []mc.IntegerEntityProperty, name string, v int32) {
+	for i, p := range props {
+		if p.name == name {
+			out[i].Value = p.int32Value(v)
+			return
+		}
+	}
+}
+
+// fillActorProperties writes the property values that an entity or its
+// behaviour reports directly into out without intermediate map allocation.
+func fillActorProperties(e any, props []actorProperty, out []mc.IntegerEntityProperty) {
 	if c, ok := e.(interface{ ClimateVariant() string }); ok {
-		values["minecraft:climate_variant"] = c.ClimateVariant()
+		setActorPropertyString(props, out, "minecraft:climate_variant", c.ClimateVariant())
 	}
 	if sv, ok := e.(interface{ SoundVariant() string }); ok {
 		name := sv.SoundVariant()
-		if renamed, ok := bedrockSoundVariants[name]; ok {
-			name = renamed
+		switch name {
+		case "classic":
+			name = "default"
+		case "angry":
+			name = "mad"
 		}
-		values["minecraft:sound_variant"] = name
+		setActorPropertyString(props, out, "minecraft:sound_variant", name)
 	}
 	if c, ok := e.(creakingState); ok {
 		state, swayTicks := c.CreakingState()
-		values["minecraft:creaking_state"], values["minecraft:creaking_swaying_ticks"] = state, swayTicks
+		setActorPropertyInt32(props, out, "minecraft:creaking_state", state)
+		setActorPropertyInt32(props, out, "minecraft:creaking_swaying_ticks", swayTicks)
 	}
 	switch e := e.(type) {
 	case *entity.Bee:
-		values["minecraft:has_nectar"] = e.HasNectar()
+		setActorPropertyBool(props, out, "minecraft:has_nectar", e.HasNectar())
 	case *entity.Armadillo:
-		values["minecraft:armadillo_state"] = e.BedrockState()
+		setActorPropertyString(props, out, "minecraft:armadillo_state", e.BedrockState())
 	case *entity.CopperGolem:
-		values["minecraft:chest_interaction"] = int32(e.State())
-		values["minecraft:has_flower"] = !e.Antenna().Empty()
-		values["minecraft:oxidation_level"] = int32(e.WeatherState())
+		setActorPropertyInt32(props, out, "minecraft:chest_interaction", int32(e.State()))
+		setActorPropertyBool(props, out, "minecraft:has_flower", !e.Antenna().Empty())
+		setActorPropertyInt32(props, out, "minecraft:oxidation_level", int32(e.WeatherState()))
 	case *entity.HappyGhast:
-		values["minecraft:can_move"] = !e.StaysStill()
+		setActorPropertyBool(props, out, "minecraft:can_move", !e.StaysStill())
 	case *entity.SulfurCube:
-		values["minecraft:sulfur_cube_archetype"] = e.Archetype()
+		setActorPropertyString(props, out, "minecraft:sulfur_cube_archetype", e.Archetype())
 	case *entity.ZombieNautilus:
 		if e.Variant() == "warm" {
-			values["minecraft:variant"] = "coral"
+			setActorPropertyString(props, out, "minecraft:variant", "coral")
 		}
 	}
 }

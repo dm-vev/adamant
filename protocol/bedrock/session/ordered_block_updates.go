@@ -74,31 +74,35 @@ func (s *Session) enqueueBlockUpdate(pos cube.Pos, b world.Block, layer int) {
 func (s *Session) flushBlockUpdates() {
 	s.blockUpdatesMu.Lock()
 	updates := s.blockUpdates
-	if len(updates) == 0 {
+	origLen := len(updates)
+	if origLen == 0 {
 		s.blockUpdatesMu.Unlock()
 		return
 	}
-	s.blockUpdates = make(map[blockUpdateKey]blockUpdateData, 64)
+	s.blockUpdates = nil
 	s.blockUpdatesMu.Unlock()
 
 	sent := 0
-	visiting := make(map[blockUpdateKey]bool)
+	var visiting map[blockUpdateKey]bool
 	var send func(blockUpdateKey)
 	send = func(key blockUpdateKey) {
 		update, ok := updates[key]
-		if !ok || sent >= maxBlockUpdatesPerTick || visiting[key] {
+		if !ok || sent >= maxBlockUpdatesPerTick || (visiting != nil && visiting[key]) {
 			return
 		}
-		visiting[key] = true
 		if update.after != nil {
+			if visiting == nil {
+				visiting = make(map[blockUpdateKey]bool)
+			}
+			visiting[key] = true
 			parent := blockUpdateKey{pos: *update.after}
 			send(parent)
-			if _, pending := updates[parent]; pending {
-				delete(visiting, key)
+			_, pending := updates[parent]
+			delete(visiting, key)
+			if pending {
 				return
 			}
 		}
-		delete(visiting, key)
 		if sent >= maxBlockUpdatesPerTick {
 			return
 		}
@@ -132,6 +136,13 @@ func (s *Session) flushBlockUpdates() {
 		send(key)
 	}
 	if len(updates) == 0 {
+		if origLen <= 256 {
+			s.blockUpdatesMu.Lock()
+			if s.blockUpdates == nil {
+				s.blockUpdates = updates
+			}
+			s.blockUpdatesMu.Unlock()
+		}
 		return
 	}
 

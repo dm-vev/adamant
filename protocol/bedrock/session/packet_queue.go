@@ -105,13 +105,26 @@ func (s *Session) EndBatch() {
 	held := s.heldPackets
 	if s.closing.Load() {
 		clear(held)
-		s.heldPackets = held[:0]
+		s.heldPackets = nil
 		s.packetsMu.Unlock()
 		return
 	}
-	s.pendingPackets = append(s.pendingPackets, held...)
-	clear(held)
-	s.heldPackets = held[:0]
+	if len(s.pendingPackets) == 0 {
+		reuse := s.pendingPackets[:0]
+		if cap(reuse) > maxKeptBatch {
+			reuse = nil
+		}
+		s.pendingPackets = held
+		s.heldPackets = reuse
+	} else {
+		s.pendingPackets = append(s.pendingPackets, held...)
+		clear(held)
+		if cap(held) <= maxKeptBatch {
+			s.heldPackets = held[:0]
+		} else {
+			s.heldPackets = nil
+		}
+	}
 	if s.tickEnded == 0 {
 		s.tickEnded = nanotime()
 	}
@@ -237,6 +250,10 @@ func (p *flushPool) work() {
 		clear(p.queue[p.head : p.head+n])
 		if p.head += n; p.head == len(p.queue) {
 			p.queue, p.head = p.queue[:0], 0
+		} else if p.head >= 64 && p.head*2 >= len(p.queue) {
+			rem := copy(p.queue, p.queue[p.head:])
+			clear(p.queue[rem:])
+			p.queue, p.head = p.queue[:rem], 0
 		}
 		p.mu.Unlock()
 		for _, s := range round {

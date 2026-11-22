@@ -56,7 +56,10 @@ type tablesKey struct {
 }
 
 // allTables holds the wireTables tablesOf built, by tablesKey.
-var allTables sync.Map
+var (
+	allTables         sync.Map
+	defaultWireTables atomic.Pointer[wireTables]
+)
 
 // tablesOf returns the tables of the clients of a protocol, those of the
 // model if p is nil, and the blocks of a finalized registry, built the
@@ -64,6 +67,15 @@ var allTables sync.Map
 func tablesOf(p *versions.Protocol, br world.BlockRegistry) *wireTables {
 	if p == nil {
 		p = versions.Model()
+	}
+	if p == versions.Model() && br == world.DefaultBlockRegistry {
+		if t := defaultWireTables.Load(); t != nil {
+			return t
+		}
+		t, _ := allTables.LoadOrStore(tablesKey{proto: p, br: br}, newTables(p, br))
+		wt := t.(*wireTables)
+		defaultWireTables.Store(wt)
+		return wt
 	}
 	key := tablesKey{proto: p, br: br}
 	if t, ok := allTables.Load(key); ok {

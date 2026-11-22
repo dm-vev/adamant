@@ -2,8 +2,10 @@ package session
 
 import (
 	"bytes"
+	"encoding/binary"
+	"math"
 	"strings"
-	"sync"
+	"unsafe"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -24,11 +26,16 @@ const (
 	maxPooledChunkEncodeCap = 64 << 10
 )
 
-var chunkEncodeBufferPool = sync.Pool{
-	New: func() any {
-		return bytes.NewBuffer(make([]byte, 0, 512))
-	},
-}
+var (
+	// zeroBorderPayload is the read-only payload for a chunk with zero border
+	// blocks and no block entities.
+	zeroBorderPayload = []byte{0}
+	// blockEntityVersionZeroTag is the NetworkLittleEndian NBT encoding of the
+	// default BlockEntityVersion int32(0) tag.
+	blockEntityVersionZeroTag = []byte{
+		3, 18, 'B', 'l', 'o', 'c', 'k', 'E', 'n', 't', 'i', 't', 'y', 'V', 'e', 'r', 's', 'i', 'o', 'n', 0,
+	}
+)
 
 // ViewChunk ...
 func (s *Session) ViewChunk(pos world.ChunkPos, dim world.Dimension, col *world.Column) {
@@ -43,13 +50,14 @@ func (s *Session) ViewChunk(pos world.ChunkPos, dim world.Dimension, col *world.
 // the bytes of their payloads: to a client that caches them, those of the
 // block entities, as the blobs go when it asks for them.
 func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []mc.SubChunkOffset, tx *world.Tx) int {
+	cacheEnabled := s.conn.ClientCacheEnabled()
 	if s.chunkLoader == nil {
 		// The chunk loader is initialised during Spawn, so return an empty response for early requests.
 		dim, _ := world.DimensionID(tx.World().Dimension())
 		s.writePacket(&mc.SubChunkPacket{
 			Dimension:       int32(dim),
 			Position:        mc.SubChunkPos(centre),
-			CacheEnabled:    s.conn.ClientCacheEnabled(),
+			CacheEnabled:    cacheEnabled,
 			SubChunkEntries: nil,
 		})
 		return 0
@@ -61,7 +69,10 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []mc.SubChunkO
 	r := tx.Range()
 
 	entries := make([]mc.SubChunkEntry, 0, len(offsets))
-	transaction := make(map[uint64]struct{})
+	var transaction map[uint64]struct{}
+	if cacheEnabled {
+		transaction = make(map[uint64]struct{}, len(offsets))
+	}
 	size := 0
 	for _, offset := range offsets {
 		ind := int16(centre.Y()) + int16(offset[1]) - int16(r[0])>>4
@@ -81,7 +92,7 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []mc.SubChunkO
 		size += len(entry.RawPayload.Val)
 		entries = append(entries, entry)
 	}
-	if s.conn.ClientCacheEnabled() && len(transaction) > 0 {
+	if cacheEnabled && len(transaction) > 0 {
 		s.blobMu.Lock()
 		s.openChunkTransactions = append(s.openChunkTransactions, transaction)
 		s.blobMu.Unlock()
@@ -90,7 +101,7 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []mc.SubChunkO
 	s.writePacket(&mc.SubChunkPacket{
 		Dimension:       int32(dim),
 		Position:        mc.SubChunkPos(centre),
-		CacheEnabled:    s.conn.ClientCacheEnabled(),
+		CacheEnabled:    cacheEnabled,
 		SubChunkEntries: entries,
 	})
 	return size
@@ -101,8 +112,12 @@ func (s *Session) subChunkEntry(offset mc.SubChunkOffset, ind int16, col *world.
 	var subMapData proto.Optional[mc.HeightMap]
 	if subMap != nil {
 		var heightMap mc.HeightMap
-		for z := range heightMap {
-			copy(heightMap[z][:], subMap[z*16:(z+1)*16])
+		if len(subMap) == 256 {
+			copy(unsafe.Slice(&heightMap[0][0], 256), subMap)
+		} else {
+			for z := range heightMap {
+				copy(heightMap[z][:], subMap[z*16:(z+1)*16])
+			}
 		}
 		subMapData = proto.Some(heightMap)
 	}
@@ -123,7 +138,6 @@ func (s *Session) subChunkEntry(offset mc.SubChunkOffset, ind int16, col *world.
 
 	entry := mc.SubChunkEntry{
 		Result:              mc.SubChunkResultSuccess,
-		RawPayload:          proto.Some(joinPayloads(serialisedSubChunk, blockEntityPayload)),
 		HeightMapType:       subMapType,
 		HeightMapData:       subMapData,
 		RenderHeightMapType: subMapType,
@@ -135,8 +149,10 @@ func (s *Session) subChunkEntry(offset mc.SubChunkOffset, ind int16, col *world.
 			transaction[hash] = struct{}{}
 			entry.BlobHash = proto.Some(hash)
 			entry.RawPayload = proto.Some(blockEntityPayload)
+			return entry
 		}
 	}
+	entry.RawPayload = proto.Some(joinPayloads(serialisedSubChunk, blockEntityPayload))
 	return entry
 }
 
@@ -146,27 +162,36 @@ func subChunkHeightMap(col *world.Column, ind int16) (byte, []int8) {
 	}
 
 	chunkMap := col.HeightMap()
-	subMapType, subMap := byte(mc.HeightMapDataHasData), make([]int8, 256)
+	var buf [256]int8
+	subY := col.SubY(ind)
 	higher, lower := true, true
-	for x := uint8(0); x < 16; x++ {
-		for z := uint8(0); z < 16; z++ {
-			y, i := chunkMap.At(x, z), (uint16(z)<<4)|uint16(x)
+	for z := uint8(0); z < 16; z++ {
+		row := uint16(z) << 4
+		for x := uint8(0); x < 16; x++ {
+			y := chunkMap.At(x, z)
 			otherInd := col.SubIndex(y)
 			if otherInd > ind {
-				subMap[i], lower = 16, false
+				buf[row|uint16(x)], lower = 16, false
 				continue
 			}
 			if otherInd < ind {
-				subMap[i], higher = -1, false
+				buf[row|uint16(x)], higher = -1, false
 				continue
 			}
-			subMap[i], lower, higher = int8(y-col.SubY(otherInd)), false, false
+			buf[row|uint16(x)], lower, higher = int8(y-subY), false, false
 		}
 	}
-	if higher {
-		subMapType, subMap = mc.HeightMapDataTooHigh, nil
-	} else if lower {
-		subMapType, subMap = mc.HeightMapDataTooLow, nil
+	var subMapType byte
+	var subMap []int8
+	switch {
+	case higher:
+		subMapType = mc.HeightMapDataTooHigh
+	case lower:
+		subMapType = mc.HeightMapDataTooLow
+	default:
+		subMapType = mc.HeightMapDataHasData
+		subMap = make([]int8, 256)
+		copy(subMap, buf[:])
 	}
 
 	col.CacheSubChunkHeightMap(ind, subMapType, subMap)
@@ -275,20 +300,6 @@ func (s *Session) trackBlob(hash uint64, blob []byte) bool {
 	return true
 }
 
-func pooledChunkEncodeBuffer() *bytes.Buffer {
-	buf := chunkEncodeBufferPool.Get().(*bytes.Buffer)
-	buf.Reset()
-	return buf
-}
-
-func releaseChunkEncodeBuffer(buf *bytes.Buffer) {
-	if buf.Cap() > maxPooledChunkEncodeCap {
-		return
-	}
-	buf.Reset()
-	chunkEncodeBufferPool.Put(buf)
-}
-
 func joinPayloads(first, second []byte) []byte {
 	if len(second) == 0 {
 		return first
@@ -314,7 +325,7 @@ func (w *wireTables) columnCache(col *world.Column) *world.ColumnCache {
 }
 
 func (w *wireTables) networkChunkData(col *world.Column) chunk.SerialisedData {
-	sub := col.Chunk.Sub()
+	sub := col.Sub()
 	data := chunk.SerialisedData{
 		SubChunks: make([][]byte, len(sub)),
 		Biomes:    w.networkBiomePayload(col),
@@ -411,67 +422,72 @@ func subChunkBlockEntityPayload(col *world.Column, ind int16) []byte {
 }
 
 func encodeChunkBlockEntities(blockEntities map[cube.Pos]world.Block) []byte {
-	buf := pooledChunkEncodeBuffer()
-	defer releaseChunkEncodeBuffer(buf)
-
+	if len(blockEntities) == 0 {
+		return zeroBorderPayload
+	}
+	buf := chunkWireBufferPool.Get().(*[]byte)
 	// Length of 1 byte for the border block count.
-	buf.WriteByte(0)
-	encodeAllBlockEntities(buf, blockEntities)
-
-	raw := make([]byte, buf.Len())
-	copy(raw, buf.Bytes())
-	return raw
+	b := (*buf)[:0]
+	b = append(b, 0)
+	b = appendAllBlockEntities(b, blockEntities)
+	return releaseChunkWireBuffer(buf, b)
 }
 
 func encodeChunkBlockEntitiesNoBorder(blockEntities map[cube.Pos]world.Block) []byte {
-	buf := pooledChunkEncodeBuffer()
-	defer releaseChunkEncodeBuffer(buf)
-
-	encodeAllBlockEntities(buf, blockEntities)
-	if buf.Len() == 0 {
+	if len(blockEntities) == 0 {
 		return nil
 	}
-	raw := make([]byte, buf.Len())
-	copy(raw, buf.Bytes())
-	return raw
+	buf := chunkWireBufferPool.Get().(*[]byte)
+	b := appendAllBlockEntities((*buf)[:0], blockEntities)
+	if len(b) == 0 {
+		if cap(b) <= maxPooledChunkEncodeCap {
+			*buf = b[:0]
+			chunkWireBufferPool.Put(buf)
+		}
+		return nil
+	}
+	return releaseChunkWireBuffer(buf, b)
 }
 
 func encodeSubChunkBlockEntities(col *world.Column, ind int16) []byte {
-	buf := pooledChunkEncodeBuffer()
-	defer releaseChunkEncodeBuffer(buf)
-
-	encodeSubChunkEntities(buf, col, ind)
-	if buf.Len() == 0 {
+	if len(col.BlockEntities) == 0 {
 		return nil
 	}
-	raw := make([]byte, buf.Len())
-	copy(raw, buf.Bytes())
-	return raw
+	buf := chunkWireBufferPool.Get().(*[]byte)
+	b := appendSubChunkEntities((*buf)[:0], col, ind)
+	if len(b) == 0 {
+		if cap(b) <= maxPooledChunkEncodeCap {
+			*buf = b[:0]
+			chunkWireBufferPool.Put(buf)
+		}
+		return nil
+	}
+	return releaseChunkWireBuffer(buf, b)
 }
 
-func encodeAllBlockEntities(buf *bytes.Buffer, blockEntities map[cube.Pos]world.Block) {
-	enc := nbt.NewEncoderWithEncoding(buf, nbt.NetworkLittleEndian)
+func appendAllBlockEntities(b []byte, blockEntities map[cube.Pos]world.Block) []byte {
 	for pos, block := range blockEntities {
 		nbtBlock, ok := clientBlockActor(block)
 		if !ok {
 			continue
 		}
-		encodeBlockEntityNBT(enc, pos, nbtBlock)
+		b = appendBlockEntityNBT(b, pos, nbtBlock)
 	}
+	return b
 }
 
-func encodeSubChunkEntities(buf *bytes.Buffer, col *world.Column, ind int16) {
-	enc := nbt.NewEncoderWithEncoding(buf, nbt.NetworkLittleEndian)
+func appendSubChunkEntities(b []byte, col *world.Column, ind int16) []byte {
 	for pos, block := range col.BlockEntities {
-		if col.Chunk.SubIndex(int16(pos.Y())) != ind {
+		if col.SubIndex(int16(pos.Y())) != ind {
 			continue
 		}
 		nbtBlock, ok := clientBlockActor(block)
 		if !ok {
 			continue
 		}
-		encodeBlockEntityNBT(enc, pos, nbtBlock)
+		b = appendBlockEntityNBT(b, pos, nbtBlock)
 	}
+	return b
 }
 
 // clientBlockActor returns the block as a block actor clients are sent, if
@@ -484,13 +500,226 @@ func clientBlockActor(b world.Block) (world.NBTer, bool) {
 	return nbtBlock, ok
 }
 
-func encodeBlockEntityNBT(enc *nbt.Encoder, pos cube.Pos, nbtBlock world.NBTer) {
+func appendBlockEntityNBT(b []byte, pos cube.Pos, nbtBlock world.NBTer) []byte {
 	data := nbtBlock.EncodeNBT()
 	if _, actor := data["id"]; !actor {
 		// A placeholder state without block actor data.
-		return
+		return b
 	}
+	return appendClientActorNetworkNBT(b, data, pos)
+}
+
+// appendClientActorNetworkNBT encodes a block actor compound directly in
+// NetworkLittleEndian NBT format, adding position and default
+// BlockEntityVersion while omitting adamant: keys without cloning data or
+// allocating through reflection. Any unsupported Go value falls back to
+// nbt.NewEncoderWithEncoding.
+func appendClientActorNetworkNBT(b []byte, data map[string]any, pos cube.Pos) []byte {
+	start := len(b)
+	// Root compound tag (10) with empty name (length 0).
+	b = append(b, 10, 0)
+	hasVersion := false
+	for k, v := range data {
+		if strings.HasPrefix(k, "adamant:") || k == "x" || k == "y" || k == "z" {
+			continue
+		}
+		if k == "BlockEntityVersion" {
+			hasVersion = true
+		}
+		var ok bool
+		if b, ok = appendNetNBTTag(b, k, v, 1); !ok {
+			return appendBlockEntityNBTFallback(b[:start], data, pos)
+		}
+	}
+	if !hasVersion {
+		b = append(b, blockEntityVersionZeroTag...)
+	}
+	b = append(b, 3, 1, 'x')
+	b = appendVarint32(b, int32(pos[0]))
+	b = append(b, 3, 1, 'y')
+	b = appendVarint32(b, int32(pos[1]))
+	b = append(b, 3, 1, 'z')
+	b = appendVarint32(b, int32(pos[2]))
+	return append(b, 0)
+}
+
+func appendBlockEntityNBTFallback(b []byte, data map[string]any, pos cube.Pos) []byte {
+	var buf bytes.Buffer
+	enc := nbt.NewEncoderWithEncoding(&buf, nbt.NetworkLittleEndian)
 	_ = enc.Encode(clientActorNBT(data, pos))
+	return append(b, buf.Bytes()...)
+}
+
+const maxNetNBTDepth = 512
+
+func appendNetNBTTag(b []byte, name string, v any, depth int) ([]byte, bool) {
+	if depth >= maxNetNBTDepth || len(name) > math.MaxInt16 {
+		return b, false
+	}
+	switch v := v.(type) {
+	case byte:
+		b = appendNetNBTHeader(b, 1, name)
+		return append(b, v), true
+	case bool:
+		b = appendNetNBTHeader(b, 1, name)
+		if v {
+			return append(b, 1), true
+		}
+		return append(b, 0), true
+	case int16:
+		b = appendNetNBTHeader(b, 2, name)
+		return binary.LittleEndian.AppendUint16(b, uint16(v)), true
+	case int32:
+		b = appendNetNBTHeader(b, 3, name)
+		return appendVarint32(b, v), true
+	case int64:
+		b = appendNetNBTHeader(b, 4, name)
+		return appendVarint64(b, v), true
+	case float32:
+		b = appendNetNBTHeader(b, 5, name)
+		return binary.LittleEndian.AppendUint32(b, math.Float32bits(v)), true
+	case float64:
+		b = appendNetNBTHeader(b, 6, name)
+		return binary.LittleEndian.AppendUint64(b, math.Float64bits(v)), true
+	case string:
+		if len(v) > math.MaxInt16 {
+			return b, false
+		}
+		b = appendNetNBTHeader(b, 8, name)
+		return appendNetNBTString(b, v), true
+	case map[string]any:
+		b = appendNetNBTHeader(b, 10, name)
+		return appendNetNBTCompoundBody(b, v, depth+1)
+	default:
+		return appendNetNBTSliceTag(b, name, v, depth)
+	}
+}
+
+func appendNetNBTSliceTag(b []byte, name string, v any, depth int) ([]byte, bool) {
+	switch v := v.(type) {
+	case []byte:
+		b = appendNetNBTHeader(b, 9, name)
+		b = append(b, 1)
+		b = appendVarint32(b, int32(len(v)))
+		return append(b, v...), true
+	case []int32:
+		b = appendNetNBTHeader(b, 9, name)
+		b = append(b, 3)
+		b = appendVarint32(b, int32(len(v)))
+		for _, elem := range v {
+			b = appendVarint32(b, elem)
+		}
+		return b, true
+	case []int64:
+		b = appendNetNBTHeader(b, 9, name)
+		b = append(b, 4)
+		b = appendVarint32(b, int32(len(v)))
+		for _, elem := range v {
+			b = appendVarint64(b, elem)
+		}
+		return b, true
+	case []string:
+		b = appendNetNBTHeader(b, 9, name)
+		b = append(b, 8)
+		b = appendVarint32(b, int32(len(v)))
+		for _, elem := range v {
+			if len(elem) > math.MaxInt16 {
+				return b, false
+			}
+			b = appendNetNBTString(b, elem)
+		}
+		return b, true
+	case []map[string]any:
+		b = appendNetNBTHeader(b, 9, name)
+		b = append(b, 10)
+		b = appendVarint32(b, int32(len(v)))
+		for _, elem := range v {
+			var ok bool
+			if b, ok = appendNetNBTCompoundBody(b, elem, depth+2); !ok {
+				return b, false
+			}
+		}
+		return b, true
+	case []any:
+		return appendNetNBTAnySliceTag(b, name, v, depth)
+	default:
+		return b, false
+	}
+}
+
+func appendNetNBTAnySliceTag(b []byte, name string, v []any, depth int) ([]byte, bool) {
+	if len(v) == 0 {
+		b = appendNetNBTHeader(b, 9, name)
+		b = append(b, 0)
+		return appendVarint32(b, 0), true
+	}
+	switch v[0].(type) {
+	case string:
+		b = appendNetNBTHeader(b, 9, name)
+		b = append(b, 8)
+		b = appendVarint32(b, int32(len(v)))
+		for _, elem := range v {
+			s, ok := elem.(string)
+			if !ok || len(s) > math.MaxInt16 {
+				return b, false
+			}
+			b = appendNetNBTString(b, s)
+		}
+		return b, true
+	case map[string]any:
+		b = appendNetNBTHeader(b, 9, name)
+		b = append(b, 10)
+		b = appendVarint32(b, int32(len(v)))
+		for _, elem := range v {
+			m, ok := elem.(map[string]any)
+			if !ok {
+				return b, false
+			}
+			if b, ok = appendNetNBTCompoundBody(b, m, depth+2); !ok {
+				return b, false
+			}
+		}
+		return b, true
+	default:
+		return b, false
+	}
+}
+
+func appendNetNBTCompoundBody(b []byte, m map[string]any, depth int) ([]byte, bool) {
+	if depth >= maxNetNBTDepth {
+		return b, false
+	}
+	for k, v := range m {
+		var ok bool
+		if b, ok = appendNetNBTTag(b, k, v, depth); !ok {
+			return b, false
+		}
+	}
+	return append(b, 0), true
+}
+
+func appendNetNBTHeader(b []byte, tag byte, name string) []byte {
+	b = append(b, tag)
+	return appendNetNBTString(b, name)
+}
+
+func appendNetNBTString(b []byte, s string) []byte {
+	u := uint32(len(s))
+	for u >= 0x80 {
+		b = append(b, byte(u)|0x80)
+		u >>= 7
+	}
+	b = append(b, byte(u))
+	return append(b, s...)
+}
+
+func appendVarint64(b []byte, v int64) []byte {
+	u := uint64((v << 1) ^ (v >> 63))
+	for u >= 0x80 {
+		b = append(b, byte(u)|0x80)
+		u >>= 7
+	}
+	return append(b, byte(u))
 }
 
 // clientUpdateNBT returns the block actor update data passed as the client of

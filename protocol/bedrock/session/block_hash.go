@@ -4,8 +4,9 @@ import (
 	"encoding/binary"
 	"fmt"
 	"maps"
-	"sort"
+	"slices"
 	"sync"
+	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
@@ -46,12 +47,24 @@ func (h *blockHashes) hashToRuntimeID(hash uint32) (uint32, bool) {
 
 // registryHashes holds the blockHashes of each registry hashesOf was passed,
 // by registry.
-var registryHashes sync.Map
+var (
+	registryHashes     sync.Map
+	defaultBlockHashes atomic.Pointer[blockHashes]
+)
 
 // hashesOf returns the network block hashes of a finalized registry, built
 // the first time it is passed. It panics if two states of the registry have
 // the same hash, as clients could not tell them apart.
 func hashesOf(br chunk.BlockRegistry) *blockHashes {
+	if br == world.DefaultBlockRegistry {
+		if h := defaultBlockHashes.Load(); h != nil {
+			return h
+		}
+		h, _ := registryHashes.LoadOrStore(br, buildBlockHashes(br))
+		bh := h.(*blockHashes)
+		defaultBlockHashes.Store(bh)
+		return bh
+	}
 	if h, ok := registryHashes.Load(br); ok {
 		return h.(*blockHashes)
 	}
@@ -116,76 +129,81 @@ func networkBlockHash(name string, properties map[string]any, scratch []byte) (u
 		return 0xfffffffe, scratch // -2
 	}
 
-	keys := make([]string, 0, len(properties))
-	for k := range properties {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
 	data := scratch[:0]
-	writeString := func(str string) {
-		data = binary.LittleEndian.AppendUint16(data, uint16(len(str)))
-		data = append(data, []byte(str)...)
-	}
+	// Root compound (10, ""), string tag (8, "name"), value name, compound tag (10, "states").
+	data = append(data, 10, 0, 0, 8, 4, 0, 'n', 'a', 'm', 'e')
+	data = appendBlockHashString(data, name)
+	data = append(data, 10, 6, 0, 's', 't', 'a', 't', 'e', 's')
 
-	data = append(data, 10) // compound
-	data = append(data, 0)
-	data = append(data, 0)
-
-	data = append(data, 8) // string
-	writeString("name")
-	writeString(name)
-
-	data = append(data, 10) // compound
-	writeString("states")
-	for _, k := range keys {
-		v := properties[k]
-		switch v := v.(type) {
-		case string:
-			data = append(data, 8) // string
-			writeString(k)
-			writeString(v)
-
-		case uint8:
-			data = append(data, 1) // tagByte
-			writeString(k)
-			data = append(data, byte(v))
-		case int8:
-			data = append(data, 1) // tagByte
-			writeString(k)
-			data = append(data, byte(v))
-		case bool:
-			b := 0
-			if v {
-				b = 1
+	if n := len(properties); n > 0 {
+		var keyBuf [16]string
+		keys := keyBuf[:0]
+		if n > len(keyBuf) {
+			keys = make([]string, 0, n)
+		}
+		for k := range properties {
+			keys = append(keys, k)
+		}
+		if n == 2 {
+			if keys[0] > keys[1] {
+				keys[0], keys[1] = keys[1], keys[0]
 			}
-			data = append(data, 1) // tagByte
-			writeString(k)
-			data = append(data, byte(b))
-
-		case uint16:
-			data = append(data, 2) // tagInt16
-			writeString(k)
-			data = binary.LittleEndian.AppendUint16(data, uint16(v))
-		case int16:
-			data = append(data, 2) // tagInt16
-			writeString(k)
-			data = binary.LittleEndian.AppendUint16(data, uint16(v))
-
-		case uint32:
-			data = append(data, 3) // tagInt32
-			writeString(k)
-			data = binary.LittleEndian.AppendUint32(data, uint32(v))
-		case int32:
-			data = append(data, 3) // tagInt32
-			writeString(k)
-			data = binary.LittleEndian.AppendUint32(data, uint32(v))
-		default:
-			panic(fmt.Sprintf("unhandled nbt type: %T", v))
+		} else if n > 2 {
+			slices.Sort(keys)
+		}
+		for _, k := range keys {
+			data = appendBlockHashProperty(data, k, properties[k])
 		}
 	}
-	data = append(data, 0) // end
-	data = append(data, 0) // end
+	data = append(data, 0, 0) // end states, end root
 
 	return fnv1a.HashBytes32(data), data
+}
+
+func appendBlockHashString(b []byte, s string) []byte {
+	b = binary.LittleEndian.AppendUint16(b, uint16(len(s)))
+	return append(b, s...)
+}
+
+func appendBlockHashProperty(data []byte, k string, v any) []byte {
+	switch v := v.(type) {
+	case string:
+		data = append(data, 8) // string
+		data = appendBlockHashString(data, k)
+		return appendBlockHashString(data, v)
+	case uint8:
+		data = append(data, 1) // tagByte
+		data = appendBlockHashString(data, k)
+		return append(data, v)
+	case int8:
+		data = append(data, 1) // tagByte
+		data = appendBlockHashString(data, k)
+		return append(data, byte(v))
+	case bool:
+		var b byte
+		if v {
+			b = 1
+		}
+		data = append(data, 1) // tagByte
+		data = appendBlockHashString(data, k)
+		return append(data, b)
+	case uint16:
+		data = append(data, 2) // tagInt16
+		data = appendBlockHashString(data, k)
+		return binary.LittleEndian.AppendUint16(data, v)
+	case int16:
+		data = append(data, 2) // tagInt16
+		data = appendBlockHashString(data, k)
+		return binary.LittleEndian.AppendUint16(data, uint16(v))
+	case uint32:
+		data = append(data, 3) // tagInt32
+		data = appendBlockHashString(data, k)
+		return binary.LittleEndian.AppendUint32(data, v)
+	case int32:
+		data = append(data, 3) // tagInt32
+		data = appendBlockHashString(data, k)
+		return binary.LittleEndian.AppendUint32(data, uint32(v))
+	default:
+		panic(fmt.Sprintf("unhandled nbt type: %T", v))
+	}
 }
