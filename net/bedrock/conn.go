@@ -105,11 +105,14 @@ type Conn struct {
 	transport MessageConn
 	cfg       Config
 
-	readMu  sync.Mutex
-	readAlg Compression
-	pending [][]byte
+	readMu      sync.Mutex
+	readAlg     Compression
+	pending     [][]byte
+	pendingHead int
 	// split holds the packets of the batch HandleBatch reads.
 	split [][]byte
+	// recv counts the packets of a batch read before adding to the process counters.
+	recv tally
 	// packets and bytes meter what the peer sends against the rates.
 	inPackets, inBytes bucket
 
@@ -147,32 +150,67 @@ func (c *Conn) WritePacket(packet []byte) error {
 	if len(packet) == 0 {
 		return errEmptyPacket
 	}
+	id, ok := packetID(packet)
 	c.writeMu.Lock()
-	defer c.writeMu.Unlock()
 	if len(c.body) > 0 && len(c.body)+len(packet) > c.cfg.MaxBody {
 		if err := c.flush(); err != nil {
+			c.writeMu.Unlock()
 			return err
 		}
 	}
 	if c.plain && c.cfg.Incompressible != nil {
-		id, _ := binary.Uvarint(packet)
-		c.plain = c.cfg.Incompressible(uint32(id) & 0x3ff)
+		c.plain = c.cfg.Incompressible(uint32(id))
 	} else {
 		c.plain = false
 	}
 	c.body = AppendPacket(c.body, packet)
-	c.sent.add(packet)
+	if ok {
+		c.sent.addID(packetsSent, packetBytesSent, id, uint64(len(packet)))
+	}
+	c.writeMu.Unlock()
 	return nil
 }
+
+// encodeBatchBufs pools temporary body buffers for EncodeBatch.
+var encodeBatchBufs sync.Pool
 
 // EncodeBatch returns a batch of packets as a Conn compressing with comp
 // sends it, for SendBatch to send on many connections.
 func EncodeBatch(comp Compression, packets ...[]byte) ([]byte, error) {
+	total := 0
+	for _, p := range packets {
+		n := len(p)
+		if n < 0x80 {
+			total += 1 + n
+		} else if n < 0x4000 {
+			total += 2 + n
+		} else {
+			total += binary.MaxVarintLen64 + n
+		}
+	}
 	var body []byte
+	var bp *[]byte
+	if total <= keptBuffer {
+		bp, _ = encodeBatchBufs.Get().(*[]byte)
+		if bp != nil {
+			body = (*bp)[:0]
+		}
+	}
+	if cap(body) < total {
+		body = make([]byte, 0, total)
+	}
 	for _, p := range packets {
 		body = AppendPacket(body, p)
 	}
-	return comp.Compress([]byte{byte(comp.Algorithm())}, body)
+	out, err := comp.Compress([]byte{byte(comp.Algorithm())}, body)
+	if cap(body) <= keptBuffer {
+		if bp == nil {
+			bp = new([]byte)
+		}
+		*bp = body[:0]
+		encodeBatchBufs.Put(bp)
+	}
+	return out, err
 }
 
 // SendBatch sends a batch made by EncodeBatch with the compression of the
@@ -219,7 +257,7 @@ func (c *Conn) flush() error {
 	batchesSent.Inc()
 	batchBytesRaw.Add(uint64(len(c.body)))
 	batchBytesSent.Add(uint64(len(msg)))
-	c.sent.flush()
+	c.sent.flush(packetsSent, packetBytesSent)
 	err := c.transport.Send(msg)
 	c.body, c.plain = c.body[:0], true
 	if cap(c.body) > keptBuffer {
@@ -235,7 +273,8 @@ func (c *Conn) flush() error {
 func (c *Conn) ReadPacket() ([]byte, error) {
 	c.readMu.Lock()
 	defer c.readMu.Unlock()
-	for len(c.pending) == 0 {
+	for c.pendingHead >= len(c.pending) {
+		c.pending, c.pendingHead = c.pending[:0], 0
 		msg, err := c.transport.ReadMessage()
 		if err != nil {
 			return nil, err
@@ -245,24 +284,33 @@ func (c *Conn) ReadPacket() ([]byte, error) {
 			return nil, err
 		}
 		// The packets share the body of their batch, which no one reuses.
-		if err := Packets(body, c.cfg.MaxPackets, func(p []byte) error {
+		err = Packets(body, c.cfg.MaxPackets, func(p []byte) error {
 			c.pending = append(c.pending, p[:len(p):len(p)])
-			countPacket(packetsReceived, packetBytesReceived, p)
+			c.recv.add(packetsReceived, packetBytesReceived, p)
 			return nil
-		}); err != nil {
+		})
+		c.recv.flush(packetsReceived, packetBytesReceived)
+		if err != nil {
+			clear(c.pending)
 			c.pending = c.pending[:0]
 			return nil, err
 		}
 		if err := c.meter(len(c.pending), len(body)); err != nil {
+			clear(c.pending)
 			c.pending = c.pending[:0]
 			return nil, err
 		}
 	}
-	p := c.pending[0]
-	c.pending[0] = nil
-	c.pending = c.pending[1:]
-	if len(c.pending) == 0 {
-		c.pending = nil
+	p := c.pending[c.pendingHead]
+	c.pending[c.pendingHead] = nil
+	c.pendingHead++
+	if c.pendingHead == len(c.pending) {
+		c.pendingHead = 0
+		if cap(c.pending) > 64 {
+			c.pending = nil
+		} else {
+			c.pending = c.pending[:0]
+		}
 	}
 	return p, nil
 }
@@ -281,13 +329,19 @@ func (c *Conn) HandleBatch(msg []byte, f func(packet []byte) error) error {
 	split := c.split[:0]
 	defer func() {
 		clear(split)
-		c.split = split[:0]
+		if cap(split) > 64 {
+			c.split = nil
+		} else {
+			c.split = split[:0]
+		}
 	}()
-	if err := Packets(body, c.cfg.MaxPackets, func(p []byte) error {
+	err = Packets(body, c.cfg.MaxPackets, func(p []byte) error {
 		split = append(split, p[:len(p):len(p)])
-		countPacket(packetsReceived, packetBytesReceived, p)
+		c.recv.add(packetsReceived, packetBytesReceived, p)
 		return nil
-	}); err != nil {
+	})
+	c.recv.flush(packetsReceived, packetBytesReceived)
+	if err != nil {
 		return err
 	}
 	if err := c.meter(len(split), len(body)); err != nil {
@@ -306,8 +360,12 @@ func (c *Conn) HandleBatch(msg []byte, f func(packet []byte) error) error {
 func (c *Conn) TakePending() [][]byte {
 	c.readMu.Lock()
 	defer c.readMu.Unlock()
-	p := c.pending
-	c.pending = nil
+	if c.pendingHead >= len(c.pending) {
+		c.pending, c.pendingHead = nil, 0
+		return nil
+	}
+	p := c.pending[c.pendingHead:]
+	c.pending, c.pendingHead = nil, 0
 	return p
 }
 

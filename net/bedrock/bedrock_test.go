@@ -334,3 +334,103 @@ func TestHandleBatch(t *testing.T) {
 		t.Fatalf("an error of f came back as %v", err)
 	}
 }
+
+func TestFlateEdgeCasesAndParallel(t *testing.T) {
+	// Empty input with limit 0 succeeds; 1-byte input with limit 0 fails.
+	emptyC, err := (Flate{}).Compress(nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, err := (Flate{}).Decompress([]byte("P:"), emptyC, 0); err != nil || string(got) != "P:" {
+		t.Fatalf("empty decompress limit 0: got=%q err=%v", got, err)
+	}
+	oneC, err := (Flate{}).Compress(nil, []byte{'x'})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := (Flate{}).Decompress(nil, oneC, 0); !errors.Is(err, ErrTooLarge) {
+		t.Fatalf("1-byte decompress limit 0: err=%v, want %v", err, ErrTooLarge)
+	}
+
+	// Boundary sizes across fixedDeflate and stdlib flate thresholds.
+	for _, n := range []int{0, 1, 2, 3, 4, 5, 6, 7, 15, 16, 127, 128, 129, 16383, 16384, 16385, 32768, 40000} {
+		src := make([]byte, n)
+		for i := range src {
+			src[i] = byte((i*31 + i/7) & 0xff)
+		}
+		for _, comp := range []Flate{{}, {Level: 1, FixedBelow: -1}} {
+			c, err := comp.Compress([]byte{0x42}, src)
+			if err != nil || c[0] != 0x42 {
+				t.Fatalf("n=%d comp=%+v compress err=%v", n, comp, err)
+			}
+			got, err := comp.Decompress([]byte("HDR"), c[1:], n)
+			if err != nil || !bytes.HasPrefix(got, []byte("HDR")) || !bytes.Equal(got[3:], src) {
+				t.Fatalf("n=%d comp=%+v round-trip failed: len=%d err=%v", n, comp, len(got), err)
+			}
+			if n > 0 {
+				if _, err := comp.Decompress(nil, c[1:], n-1); !errors.Is(err, ErrTooLarge) {
+					t.Fatalf("n=%d comp=%+v limit n-1: err=%v, want ErrTooLarge", n, comp, err)
+				}
+			}
+		}
+	}
+}
+
+func TestFramingVarintBoundariesAndPendingReuse(t *testing.T) {
+	// Test 1-byte, 2-byte, and 3-byte packet lengths and header IDs.
+	lengths := []int{1, 126, 127, 128, 16382, 16383, 16384, 20000}
+	var pks [][]byte
+	for i, n := range lengths {
+		id := uint32([]int{0, 1, 127, 128, 193, 511, 1023, 42}[i])
+		h := Header{ID: id, SenderSub: uint8(i & 3), TargetSub: uint8((i >> 1) & 3)}
+		p := AppendHeader(nil, h)
+		if len(p) < n {
+			p = append(p, bytes.Repeat([]byte{byte(i + 1)}, n-len(p))...)
+		}
+		gotH, rest, err := ReadHeader(p)
+		if err != nil || gotH != h || len(rest) != len(p)-len(AppendHeader(nil, h)) {
+			t.Fatalf("header %+v mismatch: got=%+v err=%v", h, gotH, err)
+		}
+		pks = append(pks, p)
+	}
+	msg, err := EncodeBatch(Flate{}, pks...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, b := pipes()
+	cb := NewConn(b, Config{MaxBatch: 1 << 20})
+	cb.EnableCompression(Flate{})
+	_ = a.Send(msg)
+	// Read first 2 packets, take next pending, then send another batch to test slice reuse.
+	for i := range 2 {
+		p, err := cb.ReadPacket()
+		if err != nil || !bytes.Equal(p, pks[i]) {
+			t.Fatalf("packet %d mismatch: err=%v", i, err)
+		}
+	}
+	rem := cb.TakePending()
+	if len(rem) != len(pks)-2 {
+		t.Fatalf("TakePending returned %d packets, want %d", len(rem), len(pks)-2)
+	}
+	for i, p := range rem {
+		if !bytes.Equal(p, pks[i+2]) {
+			t.Fatalf("pending packet %d mismatch", i+2)
+		}
+	}
+	// Next batch after TakePending + draining >64 packets.
+	var many [][]byte
+	for i := range 70 {
+		many = append(many, packet(9, []byte{byte(i)}))
+	}
+	msg2, err := EncodeBatch(Flate{}, many...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = a.Send(msg2)
+	for i := range many {
+		p, err := cb.ReadPacket()
+		if err != nil || !bytes.Equal(p, many[i]) {
+			t.Fatalf("many[%d] mismatch: err=%v", i, err)
+		}
+	}
+}

@@ -44,13 +44,34 @@ func (w *Writer) Float64(v float64) { w.Uint64(math.Float64bits(v)) }
 
 // Varuint32 and Varuint64 write unsigned variable-length integers, seven
 // bits a byte.
-func (w *Writer) Varuint32(v uint32) { w.B = binary.AppendUvarint(w.B, uint64(v)) }
-func (w *Writer) Varuint64(v uint64) { w.B = binary.AppendUvarint(w.B, v) }
+func (w *Writer) Varuint32(v uint32) {
+	if v < 0x80 {
+		w.B = append(w.B, byte(v))
+		return
+	}
+	if v < 0x4000 {
+		w.B = append(w.B, byte(v)|0x80, byte(v>>7))
+		return
+	}
+	w.B = binary.AppendUvarint(w.B, uint64(v))
+}
+
+func (w *Writer) Varuint64(v uint64) {
+	if v < 0x80 {
+		w.B = append(w.B, byte(v))
+		return
+	}
+	if v < 0x4000 {
+		w.B = append(w.B, byte(v)|0x80, byte(v>>7))
+		return
+	}
+	w.B = binary.AppendUvarint(w.B, v)
+}
 
 // Varint32 and Varint64 write signed variable-length integers, zigzag
 // encoded.
-func (w *Writer) Varint32(v int32) { w.B = binary.AppendVarint(w.B, int64(v)) }
-func (w *Writer) Varint64(v int64) { w.B = binary.AppendVarint(w.B, v) }
+func (w *Writer) Varint32(v int32) { w.Varuint32(uint32(v)<<1 ^ uint32(v>>31)) }
+func (w *Writer) Varint64(v int64) { w.Varuint64(uint64(v)<<1 ^ uint64(v>>63)) }
 
 // String writes a string prefixed with its length as a varuint32.
 func (w *Writer) String(v string) {
@@ -75,12 +96,10 @@ func (w *Writer) ByteFloat(v float32) { w.B = append(w.B, byte(int64(v/(360.0/25
 // UUID writes a UUID as two little-endian halves, the most significant
 // first.
 func (w *Writer) UUID(v [16]byte) {
-	for i := 7; i >= 0; i-- {
-		w.B = append(w.B, v[i])
-	}
-	for i := 15; i >= 8; i-- {
-		w.B = append(w.B, v[i])
-	}
+	w.B = append(w.B,
+		v[7], v[6], v[5], v[4], v[3], v[2], v[1], v[0],
+		v[15], v[14], v[13], v[12], v[11], v[10], v[9], v[8],
+	)
 }
 
 // Errors of a Reader.
@@ -214,49 +233,61 @@ func (r *Reader) take(n int) []byte {
 	return b
 }
 
-func (r *Reader) Bool() bool {
-	b := r.take(1)
-	return b != nil && b[0] != 0
-}
+func (r *Reader) Bool() bool { return r.Uint8() != 0 }
 
 func (r *Reader) Uint8() uint8 {
-	if b := r.take(1); b != nil {
-		return b[0]
+	if r.err == nil && r.off < len(r.b) {
+		v := r.b[r.off]
+		r.off++
+		return v
 	}
+	r.Fail(ErrShort)
 	return 0
 }
 
 func (r *Reader) Int8() int8 { return int8(r.Uint8()) }
 
 func (r *Reader) Uint16() uint16 {
-	if b := r.take(2); b != nil {
-		return binary.LittleEndian.Uint16(b)
+	if r.err == nil && len(r.b)-r.off >= 2 {
+		v := binary.LittleEndian.Uint16(r.b[r.off:])
+		r.off += 2
+		return v
 	}
+	r.Fail(ErrShort)
 	return 0
 }
 
 func (r *Reader) Int16() int16 { return int16(r.Uint16()) }
 
 func (r *Reader) Uint32() uint32 {
-	if b := r.take(4); b != nil {
-		return binary.LittleEndian.Uint32(b)
+	if r.err == nil && len(r.b)-r.off >= 4 {
+		v := binary.LittleEndian.Uint32(r.b[r.off:])
+		r.off += 4
+		return v
 	}
+	r.Fail(ErrShort)
 	return 0
 }
 
 func (r *Reader) Int32() int32 { return int32(r.Uint32()) }
 
 func (r *Reader) Int32BE() int32 {
-	if b := r.take(4); b != nil {
-		return int32(binary.BigEndian.Uint32(b))
+	if r.err == nil && len(r.b)-r.off >= 4 {
+		v := int32(binary.BigEndian.Uint32(r.b[r.off:]))
+		r.off += 4
+		return v
 	}
+	r.Fail(ErrShort)
 	return 0
 }
 
 func (r *Reader) Uint64() uint64 {
-	if b := r.take(8); b != nil {
-		return binary.LittleEndian.Uint64(b)
+	if r.err == nil && len(r.b)-r.off >= 8 {
+		v := binary.LittleEndian.Uint64(r.b[r.off:])
+		r.off += 8
+		return v
 	}
+	r.Fail(ErrShort)
 	return 0
 }
 
@@ -270,24 +301,38 @@ func (r *Reader) uvarint(max int) uint64 {
 	if r.err != nil {
 		return 0
 	}
+	b := r.b[r.off:]
 	var v uint64
 	for i := range max {
-		if r.off == len(r.b) {
+		if i >= len(b) {
+			r.off += i
 			r.err = ErrShort
 			return 0
 		}
-		c := r.b[r.off]
-		r.off++
+		c := b[i]
 		v |= uint64(c&0x7f) << (7 * i)
 		if c&0x80 == 0 {
+			r.off += i + 1
 			return v
 		}
 	}
+	r.off += max
 	r.err = ErrVarint
 	return 0
 }
 
 func (r *Reader) Varuint32() uint32 {
+	if r.err == nil && r.off < len(r.b) {
+		if b0 := r.b[r.off]; b0 < 0x80 {
+			r.off++
+			return uint32(b0)
+		} else if r.off+1 < len(r.b) {
+			if b1 := r.b[r.off+1]; b1 < 0x80 {
+				r.off += 2
+				return uint32(b0&0x7f) | uint32(b1)<<7
+			}
+		}
+	}
 	v := r.uvarint(5)
 	if v > math.MaxUint32 {
 		r.Fail(ErrVarint)
@@ -296,7 +341,20 @@ func (r *Reader) Varuint32() uint32 {
 	return uint32(v)
 }
 
-func (r *Reader) Varuint64() uint64 { return r.uvarint(10) }
+func (r *Reader) Varuint64() uint64 {
+	if r.err == nil && r.off < len(r.b) {
+		if b0 := r.b[r.off]; b0 < 0x80 {
+			r.off++
+			return uint64(b0)
+		} else if r.off+1 < len(r.b) {
+			if b1 := r.b[r.off+1]; b1 < 0x80 {
+				r.off += 2
+				return uint64(b0&0x7f) | uint64(b1)<<7
+			}
+		}
+	}
+	return r.uvarint(10)
+}
 
 func (r *Reader) Varint32() int32 {
 	u := r.Varuint32()
@@ -334,14 +392,14 @@ func (r *Reader) Bytes() []byte { return r.take(r.Len()) }
 func (r *Reader) Next(n int) []byte { return r.take(n) }
 
 func (r *Reader) UUID() (v [16]byte) {
-	b := r.take(16)
-	if b == nil {
+	if r.err != nil || len(r.b)-r.off < 16 {
+		r.Fail(ErrShort)
 		return v
 	}
-	for i := range 8 {
-		v[7-i] = b[i]
-		v[15-i] = b[8+i]
-	}
+	b := r.b[r.off : r.off+16]
+	r.off += 16
+	v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7] = b[7], b[6], b[5], b[4], b[3], b[2], b[1], b[0]
+	v[8], v[9], v[10], v[11], v[12], v[13], v[14], v[15] = b[15], b[14], b[13], b[12], b[11], b[10], b[9], b[8]
 	return v
 }
 

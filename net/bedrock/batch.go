@@ -9,6 +9,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"slices"
 )
 
 // Compression algorithms a batch names in its first byte once compression
@@ -28,7 +29,19 @@ var (
 // AppendPacket appends a packet to the body of a batch: its length, then
 // the packet, its header and fields.
 func AppendPacket(body, packet []byte) []byte {
-	return append(binary.AppendUvarint(body, uint64(len(packet))), packet...)
+	n := len(packet)
+	switch {
+	case n < 0x80:
+		body = slices.Grow(body, 1+n)
+		body = append(body, byte(n))
+	case n < 0x4000:
+		body = slices.Grow(body, 2+n)
+		body = append(body, byte(n)|0x80, byte(n>>7))
+	default:
+		body = slices.Grow(body, binary.MaxVarintLen64+n)
+		body = binary.AppendUvarint(body, uint64(n))
+	}
+	return append(body, packet...)
 }
 
 // Packets calls f with each packet of the body of a batch, at most max
@@ -38,17 +51,26 @@ func Packets(body []byte, max int, f func(packet []byte) error) error {
 		if n == max {
 			return errTooMany
 		}
-		size, k := binary.Uvarint(body)
+		var size uint64
+		var k int
+		if b0 := body[0]; b0 < 0x80 {
+			size, k = uint64(b0), 1
+		} else if len(body) >= 2 && body[1] < 0x80 {
+			size, k = uint64(b0&0x7f)|uint64(body[1])<<7, 2
+		} else {
+			size, k = binary.Uvarint(body)
+		}
 		if k <= 0 || size > uint64(len(body)-k) {
 			return errPacketLength
 		}
 		if size == 0 {
 			return errEmptyPacket
 		}
-		if err := f(body[k : k+int(size)]); err != nil {
+		end := k + int(size)
+		if err := f(body[k:end]); err != nil {
 			return err
 		}
-		body = body[k+int(size):]
+		body = body[end:]
 	}
 	return nil
 }
@@ -62,12 +84,24 @@ type Header struct {
 
 // AppendHeader appends the header of a packet.
 func AppendHeader(b []byte, h Header) []byte {
-	return binary.AppendUvarint(b, uint64(h.ID&0x3ff|uint32(h.SenderSub&3)<<10|uint32(h.TargetSub&3)<<12))
+	v := h.ID&0x3ff | uint32(h.SenderSub&3)<<10 | uint32(h.TargetSub&3)<<12
+	if v < 0x80 {
+		return append(b, byte(v))
+	}
+	return append(b, byte(v)|0x80, byte(v>>7))
 }
 
 // ReadHeader reads the header at the start of a packet and returns the
 // fields after it.
 func ReadHeader(packet []byte) (Header, []byte, error) {
+	if len(packet) > 0 {
+		if b0 := packet[0]; b0 < 0x80 {
+			return Header{ID: uint32(b0)}, packet[1:], nil
+		} else if len(packet) >= 2 && packet[1] < 0x80 {
+			v := uint32(b0&0x7f) | uint32(packet[1])<<7
+			return Header{ID: v & 0x3ff, SenderSub: uint8(v>>10) & 3, TargetSub: uint8(v>>12) & 3}, packet[2:], nil
+		}
+	}
 	v, k := binary.Uvarint(packet)
 	if k <= 0 || v > 0xffffffff {
 		return Header{}, nil, fmt.Errorf("bedrock: malformed packet header")

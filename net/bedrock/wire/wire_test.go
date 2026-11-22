@@ -75,6 +75,47 @@ func TestVarintBytes(t *testing.T) {
 			t.Fatalf("% x, want % x", w.B, tc.want)
 		}
 	}
+	u32s := []uint32{0, 1, 127, 128, 16383, 16384, 1<<21 - 1, 1 << 21, math.MaxUint32}
+	i32s := []int32{0, 1, -1, 63, -64, 64, -65, 8191, -8192, 8192, -8193, math.MaxInt32, math.MinInt32}
+	u64s := []uint64{0, 1, 127, 128, 16383, 16384, math.MaxUint32, math.MaxUint32 + 1, math.MaxUint64}
+	i64s := []int64{0, 1, -1, 63, -64, 8191, -8192, math.MaxInt32, math.MinInt32, math.MaxInt64, math.MinInt64}
+	var w Writer
+	for _, v := range u32s {
+		w.Varuint32(v)
+	}
+	for _, v := range i32s {
+		w.Varint32(v)
+	}
+	for _, v := range u64s {
+		w.Varuint64(v)
+	}
+	for _, v := range i64s {
+		w.Varint64(v)
+	}
+	r := NewReader(w.B)
+	for _, want := range u32s {
+		if got := r.Varuint32(); got != want {
+			t.Fatalf("Varuint32: got %d, want %d", got, want)
+		}
+	}
+	for _, want := range i32s {
+		if got := r.Varint32(); got != want {
+			t.Fatalf("Varint32: got %d, want %d", got, want)
+		}
+	}
+	for _, want := range u64s {
+		if got := r.Varuint64(); got != want {
+			t.Fatalf("Varuint64: got %d, want %d", got, want)
+		}
+	}
+	for _, want := range i64s {
+		if got := r.Varint64(); got != want {
+			t.Fatalf("Varint64: got %d, want %d", got, want)
+		}
+	}
+	if r.Err() != nil || r.Len() != 0 {
+		t.Fatalf("varint boundaries: err=%v rem=%d", r.Err(), r.Len())
+	}
 }
 
 // TestByteFloatWraps writes angles out of a turn, which wrap around.
@@ -244,4 +285,66 @@ func BenchmarkWriteMovement(b *testing.B) {
 		w.ByteFloat(45)
 		w.ByteFloat(45)
 	}
+}
+
+func BenchmarkReadMovement(b *testing.B) {
+	var w Writer
+	w.Varuint64(12345)
+	w.Uint8(3)
+	w.Float32(1)
+	w.Float32(64)
+	w.Float32(-3)
+	w.ByteFloat(90)
+	w.ByteFloat(45)
+	w.ByteFloat(45)
+	data := w.B
+	b.ReportAllocs()
+	for b.Loop() {
+		r := NewReader(data)
+		_ = r.Varuint64()
+		_ = r.Uint8()
+		_ = r.Float32()
+		_ = r.Float32()
+		_ = r.Float32()
+		_ = r.ByteFloat()
+		_ = r.ByteFloat()
+		_ = r.ByteFloat()
+	}
+}
+
+func BenchmarkVarintAndUUID(b *testing.B) {
+	id := [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+	b.Run("Write", func(b *testing.B) {
+		w := Writer{B: make([]byte, 0, 64)}
+		b.ReportAllocs()
+		for b.Loop() {
+			w.B = w.B[:0]
+			w.Varuint32(18)
+			w.Varuint32(300)
+			w.Varuint32(150000)
+			w.Varint32(-42)
+			w.Varuint64(123456789)
+			w.UUID(id)
+		}
+	})
+	var sample Writer
+	sample.Varuint32(18)
+	sample.Varuint32(300)
+	sample.Varuint32(150000)
+	sample.Varint32(-42)
+	sample.Varuint64(123456789)
+	sample.UUID(id)
+	data := sample.B
+	b.Run("Read", func(b *testing.B) {
+		b.ReportAllocs()
+		for b.Loop() {
+			r := NewReader(data)
+			_ = r.Varuint32()
+			_ = r.Varuint32()
+			_ = r.Varuint32()
+			_ = r.Varint32()
+			_ = r.Varuint64()
+			_ = r.UUID()
+		}
+	})
 }

@@ -39,49 +39,61 @@ const maxTally = 32
 // that the counters of the process, which every connection adds to, are
 // added to once a batch for each ID rather than once a packet.
 type tally struct {
-	ids            []uint16
-	packets, bytes []uint64
+	n       int
+	ids     [maxTally]uint16
+	packets [maxTally]uint64
+	bytes   [maxTally]uint64
 }
 
-// add counts a packet.
-func (t *tally) add(p []byte) {
+// packetID decodes the 10-bit packet ID from a raw packet header.
+func packetID(p []byte) (uint16, bool) {
+	if len(p) > 0 {
+		if b0 := p[0]; b0 < 0x80 {
+			return uint16(b0), true
+		} else if len(p) >= 2 && p[1] < 0x80 {
+			return uint16(b0&0x7f) | (uint16(p[1])<<7)&(maxPacketID-1), true
+		}
+	}
 	id, n := binary.Uvarint(p)
 	if n <= 0 {
-		return
+		return 0, false
 	}
-	i := uint16(id & (maxPacketID - 1))
-	for k, x := range t.ids {
-		if x == i {
+	return uint16(id & (maxPacketID - 1)), true
+}
+
+// addID counts a packet with an already-decoded ID and byte length.
+func (t *tally) addID(packets, bytes *metrics.CounterVec, id uint16, size uint64) {
+	for k := range t.n {
+		if t.ids[k] == id {
 			t.packets[k]++
-			t.bytes[k] += uint64(len(p))
+			t.bytes[k] += size
 			return
 		}
 	}
-	if len(t.ids) == maxTally {
-		countPacket(packetsSent, packetBytesSent, p)
+	if t.n == maxTally {
+		packets.Add(int(id), 1)
+		bytes.Add(int(id), size)
 		return
 	}
-	t.ids = append(t.ids, i)
-	t.packets = append(t.packets, 1)
-	t.bytes = append(t.bytes, uint64(len(p)))
+	t.ids[t.n] = id
+	t.packets[t.n] = 1
+	t.bytes[t.n] = size
+	t.n++
+}
+
+// add counts a packet.
+func (t *tally) add(packets, bytes *metrics.CounterVec, p []byte) {
+	if id, ok := packetID(p); ok {
+		t.addID(packets, bytes, id, uint64(len(p)))
+	}
 }
 
 // flush adds what was counted to the counters of the process.
-func (t *tally) flush() {
-	for k, i := range t.ids {
-		packetsSent.Add(int(i), t.packets[k])
-		packetBytesSent.Add(int(i), t.bytes[k])
+func (t *tally) flush(packets, bytes *metrics.CounterVec) {
+	for k := range t.n {
+		i := int(t.ids[k])
+		packets.Add(i, t.packets[k])
+		bytes.Add(i, t.bytes[k])
 	}
-	t.ids, t.packets, t.bytes = t.ids[:0], t.packets[:0], t.bytes[:0]
-}
-
-// countPacket counts a packet in a vector of packets and one of bytes.
-func countPacket(packets, bytes *metrics.CounterVec, p []byte) {
-	id, n := binary.Uvarint(p)
-	if n <= 0 {
-		return
-	}
-	i := int(id & (maxPacketID - 1))
-	packets.Add(i, 1)
-	bytes.Add(i, uint64(len(p)))
+	t.n = 0
 }

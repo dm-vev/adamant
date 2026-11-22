@@ -98,3 +98,115 @@ func TestPacketsCountedPerBatch(t *testing.T) {
 		t.Fatalf("%d texts counted, want 1", got)
 	}
 }
+
+// TestBatchCacheMemoryBounded checks that large batches stay within the per-shard
+// memory cap and that replacing them with small batches shrinks retained buffers
+// rather than pinning huge backing arrays forever.
+func TestBatchCacheMemoryBounded(t *testing.T) {
+	cache := NewBatchCache()
+	retained := func() int {
+		total := 0
+		for i := range cache.shards {
+			s := &cache.shards[i]
+			s.mu.RLock()
+			for j := range s.entries {
+				total += cap(s.entries[j].data)
+			}
+			s.mu.RUnlock()
+		}
+		return total
+	}
+
+	// Fill with 128 large (48 KiB) distinct bodies.
+	for i := range 128 {
+		body := bytes.Repeat([]byte{byte(i), byte(i >> 3), 0x5a, 0xa5}, 12<<10)
+		if _, err := cache.compress(nil, Flate{}, body); err != nil {
+			t.Fatal(err)
+		}
+	}
+	peak := retained()
+	// Worst case: 32 shards * (96 KiB + headroom for 1 large entry) <= 4 MiB.
+	const maxPeak = 4 << 20
+	if peak == 0 || peak > maxPeak {
+		t.Fatalf("retained %d bytes after large batches, want in (0, %d]", peak, maxPeak)
+	}
+
+	// Oversized batch (> batchCacheMaxBody) bypasses cache cleanly.
+	huge := bytes.Repeat([]byte("huge-batch-data!"), (batchCacheMaxBody/16)+1024)
+	msg, err := cache.compress(nil, Flate{}, huge)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := (Flate{}).Decompress(nil, msg[1:], len(huge))
+	if err != nil || !bytes.Equal(got, huge) {
+		t.Fatalf("oversized batch round-trip failed: len=%d err=%v", len(got), err)
+	}
+
+	// Replace cache contents with 512 small (400 B) distinct bodies; oversized
+	// backing arrays must be dropped and total retained memory must shrink.
+	for i := range 512 {
+		body := packet(111, []byte(fmt.Sprintf("small-tick-%04d-%s", i, bytes.Repeat([]byte{byte(i)}, 360))))
+		if _, err := cache.compress(nil, Flate{}, body); err != nil {
+			t.Fatal(err)
+		}
+	}
+	after := retained()
+	if after > 256<<10 {
+		t.Fatalf("retained %d bytes after small batches (peak %d), oversized backing arrays were not released", after, peak)
+	}
+}
+
+// TestBatchCacheAlgorithmsAndStress verifies algorithm isolation and mixed-size
+// concurrent access under the race detector.
+func TestBatchCacheAlgorithmsAndStress(t *testing.T) {
+	cache := NewBatchCache()
+	body := packet(111, bytes.Repeat([]byte("shared payload "), 60))
+
+	flateMsg, err := cache.compress(nil, Flate{}, body)
+	if err != nil || flateMsg[0] != byte(AlgorithmFlate) {
+		t.Fatalf("flate compress: prefix=%v err=%v", flateMsg[:1], err)
+	}
+	snappyMsg, err := cache.compress(nil, fastSnappyAlg{}, body)
+	if err != nil || snappyMsg[0] != byte(AlgorithmSnappy) {
+		t.Fatalf("snappy compress: prefix=%v err=%v", snappyMsg[:1], err)
+	}
+	if bytes.Equal(flateMsg, snappyMsg) {
+		t.Fatal("different algorithms collided in BatchCache")
+	}
+
+	var wg sync.WaitGroup
+	for g := range 12 {
+		wg.Go(func() {
+			var dst []byte
+			for i := range 200 {
+				var b []byte
+				switch i % 4 {
+				case 0:
+					b = body
+				case 1:
+					b = packet(111, bytes.Repeat([]byte{byte(i % 16), byte(g % 3)}, 300))
+				case 2:
+					b = packet(58, bytes.Repeat([]byte{byte(i % 8), 1, 2, 3}, 4096))
+				case 3:
+					b = packet(58, bytes.Repeat([]byte{byte(i), byte(g)}, 20000))
+				}
+				var alg Compression = Flate{}
+				if (i+g)%3 == 0 {
+					alg = fastSnappyAlg{}
+				}
+				var err error
+				dst, err = cache.compress(dst[:0], alg, b)
+				if err != nil {
+					t.Error(err)
+					return
+				}
+				got, err := alg.Decompress(nil, dst[1:], 1<<20)
+				if err != nil || !bytes.Equal(got, b) {
+					t.Errorf("g=%d i=%d alg=%d mismatch: len=%d want=%d err=%v", g, i, alg.Algorithm(), len(got), len(b), err)
+					return
+				}
+			}
+		})
+	}
+	wg.Wait()
+}

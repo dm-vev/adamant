@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"sync"
 )
 
@@ -60,6 +61,25 @@ const defaultFixedBelow = 16 << 10
 // Algorithm returns AlgorithmFlate.
 func (Flate) Algorithm() uint16 { return AlgorithmFlate }
 
+type sliceWriter struct {
+	b []byte
+}
+
+func (w *sliceWriter) Write(p []byte) (int, error) {
+	w.b = append(w.b, p...)
+	return len(p), nil
+}
+
+type flateWriter struct {
+	w   *flate.Writer
+	dst sliceWriter
+}
+
+type flateReader struct {
+	r  io.ReadCloser
+	br bytes.Reader
+}
+
 // flateWriters pools a writer per level; flateReaders pools readers.
 var (
 	flateWriters [flate.BestCompression + 1]sync.Pool
@@ -83,41 +103,80 @@ func (f Flate) Compress(dst, src []byte) ([]byte, error) {
 		return fixedDeflate(dst, src), nil
 	}
 	level := f.level()
-	buf := bytes.NewBuffer(dst)
-	w, _ := flateWriters[level].Get().(*flate.Writer)
-	if w == nil {
-		var err error
-		if w, err = flate.NewWriter(buf, level); err != nil {
+	if cap(dst)-len(dst) < 64 && len(src) > 0 {
+		dst = slices.Grow(dst, min(max(len(src)/2, 256), 64<<10))
+	}
+	fw, _ := flateWriters[level].Get().(*flateWriter)
+	if fw == nil {
+		fw = &flateWriter{dst: sliceWriter{b: dst}}
+		w, err := flate.NewWriter(&fw.dst, level)
+		if err != nil {
 			return nil, err
 		}
+		fw.w = w
 	} else {
-		w.Reset(buf)
+		fw.dst.b = dst
+		fw.w.Reset(&fw.dst)
 	}
-	defer flateWriters[level].Put(w)
-	if _, err := w.Write(src); err != nil {
-		return nil, err
+	_, werr := fw.w.Write(src)
+	cerr := fw.w.Close()
+	out := fw.dst.b
+	fw.dst.b = nil
+	flateWriters[level].Put(fw)
+	if werr != nil {
+		return nil, werr
 	}
-	if err := w.Close(); err != nil {
-		return nil, err
+	if cerr != nil {
+		return nil, cerr
 	}
-	return buf.Bytes(), nil
+	return out, nil
 }
 
 // Decompress appends src decompressed to dst.
 func (Flate) Decompress(dst, src []byte, limit int) ([]byte, error) {
-	r, _ := flateReaders.Get().(io.ReadCloser)
-	if r == nil {
-		r = flate.NewReader(bytes.NewReader(src))
-	} else if err := r.(flate.Resetter).Reset(bytes.NewReader(src), nil); err != nil {
-		return nil, err
+	fr, _ := flateReaders.Get().(*flateReader)
+	if fr == nil {
+		fr = &flateReader{}
+		fr.br.Reset(src)
+		fr.r = flate.NewReader(&fr.br)
+	} else {
+		fr.br.Reset(src)
+		if err := fr.r.(flate.Resetter).Reset(&fr.br, nil); err != nil {
+			fr.br.Reset(nil)
+			flateReaders.Put(fr)
+			return nil, err
+		}
 	}
-	defer flateReaders.Put(r)
+	defer func() {
+		fr.br.Reset(nil)
+		flateReaders.Put(fr)
+	}()
+
 	start := len(dst)
+	if limit >= 0 && cap(dst)-start < 64 {
+		est := len(src) * 2
+		if len(src) >= 2048 {
+			est = len(src) * 3
+		}
+		est = min(max(est, 256), 64<<10)
+		if limit < est {
+			est = limit + 1
+		}
+		dst = slices.Grow(dst, est)
+	}
 	for {
 		if len(dst) == cap(dst) {
-			dst = append(dst, 0)[:len(dst)]
+			cur := len(dst) - start
+			if cur > limit {
+				return nil, ErrTooLarge
+			}
+			grow := max(cur, 512)
+			if rem := limit - cur + 1; rem > 0 && grow > rem {
+				grow = rem
+			}
+			dst = slices.Grow(dst, grow)
 		}
-		n, err := r.Read(dst[len(dst):cap(dst)])
+		n, err := fr.r.Read(dst[len(dst):cap(dst)])
 		dst = dst[:len(dst)+n]
 		if len(dst)-start > limit {
 			return nil, ErrTooLarge
