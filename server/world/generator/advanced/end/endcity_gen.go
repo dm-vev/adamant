@@ -467,12 +467,10 @@ func endCityFatTowerGenerator(b *endCityBuilder, g *End, depth int, parent *endC
 }
 
 func (g *End) endCityYPosForStructure(chunkX, chunkZ int, rotation endCityRotation) (int, error) {
-	temp := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 255})
-
 	s := g.pool.Get().(*endScratch)
 	defer g.pool.Put(s)
 
-	g.generateTerrain(chunkX, chunkZ, temp, s)
+	terrain := g.terrainChunk(chunkX, chunkZ, s)
 
 	i, j := 5, 5
 	switch rotation {
@@ -484,10 +482,10 @@ func (g *End) endCityYPosForStructure(chunkX, chunkZ int, rotation endCityRotati
 		j = -5
 	}
 
-	h1 := int(temp.HighestBlock(7, 7))
-	h2 := int(temp.HighestBlock(7, uint8(7+j)))
-	h3 := int(temp.HighestBlock(uint8(7+i), 7))
-	h4 := int(temp.HighestBlock(uint8(7+i), uint8(7+j)))
+	h1 := max(0, terrain.highestY(7, 7))
+	h2 := max(0, terrain.highestY(7, 7+j))
+	h3 := max(0, terrain.highestY(7+i, 7))
+	h4 := max(0, terrain.highestY(7+i, 7+j))
 	return min(min(h1, h2), min(h3, h4)), nil
 }
 
@@ -522,12 +520,15 @@ func (g *End) applyEndCityStructures(chunkX, chunkZ int, region *endFeatureRegio
 	cellX, cellZ := floorDiv(chunkX, 20), floorDiv(chunkZ, 20)
 	chunkMinX, chunkMinZ := chunkX<<4, chunkZ<<4
 	chunkMaxX, chunkMaxZ := chunkMinX+15, chunkMinZ+15
-	random := g.endCityWorldgenRandom(chunkX, chunkZ).random
+	var (
+		random      vanilla.Random
+		randomReady bool
+	)
 
 	for dx := -1; dx <= 1; dx++ {
 		for dz := -1; dz <= 1; dz++ {
 			startX, startZ := g.endCityStartChunk(cellX+dx, cellZ+dz)
-			if !g.isEndCityStart(startX, startZ) {
+			if int64(startX)*int64(startX)+int64(startZ)*int64(startZ) <= 4096 {
 				continue
 			}
 			s, err := g.endCityStructure(startX, startZ)
@@ -539,6 +540,10 @@ func (g *End) applyEndCityStructures(chunkX, chunkZ int, region *endFeatureRegio
 			}
 			for _, p := range s.pieces {
 				if p != nil && p.bb.intersectsXZ(chunkMinX, chunkMinZ, chunkMaxX, chunkMaxZ) {
+					if !randomReady {
+						random = g.endCityWorldgenRandom(chunkX, chunkZ).random
+						randomReady = true
+					}
 					g.placeEndCityPiece(chunkX, chunkZ, region, p, &random, publish, result)
 				}
 			}
@@ -547,7 +552,7 @@ func (g *End) applyEndCityStructures(chunkX, chunkZ int, region *endFeatureRegio
 }
 
 func (g *End) placeEndCityPiece(chunkX, chunkZ int, region *endFeatureRegion, p *endCityPiece, random *vanilla.Random, publish bool, result *world.GenerationResult) {
-	c := region.chunks[region.index(chunkX, chunkZ)]
+	blockRange := region.blockRange()
 	origin := [3]int32{int32(p.pos.x), int32(p.pos.y), int32(p.pos.z)}
 	seed := g.seed ^ int64(p.pos.x)*341873128712 ^ int64(p.pos.z)*132897987541
 	blockPlacement, err := p.template.Template.PlaceBlocks(
@@ -556,25 +561,30 @@ func (g *End) placeEndCityPiece(chunkX, chunkZ int, region *endFeatureRegion, p 
 		p.rot.canonical(),
 		structure.NoMirror,
 		structure.Bounds{
-			Min: [3]int32{int32(chunkX << 4), int32(c.Range().Min()), int32(chunkZ << 4)},
-			Max: [3]int32{int32((chunkX << 4) + 15), int32(c.Range().Max()), int32((chunkZ << 4) + 15)},
+			Min: [3]int32{int32(chunkX << 4), int32(blockRange.Min()), int32(chunkZ << 4)},
+			Max: [3]int32{int32((chunkX << 4) + 15), int32(blockRange.Max()), int32((chunkZ << 4) + 15)},
 		},
 		seed,
 	)
 	if err != nil {
 		panic(err)
 	}
-	registry := c.BlockRegistry()
+	registry := region.blockRegistry()
 	positions := make([]cube.Pos, 0, len(blockPlacement.Blocks))
 	access := endShapeAccess{
 		endFeatureOrigin: endFeatureOrigin{region: region, chunkX: chunkX, chunkZ: chunkZ},
 		result:           result, random: region.sourceShapeRandom(g.seed, chunkX, chunkZ),
 	}
+	hasStructureBlock := false
 	for _, placed := range blockPlacement.Blocks {
 		if placed.Pos[0]>>4 != int32(chunkX) || placed.Pos[2]>>4 != int32(chunkZ) {
 			continue
 		}
-		if placed.State.Name == "minecraft:structure_block" || !p.overwrite && placed.State.Name == "minecraft:air" {
+		if placed.State.Name == "minecraft:structure_block" {
+			hasStructureBlock = true
+			continue
+		}
+		if !p.overwrite && placed.State.Name == "minecraft:air" {
 			continue
 		}
 		state, err := placed.ResolveNative(registry)
@@ -584,21 +594,28 @@ func (g *End) placeEndCityPiece(chunkX, chunkZ int, region *endFeatureRegion, p 
 		if region.setLayers(int(placed.Pos[0]), int(placed.Pos[1]), int(placed.Pos[2]), state) {
 			pos := cube.Pos{int(placed.Pos[0]), int(placed.Pos[1]), int(placed.Pos[2])}
 			positions = append(positions, pos)
-			if actor, exists := region.blockActors[pos]; exists && actor.record.State.Name != placed.State.Name {
-				delete(region.blockActors, pos)
-				access.removeBlockEntity(pos)
+			if len(region.blockActors) != 0 {
+				if actor, exists := region.blockActors[pos]; exists && actor.record.State.Name != placed.State.Name {
+					delete(region.blockActors, pos)
+					access.removeBlockEntity(pos)
+				}
 			}
 			structure.SeedRandomizableContainerLoot(&placed, random)
 			access.recordBlockActor(placed)
 			access.markPostProcessing(pos, state.CanonicalID(registry))
 		}
 	}
-	world.UpdateTemplateShapes(access, positions, 2)
-	g.placeEndCityDataMarkers(chunkX, chunkZ, region, blockPlacement.Blocks, p, random, publish, result)
+	if len(positions) != 0 {
+		world.UpdateTemplateShapes(access, positions, 2)
+	}
+	if hasStructureBlock {
+		g.placeEndCityDataMarkers(chunkX, chunkZ, region, blockPlacement.Blocks, p, random, publish, result)
+	}
 }
 
 func (g *End) placeEndCityDataMarkers(chunkX, chunkZ int, region *endFeatureRegion, blocks []structure.Block, p *endCityPiece, random *vanilla.Random, publish bool, result *world.GenerationResult) {
-	c := region.chunks[region.index(chunkX, chunkZ)]
+	blockRange := region.blockRange()
+	registry := region.blockRegistry()
 	for _, marker := range blocks {
 		if marker.State.Name != "minecraft:structure_block" || marker.NBT == nil {
 			continue
@@ -611,7 +628,7 @@ func (g *End) placeEndCityDataMarkers(chunkX, chunkZ int, region *endFeatureRegi
 		switch {
 		case strings.HasPrefix(metadata, "Chest"):
 			chestPos := [3]int32{marker.Pos[0], marker.Pos[1] - 1, marker.Pos[2]}
-			if !endCityPosInChunk(chestPos, chunkX, chunkZ, c) {
+			if !endCityPosInChunk(chestPos, chunkX, chunkZ, blockRange) {
 				continue
 			}
 			pos := cube.Pos{int(chestPos[0]), int(chestPos[1]), int(chestPos[2])}
@@ -627,7 +644,7 @@ func (g *End) placeEndCityDataMarkers(chunkX, chunkZ int, region *endFeatureRegi
 			}
 			access.recordBlockActor(actor.record)
 		case strings.HasPrefix(metadata, "Sentry"):
-			if !endCityPosInChunk(marker.Pos, chunkX, chunkZ, c) {
+			if !endCityPosInChunk(marker.Pos, chunkX, chunkZ, blockRange) {
 				continue
 			}
 			if !publish {
@@ -640,7 +657,7 @@ func (g *End) placeEndCityDataMarkers(chunkX, chunkZ int, region *endFeatureRegi
 				Rotation: cube.Rotation{float64(rand.Float32() * float32(2*math.Pi)), 0},
 			}, entity.ShulkerBehaviourConfig{}))
 		case strings.HasPrefix(metadata, "Elytra"):
-			if !endCityPosInChunk(marker.Pos, chunkX, chunkZ, c) {
+			if !endCityPosInChunk(marker.Pos, chunkX, chunkZ, blockRange) {
 				continue
 			}
 			outward := structure.TransformPosition([3]int32{0, 0, 1}, structure.NoMirror, p.rot.canonical())
@@ -663,7 +680,10 @@ func (g *End) placeEndCityDataMarkers(chunkX, chunkZ int, region *endFeatureRegi
 			pos := cube.Pos{int(marker.Pos[0]), int(marker.Pos[1]), int(marker.Pos[2])}
 			logicalState := region.nativeState(pos[0], pos[1], pos[2])
 			rid := world.BlockRuntimeID(frame)
-			if region.setLayers(pos[0], pos[1], pos[2], world.NativeState{Block: rid, Liquid: c.BlockRegistry().AirRuntimeID()}) {
+			if region.setLayers(pos[0], pos[1], pos[2], world.NativeState{Block: rid, Liquid: registry.AirRuntimeID()}) {
+				if region.logicalStates == nil {
+					region.logicalStates = make(map[cube.Pos]world.NativeState)
+				}
 				region.logicalStates[pos] = logicalState
 			}
 			if !publish {
@@ -679,28 +699,23 @@ func (g *End) placeEndCityDataMarkers(chunkX, chunkZ int, region *endFeatureRegi
 	}
 }
 
-func endCityPosInChunk(pos [3]int32, chunkX, chunkZ int, c *chunk.Chunk) bool {
+func endCityPosInChunk(pos [3]int32, chunkX, chunkZ int, r cube.Range) bool {
 	return pos[0]>>4 == int32(chunkX) && pos[2]>>4 == int32(chunkZ) &&
-		pos[1] >= int32(c.Range().Min()) && pos[1] <= int32(c.Range().Max())
+		pos[1] >= int32(r.Min()) && pos[1] <= int32(r.Max())
 }
 
 func (g *End) endCityRotation(random *endRand) endCityRotation {
 	return endCityRotation(random.Intn(4))
 }
 func (g *End) endCityStructure(startChunkX, startChunkZ int) (*endCityStructure, error) {
+	cache := &g.state().endCityCache
 	pos := world.ChunkPos{int32(startChunkX), int32(startChunkZ)}
-	if v, ok := g.endCityCache.Load(pos); ok {
-		if v == nil {
-			return nil, nil
-		}
-		if s, ok := v.(*endCityStructure); ok {
-			return s, nil
-		}
-		return nil, nil
+	if s, ok := cache.get(pos); ok {
+		return s, nil
 	}
 
 	if !g.isIslandChunk(startChunkX, startChunkZ) {
-		g.endCityCache.Store(pos, (*endCityStructure)(nil))
+		cache.put(pos, nil)
 		return nil, nil
 	}
 
@@ -708,11 +723,11 @@ func (g *End) endCityStructure(startChunkX, startChunkZ int) (*endCityStructure,
 	rotation := g.endCityRotation(structureRandom)
 	y, err := g.endCityYPosForStructure(startChunkX, startChunkZ, rotation)
 	if err != nil {
-		g.endCityCache.Store(pos, (*endCityStructure)(nil))
+		cache.put(pos, nil)
 		return nil, err
 	}
 	if y < 60 {
-		g.endCityCache.Store(pos, (*endCityStructure)(nil))
+		cache.put(pos, nil)
 		return nil, nil
 	}
 
@@ -723,7 +738,7 @@ func (g *End) endCityStructure(startChunkX, startChunkZ int) (*endCityStructure,
 	start := endCityPos{x: startChunkX*16 + 7, y: y, z: startChunkZ*16 + 7}
 	base, err := g.newEndCityPiece("base_floor", start, rotation, true)
 	if err != nil {
-		g.endCityCache.Store(pos, (*endCityStructure)(nil))
+		cache.put(pos, nil)
 		return nil, err
 	}
 	pieces = append(pieces, base)
@@ -731,7 +746,7 @@ func (g *End) endCityStructure(startChunkX, startChunkZ int) (*endCityStructure,
 
 	second, err := g.addEndCityPiece(current, endCityPos{-1, 0, -1}, "second_floor_1", rotation, false)
 	if err != nil {
-		g.endCityCache.Store(pos, (*endCityStructure)(nil))
+		cache.put(pos, nil)
 		return nil, err
 	}
 	pieces = append(pieces, second)
@@ -739,7 +754,7 @@ func (g *End) endCityStructure(startChunkX, startChunkZ int) (*endCityStructure,
 
 	third, err := g.addEndCityPiece(current, endCityPos{-1, 4, -1}, "third_floor_1", rotation, false)
 	if err != nil {
-		g.endCityCache.Store(pos, (*endCityStructure)(nil))
+		cache.put(pos, nil)
 		return nil, err
 	}
 	pieces = append(pieces, third)
@@ -747,7 +762,7 @@ func (g *End) endCityStructure(startChunkX, startChunkZ int) (*endCityStructure,
 
 	roof, err := g.addEndCityPiece(current, endCityPos{-1, 8, -1}, "third_roof", rotation, true)
 	if err != nil {
-		g.endCityCache.Store(pos, (*endCityStructure)(nil))
+		cache.put(pos, nil)
 		return nil, err
 	}
 	pieces = append(pieces, roof)
@@ -765,7 +780,7 @@ func (g *End) endCityStructure(startChunkX, startChunkZ int) (*endCityStructure,
 	}
 
 	s := &endCityStructure{pieces: pieces, bb: union}
-	g.endCityCache.Store(pos, s)
+	cache.put(pos, s)
 	return s, nil
 }
 

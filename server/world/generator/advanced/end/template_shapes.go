@@ -23,12 +23,20 @@ type endShapeAccess struct {
 }
 
 func (a endShapeAccess) BlockStateID(pos cube.Pos) (uint32, error) {
-	chunkX, chunkZ := floorDiv(pos[0], 16), floorDiv(pos[2], 16)
+	chunkX, chunkZ := pos[0]>>4, pos[2]>>4
 	if !a.region.containsChunk(chunkX, chunkZ) {
 		return 0, fmt.Errorf("end generation shape state outside loaded region at %v", pos)
 	}
 	state := a.region.nativeState(pos[0], pos[1], pos[2])
-	id := state.CanonicalID(a.region.chunks[a.region.index(chunkX, chunkZ)].BlockRegistry())
+	if state.StateID == 0 && state.Liquid == a.region.airRID {
+		if state.Block == a.region.airRID && a.region.airStateID != 0 {
+			return a.region.airStateID, nil
+		}
+		if state.Block == a.region.endStoneRID && a.region.endStoneStateID != 0 {
+			return a.region.endStoneStateID, nil
+		}
+	}
+	id := state.CanonicalID(a.region.blockRegistry())
 	if id == 0 {
 		return 0, fmt.Errorf("end generation shape state at %v is native-only", pos)
 	}
@@ -36,7 +44,7 @@ func (a endShapeAccess) BlockStateID(pos cube.Pos) (uint32, error) {
 }
 
 func (a endShapeAccess) Range() cube.Range {
-	return a.region.chunks[a.region.index(a.region.targetX, a.region.targetZ)].Range()
+	return a.region.blockRange()
 }
 
 func endWorldgenRegionRandom(seed int64, chunkX, chunkZ int) vanilla.Random {
@@ -73,6 +81,9 @@ func (a endShapeAccess) ScheduleTick(pos cube.Pos, kind chunk.ScheduledTickKind,
 	if _, exists := a.region.scheduledTicks[tick]; exists {
 		return
 	}
+	if a.region.scheduledTicks == nil {
+		a.region.scheduledTicks = make(map[chunk.ScheduledTick]struct{})
+	}
 	a.region.scheduledTicks[tick] = struct{}{}
 	if pos[0]>>4 == a.region.targetX && pos[2]>>4 == a.region.targetZ && pos[1] >= a.region.minY && pos[1] <= a.region.maxY {
 		a.result.ScheduleTick(tick)
@@ -80,6 +91,9 @@ func (a endShapeAccess) ScheduleTick(pos cube.Pos, kind chunk.ScheduledTickKind,
 }
 
 func (a endShapeAccess) HasBlockTick(pos cube.Pos, name string) bool {
+	if len(a.region.scheduledTicks) == 0 {
+		return false
+	}
 	_, exists := a.region.scheduledTicks[chunk.ScheduledTick{Pos: pos, Kind: chunk.BlockTick, Type: name}]
 	return exists
 }
@@ -121,6 +135,9 @@ func (a endShapeAccess) Signal(pos cube.Pos, face cube.Face) int {
 }
 
 func (a endShapeAccess) HiveHasOccupants(pos cube.Pos) bool {
+	if len(a.region.blockActors) == 0 {
+		return false
+	}
 	if actor, exists := a.region.blockActors[pos]; exists {
 		for _, key := range [...]string{"bees", "Occupants"} {
 			switch occupants := actor.data[key].(type) {
@@ -139,7 +156,7 @@ func (a endShapeAccess) HiveHasOccupants(pos cube.Pos) bool {
 }
 
 func (a endShapeAccess) SetBlockState(pos cube.Pos, stateID uint32, flags int) bool {
-	chunkX, chunkZ := floorDiv(pos[0], 16), floorDiv(pos[2], 16)
+	chunkX, chunkZ := pos[0]>>4, pos[2]>>4
 	if pos[1] < a.region.minY || pos[1] > a.region.maxY || !a.region.containsChunk(chunkX, chunkZ) ||
 		!a.inWriteRadius(pos[0], pos[2]) {
 		return false
@@ -148,37 +165,43 @@ func (a endShapeAccess) SetBlockState(pos cube.Pos, stateID uint32, flags int) b
 	if !ok {
 		panic(fmt.Sprintf("end generation shape produced unknown state ID %d", stateID))
 	}
-	oldID, err := a.BlockStateID(pos)
-	if err != nil {
-		panic(err)
+	if len(a.region.blockActors) != 0 {
+		if _, hasActor := a.region.blockActors[pos]; hasActor {
+			oldID, err := a.BlockStateID(pos)
+			if err != nil {
+				panic(err)
+			}
+			oldName, ok := gamedata.BlockStateName(oldID)
+			if !ok {
+				panic(fmt.Sprintf("invalid previous End state ID %d at %v", oldID, pos))
+			}
+			if oldName != name {
+				delete(a.region.blockActors, pos)
+				a.removeBlockEntity(pos)
+			}
+		}
 	}
-	oldName, ok := gamedata.BlockStateName(oldID)
-	if !ok {
-		panic(fmt.Sprintf("invalid previous End state ID %d at %v", oldID, pos))
-	}
-	registry := a.region.chunks[a.region.index(chunkX, chunkZ)].BlockRegistry()
+	registry := a.region.blockRegistry()
 	native := world.ResolveStateID(registry, stateID)
-	if oldName != name {
-		delete(a.region.blockActors, pos)
-		a.removeBlockEntity(pos)
-	}
 	if !a.region.setLayers(pos[0], pos[1], pos[2], native) {
 		return false
 	}
-	if actor, exists := a.region.blockActors[pos]; exists {
-		_, properties, _ := gamedata.BlockStateFromID(stateID)
-		actor.record.State = world.BlockState{Name: name, Properties: properties}
-		nativeActor, adapted, err := structure.NativeBlockForState(actor.record.State)
-		if err != nil {
-			panic(err)
+	if len(a.region.blockActors) != 0 {
+		if actor, exists := a.region.blockActors[pos]; exists {
+			_, properties, _ := gamedata.BlockStateFromID(stateID)
+			actor.record.State = world.BlockState{Name: name, Properties: properties}
+			nativeActor, adapted, err := structure.NativeBlockForState(actor.record.State)
+			if err != nil {
+				panic(err)
+			}
+			if adapted {
+				actor.record.NativeBlock = nativeActor
+			}
+			a.recordBlockActor(actor.record)
 		}
-		if adapted {
-			actor.record.NativeBlock = nativeActor
-		}
-		a.recordBlockActor(actor.record)
 	}
 	if flags&16 == 0 {
-		a.markPostProcessing(pos, stateID)
+		a.markPostProcessingName(pos, name)
 	}
 	return true
 }
@@ -188,6 +211,9 @@ func (a endShapeAccess) recordBlockActor(record structure.Block) {
 		return
 	}
 	for _, payload := range (structure.Placement{Blocks: []structure.Block{record}}).BlockEntityPayloads() {
+		if a.region.blockActors == nil {
+			a.region.blockActors = make(map[cube.Pos]endBlockActor)
+		}
 		a.region.blockActors[payload.Pos] = endBlockActor{record: record, data: payload.Data}
 		if payload.Pos[0]>>4 == a.region.targetX && payload.Pos[2]>>4 == a.region.targetZ {
 			a.removeBlockEntity(payload.Pos)
@@ -211,6 +237,10 @@ func (a endShapeAccess) markPostProcessing(pos cube.Pos, stateID uint32) {
 	if !ok {
 		return
 	}
+	a.markPostProcessingName(pos, name)
+}
+
+func (a endShapeAccess) markPostProcessingName(pos cube.Pos, name string) {
 	switch name {
 	case "minecraft:brown_mushroom", "minecraft:red_mushroom":
 		a.markOwnedPostProcessing(pos)

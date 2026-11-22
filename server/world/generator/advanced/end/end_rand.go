@@ -40,7 +40,6 @@ func (r *endRand) Long() int64 {
 	return r.random.NextLong()
 }
 
-
 func (r *endRand) Int32() uint32 {
 	return uint32(r.random.NextInt32())
 }

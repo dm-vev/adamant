@@ -49,6 +49,18 @@ func (r *endFeatureRegion) featureBiomes(origin endFeatureOrigin) endGenerationB
 	return biomes
 }
 
+func (r *endFeatureRegion) zoomedBiomeMatches(g *End, x, y, z int, candidateBiomes, target endGenerationBiomes) bool {
+	if candidateBiomes == target {
+		return true
+	}
+	qx, _, qz := vanilla.FiddledBiomeQuart(g.biomeZoomSeed, int32(x), int32(y), int32(z))
+	cx, cz := int((qx*4)>>4), int((qz*4)>>4)
+	if r.containsChunk(cx, cz) {
+		return r.sourceBiomes[r.index(cx, cz)] == target
+	}
+	return endGenerationBiome(g.noiseBiomeAt(qx, 0, qz)) == target
+}
+
 func (g *End) populateOrigin(targetX, targetZ int, origin endFeatureOrigin, result *world.GenerationResult) {
 	chunkX, chunkZ := origin.chunkX, origin.chunkZ
 	biomes := origin.region.featureBiomes(origin)
@@ -61,7 +73,7 @@ func (g *End) populateOrigin(targetX, targetZ int, origin endFeatureOrigin, resu
 			x := chunkX*16 + int(random.Intn(16))
 			z := chunkZ*16 + int(random.Intn(16))
 			y := 55 + int(random.Intn(16))
-			if g.biomeAt(x, y, z) == "minecraft:small_end_islands" {
+			if origin.region.zoomedBiomeMatches(g, x, y, z, biomes, endSmallIslandsBiome) {
 				g.generateEndIsland(origin, x, y, z, random)
 			}
 		}
@@ -76,13 +88,13 @@ func (g *End) populateOrigin(targetX, targetZ int, origin endFeatureOrigin, resu
 			height := g.motionBlockingHeight(origin.region, x, z)
 			if height > origin.region.minY {
 				y := height + 3 + int(random.Intn(7))
-				if g.biomeAt(x, y, z) == "minecraft:end_highlands" {
+				if origin.region.zoomedBiomeMatches(g, x, y, z, biomes, endHighlandsBiome) {
 					g.generateEndGatewayStructure(origin, x, y, z, result, targetX, targetZ)
 				}
 			}
 		}
 	}
-	if biomes&endCentralBiome != 0 && g.biomeAt(chunkX*16, origin.region.minY, chunkZ*16) == "minecraft:the_end" {
+	if biomes&endCentralBiome != 0 && origin.region.zoomedBiomeMatches(g, chunkX*16, origin.region.minY, chunkZ*16, biomes, endCentralBiome) {
 		g.generateCentralStructures(origin, targetX, targetZ, result, g.endFeatureRandom(chunkX, chunkZ, 1, 4))
 	}
 	if biomes&endHighlandsBiome != 0 {
@@ -91,17 +103,21 @@ func (g *End) populateOrigin(targetX, targetZ int, origin endFeatureOrigin, resu
 			x := chunkX*16 + int(random.Intn(16))
 			z := chunkZ*16 + int(random.Intn(16))
 			y := g.motionBlockingHeight(origin.region, x, z)
-			if y <= origin.region.minY || g.biomeAt(x, y, z) != "minecraft:end_highlands" || origin.block(x, y, z) != g.airRID {
+			if y <= origin.region.minY || !origin.region.zoomedBiomeMatches(g, x, y, z, biomes, endHighlandsBiome) || origin.block(x, y, z) != g.airRID {
 				continue
 			}
 			state := origin.region.nativeState(x, y-1, z)
-			name, ok := gamedata.BlockStateName(state.CanonicalID(world.DefaultBlockRegistry))
-			if !ok {
-				panic("end: chorus support has no state")
-			}
-			supports, err := gamedata.BlockTagContains("minecraft:supports_chorus_plant", name)
-			if err != nil {
-				panic(err)
+			supports := g.state().endStoneSupportsChorus
+			if state.Block != g.endStoneRID || state.Liquid != g.airRID || state.StateID != 0 {
+				name, ok := gamedata.BlockStateName(state.CanonicalID(world.DefaultBlockRegistry))
+				if !ok {
+					panic("end: chorus support has no state")
+				}
+				var err error
+				supports, err = gamedata.BlockTagContains("minecraft:supports_chorus_plant", name)
+				if err != nil {
+					panic(err)
+				}
 			}
 			if supports {
 				world.GenerateChorusPlant(endShapeAccess{endFeatureOrigin: origin, result: result},
@@ -109,19 +125,73 @@ func (g *End) populateOrigin(targetX, targetZ int, origin endFeatureOrigin, resu
 			}
 		}
 	}
-	if biomes&endCentralBiome != 0 && g.biomeAt(100, 49, 0) == "minecraft:the_end" {
+	if chunkX == 6 && chunkZ == 0 && biomes&endCentralBiome != 0 && g.biomeAt(100, 49, 0) == "minecraft:the_end" {
 		g.generateEndPlatform(origin)
 	}
 }
 
 func (g *End) motionBlockingHeight(region *endFeatureRegion, x, z int) int {
+	chunkX, chunkZ := x>>4, z>>4
+	if !region.containsChunk(chunkX, chunkZ) {
+		return region.minY
+	}
+	i := region.index(chunkX, chunkZ)
+	localX, localZ := x&15, z&15
+	terrain := region.terrains[i]
+	hasOverlay := region.dirtyOverlays&(1<<uint(i)) != 0 || (terrain == nil && len(region.overlays[i]) != 0)
+	hasLogical := len(region.logicalStates) != 0
+	if terrain != nil && !hasOverlay && !hasLogical {
+		top := terrain.highestY(localX, localZ)
+		if top < 0 {
+			return region.minY
+		}
+		if region.minY+top <= region.maxY {
+			return region.minY + top + 1
+		}
+	}
+	startY := region.maxY
+	if terrain != nil && !hasLogical {
+		topY := region.minY + terrain.highestY(localX, localZ)
+		if hasOverlay && region.overlayMaxY[i] > topY {
+			topY = region.overlayMaxY[i]
+		}
+		if topY < region.minY {
+			return region.minY
+		}
+		if topY < startY {
+			startY = topY
+		}
+	}
 	registry := world.DefaultBlockRegistry
-	for y := region.maxY; y >= region.minY; y-- {
-		state := region.nativeState(x, y, z)
-		for _, rid := range [...]uint32{state.Block, state.Liquid} {
-			if rid != g.airRID && (registry.LiquidBlock(rid) || g.blocksMotionInHeightmap(rid)) {
-				return y + 1
+	overlay := region.overlays[i]
+	colBits := uint32(localZ)<<4 | uint32(localX)
+	for y := startY; y >= region.minY; y-- {
+		var state world.NativeState
+		found := false
+		if hasLogical {
+			if s, ok := region.logicalStates[cube.Pos{x, y, z}]; ok {
+				state, found = s, true
 			}
+		}
+		if !found && hasOverlay {
+			if s, ok := overlay[uint32(y-region.minY)<<8|colBits]; ok {
+				state, found = s, true
+			}
+		}
+		if !found {
+			if terrain != nil {
+				if terrain.hasBlock(localX, y-region.minY, localZ) {
+					return y + 1
+				}
+				continue
+			}
+			state = world.NativeStateAt(region.chunks[i], uint8(localX), int16(y), uint8(localZ))
+		}
+		if state.Block != g.airRID && (state.Block == g.endStoneRID || registry.LiquidBlock(state.Block) || g.blocksMotionInHeightmap(state.Block)) {
+			return y + 1
+		}
+		if state.Liquid != g.airRID && (registry.LiquidBlock(state.Liquid) || g.blocksMotionInHeightmap(state.Liquid)) {
+			return y + 1
 		}
 	}
 	return region.minY
@@ -130,6 +200,9 @@ func (g *End) motionBlockingHeight(region *endFeatureRegion, x, z int) int {
 func (g *End) blocksMotionInHeightmap(rid uint32) bool {
 	if rid == g.airRID {
 		return false
+	}
+	if rid == g.endStoneRID {
+		return true
 	}
 	if value, ok := g.motionBlocking.Load(rid); ok {
 		return value.(bool)

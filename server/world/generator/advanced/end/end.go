@@ -2,11 +2,13 @@ package end
 
 import (
 	"math"
+	"math/bits"
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	dfbiome "github.com/df-mc/dragonfly/server/world/biome"
@@ -38,13 +40,52 @@ type End struct {
 	chorusMaxDistance int
 
 	spikes       [10]vanilla.EndSpike
-	endCityCache sync.Map // world.ChunkPos -> *endCityStructure (nil when absent)
+	endCityCache sync.Map
 
 	pool sync.Pool
 }
 
+type endStateKey struct{}
+
+type endRuntimeState struct {
+	endStoneStateID        uint32
+	airStateID             uint32
+	biomes2D               [256]uint32
+	endStoneSupportsChorus bool
+	endCityCache           endCityStartCache
+	terrainCache           endTerrainCache
+	islandTiles            endIslandTileCache
+}
+
 type endScratch struct {
-	heights []float32
+	heights   []float32
+	region    *endFeatureRegion
+	positions []cube.Pos
+}
+
+func newEndRuntimeState(airRID, endStoneRID, biomeID uint32) *endRuntimeState {
+	supportsChorus, err := gamedata.BlockTagContains("minecraft:supports_chorus_plant", "minecraft:end_stone")
+	if err != nil {
+		panic(err)
+	}
+	st := &endRuntimeState{
+		endStoneStateID:        world.NativeState{Block: endStoneRID, Liquid: airRID}.CanonicalID(world.DefaultBlockRegistry),
+		airStateID:             world.NativeState{Block: airRID, Liquid: airRID}.CanonicalID(world.DefaultBlockRegistry),
+		endStoneSupportsChorus: supportsChorus,
+	}
+	for i := range st.biomes2D {
+		st.biomes2D[i] = biomeID
+	}
+	return st
+}
+
+func (g *End) state() *endRuntimeState {
+	if v, ok := g.endCityCache.Load(endStateKey{}); ok {
+		return v.(*endRuntimeState)
+	}
+	st := newEndRuntimeState(g.airRID, g.endStoneRID, g.biomeID)
+	actual, _ := g.endCityCache.LoadOrStore(endStateKey{}, st)
+	return actual.(*endRuntimeState)
 }
 
 // New creates an End generator using the seed provided.
@@ -58,15 +99,18 @@ func NewEnd(seed int64) *End {
 	islandRandom := vanilla.NewLegacyRandom(seed)
 	islandRandom.Consume(17292)
 
+	biomeID := uint32(dfbiome.End{}.EncodeBiome())
+	airRID := world.BlockRuntimeID(block.Air{})
+	endStoneRID := world.BlockRuntimeID(block.EndStone{})
 	g := &End{
 		seed:              seed,
 		biomeZoomSeed:     vanilla.BiomeZoomSeed(seed),
 		spikes:            vanilla.EndSpikes(seed),
 		baseNoise:         vanilla.NewBlendedNoise(&terrainRandom, 0.25, 0.25, 80, 160, 4),
 		islandNoise:       vanilla.NewSimplexNoiseWithoutOffset(&islandRandom),
-		endStoneRID:       world.BlockRuntimeID(block.EndStone{}),
-		airRID:            world.BlockRuntimeID(block.Air{}),
-		biomeID:           uint32(dfbiome.End{}.EncodeBiome()),
+		endStoneRID:       endStoneRID,
+		airRID:            airRID,
+		biomeID:           biomeID,
 		bedrockRID:        world.BlockRuntimeID(block.Bedrock{}),
 		obsidianRID:       world.BlockRuntimeID(block.Obsidian{}),
 		ironBarsRIDs:      [16]uint32{},
@@ -74,7 +118,13 @@ func NewEnd(seed int64) *End {
 		endGatewayRID:     world.BlockRuntimeID(block.EndGateway{}),
 		chorusMaxDistance: 8,
 	}
-	g.pool.New = func() any { return &endScratch{heights: make([]float32, 3*33*3)} }
+	g.endCityCache.Store(endStateKey{}, newEndRuntimeState(airRID, endStoneRID, biomeID))
+	g.pool.New = func() any {
+		return &endScratch{
+			heights: make([]float32, 3*33*3),
+			region:  &endFeatureRegion{},
+		}
+	}
 	for mask := range g.ironBarsRIDs {
 		g.ironBarsRIDs[mask] = world.BlockRuntimeID(block.IronBars{
 			NorthConnection: mask&1 != 0,
@@ -96,6 +146,7 @@ func (g *End) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk, context world.Ge
 	var result world.GenerationResult
 	g.populate(chunkX, chunkZ, region, &result)
 	region.publishTarget(chunkX, chunkZ, c)
+	region.resetForPool()
 	return result
 }
 
@@ -104,24 +155,48 @@ func (*End) DefaultSpawn(world.Dimension) cube.Pos {
 	return cube.Pos{100, 50, 0}
 }
 
-func (g *End) generateTerrain(chunkX, chunkZ int, c *chunk.Chunk, s *endScratch) {
-	heights := g.getHeights(s, chunkX*2, 0, chunkZ*2, 3, 33, 3)
+func (g *End) terrainChunk(chunkX, chunkZ int, s *endScratch) *endTerrainChunk {
+	st := g.state()
+	pos := world.ChunkPos{int32(chunkX), int32(chunkZ)}
+	if cached := st.terrainCache.get(pos); cached != nil {
+		return cached
+	}
+	t := g.buildTerrainChunk(chunkX, chunkZ, s)
+	return st.terrainCache.put(pos, t)
+}
 
-	baseY := int16(c.Range().Min())
+func (g *End) buildTerrainChunk(chunkX, chunkZ int, s *endScratch) *endTerrainChunk {
+	heights := g.getHeights(s, chunkX*2, 0, chunkZ*2, 3, 33, 3)
+	t := &endTerrainChunk{
+		sourceBiome: endGenerationBiome(g.noiseBiomeAt(int32(chunkX)*4, 0, int32(chunkZ)*4)),
+	}
 	for i1 := 0; i1 < 2; i1++ {
 		for j1 := 0; j1 < 2; j1++ {
 			for k1 := 0; k1 < 32; k1++ {
-				d1 := heights[((i1+0)*3+j1+0)*33+k1+0]
-				d2 := heights[((i1+0)*3+j1+1)*33+k1+0]
-				d3 := heights[((i1+1)*3+j1+0)*33+k1+0]
-				d4 := heights[((i1+1)*3+j1+1)*33+k1+0]
+				idx00 := ((i1+0)*3+j1+0)*33 + k1
+				idx01 := ((i1+0)*3+j1+1)*33 + k1
+				idx10 := ((i1+1)*3+j1+0)*33 + k1
+				idx11 := ((i1+1)*3+j1+1)*33 + k1
+				d1, u1 := heights[idx00], heights[idx00+1]
+				d2, u2 := heights[idx01], heights[idx01+1]
+				d3, u3 := heights[idx10], heights[idx10+1]
+				d4, u4 := heights[idx11], heights[idx11+1]
+				if d1 < -1e-4 && d2 < -1e-4 && d3 < -1e-4 && d4 < -1e-4 &&
+					u1 < -1e-4 && u2 < -1e-4 && u3 < -1e-4 && u4 < -1e-4 {
+					continue
+				}
 
-				d5 := (heights[((i1+0)*3+j1+0)*33+k1+1] - d1) * 0.25
-				d6 := (heights[((i1+0)*3+j1+1)*33+k1+1] - d2) * 0.25
-				d7 := (heights[((i1+1)*3+j1+0)*33+k1+1] - d3) * 0.25
-				d8 := (heights[((i1+1)*3+j1+1)*33+k1+1] - d4) * 0.25
+				d5 := (u1 - d1) * 0.25
+				d6 := (u2 - d2) * 0.25
+				d7 := (u3 - d3) * 0.25
+				d8 := (u4 - d4) * 0.25
 
+				subBit := uint8(1) << uint(k1>>2)
 				for l1 := 0; l1 < 4; l1++ {
+					y := l1 + k1*4
+					wordIdx := y >> 6
+					yBit := uint64(1) << (uint(y) & 63)
+
 					d10 := d1
 					d11 := d2
 					d12 := (d3 - d1) * 0.125
@@ -130,14 +205,12 @@ func (g *End) generateTerrain(chunkX, chunkZ int, c *chunk.Chunk, s *endScratch)
 					for i2 := 0; i2 < 8; i2++ {
 						d15 := d10
 						d16 := (d11 - d10) * 0.125
+						colBase := ((i2 + i1*8) << 4) | (j1 * 8)
 
 						for j2 := 0; j2 < 8; j2++ {
-							density := squeeze32(d15)
-							if density > 0 {
-								x := uint8(i2 + i1*8)
-								y := baseY + int16(l1+k1*4)
-								z := uint8(j2 + j1*8)
-								c.SetBlock(x, y, z, 0, g.endStoneRID)
+							if d15 > 0 && squeeze32(d15) > 0 {
+								t.bits[(colBase+j2)<<1|wordIdx] |= yBit
+								t.nonEmptySubMask |= subBit
 							}
 							d15 += d16
 						}
@@ -154,6 +227,11 @@ func (g *End) generateTerrain(chunkX, chunkZ int, c *chunk.Chunk, s *endScratch)
 			}
 		}
 	}
+	return t
+}
+
+func (g *End) generateTerrain(chunkX, chunkZ int, c *chunk.Chunk, s *endScratch) {
+	g.terrainChunk(chunkX, chunkZ, s).writeToChunk(c, g.endStoneRID)
 }
 
 func (g *End) generateCentralStructures(origin endFeatureOrigin, targetX, targetZ int, result *world.GenerationResult, random *endRand) {
@@ -224,14 +302,7 @@ func max(a, b int) int {
 }
 
 func (g *End) fillBiomes(c *chunk.Chunk) {
-	minY, maxY := int16(c.Range().Min()), int16(c.Range().Max())
-	for x := uint8(0); x < 16; x++ {
-		for z := uint8(0); z < 16; z++ {
-			for y := minY; y <= maxY; y++ {
-				c.SetBiome(x, y, z, g.biomeID)
-			}
-		}
-	}
+	c.FillBiomes2D(g.state().biomes2D[:])
 }
 
 func (g *End) getHeights(s *endScratch, xOffset, yOffset, zOffset, xSize, ySize, zSize int) []float32 {
@@ -275,6 +346,31 @@ func (g *End) islandHeightValue(chunkX, chunkZ, x, z int) float32 {
 	return g.endIslandHeight((chunkX*2+x)*8, (chunkZ*2+z)*8)
 }
 
+func (g *End) islandTile(tx, tz int32) endIslandTile {
+	tiles := &g.state().islandTiles
+	key := [2]int32{tx, tz}
+	if tile, ok := tiles.get(key); ok {
+		return tile
+	}
+	var tile endIslandTile
+	baseX, baseZ := int64(tx)<<4, int64(tz)<<4
+	threshold := float64(float32(-0.9))
+	for lz := int64(0); lz < 16; lz++ {
+		iz := baseZ + lz
+		izSq := iz * iz
+		var row uint16
+		for lx := int64(0); lx < 16; lx++ {
+			ix := baseX + lx
+			if ix*ix+izSq > 4096 && g.islandNoise.Sample2D(float64(ix), float64(iz)) < threshold {
+				row |= 1 << uint(lx)
+			}
+		}
+		tile[lz] = row
+	}
+	tiles.put(key, tile)
+	return tile
+}
+
 func (g *End) endIslandHeight(blockX, blockZ int) float32 {
 	sectionX, sectionZ := blockX/8, blockZ/8
 	chunkX, chunkZ := sectionX/2, sectionZ/2
@@ -282,20 +378,47 @@ func (g *End) endIslandHeight(blockX, blockZ int) float32 {
 
 	dx, dz := float32(blockX), float32(blockZ)
 	mainIsland := clamp32(100-float32(math.Sqrt(float64(dx*dx+dz*dz))), -100, 80)
+	maxAbsX, maxAbsZ := int64(abs(chunkX)+12), int64(abs(chunkZ)+12)
+	if maxAbsX*maxAbsX+maxAbsZ*maxAbsZ <= 4096 {
+		return mainIsland
+	}
+
 	outerIslands := float32(-100)
-	for islandOffsetX := -12; islandOffsetX <= 12; islandOffsetX++ {
-		for islandOffsetZ := -12; islandOffsetZ <= 12; islandOffsetZ++ {
-			islandX, islandZ := int64(chunkX+islandOffsetX), int64(chunkZ+islandOffsetZ)
-			if islandX*islandX+islandZ*islandZ <= 4096 || g.islandNoise.Sample2D(float64(islandX), float64(islandZ)) >= float64(float32(-0.9)) {
-				continue
-			}
-			sizeValue := float32(abs64(islandX))*3439 + float32(abs64(islandZ))*147
-			size := float32(math.Mod(float64(sizeValue), 13)) + 9
-			offsetX := float32(subX - islandOffsetX*2)
-			offsetZ := float32(subZ - islandOffsetZ*2)
-			candidate := clamp32(100-float32(math.Sqrt(float64(offsetX*offsetX+offsetZ*offsetZ)))*size, -100, 80)
-			if candidate > outerIslands {
-				outerIslands = candidate
+	minIX, maxIX := chunkX-12, chunkX+12
+	minIZ, maxIZ := chunkZ-12, chunkZ+12
+	minTX, maxTX := minIX>>4, maxIX>>4
+	minTZ, maxTZ := minIZ>>4, maxIZ>>4
+	for tz := minTZ; tz <= maxTZ; tz++ {
+		baseZ := tz << 4
+		z0, z1 := max(0, minIZ-baseZ), min(15, maxIZ-baseZ)
+		for tx := minTX; tx <= maxTX; tx++ {
+			baseX := tx << 4
+			x0, x1 := max(0, minIX-baseX), min(15, maxIX-baseX)
+			xMask := uint16(((uint32(1) << uint(x1-x0+1)) - 1) << uint(x0))
+			tile := g.islandTile(int32(tx), int32(tz))
+			for lz := z0; lz <= z1; lz++ {
+				row := tile[lz] & xMask
+				if row == 0 {
+					continue
+				}
+				islandZ := int64(baseZ + lz)
+				islandOffsetZ := (baseZ + lz) - chunkZ
+				offsetZ := float32(subZ - islandOffsetZ*2)
+				offsetZSq := offsetZ * offsetZ
+				zSizeTerm := float32(abs64(islandZ)) * 147
+				for row != 0 {
+					lx := bits.TrailingZeros16(row)
+					row &= row - 1
+					islandX := int64(baseX + lx)
+					islandOffsetX := (baseX + lx) - chunkX
+					sizeValue := float32(abs64(islandX))*3439 + zSizeTerm
+					size := float32(math.Mod(float64(sizeValue), 13)) + 9
+					offsetX := float32(subX - islandOffsetX*2)
+					candidate := clamp32(100-float32(math.Sqrt(float64(offsetX*offsetX+offsetZSq)))*size, -100, 80)
+					if candidate > outerIslands {
+						outerIslands = candidate
+					}
+				}
 			}
 		}
 	}
