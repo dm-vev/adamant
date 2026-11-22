@@ -64,19 +64,21 @@ func (s *SimplexNoise) Sample3D(x, y, z float64) float64 {
 	unskew := float64(i+j+k) * 0.16666666666666666
 	x0, y0, z0 := x-(float64(i)-unskew), y-(float64(j)-unskew), z-(float64(k)-unskew)
 	var i1, j1, k1, i2, j2, k2 int
-	if x0 >= y0 {
-		if y0 >= z0 {
+	switch {
+	case x0 >= y0:
+		switch {
+		case y0 >= z0:
 			i1, i2, j2 = 1, 1, 1
-		} else if x0 >= z0 {
+		case x0 >= z0:
 			i1, i2, k2 = 1, 1, 1
-		} else {
+		default:
 			k1, i2, k2 = 1, 1, 1
 		}
-	} else if y0 < z0 {
+	case y0 < z0:
 		k1, j2, k2 = 1, 1, 1
-	} else if x0 < z0 {
+	case x0 < z0:
 		j1, j2, k2 = 1, 1, 1
-	} else {
+	default:
 		j1, i2, j2 = 1, 1, 1
 	}
 	x1, y1, z1 := x0-float64(i1)+0.16666666666666666, y0-float64(j1)+0.16666666666666666, z0-float64(k1)+0.16666666666666666

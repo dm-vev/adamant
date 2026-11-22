@@ -26,7 +26,7 @@ func (p *Player) SetCrafterSlotDisabled(pos cube.Pos, slot int, disabled bool) e
 	}
 	crafter, ok := p.tx.Block(pos).(block.Crafter)
 	if !ok {
-		return fmt.Errorf("Crafter block no longer exists")
+		return fmt.Errorf("crafter block no longer exists")
 	}
 	after, changed := crafter.SetSlotDisabled(slot, disabled)
 	if !changed {

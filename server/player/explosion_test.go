@@ -22,9 +22,10 @@ func TestPlayerExplosionVelocityAndArmour(t *testing.T) {
 		for armourType := range 3 {
 			armour := inventory.NewArmour(nil)
 			helm := item.NewStack(item.Helmet{Tier: item.ArmourTierLeather{}}, 1)
-			if armourType == 1 {
+			switch armourType {
+			case 1:
 				helm = helm.WithEnchantments(item.NewEnchantment(enchantment.BlastProtection, 4))
-			} else if armourType == 2 {
+			case 2:
 				helm = item.NewStack(item.Helmet{Tier: item.ArmourTierNetherite{}}, 1)
 			}
 			armour.SetHelmet(helm)

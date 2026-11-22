@@ -359,8 +359,9 @@ func (c *Conn) Receive(handle func(pk proto.Packet, cost int), closed func(err e
 	var once sync.Once
 	end := func(err error) { once.Do(func() { closed(err) }) }
 	deliver := func(raw []byte) error { return c.deliver(raw, handle, end) }
-	read := append(c.deferred, c.b.TakePending()...)
+	read := c.deferred
 	c.deferred = nil
+	read = append(read, c.b.TakePending()...)
 	for _, raw := range read {
 		if err := deliver(raw); err != nil {
 			if err != errStopped {

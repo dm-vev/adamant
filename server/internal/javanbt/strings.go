@@ -102,9 +102,10 @@ func (p *parser) escape() (rune, error) {
 		return rune(kind), nil
 	case 'x', 'u', 'U':
 		length := 2
-		if kind == 'u' {
+		switch kind {
+		case 'u':
 			length = 4
-		} else if kind == 'U' {
+		case 'U':
 			length = 8
 		}
 		if p.i+length > len(p.s) {

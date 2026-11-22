@@ -64,7 +64,7 @@ func TestPlayerSetCrafterSlotDisabledRefuses(t *testing.T) {
 	const (
 		noMenu  = "no matching Crafter container opened"
 		badSlot = "invalid or unreachable Crafter slot request"
-		noBlock = "Crafter block no longer exists"
+		noBlock = "crafter block no longer exists"
 	)
 	openCrafter := func(pos cube.Pos) func(tx *world.Tx, p *Player) {
 		return func(tx *world.Tx, p *Player) { p.OpenBlockContainer(pos, tx) }
