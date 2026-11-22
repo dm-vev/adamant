@@ -370,7 +370,6 @@ func parseState(s state) (string, map[string]string) {
 	return parts[0], props
 }
 
-
 // TestMapStateTo2193 maps every state of the game to 2193: each is a state
 // of 2193's palette. The states of redstone wire, fire and chorus plants
 // lose their connections, and the three blocks 2193 lacks become their

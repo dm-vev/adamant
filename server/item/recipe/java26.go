@@ -207,7 +207,6 @@ func java26RecipeMatches(j java26Recipe, r Recipe) bool {
 	}
 }
 
-
 func java26UnorderedInputsMatch(rawInputs []json.RawMessage, inputs []Item) bool {
 	if len(rawInputs) != len(inputs) {
 		return false
