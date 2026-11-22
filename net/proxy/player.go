@@ -4,6 +4,7 @@ import (
 	"net"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -18,8 +19,11 @@ type Player struct {
 	id    uint64
 	token Token
 
+	closed atomic.Bool
+
 	mu       sync.Mutex
 	queue    [][]byte
+	head     int
 	readable chan struct{}
 	receiver func([]byte)
 	closer   func(error)
@@ -50,7 +54,7 @@ func (p *Player) deliver(b []byte) {
 		recv(b)
 		return
 	}
-	if len(p.queue) >= maxQueued {
+	if len(p.queue)-p.head >= maxQueued {
 		p.mu.Unlock()
 		p.close("too many batches queued")
 		return
@@ -65,12 +69,24 @@ func (p *Player) deliver(b []byte) {
 
 // ReadMessage returns the next batch the other end sent.
 func (p *Player) ReadMessage() ([]byte, error) {
+	var (
+		timer *time.Timer
+		armed time.Time
+	)
+	defer func() {
+		if timer != nil {
+			timer.Stop()
+		}
+	}()
 	for {
 		p.mu.Lock()
-		if len(p.queue) > 0 {
-			b := p.queue[0]
-			p.queue[0] = nil
-			p.queue = p.queue[1:]
+		if p.head < len(p.queue) {
+			b := p.queue[p.head]
+			p.queue[p.head] = nil
+			p.head++
+			if p.head == len(p.queue) {
+				p.queue, p.head = p.queue[:0], 0
+			}
 			p.mu.Unlock()
 			return b, nil
 		}
@@ -85,9 +101,12 @@ func (p *Player) ReadMessage() ([]byte, error) {
 			if d <= 0 {
 				return nil, os.ErrDeadlineExceeded
 			}
-			t := time.NewTimer(d)
-			defer t.Stop()
-			expired = t.C
+			if timer == nil {
+				timer = time.NewTimer(d)
+			} else if !deadline.Equal(armed) {
+				timer.Reset(d)
+			}
+			armed, expired = deadline, timer.C
 		}
 		select {
 		case <-p.readable:
@@ -99,10 +118,10 @@ func (p *Player) ReadMessage() ([]byte, error) {
 
 // Send sends a batch to the other end.
 func (p *Player) Send(b []byte) error {
-	p.mu.Lock()
-	err := p.err
-	p.mu.Unlock()
-	if err != nil {
+	if p.closed.Load() {
+		p.mu.Lock()
+		err := p.err
+		p.mu.Unlock()
 		return err
 	}
 	return p.l.write(frameBatch, p.id, b)
@@ -112,8 +131,8 @@ func (p *Player) Send(b []byte) error {
 // ones first, on the goroutine of the link. recv must not block.
 func (p *Player) SetReceiver(recv func([]byte)) {
 	p.mu.Lock()
-	queued := p.queue
-	p.queue = nil
+	queued := p.queue[p.head:]
+	p.queue, p.head = nil, 0
 	p.receiver = recv
 	p.mu.Unlock()
 	for _, b := range queued {
@@ -178,9 +197,11 @@ func (p *Player) end(err error, drop bool) bool {
 		return false
 	}
 	p.err = err
+	p.closed.Store(true)
 	closer := p.closer
 	if drop {
-		p.queue = nil
+		clear(p.queue[p.head:])
+		p.queue, p.head = nil, 0
 	}
 	close(p.done)
 	p.mu.Unlock()

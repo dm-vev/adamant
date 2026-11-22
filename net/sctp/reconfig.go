@@ -84,7 +84,7 @@ func (a *Association) sendResetRequestWhenReady(now time.Time) {
 	if r.out == nil || r.outSent || !a.sending() {
 		return
 	}
-	for _, m := range a.pending {
+	for _, m := range a.pending[a.pendingHead:] {
 		if !m.abandoned && m.next < len(m.data) && slices.Contains(r.out, m.stream) {
 			return
 		}
@@ -213,6 +213,7 @@ func (a *Association) performPendingReset() bool {
 		if in := a.streams[s]; in != nil {
 			for _, f := range in.held {
 				a.held -= f.size()
+				a.freeFrag(f.data)
 			}
 			delete(a.streams, s)
 		}
@@ -220,6 +221,7 @@ func (a *Association) performPendingReset() bool {
 	a.unordered = slices.DeleteFunc(a.unordered, func(f inFragment) bool {
 		if slices.Contains(streams, f.stream) {
 			a.held -= f.size()
+			a.freeFrag(f.data)
 			return true
 		}
 		return false

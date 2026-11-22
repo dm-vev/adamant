@@ -181,3 +181,93 @@ func TestLengthPastTheData(t *testing.T) {
 		}
 	}
 }
+
+func TestCFB8MultiBlockEquivalence(t *testing.T) {
+	key := []byte("0123456789abcdef")
+	iv := []byte("fedcba9876543210")
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plain := make([]byte, 129)
+	for i := range plain {
+		plain[i] = byte(i*37 + 11)
+	}
+
+	// Reference byte-shifting CFB8 encryption.
+	refIV := bytes.Clone(iv)
+	refTmp := make([]byte, 16)
+	want := make([]byte, len(plain))
+	for i, in := range plain {
+		block.Encrypt(refTmp, refIV)
+		out := in ^ refTmp[0]
+		want[i] = out
+		copy(refIV, refIV[1:])
+		refIV[15] = out
+	}
+
+	// Single-call in-place encrypt + decrypt.
+	enc := newCFB8(block, iv, false)
+	got := bytes.Clone(plain)
+	enc.XORKeyStream(got, got)
+	if !bytes.Equal(got, want) {
+		t.Fatalf("single-call encrypt mismatch")
+	}
+	dec := newCFB8(block, iv, true)
+	back := bytes.Clone(got)
+	dec.XORKeyStream(back, back)
+	if !bytes.Equal(back, plain) {
+		t.Fatalf("single-call decrypt mismatch")
+	}
+
+	// Chunked streaming across 16-byte sliding-window boundaries.
+	encChunk := newCFB8(block, iv, false)
+	decChunk := newCFB8(block, iv, true)
+	gotChunk := make([]byte, len(plain))
+	backChunk := make([]byte, len(plain))
+	chunks := []int{1, 7, 16, 17, 33, 55}
+	off := 0
+	for _, n := range chunks {
+		encChunk.XORKeyStream(gotChunk[off:off+n], plain[off:off+n])
+		decChunk.XORKeyStream(backChunk[off:off+n], gotChunk[off:off+n])
+		off += n
+	}
+	if !bytes.Equal(gotChunk, want) || !bytes.Equal(backChunk, plain) {
+		t.Fatalf("chunked CFB8 mismatch")
+	}
+}
+
+func TestCompressionEdgeCases(t *testing.T) {
+	a, b := net.Pipe()
+	defer a.Close()
+	defer b.Close()
+	ca, cb := NewConn(a), NewConn(b)
+	ca.SetCompression(64)
+	cb.SetCompression(64)
+
+	// Test exact threshold boundaries (id=1 takes 1 byte, so bodyLen = 1 + len(fields)).
+	sizes := []int{0, 62, 63, 64, 1024, 70000}
+	errCh := make(chan error, 1)
+	go func() {
+		for _, sz := range sizes {
+			fields := bytes.Repeat([]byte("A"), sz)
+			if err := ca.WritePacket(1, fields); err != nil {
+				errCh <- err
+				return
+			}
+		}
+		errCh <- nil
+	}()
+	for _, sz := range sizes {
+		id, fields, err := cb.ReadPacket()
+		if err != nil {
+			t.Fatalf("size %d: ReadPacket: %v", sz, err)
+		}
+		if id != 1 || len(fields) != sz {
+			t.Fatalf("size %d: got id=%d len=%d", sz, id, len(fields))
+		}
+	}
+	if err := <-errCh; err != nil {
+		t.Fatalf("WritePacket: %v", err)
+	}
+}

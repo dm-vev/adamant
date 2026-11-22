@@ -89,6 +89,11 @@ const (
 	// the receive state without bound.
 	maxOutOfOrder = 8192
 	tsnWindow     = 1 << 20
+	// Bounded reuse limits for per-association scratch/fragment/message pools.
+	maxMsgFree     = 64
+	maxFragPool    = 64
+	maxFragPoolCap = 2048
+	maxReasmCap    = 64 << 10
 )
 
 var (
@@ -122,6 +127,8 @@ type outMessage struct {
 	next      int
 	expires   time.Time
 	abandoned bool
+	queued    bool
+	chunks    int
 }
 
 // expired reports whether a partially reliable message outlived its
@@ -178,38 +185,42 @@ type Association struct {
 	localTag, peerTag uint32
 	cookie            []byte
 	// peerInit holds the INIT of the peer an INIT ACK answered.
-	peerInit   initChunk
-	haveInit   bool
-	initAck    []byte
-	initPacket []byte
-	initialTSN uint32
-	t1         time.Time
-	t1Retrans  int
-	t1Interval time.Duration
-	forwardTSN bool
-	reconfig   bool
-	maxPayload int
-	packet     packetBuilder
-	chunks     []chunk
-	gapScratch []uint16
-	control    [][]byte
-	cookieEcho []byte
-	t2         time.Time
-	t2Retrans  int
+	peerInit    initChunk
+	haveInit    bool
+	initAck     []byte
+	initPacket  []byte
+	initialTSN  uint32
+	t1          time.Time
+	t1Retrans   int
+	t1Interval  time.Duration
+	forwardTSN  bool
+	reconfig    bool
+	maxPayload  int
+	packet      packetBuilder
+	chunks      []chunk
+	gapScratch  []uint16
+	control     [][]byte
+	controlHead int
+	cookieEcho  []byte
+	t2          time.Time
+	t2Retrans   int
 
 	// peerFeatures is what the INIT of the peer offered, for Stats.
 	peerFeatures PeerFeatures
 
 	// Sending.
-	nextTSN     uint32
-	cumAck      uint32
-	advancedAck uint32
-	ssn         map[uint16]uint16
-	pending     []*outMessage
-	outstanding []*outChunk
-	buffered    int
-	flight      int
-	cwnd        int
+	nextTSN         uint32
+	cumAck          uint32
+	advancedAck     uint32
+	ssn             map[uint16]uint16
+	pending         []*outMessage
+	pendingHead     int
+	outstanding     []outChunk
+	outstandingHead int
+	msgFree         []*outMessage
+	buffered        int
+	flight          int
+	cwnd            int
 	// retransmits counts the chunks marked to go again, timeouts the
 	// expiries of the retransmission timer.
 	retransmits, timeouts uint64
@@ -235,6 +246,8 @@ type Association struct {
 	dups        []uint32
 	streams     map[uint16]*inStream
 	unordered   []inFragment
+	fragPool    [][]byte
+	reasmBuf    []byte
 	held        int
 	sackNow     bool
 	sackAt      time.Time
@@ -267,6 +280,7 @@ func New(cfg Config, send func([]byte)) *Association {
 	a := &Association{
 		cfg:     cfg,
 		send:    send,
+		packet:  packetBuilder{buf: make([]byte, 0, cfg.MaxPacketSize)},
 		ssn:     make(map[uint16]uint16),
 		streams: make(map[uint16]*inStream),
 		rto:     rtoInitial,
@@ -373,7 +387,7 @@ func (a *Association) Deadline() time.Time {
 		return time.Time{}
 	}
 	var d time.Time
-	for _, t := range []time.Time{a.t1, a.t2, a.t3, a.sackAt, a.reset.timer} {
+	for _, t := range [...]time.Time{a.t1, a.t2, a.t3, a.sackAt, a.reset.timer} {
 		if !t.IsZero() && (d.IsZero() || t.Before(d)) {
 			d = t
 		}
@@ -768,6 +782,41 @@ func (a *Association) SendOwned(stream uint16, ppid uint32, data []byte, opts Se
 	return a.queueMessage(stream, ppid, data, opts, now, true)
 }
 
+func (a *Association) allocMsg() *outMessage {
+	if n := len(a.msgFree); n > 0 {
+		m := a.msgFree[n-1]
+		a.msgFree[n-1] = nil
+		a.msgFree = a.msgFree[:n-1]
+		return m
+	}
+	return new(outMessage)
+}
+
+func (a *Association) maybeFreeMsg(m *outMessage) {
+	if m.queued || m.chunks != 0 {
+		return
+	}
+	*m = outMessage{}
+	if len(a.msgFree) < maxMsgFree {
+		a.msgFree = append(a.msgFree, m)
+	}
+}
+
+func (a *Association) popPending() {
+	m := a.pending[a.pendingHead]
+	a.pending[a.pendingHead] = nil
+	a.pendingHead++
+	if a.pendingHead == len(a.pending) {
+		a.pending, a.pendingHead = a.pending[:0], 0
+	} else if a.pendingHead >= 64 && a.pendingHead >= len(a.pending)/2 {
+		n := copy(a.pending, a.pending[a.pendingHead:])
+		clear(a.pending[n:])
+		a.pending, a.pendingHead = a.pending[:n], 0
+	}
+	m.queued = false
+	a.maybeFreeMsg(m)
+}
+
 func (a *Association) queueMessage(stream uint16, ppid uint32, data []byte, opts SendOptions, now time.Time, owned bool) error {
 	if err := a.refuse(stream, len(data)); err != nil {
 		return err
@@ -778,7 +827,8 @@ func (a *Association) queueMessage(stream uint16, ppid uint32, data []byte, opts
 	// A peer without FORWARD TSN could not be told to skip a message given
 	// up (RFC 3758 section 3.3.3).
 	opts.Partial = opts.Partial && a.forwardTSN
-	m := &outMessage{stream: stream, ppid: ppid, opts: opts, data: data}
+	m := a.allocMsg()
+	*m = outMessage{stream: stream, ppid: ppid, opts: opts, data: data, queued: true}
 	if opts.Partial && opts.Lifetime > 0 {
 		m.expires = now.Add(opts.Lifetime)
 	}
@@ -964,11 +1014,32 @@ func (a *Association) receive(f inFragment) {
 	}
 }
 
+func (a *Association) cloneFrag(data []byte) []byte {
+	if len(data) <= maxFragPoolCap {
+		if n := len(a.fragPool); n > 0 {
+			buf := a.fragPool[n-1]
+			a.fragPool[n-1] = nil
+			a.fragPool = a.fragPool[:n-1]
+			return append(buf[:0], data...)
+		}
+	}
+	return bytes.Clone(data)
+}
+
+func (a *Association) freeFrag(data []byte) {
+	if cap(data) > 0 && cap(data) <= maxFragPoolCap && len(a.fragPool) < maxFragPool {
+		a.fragPool = append(a.fragPool, data[:0])
+	}
+}
+
 // hold keeps a copy of a fragment in a list in TSN order, and returns the
 // list and the index of the fragment in it.
 func (a *Association) hold(list []inFragment, f inFragment) ([]inFragment, int) {
-	f.data = bytes.Clone(f.data)
+	f.data = a.cloneFrag(f.data)
 	a.held += f.size()
+	if n := len(list); n == 0 || tsnLess(list[n-1].tsn, f.tsn) {
+		return append(list, f), n
+	}
 	i, _ := slices.BinarySearchFunc(list, f.tsn, compareFragment)
 	return slices.Insert(list, i, f), i
 }
@@ -1048,9 +1119,19 @@ func (a *Association) deliverFragments(stream uint16, frags []inFragment) {
 		size += len(f.data)
 		a.held -= f.size()
 	}
-	data := make([]byte, 0, size)
-	for _, f := range frags {
-		data = append(data, f.data...)
+	data := a.reasmBuf[:0]
+	if cap(data) < size {
+		data = make([]byte, 0, size)
+	}
+	for i := range frags {
+		data = append(data, frags[i].data...)
+		a.freeFrag(frags[i].data)
+		frags[i].data = nil
+	}
+	if cap(data) <= maxReasmCap {
+		a.reasmBuf = data[:0]
+	} else {
+		a.reasmBuf = nil
 	}
 	a.deliver(stream, frags[0].ppid, data)
 }
@@ -1108,6 +1189,7 @@ func (a *Association) skip(stream uint16, s *inStream, cum uint32, ssn uint16) {
 		}
 		if tsnLessEq(f.tsn, cum) {
 			a.held -= f.size()
+			a.freeFrag(f.data)
 		} else {
 			kept = append(kept, f)
 		}
@@ -1120,6 +1202,7 @@ func (a *Association) dropFragments(list []inFragment, cum uint32) []inFragment 
 	return slices.DeleteFunc(list, func(f inFragment) bool {
 		if tsnLessEq(f.tsn, cum) {
 			a.held -= f.size()
+			a.freeFrag(f.data)
 			return true
 		}
 		return false
@@ -1188,7 +1271,8 @@ type gapAcks struct {
 // order, so the last one met is the highest.
 func (a *Association) ackGaps(s sackChunk, now time.Time) gapAcks {
 	g := gapAcks{highest: s.cumTSN, highestGap: s.cumTSN}
-	for _, ch := range a.outstanding {
+	for i := a.outstandingHead; i < len(a.outstanding); i++ {
+		ch := &a.outstanding[i]
 		covered := gapCovers(s, ch.tsn)
 		switch {
 		case covered && !ch.acked:
@@ -1271,7 +1355,8 @@ func gapCovers(s sackChunk, tsn uint32) bool {
 // acknowledged.
 func (a *Association) ackCumulative(cum uint32, now time.Time) (newly int) {
 	drop := 0
-	for _, ch := range a.outstanding {
+	for i := a.outstandingHead; i < len(a.outstanding); i++ {
+		ch := &a.outstanding[i]
 		if !tsnLessEq(ch.tsn, cum) {
 			break
 		}
@@ -1280,9 +1365,17 @@ func (a *Association) ackCumulative(cum uint32, now time.Time) (newly int) {
 			a.sample(ch, now)
 		}
 		a.release(ch)
+		*ch = outChunk{}
 		drop++
 	}
-	a.outstanding = slices.Delete(a.outstanding, 0, drop)
+	a.outstandingHead += drop
+	if a.outstandingHead == len(a.outstanding) {
+		a.outstanding, a.outstandingHead = a.outstanding[:0], 0
+	} else if a.outstandingHead >= 64 && a.outstandingHead >= len(a.outstanding)/2 {
+		n := copy(a.outstanding, a.outstanding[a.outstandingHead:])
+		clear(a.outstanding[n:])
+		a.outstanding, a.outstandingHead = a.outstanding[:n], 0
+	}
 	if tsnLess(a.cumAck, cum) {
 		a.cumAck = cum
 	}
@@ -1323,7 +1416,8 @@ func (a *Association) updateT3(now time.Time, restart bool) {
 // countMisses counts a miss for the chunks below highest that are still
 // unacknowledged and marks those missed three times for fast retransmit.
 func (a *Association) countMisses(highest uint32) {
-	for _, ch := range a.outstanding {
+	for i := a.outstandingHead; i < len(a.outstanding); i++ {
+		ch := &a.outstanding[i]
 		if !tsnLess(ch.tsn, highest) {
 			break
 		}
@@ -1378,7 +1472,8 @@ func (a *Association) abandon(m *outMessage) {
 		return
 	}
 	m.abandoned = true
-	for _, ch := range a.outstanding {
+	for i := a.outstandingHead; i < len(a.outstanding); i++ {
+		ch := &a.outstanding[i]
 		if ch.msg != m || ch.abandoned {
 			continue
 		}
@@ -1394,7 +1489,8 @@ func (a *Association) abandon(m *outMessage) {
 	if m.next < len(m.data) {
 		a.buffered -= len(m.data) - m.next
 		if m.next > 0 {
-			a.outstanding = append(a.outstanding, &outChunk{tsn: a.nextTSN, msg: m, abandoned: true})
+			m.chunks++
+			a.outstanding = append(a.outstanding, outChunk{tsn: a.nextTSN, msg: m, abandoned: true})
 			a.nextTSN++
 		}
 		m.next = len(m.data)
@@ -1409,7 +1505,8 @@ func (a *Association) advanceForwardTSN(again bool) {
 		return
 	}
 	moved := false
-	for _, ch := range a.outstanding {
+	for i := a.outstandingHead; i < len(a.outstanding); i++ {
+		ch := &a.outstanding[i]
 		if tsnLessEq(ch.tsn, a.advancedAck) {
 			continue
 		}
@@ -1442,7 +1539,8 @@ func (a *Association) queueForwardTSN() {
 func (a *Association) forwardStreams() map[uint16]uint16 {
 	room := (a.cfg.MaxPacketSize - commonHeaderSize - chunkHeaderSize - 4) / 4
 	last := map[uint16]uint16{}
-	for _, ch := range a.outstanding {
+	for i := a.outstandingHead; i < len(a.outstanding); i++ {
+		ch := &a.outstanding[i]
 		if tsnLess(a.advancedAck, ch.tsn) {
 			break
 		}
@@ -1462,7 +1560,8 @@ func (a *Association) forwardStreams() map[uint16]uint16 {
 }
 
 func (a *Association) anyUnacked() bool {
-	for _, ch := range a.outstanding {
+	for i := a.outstandingHead; i < len(a.outstanding); i++ {
+		ch := &a.outstanding[i]
 		if !ch.acked && !ch.abandoned {
 			return true
 		}
@@ -1475,6 +1574,11 @@ func (a *Association) release(ch *outChunk) {
 	a.leaveFlight(ch)
 	a.buffered -= len(ch.data)
 	ch.data = nil
+	if m := ch.msg; m != nil {
+		ch.msg = nil
+		m.chunks--
+		a.maybeFreeMsg(m)
+	}
 }
 
 // measure updates the round trip estimate of RFC 6298.
@@ -1509,7 +1613,8 @@ func (a *Association) retransmitTimeout(now time.Time) error {
 	a.partialAcked = 0
 	a.fastRecovery = false
 	a.rto = min(2*a.rto, rtoMax)
-	for _, ch := range a.outstanding {
+	for i := a.outstandingHead; i < len(a.outstanding); i++ {
+		ch := &a.outstanding[i]
 		if !ch.acked && !ch.abandoned {
 			a.markRetransmit(ch, now)
 		}
@@ -1575,26 +1680,30 @@ func (a *Association) flushPacket(now time.Time) bool {
 		return false
 	}
 	a.send(a.packet.finish())
-	return len(a.control) > 0 || a.moreToSend()
+	return a.controlHead < len(a.control) || a.moreToSend()
 }
 
 // addControl adds the control chunks queued that fit the packet.
 func (a *Association) addControl() {
-	for len(a.control) > 0 && a.packet.size()+len(a.control[0]) <= a.cfg.MaxPacketSize {
-		a.packet.buf = append(a.packet.buf, a.control[0]...)
-		a.control = a.control[1:]
+	for a.controlHead < len(a.control) && a.packet.size()+len(a.control[a.controlHead]) <= a.cfg.MaxPacketSize {
+		a.packet.buf = append(a.packet.buf, a.control[a.controlHead]...)
+		a.control[a.controlHead] = nil
+		a.controlHead++
+	}
+	if a.controlHead == len(a.control) {
+		a.control, a.controlHead = a.control[:0], 0
 	}
 }
 
 // sackDue reports whether the packet carries a SACK: one due now, or one
 // delayed riding along with data.
 func (a *Association) sackDue() bool {
-	return a.sackNow || !a.sackAt.IsZero() && (len(a.pending) > 0 || a.retransmitting())
+	return a.sackNow || !a.sackAt.IsZero() && (a.pendingHead < len(a.pending) || a.retransmitting())
 }
 
 func (a *Association) retransmitting() bool {
-	for _, ch := range a.outstanding {
-		if ch.retransmit {
+	for i := a.outstandingHead; i < len(a.outstanding); i++ {
+		if a.outstanding[i].retransmit {
 			return true
 		}
 	}
@@ -1608,7 +1717,7 @@ func (a *Association) moreToSend() bool {
 	if a.retransmitting() {
 		return a.flight < a.cwnd
 	}
-	return len(a.pending) > 0 && a.flight < a.cwnd && (a.peerWindow > 0 || a.flight == 0)
+	return a.pendingHead < len(a.pending) && a.flight < a.cwnd && (a.peerWindow > 0 || a.flight == 0)
 }
 
 func (a *Association) addSack() {
@@ -1622,9 +1731,8 @@ func (a *Association) addSack() {
 		i = j + 1
 	}
 	window := uint32(max(0, int(a.cfg.ReceiveWindow)-a.held))
-	v := appendSack(make([]byte, 0, 12+2*len(gaps)+4*len(a.dups)), a.peerCum, window, gaps, a.dups)
+	a.packet.addSack(a.peerCum, window, gaps, a.dups)
 	a.gapScratch = gaps[:0]
-	a.packet.addChunk(chunkSack, 0, v)
 	a.dups = a.dups[:0]
 	a.sackNow = false
 	a.sackAt = time.Time{}
@@ -1645,7 +1753,8 @@ func (a *Association) addData(now time.Time, limit int) {
 // addRetransmissions adds the chunks marked to go again, within cwnd
 // unless free, and reports whether all went.
 func (a *Association) addRetransmissions(now time.Time, limit int, free bool) bool {
-	for _, ch := range a.outstanding {
+	for i := a.outstandingHead; i < len(a.outstanding); i++ {
+		ch := &a.outstanding[i]
 		if !ch.retransmit {
 			continue
 		}
@@ -1662,13 +1771,13 @@ func (a *Association) addRetransmissions(now time.Time, limit int, free bool) bo
 // and the packet have room. A message whose lifetime ran out is given up:
 // the peer is told to skip the chunks of it that went out.
 func (a *Association) addNewData(now time.Time, limit int) {
-	for len(a.pending) > 0 {
-		m := a.pending[0]
+	for a.pendingHead < len(a.pending) {
+		m := a.pending[a.pendingHead]
 		if m.expired(now) {
 			a.abandon(m)
 		}
 		if m.abandoned {
-			a.pending = a.pending[1:]
+			a.popPending()
 			continue
 		}
 		if a.flight >= a.cwnd || (a.peerWindow <= 0 && a.flight > 0) {
@@ -1696,13 +1805,14 @@ func (a *Association) chunkLen(m *outMessage, room int) int {
 // writeNew cuts the next n bytes of m, the message first in the queue,
 // into a new chunk and writes it into the packet.
 func (a *Association) writeNew(m *outMessage, n int, now time.Time) {
-	ch := &outChunk{tsn: a.nextTSN, msg: m, flags: m.chunkFlags(n), data: m.data[m.next : m.next+n]}
+	m.chunks++
+	a.outstanding = append(a.outstanding, outChunk{tsn: a.nextTSN, msg: m, flags: m.chunkFlags(n), data: m.data[m.next : m.next+n]})
+	ch := &a.outstanding[len(a.outstanding)-1]
 	a.nextTSN++
 	m.next += n
 	if m.next == len(m.data) {
-		a.pending = a.pending[1:]
+		a.popPending()
 	}
-	a.outstanding = append(a.outstanding, ch)
 	if !a.rttActive {
 		a.rttActive, a.rttTSN, a.rttSent = true, ch.tsn, now
 	}
@@ -1726,12 +1836,7 @@ func (m *outMessage) chunkFlags(n int) byte {
 }
 
 func (a *Association) writeData(ch *outChunk, now time.Time) {
-	var head [12]byte
-	binary.BigEndian.PutUint32(head[:], ch.tsn)
-	binary.BigEndian.PutUint16(head[4:], ch.msg.stream)
-	binary.BigEndian.PutUint16(head[6:], ch.msg.ssn)
-	binary.BigEndian.PutUint32(head[8:], ch.msg.ppid)
-	a.packet.addChunk(chunkData, ch.flags, head[:], ch.data)
+	a.packet.addDataChunk(ch.flags, ch.tsn, ch.msg.stream, ch.msg.ssn, ch.msg.ppid, ch.data)
 	ch.transmits++
 	if !ch.inFlight {
 		ch.inFlight = true
@@ -1758,7 +1863,7 @@ func (a *Association) Shutdown(now time.Time) {
 
 // drained reports whether every message sent was acknowledged.
 func (a *Association) drained() bool {
-	return len(a.pending) == 0 && len(a.outstanding) == 0
+	return a.pendingHead == len(a.pending) && a.outstandingHead == len(a.outstanding)
 }
 
 // maybeShutdown moves a shutdown along once the data is acknowledged.
@@ -1820,7 +1925,7 @@ func (a *Association) handleShutdown(c chunk, now time.Time) error {
 
 // flushControl sends the queued control chunks alone.
 func (a *Association) flushControl() {
-	for len(a.control) > 0 {
+	for a.controlHead < len(a.control) {
 		a.packet.start(header{srcPort: a.cfg.LocalPort, dstPort: a.cfg.RemotePort, tag: a.peerTag})
 		a.addControl()
 		a.send(a.packet.finish())
@@ -1847,6 +1952,9 @@ func (a *Association) close(err error) {
 		a.err = err
 	}
 	a.t1, a.t2, a.t3, a.sackAt, a.reset.timer = time.Time{}, time.Time{}, time.Time{}, time.Time{}, time.Time{}
+	a.msgFree = nil
+	a.fragPool = nil
+	a.reasmBuf = nil
 }
 
 func (a *Association) fail(err error) error {

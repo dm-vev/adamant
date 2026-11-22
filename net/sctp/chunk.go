@@ -52,6 +52,8 @@ const (
 
 var castagnoli = crc32.MakeTable(crc32.Castagnoli)
 
+var zero4 [4]byte
+
 var errPacket = errors.New("sctp: malformed packet")
 
 // header is the common header of an SCTP packet.
@@ -74,7 +76,7 @@ func parsePacket(b []byte, chunks []chunk) (header, []chunk, error) {
 	}
 	want := binary.LittleEndian.Uint32(b[8:])
 	sum := crc32.Update(0, castagnoli, b[:8])
-	sum = crc32.Update(sum, castagnoli, []byte{0, 0, 0, 0})
+	sum = crc32.Update(sum, castagnoli, zero4[:])
 	sum = crc32.Update(sum, castagnoli, b[12:])
 	if sum != want {
 		return header{}, nil, errPacket
@@ -129,6 +131,28 @@ func (p *packetBuilder) addChunk(typ, flags byte, parts ...[]byte) {
 	for len(p.buf)%4 != 0 {
 		p.buf = append(p.buf, 0)
 	}
+}
+
+// addDataChunk appends a DATA chunk directly to the packet buffer.
+func (p *packetBuilder) addDataChunk(flags byte, tsn uint32, stream, ssn uint16, ppid uint32, data []byte) {
+	p.buf = append(p.buf, chunkData, flags)
+	p.buf = binary.BigEndian.AppendUint16(p.buf, uint16(dataHeaderSize+len(data)))
+	p.buf = binary.BigEndian.AppendUint32(p.buf, tsn)
+	p.buf = binary.BigEndian.AppendUint16(p.buf, stream)
+	p.buf = binary.BigEndian.AppendUint16(p.buf, ssn)
+	p.buf = binary.BigEndian.AppendUint32(p.buf, ppid)
+	p.buf = append(p.buf, data...)
+	for len(p.buf)%4 != 0 {
+		p.buf = append(p.buf, 0)
+	}
+}
+
+// addSack appends a SACK chunk directly to the packet buffer.
+func (p *packetBuilder) addSack(cumTSN, window uint32, gaps []uint16, dups []uint32) {
+	length := chunkHeaderSize + 12 + 2*len(gaps) + 4*len(dups)
+	p.buf = append(p.buf, chunkSack, 0)
+	p.buf = binary.BigEndian.AppendUint16(p.buf, uint16(length))
+	p.buf = appendSack(p.buf, cumTSN, window, gaps, dups)
 }
 
 // finish writes the checksum and returns the packet.

@@ -81,8 +81,9 @@ func appendRecordHeader(dst []byte, typ byte, epoch uint16, seq uint64, length i
 // cipherState protects the records of one direction of an epoch with
 // AES-GCM as RFC 5288 and RFC 6347 describe.
 type cipherState struct {
-	aead cipher.AEAD
-	iv   [4]byte
+	aead  cipher.AEAD
+	nonce [12]byte
+	aad   [13]byte
 }
 
 func newCipherState(key, iv []byte) (*cipherState, error) {
@@ -95,7 +96,7 @@ func newCipherState(key, iv []byte) (*cipherState, error) {
 		return nil, err
 	}
 	c := &cipherState{aead: aead}
-	copy(c.iv[:], iv)
+	copy(c.nonce[:4], iv)
 	return c, nil
 }
 
@@ -104,18 +105,15 @@ func newCipherState(key, iv []byte) (*cipherState, error) {
 func (c *cipherState) seal(dst []byte, typ byte, epoch uint16, seq uint64, payload []byte) []byte {
 	start := len(dst)
 	dst = appendRecordHeader(dst, typ, epoch, seq, len(payload)+sealOverhead)
-	var nonce [12]byte
-	copy(nonce[:4], c.iv[:])
-	binary.BigEndian.PutUint16(nonce[4:], epoch)
-	binary.BigEndian.PutUint16(nonce[6:], uint16(seq>>32))
-	binary.BigEndian.PutUint32(nonce[8:], uint32(seq))
-	dst = append(dst, nonce[4:]...)
-	var aad [13]byte
-	copy(aad[:8], dst[start+3:start+11])
-	aad[8] = typ
-	binary.BigEndian.PutUint16(aad[9:], version12)
-	binary.BigEndian.PutUint16(aad[11:], uint16(len(payload)))
-	return c.aead.Seal(dst, nonce[:], payload, aad[:])
+	binary.BigEndian.PutUint16(c.nonce[4:], epoch)
+	binary.BigEndian.PutUint16(c.nonce[6:], uint16(seq>>32))
+	binary.BigEndian.PutUint32(c.nonce[8:], uint32(seq))
+	dst = append(dst, c.nonce[4:]...)
+	copy(c.aad[:8], dst[start+3:start+11])
+	c.aad[8] = typ
+	binary.BigEndian.PutUint16(c.aad[9:], version12)
+	binary.BigEndian.PutUint16(c.aad[11:], uint16(len(payload)))
+	return c.aead.Seal(dst, c.nonce[:], payload, c.aad[:])
 }
 
 // open authenticates and decrypts the payload of a record in place and
@@ -124,18 +122,15 @@ func (c *cipherState) open(h recordHeader, payload []byte) ([]byte, error) {
 	if len(payload) < sealOverhead {
 		return nil, errDecrypt
 	}
-	var nonce [12]byte
-	copy(nonce[:4], c.iv[:])
-	copy(nonce[4:], payload[:explicitNonceSize])
-	var aad [13]byte
-	binary.BigEndian.PutUint16(aad[0:], h.epoch)
-	binary.BigEndian.PutUint16(aad[2:], uint16(h.seq>>32))
-	binary.BigEndian.PutUint32(aad[4:], uint32(h.seq))
-	aad[8] = h.typ
-	binary.BigEndian.PutUint16(aad[9:], h.version)
-	binary.BigEndian.PutUint16(aad[11:], uint16(len(payload)-sealOverhead))
+	copy(c.nonce[4:], payload[:explicitNonceSize])
+	binary.BigEndian.PutUint16(c.aad[0:], h.epoch)
+	binary.BigEndian.PutUint16(c.aad[2:], uint16(h.seq>>32))
+	binary.BigEndian.PutUint32(c.aad[4:], uint32(h.seq))
+	c.aad[8] = h.typ
+	binary.BigEndian.PutUint16(c.aad[9:], h.version)
+	binary.BigEndian.PutUint16(c.aad[11:], uint16(len(payload)-sealOverhead))
 	ciphertext := payload[explicitNonceSize:]
-	plain, err := c.aead.Open(ciphertext[:0], nonce[:], ciphertext, aad[:])
+	plain, err := c.aead.Open(ciphertext[:0], c.nonce[:], ciphertext, c.aad[:])
 	if err != nil {
 		return nil, errDecrypt
 	}

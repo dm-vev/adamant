@@ -18,6 +18,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"sync/atomic"
 	"unicode/utf8"
 )
 
@@ -28,6 +29,8 @@ const (
 	// maxString bounds a string of a packet, in UTF-16 units as the game
 	// counts them, times three bytes.
 	maxString = 32767 * 3
+	// maxPooledBuf bounds reusable per-connection framing buffers.
+	maxPooledBuf = 64 << 10
 )
 
 var (
@@ -35,21 +38,43 @@ var (
 	errFrame  = errors.New("java: malformed frame")
 )
 
+var zlibWriterPool = sync.Pool{
+	New: func() any {
+		return zlib.NewWriter(io.Discard)
+	},
+}
+
+type pooledZlibReader struct {
+	src   bytes.Reader
+	z     io.ReadCloser
+	extra [1]byte
+}
+
+var zlibReaderPool sync.Pool
+
 // Conn is a connection of the Java protocol: it reads and writes packets,
 // each an ID and its fields.
 type Conn struct {
-	conn net.Conn
-	r    *bufio.Reader
+	conn    net.Conn
+	r       *bufio.Reader
+	scratch []byte
 
-	writeMu   sync.Mutex
-	threshold int // -1 while compression is off
-	encrypt   cipher.Stream
-	decrypt   cipher.Stream
+	threshold atomic.Int64 // -1 while compression is off
+
+	writeMu     sync.Mutex
+	encrypt     cipher.Stream
+	decrypt     cipher.Stream
+	writeBuf    []byte
+	compressBuf bytes.Buffer
+	idBuf       [5]byte
+	dlBuf       [5]byte
 }
 
 // NewConn returns a Conn over c, without compression or encryption.
 func NewConn(c net.Conn) *Conn {
-	return &Conn{conn: c, r: bufio.NewReaderSize(c, 16<<10), threshold: -1}
+	conn := &Conn{conn: c, r: bufio.NewReaderSize(c, 16<<10)}
+	conn.threshold.Store(-1)
+	return conn
 }
 
 // SetCompression turns compression on for packets of threshold bytes or
@@ -57,7 +82,7 @@ func NewConn(c net.Conn) *Conn {
 // threshold turns it off.
 func (c *Conn) SetCompression(threshold int) {
 	c.writeMu.Lock()
-	c.threshold = threshold
+	c.threshold.Store(int64(threshold))
 	c.writeMu.Unlock()
 }
 
@@ -88,45 +113,91 @@ func (c *Conn) ReadPacket() (int32, []byte, error) {
 	if size <= 0 || size > MaxPacket {
 		return 0, nil, errFrame
 	}
-	frame, err := readAll(c.r, int(size))
-	if err != nil {
-		return 0, nil, err
-	}
-	c.writeMu.Lock()
-	compressed := c.threshold >= 0
-	threshold := c.threshold
-	c.writeMu.Unlock()
-	if compressed {
-		r := bytes.NewReader(frame)
-		dataLength, err := readVarInt(r)
-		if err != nil || dataLength < 0 || dataLength > MaxPacket {
+	threshold := int(c.threshold.Load())
+	var frame []byte
+	if threshold >= 0 {
+		dataLength, dlLen, err := readVarIntLimited(c.r, int(size))
+		if err != nil {
+			return 0, nil, err
+		}
+		if dataLength < 0 || dataLength > MaxPacket {
 			return 0, nil, errFrame
 		}
-		rest := frame[len(frame)-r.Len():]
+		restLen := int(size) - dlLen
 		if dataLength == 0 {
-			frame = rest
+			frame, err = readAll(c.r, restLen)
+			if err != nil {
+				return 0, nil, err
+			}
 		} else {
 			if int(dataLength) < threshold {
 				return 0, nil, errFrame
 			}
-			z, err := zlib.NewReader(bytes.NewReader(rest))
+			rest, err := c.readScratch(restLen)
+			if err != nil {
+				return 0, nil, err
+			}
+			frame, err = decompressFrame(rest, int(dataLength))
 			if err != nil {
 				return 0, nil, errFrame
 			}
-			if frame, err = readAll(z, int(dataLength)); err != nil {
-				return 0, nil, errFrame
-			}
-			if n, _ := z.Read(make([]byte, 1)); n != 0 {
-				return 0, nil, errFrame
-			}
+		}
+	} else {
+		frame, err = readAll(c.r, int(size))
+		if err != nil {
+			return 0, nil, err
 		}
 	}
-	r := bytes.NewReader(frame)
-	id, err := readVarInt(r)
+	id, n, err := decodeVarInt(frame)
 	if err != nil {
 		return 0, nil, errFrame
 	}
-	return id, frame[len(frame)-r.Len():], nil
+	return id, frame[n:], nil
+}
+
+func (c *Conn) readScratch(n int) ([]byte, error) {
+	const step = 16 << 10
+	if n <= step {
+		if cap(c.scratch) < n {
+			c.scratch = make([]byte, n)
+		}
+		b := c.scratch[:n]
+		_, err := io.ReadFull(c.r, b)
+		return b, err
+	}
+	return readAll(c.r, n)
+}
+
+func decompressFrame(rest []byte, dataLength int) ([]byte, error) {
+	pr, _ := zlibReaderPool.Get().(*pooledZlibReader)
+	if pr == nil {
+		pr = &pooledZlibReader{}
+	}
+	pr.src.Reset(rest)
+	var err error
+	if pr.z == nil {
+		pr.z, err = zlib.NewReader(&pr.src)
+	} else {
+		err = pr.z.(zlib.Resetter).Reset(&pr.src, nil)
+	}
+	if err != nil {
+		return nil, err
+	}
+	frame, err := readAll(pr.z, dataLength)
+	if err != nil {
+		pr.src.Reset(nil)
+		zlibReaderPool.Put(pr)
+		return nil, err
+	}
+	if n, _ := pr.z.Read(pr.extra[:]); n != 0 {
+		pr.src.Reset(nil)
+		zlibReaderPool.Put(pr)
+		return nil, errFrame
+	}
+	_ = pr.z.Close()
+	pr.src.Reset(nil)
+	zlibReaderPool.Put(pr)
+	return frame, nil
 }
 
 // readAll reads n bytes of r. It grows what it read as the bytes come
@@ -152,29 +223,51 @@ func readAll(r io.Reader, n int) ([]byte, error) {
 
 // WritePacket writes a packet of an ID and its fields.
 func (c *Conn) WritePacket(id int32, fields []byte) error {
-	body := appendVarInt(nil, id)
-	body = append(body, fields...)
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
-	var frame []byte
+
+	idBytes := appendVarInt(c.idBuf[:0], id)
+	bodyLen := len(idBytes) + len(fields)
+
+	threshold := int(c.threshold.Load())
+	buf := c.writeBuf[:0]
 	switch {
-	case c.threshold < 0:
-		frame = append(appendVarInt(nil, int32(len(body))), body...)
-	case len(body) < c.threshold:
-		inner := append([]byte{0}, body...)
-		frame = append(appendVarInt(nil, int32(len(inner))), inner...)
+	case threshold < 0:
+		buf = appendVarInt(buf, int32(bodyLen))
+		buf = append(buf, idBytes...)
+		buf = append(buf, fields...)
+	case bodyLen < threshold:
+		buf = appendVarInt(buf, int32(1+bodyLen))
+		buf = append(buf, 0)
+		buf = append(buf, idBytes...)
+		buf = append(buf, fields...)
 	default:
-		var z bytes.Buffer
-		w := zlib.NewWriter(&z)
-		_, _ = w.Write(body)
+		c.compressBuf.Reset()
+		w := zlibWriterPool.Get().(*zlib.Writer)
+		w.Reset(&c.compressBuf)
+		_, _ = w.Write(idBytes)
+		_, _ = w.Write(fields)
 		_ = w.Close()
-		inner := append(appendVarInt(nil, int32(len(body))), z.Bytes()...)
-		frame = append(appendVarInt(nil, int32(len(inner))), inner...)
+		w.Reset(io.Discard)
+		zlibWriterPool.Put(w)
+		compressed := c.compressBuf.Bytes()
+		dlBytes := appendVarInt(c.dlBuf[:0], int32(bodyLen))
+		buf = appendVarInt(buf, int32(len(dlBytes)+len(compressed)))
+		buf = append(buf, dlBytes...)
+		buf = append(buf, compressed...)
+		if c.compressBuf.Cap() > maxPooledBuf {
+			c.compressBuf = bytes.Buffer{}
+		}
 	}
 	if c.encrypt != nil {
-		c.encrypt.XORKeyStream(frame, frame)
+		c.encrypt.XORKeyStream(buf, buf)
 	}
-	_, err := c.conn.Write(frame)
+	_, err := c.conn.Write(buf)
+	if cap(buf) <= maxPooledBuf {
+		c.writeBuf = buf[:0]
+	} else {
+		c.writeBuf = nil
+	}
 	return err
 }
 
@@ -198,6 +291,42 @@ func readVarInt(r io.ByteReader) (int32, error) {
 		}
 	}
 	return 0, errVarInt
+}
+
+// readVarIntLimited reads a VarInt consuming at most limit bytes from r.
+func readVarIntLimited(r io.ByteReader, limit int) (int32, int, error) {
+	var v uint32
+	maxBytes := min(5, limit)
+	for i := range maxBytes {
+		b, err := r.ReadByte()
+		if err != nil {
+			if err == io.EOF && i > 0 {
+				return 0, 0, io.ErrUnexpectedEOF
+			}
+			return 0, 0, err
+		}
+		v |= uint32(b&0x7f) << (7 * i)
+		if b&0x80 == 0 {
+			return int32(v), i + 1, nil
+		}
+	}
+	return 0, 0, errFrame
+}
+
+// decodeVarInt decodes a VarInt from b, returning the value and bytes consumed.
+func decodeVarInt(b []byte) (int32, int, error) {
+	var v uint32
+	for i := range 5 {
+		if i >= len(b) {
+			return 0, 0, io.EOF
+		}
+		c := b[i]
+		v |= uint32(c&0x7f) << (7 * i)
+		if c&0x80 == 0 {
+			return int32(v), i + 1, nil
+		}
+	}
+	return 0, 0, errVarInt
 }
 
 // appendVarInt appends a VarInt.
@@ -311,30 +440,53 @@ func AppendString(b []byte, s string) []byte {
 func AppendVarInt(b []byte, v int32) []byte { return appendVarInt(b, v) }
 
 // cfb8 is AES in CFB mode of 8-bit segments, as the protocol encrypts:
-// each byte goes through the block cipher alone.
+// each byte goes through the block cipher alone. buf holds a 32-byte sliding
+// window so shifting occurs once per 16 bytes instead of once per byte.
 type cfb8 struct {
 	block   cipher.Block
-	iv, tmp []byte
+	buf     [32]byte
+	tmp     [16]byte
+	pos     int
 	decrypt bool
 }
 
 func newCFB8(block cipher.Block, iv []byte, decrypt bool) *cfb8 {
-	return &cfb8{block: block, iv: bytes.Clone(iv), tmp: make([]byte, block.BlockSize()), decrypt: decrypt}
+	c := &cfb8{block: block, decrypt: decrypt}
+	copy(c.buf[:16], iv)
+	return c
 }
 
 func (c *cfb8) XORKeyStream(dst, src []byte) {
-	for i := range src {
-		c.block.Encrypt(c.tmp, c.iv)
-		in := src[i]
-		out := in ^ c.tmp[0]
-		dst[i] = out
-		copy(c.iv, c.iv[1:])
-		if c.decrypt {
-			c.iv[len(c.iv)-1] = in
-		} else {
-			c.iv[len(c.iv)-1] = out
+	if len(src) == 0 {
+		return
+	}
+	_ = dst[len(src)-1]
+	pos := c.pos
+	if c.decrypt {
+		for i, in := range src {
+			c.block.Encrypt(c.tmp[:], c.buf[pos:pos+16])
+			dst[i] = in ^ c.tmp[0]
+			c.buf[pos+16] = in
+			pos++
+			if pos == 16 {
+				copy(c.buf[:16], c.buf[16:32])
+				pos = 0
+			}
+		}
+	} else {
+		for i, in := range src {
+			c.block.Encrypt(c.tmp[:], c.buf[pos:pos+16])
+			out := in ^ c.tmp[0]
+			dst[i] = out
+			c.buf[pos+16] = out
+			pos++
+			if pos == 16 {
+				copy(c.buf[:16], c.buf[16:32])
+				pos = 0
+			}
 		}
 	}
+	c.pos = pos
 }
 
 // fmtErr wraps an error of a connection with its state.

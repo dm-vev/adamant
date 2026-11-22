@@ -82,6 +82,8 @@ type Message struct {
 	// integrity and fingerprint are the offsets of the MESSAGE-INTEGRITY and
 	// FINGERPRINT attributes, or -1.
 	integrity, fingerprint int
+	hdr                    [headerSize]byte
+	sum                    [20]byte
 }
 
 // Parse decodes the STUN message in b into m. Attributes after
@@ -206,33 +208,28 @@ func (m *Message) CheckIntegrity(h hash.Hash) bool {
 	if m.integrity < 0 {
 		return false
 	}
-	var sum [20]byte
-	integrity(h, m.raw[:m.integrity], sum[:0])
-	return hmac.Equal(sum[:], m.raw[m.integrity+4:m.integrity+24])
-}
-
-// integrity appends to dst the HMAC h computes over msg, a message up to
-// (excluding) its MESSAGE-INTEGRITY attribute, with the length in its header
-// counting that attribute, as RFC 8489 section 14.5 asks.
-func integrity(h hash.Hash, msg, dst []byte) []byte {
-	var header [headerSize]byte
-	copy(header[:], msg)
-	binary.BigEndian.PutUint16(header[2:], uint16(len(msg)-headerSize+24))
+	msg := m.raw[:m.integrity]
+	copy(m.hdr[:], msg)
+	binary.BigEndian.PutUint16(m.hdr[2:], uint16(len(msg)-headerSize+24))
 	h.Reset()
-	h.Write(header[:])
+	h.Write(m.hdr[:])
 	h.Write(msg[headerSize:])
-	return h.Sum(dst)
+	sum := h.Sum(m.sum[:0])
+	return hmac.Equal(sum, m.raw[m.integrity+4:m.integrity+24])
 }
 
 // fingerprint returns the FINGERPRINT value of msg, a message up to
 // (excluding) its FINGERPRINT attribute, with the length in its header
 // counting that attribute.
 func fingerprint(msg []byte) uint32 {
-	var header [4]byte
-	copy(header[:2], msg)
-	binary.BigEndian.PutUint16(header[2:], uint16(len(msg)-headerSize+8))
-	crc := crc32.Update(0, crc32.IEEETable, header[:])
-	crc = crc32.Update(crc, crc32.IEEETable, msg[4:])
+	n := uint16(len(msg) - headerSize + 8)
+	tab := crc32.IEEETable
+	crc := ^uint32(0)
+	crc = tab[byte(crc)^msg[0]] ^ (crc >> 8)
+	crc = tab[byte(crc)^msg[1]] ^ (crc >> 8)
+	crc = tab[byte(crc)^byte(n>>8)] ^ (crc >> 8)
+	crc = tab[byte(crc)^byte(n)] ^ (crc >> 8)
+	crc = crc32.Update(^crc, tab, msg[4:])
 	return crc ^ fingerprintXOR
 }
 
@@ -359,15 +356,20 @@ func (b *Builder) AddErrorCode(code int, reason string) {
 // HMAC-SHA1 keyed with the short-term password.
 func (b *Builder) AddIntegrity(h hash.Hash) {
 	msg := b.buf[b.start:]
+	binary.BigEndian.PutUint16(msg[2:], uint16(len(msg)-headerSize+24))
+	h.Reset()
+	h.Write(msg)
 	b.buf = binary.BigEndian.AppendUint16(b.buf, AttrMessageIntegrity)
 	b.buf = binary.BigEndian.AppendUint16(b.buf, 20)
-	b.buf = integrity(h, msg, b.buf)
+	b.buf = h.Sum(b.buf)
 	b.setLength()
 }
 
 // AddFingerprint appends a FINGERPRINT attribute. It must come last.
 func (b *Builder) AddFingerprint() {
-	crc := fingerprint(b.buf[b.start:])
+	msg := b.buf[b.start:]
+	binary.BigEndian.PutUint16(msg[2:], uint16(len(msg)-headerSize+8))
+	crc := crc32.ChecksumIEEE(msg) ^ fingerprintXOR
 	b.buf = binary.BigEndian.AppendUint16(b.buf, AttrFingerprint)
 	b.buf = binary.BigEndian.AppendUint16(b.buf, 4)
 	b.buf = binary.BigEndian.AppendUint32(b.buf, crc)

@@ -88,7 +88,8 @@ func verifyToken(b, secret []byte, now time.Time) (Token, error) {
 	body, sum := b[:len(b)-sha256.Size], b[len(b)-sha256.Size:]
 	mac := hmac.New(sha256.New, secret)
 	mac.Write(body)
-	if !hmac.Equal(mac.Sum(nil), sum) {
+	var macBuf [sha256.Size]byte
+	if !hmac.Equal(mac.Sum(macBuf[:0]), sum) {
 		return Token{}, errToken
 	}
 	var t Token
@@ -109,10 +110,11 @@ type Link struct {
 	secret []byte
 	server bool
 
-	writeMu sync.Mutex
-	w       *bufio.Writer
+	writeMu   sync.Mutex
+	w         *bufio.Writer
+	writeHead [1 + 2*binary.MaxVarintLen64]byte
 
-	mu      sync.Mutex
+	mu      sync.RWMutex
 	players map[uint64]*Player
 	nextID  uint64
 	err     error
@@ -187,8 +189,8 @@ func (l *Link) Accept() (*Player, error) {
 
 // Err returns why the link ended, or nil while it lives.
 func (l *Link) Err() error {
-	l.mu.Lock()
-	defer l.mu.Unlock()
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 	return l.err
 }
 
@@ -216,14 +218,13 @@ func (l *Link) end(err error) {
 
 // write sends a frame and flushes it.
 func (l *Link) write(typ byte, id uint64, payload []byte) error {
-	var head [1 + 2*binary.MaxVarintLen64]byte
-	n := binary.PutUvarint(head[:], uint64(1+uvarintLen(id)+len(payload)))
-	head[n] = typ
-	n++
-	n += binary.PutUvarint(head[n:], id)
 	l.writeMu.Lock()
 	defer l.writeMu.Unlock()
-	if _, err := l.w.Write(head[:n]); err != nil {
+	n := binary.PutUvarint(l.writeHead[:], uint64(1+uvarintLen(id)+len(payload)))
+	l.writeHead[n] = typ
+	n++
+	n += binary.PutUvarint(l.writeHead[n:], id)
+	if _, err := l.w.Write(l.writeHead[:n]); err != nil {
 		l.end(err)
 		return err
 	}
@@ -320,8 +321,8 @@ func (l *Link) handle(typ byte, id uint64, payload []byte) error {
 }
 
 func (l *Link) player(id uint64) *Player {
-	l.mu.Lock()
-	defer l.mu.Unlock()
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 	return l.players[id]
 }
 

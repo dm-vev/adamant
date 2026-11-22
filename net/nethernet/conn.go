@@ -113,24 +113,26 @@ type Conn struct {
 	sendBatch *SendBatch
 	// batch gathers the DTLS datagrams of the event being handled, to go
 	// out in one call: batchSize bytes each but maybe the last.
+	batchPtr   *[]byte
 	batch      []byte
 	batchTo    netip.AddrPort
 	batchSize  int
 	batchCount int
 	batchShort bool
 
-	agent      *ice.Agent
-	dtls       *dtls.Conn
-	assoc      *sctp.Association
-	dtlsClient bool
-	started    bool
-	connecting bool
-	associated bool
-	selected   netip.AddrPort
-	remote     netip.AddrPort
-	localAddr  net.Addr
-	peerFP     []Fingerprint
-	publicKey  *ecdsa.PublicKey
+	agent         *ice.Agent
+	dtls          *dtls.Conn
+	assoc         *sctp.Association
+	receiveSCTPFn func([]byte)
+	dtlsClient    bool
+	started       bool
+	connecting    bool
+	associated    bool
+	selected      netip.AddrPort
+	remote        netip.AddrPort
+	localAddr     net.Addr
+	peerFP        []Fingerprint
+	publicKey     *ecdsa.PublicKey
 	// vouched is set once Vouch of the listener vouched for the identity
 	// token of the offer.
 	vouched    bool
@@ -151,6 +153,7 @@ type Conn struct {
 	receiver   func(msg []byte)
 	delivering bool
 	pending    [][]byte
+	deliverBuf [][]byte
 	// closer is called once, with err, after the connection closed;
 	// notified is set once it was.
 	closer   func(err error)
@@ -284,6 +287,7 @@ func newConn(cfg connConfig, now time.Time) *Conn {
 		OnMessage:     c.handleMessage,
 		OnStreamReset: c.handleStreamReset,
 	}, c.sendSCTP)
+	c.receiveSCTPFn = c.receiveSCTP
 	c.agent.Start(now)
 	return c
 }
@@ -309,8 +313,9 @@ func (c *Conn) sendDTLS(b []byte) {
 	}
 	if c.batchCount == 0 {
 		c.batchTo, c.batchSize = c.remote, len(b)
-		if c.batch == nil {
-			c.batch = (*batchBuffers.Get().(*[]byte))[:0]
+		if c.batchPtr == nil {
+			c.batchPtr = batchBuffers.Get().(*[]byte)
+			c.batch = (*c.batchPtr)[:0]
 		}
 	}
 	c.batch = append(c.batch, b...)
@@ -346,8 +351,13 @@ func (c *Conn) flushBatch() {
 	default:
 		c.outBatch(c.batch, c.batchSize, c.batchTo)
 	}
-	b := c.batch[:0]
-	batchBuffers.Put(&b)
+	if c.batchPtr != nil {
+		if cap(c.batch) <= maxBatchedBytes {
+			*c.batchPtr = c.batch[:0]
+			batchBuffers.Put(c.batchPtr)
+		}
+		c.batchPtr = nil
+	}
 	c.batch, c.batchCount, c.batchShort = nil, 0, false
 }
 
@@ -393,7 +403,7 @@ func (c *Conn) handleDatagram(b []byte, from netip.AddrPort, now time.Time) (che
 			return false
 		}
 		c.moveTo(from)
-		if err := c.dtls.HandleDatagram(b, now, c.receiveSCTP); err != nil {
+		if err := c.dtls.HandleDatagram(b, now, c.receiveSCTPFn); err != nil {
 			c.fail(dtlsError(err))
 			return false
 		}
@@ -659,12 +669,17 @@ func (c *Conn) release() {
 		c.delivering = true
 		for len(c.pending) > 0 {
 			batch, recv := c.pending, c.receiver
-			c.pending = nil
+			c.pending = c.deliverBuf[:0]
+			c.deliverBuf = nil
 			c.mu.Unlock()
-			for _, msg := range batch {
+			for i, msg := range batch {
 				recv(msg)
+				batch[i] = nil
 			}
 			c.mu.Lock()
+			if cap(batch) <= 256 {
+				c.deliverBuf = batch[:0]
+			}
 		}
 		c.delivering = false
 	}
@@ -958,7 +973,9 @@ func (c *Conn) shut(err error, graceful bool) {
 	if c.err == nil {
 		c.err = err
 		close(c.closed)
+		clear(c.pending)
 		c.pending = nil
+		c.deliverBuf = nil
 	}
 	if c.finished {
 		return
