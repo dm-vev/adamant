@@ -162,8 +162,20 @@ func sctpSockets(t *testing.T) (*net.UDPConn, *net.UDPConn) {
 	return ours, pion
 }
 
-func pionSCTPConfig(conn net.Conn) pionsctp.Config {
-	return pionsctp.Config{NetConn: conn, LoggerFactory: logging.NewDefaultLoggerFactory(), MaxReceiveBufferSize: 1 << 20}
+func pionSCTPClient(conn net.Conn) (*pionsctp.Association, error) {
+	return pionsctp.ClientWithOptions(
+		pionsctp.WithNetConn(conn),
+		pionsctp.WithLoggerFactory(logging.NewDefaultLoggerFactory()),
+		pionsctp.WithMaxReceiveBufferSize(1<<20),
+	)
+}
+
+func pionSCTPServer(conn net.Conn) (*pionsctp.Association, error) {
+	return pionsctp.ServerWithOptions(
+		pionsctp.WithNetConn(conn),
+		pionsctp.WithLoggerFactory(logging.NewDefaultLoggerFactory()),
+		pionsctp.WithMaxReceiveBufferSize(1<<20),
+	)
 }
 
 func messageData(i int) []byte {
@@ -211,9 +223,9 @@ func testSCTPWithPion(t *testing.T, ourConnects bool, drop float64) {
 	var assoc *pionsctp.Association
 	var err error
 	if ourConnects {
-		assoc, err = pionsctp.Server(pionSCTPConfig(pionSock))
+		assoc, err = pionSCTPServer(pionSock)
 	} else {
-		assoc, err = pionsctp.Client(pionSCTPConfig(pionSock))
+		assoc, err = pionSCTPClient(pionSock)
 	}
 	if err != nil {
 		t.Fatal(err)
@@ -273,7 +285,7 @@ func TestSCTPPionServerLossy(t *testing.T) { testSCTPWithPion(t, true, 0.1) }
 func TestSCTPPartialReliabilityWithPion(t *testing.T) {
 	oursSock, pionSock := sctpSockets(t)
 	ours := runOurSCTP(t, oursSock, addrPort(pionSock.LocalAddr()), false, 0, 0)
-	assoc, err := pionsctp.Client(pionSCTPConfig(pionSock))
+	assoc, err := pionSCTPClient(pionSock)
 	if err != nil {
 		t.Fatal(err)
 	}

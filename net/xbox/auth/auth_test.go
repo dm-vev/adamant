@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -176,7 +175,16 @@ func publicKey(t *testing.T, k proofKey) *ecdsa.PublicKey {
 		t.Errorf("proof key %+v", k)
 		return nil
 	}
-	return &ecdsa.PublicKey{Curve: elliptic.P256(), X: new(big.Int).SetBytes(x), Y: new(big.Int).SetBytes(y)}
+	var raw [65]byte
+	raw[0] = 0x04
+	copy(raw[1:33], x)
+	copy(raw[33:65], y)
+	pub, err := ecdsa.ParseUncompressedPublicKey(elliptic.P256(), raw[:])
+	if err != nil {
+		t.Errorf("proof key %+v: %v", k, err)
+		return nil
+	}
+	return pub
 }
 
 func testConfig(srv *httptest.Server) Config {

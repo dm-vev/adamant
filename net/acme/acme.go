@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/big"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -447,7 +446,11 @@ func (m *Manager) client() *http.Client {
 // jwk returns the JWK of a P-256 key, its members in the order RFC 7638
 // orders them for the thumbprint.
 func jwk(pub *ecdsa.PublicKey) map[string]string {
-	return map[string]string{"crv": "P-256", "kty": "EC", "x": b64(pad32(pub.X)), "y": b64(pad32(pub.Y))}
+	b, err := pub.Bytes()
+	if err != nil || len(b) != 65 {
+		panic("acme: invalid P-256 public key")
+	}
+	return map[string]string{"crv": "P-256", "kty": "EC", "x": b64(b[1:33]), "y": b64(b[33:65])}
 }
 
 // thumbprint returns the JWK thumbprint of a key (RFC 7638), which a key
@@ -458,8 +461,6 @@ func thumbprint(pub *ecdsa.PublicKey) (string, error) {
 	sum := sha256.Sum256([]byte(b))
 	return b64(sum[:]), nil
 }
-
-func pad32(n *big.Int) []byte { return n.FillBytes(make([]byte, 32)) }
 
 func b64(b []byte) string { return base64.RawURLEncoding.EncodeToString(b) }
 

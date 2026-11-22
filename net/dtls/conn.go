@@ -327,8 +327,8 @@ func (c *Conn) handleRecord(h recordHeader, record []byte, now time.Time) error 
 	if h.version != version12 && h.version != version10 {
 		return nil
 	}
-	switch {
-	case h.epoch == 0:
+	switch h.epoch {
+	case 0:
 		switch h.typ {
 		case contentHandshake:
 			return c.handleHandshakeRecord(0, payload, now)
@@ -342,7 +342,7 @@ func (c *Conn) handleRecord(h recordHeader, record []byte, now time.Time) error 
 			return c.handleAlert(payload)
 		}
 		return nil
-	case h.epoch == 1:
+	case 1:
 		if c.readCipher == nil {
 			if len(c.queued) < maxQueued && c.state != stateStart {
 				c.queued = append(c.queued, bytes.Clone(record))

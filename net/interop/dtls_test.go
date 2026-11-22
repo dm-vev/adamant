@@ -133,20 +133,36 @@ func fingerprintCheck(want string) func([][]byte) error {
 	}
 }
 
-func pionConfig(cert dtls.Certificate, peerFingerprint string, suite piondtls.CipherSuiteID, curve elliptic.Curve) *piondtls.Config {
+func pionClientOptions(cert dtls.Certificate, peerFingerprint string, suite piondtls.CipherSuiteID, curve elliptic.Curve) []piondtls.ClientOption {
 	check := fingerprintCheck(peerFingerprint)
-	return &piondtls.Config{
-		Certificates:   []tls.Certificate{{Certificate: cert.Chain, PrivateKey: cert.Key}},
-		CipherSuites:   []piondtls.CipherSuiteID{suite},
-		EllipticCurves: []elliptic.Curve{curve},
+	return []piondtls.ClientOption{
+		piondtls.WithCertificates(tls.Certificate{Certificate: cert.Chain, PrivateKey: cert.Key}),
+		piondtls.WithCipherSuites(suite),
+		piondtls.WithEllipticCurves(curve),
 		// WebRTC peers always settle an SRTP profile, data channels or not.
-		SRTPProtectionProfiles: []piondtls.SRTPProtectionProfile{piondtls.SRTP_AEAD_AES_128_GCM, piondtls.SRTP_AES128_CM_HMAC_SHA1_80},
-		ClientAuth:             piondtls.RequireAnyClientCert,
-		ExtendedMasterSecret:   piondtls.RequireExtendedMasterSecret,
-		InsecureSkipVerify:     true,
-		VerifyPeerCertificate: func(raw [][]byte, _ [][]*x509.Certificate) error {
+		piondtls.WithSRTPProtectionProfiles(piondtls.SRTP_AEAD_AES_128_GCM, piondtls.SRTP_AES128_CM_HMAC_SHA1_80),
+		piondtls.WithExtendedMasterSecret(piondtls.RequireExtendedMasterSecret),
+		piondtls.WithInsecureSkipVerify(true),
+		piondtls.WithVerifyPeerCertificate(func(raw [][]byte, _ [][]*x509.Certificate) error {
 			return check(raw)
-		},
+		}),
+	}
+}
+
+func pionServerOptions(cert dtls.Certificate, peerFingerprint string, suite piondtls.CipherSuiteID, curve elliptic.Curve) []piondtls.ServerOption {
+	check := fingerprintCheck(peerFingerprint)
+	return []piondtls.ServerOption{
+		piondtls.WithCertificates(tls.Certificate{Certificate: cert.Chain, PrivateKey: cert.Key}),
+		piondtls.WithCipherSuites(suite),
+		piondtls.WithEllipticCurves(curve),
+		// WebRTC peers always settle an SRTP profile, data channels or not.
+		piondtls.WithSRTPProtectionProfiles(piondtls.SRTP_AEAD_AES_128_GCM, piondtls.SRTP_AES128_CM_HMAC_SHA1_80),
+		piondtls.WithClientAuth(piondtls.RequireAnyClientCert),
+		piondtls.WithExtendedMasterSecret(piondtls.RequireExtendedMasterSecret),
+		piondtls.WithInsecureSkipVerify(true),
+		piondtls.WithVerifyPeerCertificate(func(raw [][]byte, _ [][]*x509.Certificate) error {
+			return check(raw)
+		}),
 	}
 }
 
@@ -188,7 +204,7 @@ func TestDTLSServerWithPionClient(t *testing.T) {
 					VerifyPeer:  fingerprintCheck(dtls.Fingerprint(pionCert.Chain[0])),
 					HelloVerify: helloVerify,
 				}, false)
-				pion, err := piondtls.Client(pionSock, ourSock.LocalAddr(), pionConfig(pionCert, dtls.Fingerprint(ourCert.Chain[0]), v.suite, v.curve))
+				pion, err := piondtls.ClientWithOptions(pionSock, ourSock.LocalAddr(), pionClientOptions(pionCert, dtls.Fingerprint(ourCert.Chain[0]), v.suite, v.curve)...)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -217,7 +233,7 @@ func TestDTLSClientWithPionServer(t *testing.T) {
 			ourSock, pionSock := listenLoopback(t), listenLoopback(t)
 			pionDone := make(chan *piondtls.Conn, 1)
 			go func() {
-				pion, err := piondtls.Server(pionSock, ourSock.LocalAddr(), pionConfig(pionCert, dtls.Fingerprint(ourCert.Chain[0]), v.suite, v.curve))
+				pion, err := piondtls.ServerWithOptions(pionSock, ourSock.LocalAddr(), pionServerOptions(pionCert, dtls.Fingerprint(ourCert.Chain[0]), v.suite, v.curve)...)
 				if err != nil {
 					t.Error(err)
 					pionDone <- nil

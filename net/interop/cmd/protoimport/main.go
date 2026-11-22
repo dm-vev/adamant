@@ -677,7 +677,7 @@ func (c *ctx) impliedOptional(stmts []ast.Stmt, depth int) (int, error) {
 			return 0, nil
 		}
 		if got, err := c.storedField(st.Body.List[0]); err != nil || got != o.path {
-			return 0, fmt.Errorf("Optional of %s goes back to another field", o.path)
+			return 0, fmt.Errorf("optional of %s goes back to another field", o.path)
 		}
 		return 1, nil
 	}
@@ -1242,7 +1242,7 @@ func (c *ctx) call(call *ast.CallExpr, depth int) error {
 		}
 		name, ok := c.im.ref(c.pkg.TypesInfo.TypeOf(sel.X))
 		if !ok {
-			return fmt.Errorf("Marshal of %s", c.src(sel.X))
+			return fmt.Errorf("%s of %s", fn.Name(), c.src(sel.X))
 		}
 		return c.put(depth, path, name)
 	}
@@ -1413,7 +1413,7 @@ func (c *ctx) helper(name string, call *ast.CallExpr, depth int) error {
 		}
 		t, ok := c.im.ref(c.pointee(args[1]))
 		if !ok {
-			return fmt.Errorf("Single of %s", c.src(args[1]))
+			return fmt.Errorf("single of %s", c.src(args[1]))
 		}
 		return c.put(depth, path, t)
 	case "OptionalFunc":

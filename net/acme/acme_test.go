@@ -81,7 +81,11 @@ func (ca *fakeCA) verify(r *http.Request) ([]byte, bool) {
 	if header.JWK != nil {
 		x, _ := base64.RawURLEncoding.DecodeString(header.JWK["x"])
 		y, _ := base64.RawURLEncoding.DecodeString(header.JWK["y"])
-		key = &ecdsa.PublicKey{Curve: elliptic.P256(), X: new(big.Int).SetBytes(x), Y: new(big.Int).SetBytes(y)}
+		raw := make([]byte, 1+len(x)+len(y))
+		raw[0] = 0x04
+		copy(raw[1:], x)
+		copy(raw[1+len(x):], y)
+		key, _ = ecdsa.ParseUncompressedPublicKey(elliptic.P256(), raw)
 	} else if header.Kid != ca.srv.URL+"/account/1" {
 		ca.t.Errorf("bad kid %q", header.Kid)
 		return nil, false
@@ -147,7 +151,8 @@ func (ca *fakeCA) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// The CA fetches the challenge as it does on port 80.
 		rec := httptest.NewRecorder()
 		ca.solver.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "http://example.org/.well-known/acme-challenge/"+ca.token, nil))
-		jwk := map[string]string{"crv": "P-256", "kty": "EC", "x": b64(pad32(ca.account.X)), "y": b64(pad32(ca.account.Y))}
+		raw, _ := ca.account.Bytes()
+		jwk := map[string]string{"crv": "P-256", "kty": "EC", "x": b64(raw[1:33]), "y": b64(raw[33:65])}
 		sum := sha256.Sum256([]byte(fmt.Sprintf(`{"crv":%q,"kty":%q,"x":%q,"y":%q}`, jwk["crv"], jwk["kty"], jwk["x"], jwk["y"])))
 		ca.valid = rec.Body.String() == ca.token+"."+b64(sum[:])
 		if !ca.valid {
