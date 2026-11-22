@@ -205,16 +205,18 @@ func computeSubUniformBiomes(work *modernTerrainScratch) {
 		uniform := true
 		for dx := range 6 {
 			cx, lx := 1, dx-1
-			if dx == 0 {
+			switch dx {
+			case 0:
 				cx, lx = 0, 3
-			} else if dx == 5 {
+			case 5:
 				cx, lx = 2, 0
 			}
 			for dz := range 6 {
 				cz, lz := 1, dz-1
-				if dz == 0 {
+				switch dz {
+				case 0:
 					cz, lz = 0, 3
-				} else if dz == 5 {
+				case 5:
 					cz, lz = 2, 0
 				}
 				col := &work.biomeChunks[cx][cz].index[lx][lz]
@@ -339,9 +341,18 @@ func fillChunkBiomes(c *chunk.Chunk, work *modernTerrainScratch, baseX, baseZ in
 		storage := storages[subIdx]
 		if u := work.subUniformBiome[subIdx]; u != 0xFF {
 			bid := modernBiomeIDs[u]
+			if storage.Palette().Len() == 1 && storage.At(0, 0, 0) == bid {
+				continue
+			}
+			// Clone before mutating because Chunk.BiomeStorages may share copy-on-write storages.
+			storage = storage.Clone()
+			storages[subIdx] = storage
 			storage.Palette().Replace(func(uint32) uint32 { return bid })
 			continue
 		}
+		// Clone before mutating because Chunk.BiomeStorages may share copy-on-write storages.
+		storage = storage.Clone()
+		storages[subIdx] = storage
 		fillSubchunkBiomes(storage, work, subIdx, baseX, baseZ)
 	}
 }

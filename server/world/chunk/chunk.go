@@ -275,7 +275,9 @@ func (chunk *Chunk) Sub() []*SubChunk {
 }
 
 // BiomeStorages returns the paletted storages of the biomes of the chunk, one
-// for each sub-chunk from the bottom. The slice belongs to the chunk.
+// for each sub-chunk from the bottom. The slice belongs to the chunk, and
+// individual storages may be shared copy-on-write across sub-chunks or chunks;
+// callers must clone a storage before mutating it in place.
 func (chunk *Chunk) BiomeStorages() []*PalettedStorage {
 	return chunk.biomes
 }
