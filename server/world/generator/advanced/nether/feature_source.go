@@ -203,18 +203,12 @@ func (s *netherFeatureSource) placeBastionStructureStep(pos world.ChunkPos, env 
 	}
 }
 
-var netherTemplateCache sync.Map
-
 func loadNetherTemplate(name string) *structure.Template {
-	if cached, ok := netherTemplateCache.Load(name); ok {
-		return cached.(*structure.Template)
-	}
 	template, err := structure.Load(name)
 	if err != nil {
 		panic(err)
 	}
-	actual, _ := netherTemplateCache.LoadOrStore(name, template)
-	return actual.(*structure.Template)
+	return template
 }
 
 func netherTemplateBounds(template *structure.Template, origin [3]int32, rotation structure.Rotation) ([3]int32, [3]int32) {

@@ -216,8 +216,9 @@ func (g *Overworld) SpawnStructures(pos world.ChunkPos) []world.StructureArea {
 		return nil
 	}
 	var areas []world.StructureArea
-	for _, set := range s.sets {
-		if !setContainsWanted(set, spawnOverrideStructures) {
+	for _, set := range s.spawnSets {
+		if normalizeResource(stringValue(set.placement["type"])) == "random_spread" {
+			areas = g.appendRandomSpreadSpawnStructures(s, set, pos, areas)
 			continue
 		}
 		for dz := int32(-8); dz <= 8; dz++ {
@@ -235,6 +236,42 @@ func (g *Overworld) SpawnStructures(pos world.ChunkPos) []world.StructureArea {
 		}
 	}
 	return areas
+}
+
+func (g *Overworld) appendRandomSpreadSpawnStructures(s *modernStructures, set modernStructureSet, pos world.ChunkPos, areas []world.StructureArea) []world.StructureArea {
+	spacing := int32(number(set.placement["spacing"]))
+	if spacing <= 0 {
+		return areas
+	}
+	minX, maxX := int32(pos[0])-8, int32(pos[0])+8
+	minZ, maxZ := int32(pos[1])-8, int32(pos[1])+8
+	minRX, maxRX := floorDiv32(minX, spacing), floorDiv32(maxX, spacing)
+	minRZ, maxRZ := floorDiv32(minZ, spacing), floorDiv32(maxZ, spacing)
+	for rz := minRZ; rz <= maxRZ; rz++ {
+		for rx := minRX; rx <= maxRX; rx++ {
+			cand := s.randomSpreadChunk(set, rx*spacing, rz*spacing)
+			if cand[0] < minX || cand[0] > maxX || cand[1] < minZ || cand[1] > maxZ {
+				continue
+			}
+			if !s.frequencyAllows(set, cand[0], cand[1]) || s.exclusionForbids(set, cand[0], cand[1]) {
+				continue
+			}
+			start, ok := s.makeStart(set, cand[0], cand[1])
+			if !ok || !spawnOverrideStructures[start.name] || !intersectsChunk(start.box, pos) {
+				continue
+			}
+			areas = append(areas, g.structureArea(start))
+		}
+	}
+	return areas
+}
+
+func floorDiv32(a, b int32) int32 {
+	q, r := a/b, a%b
+	if r != 0 && (r < 0) != (b < 0) {
+		q--
+	}
+	return q
 }
 
 // structureArea returns the area of a start, with the bounds pieces whose

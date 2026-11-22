@@ -1,6 +1,7 @@
 package overworld
 
 import (
+	"container/list"
 	"fmt"
 	"math"
 	"slices"
@@ -16,19 +17,26 @@ import (
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
+// modernStructureStartCacheCap bounds the decoded structure start graphs kept
+// by modernStructures. Evicting a start only drops its cached graph; mutable
+// postProcess piece flags live independently in pieceStates.
+const modernStructureStartCacheCap = 512
+
 // modernStructures plans immutable graphs from Java structure-set assets.
 // One-time postProcess flags live independently of the bounded graph cache.
 type modernStructures struct {
-	seed           int64
-	source         ModernFeatureSource
-	sets           []modernStructureSet
-	rings          map[string]map[[2]int32]struct{}
-	ringOrder      map[string][][2]int32
-	structureSteps map[int][]modernStructureStepEntry
-	startCache     map[modernStructureStartKey]modernStructureStartResult
-	startFlights   map[modernStructureStartKey]*modernStructureStartFlight
-	startCacheMu   sync.Mutex
-	pieceStates    modernStructureStateStore
+	seed            int64
+	source          ModernFeatureSource
+	sets            []modernStructureSet
+	spawnSets       []modernStructureSet
+	rings           map[string]map[[2]int32]struct{}
+	ringOrder       map[string][][2]int32
+	structureSteps  map[int][]modernStructureStepEntry
+	startCache      map[modernStructureStartKey]*list.Element
+	startCacheOrder *list.List
+	startFlights    map[modernStructureStartKey]*modernStructureStartFlight
+	startCacheMu    sync.Mutex
+	pieceStates     modernStructureStateStore
 }
 
 type modernStructureStepEntry struct {
@@ -109,13 +117,14 @@ func newModernStructures(seed int64, source ModernFeatureSource) *modernStructur
 		panic("overworld: nil structure source")
 	}
 	s := &modernStructures{
-		seed:           seed,
-		source:         source,
-		rings:          make(map[string]map[[2]int32]struct{}),
-		ringOrder:      make(map[string][][2]int32),
-		structureSteps: make(map[int][]modernStructureStepEntry),
-		startCache:     make(map[modernStructureStartKey]modernStructureStartResult),
-		startFlights:   make(map[modernStructureStartKey]*modernStructureStartFlight),
+		seed:            seed,
+		source:          source,
+		rings:           make(map[string]map[[2]int32]struct{}),
+		ringOrder:       make(map[string][][2]int32),
+		structureSteps:  make(map[int][]modernStructureStepEntry),
+		startCache:      make(map[modernStructureStartKey]*list.Element),
+		startCacheOrder: list.New(),
+		startFlights:    make(map[modernStructureStartKey]*modernStructureStartFlight),
 	}
 	names, err := gamedata.ResourceNames("structure_set")
 	if err != nil {
@@ -157,6 +166,9 @@ func newModernStructures(seed int64, source ModernFeatureSource) *modernStructur
 			})
 		}
 		s.sets = append(s.sets, set)
+		if setContainsWanted(set, spawnOverrideStructures) {
+			s.spawnSets = append(s.spawnSets, set)
+		}
 		if normalizeResource(stringValue(placement["type"])) == "concentric_rings" {
 			order := s.concentricRingChunks(placement)
 			s.ringOrder[name] = order
@@ -393,7 +405,9 @@ func registerModernStructureBuilder(kind string, builder modernStructureBuilder)
 func (s *modernStructures) makeStart(set modernStructureSet, cx, cz int32) (modernStructureStart, bool) {
 	key := modernStructureStartKey{set: set.name, x: cx, z: cz}
 	s.startCacheMu.Lock()
-	if result, ok := s.startCache[key]; ok {
+	if elem, ok := s.startCache[key]; ok {
+		s.startCacheOrder.MoveToFront(elem)
+		result := elem.Value.(*modernStructureStartCacheEntry).result
 		s.startCacheMu.Unlock()
 		if result.err != nil {
 			panic(result.err)
@@ -418,13 +432,7 @@ func (s *modernStructures) makeStart(set modernStructureSet, cx, cz int32) (mode
 	start.mutablePieces = hasMutableStructurePieceState(start.pieces)
 	result := modernStructureStartResult{start: start, valid: valid, err: err}
 	s.startCacheMu.Lock()
-	if len(s.startCache) >= 4096 {
-		for old := range s.startCache {
-			delete(s.startCache, old)
-			break
-		}
-	}
-	s.startCache[key] = result
+	s.storeStartLocked(key, result)
 	delete(s.startFlights, key)
 	flight.result = result
 	close(flight.done)
@@ -435,10 +443,49 @@ func (s *modernStructures) makeStart(set modernStructureSet, cx, cz int32) (mode
 	return start, valid
 }
 
+func (s *modernStructures) storeStartLocked(key modernStructureStartKey, result modernStructureStartResult) {
+	if s.startCacheOrder == nil {
+		s.startCacheOrder = list.New()
+	}
+	if s.startCache == nil {
+		s.startCache = make(map[modernStructureStartKey]*list.Element)
+	}
+	if elem, ok := s.startCache[key]; ok {
+		elem.Value.(*modernStructureStartCacheEntry).result = result
+		s.startCacheOrder.MoveToFront(elem)
+		return
+	}
+	elem := s.startCacheOrder.PushFront(&modernStructureStartCacheEntry{key: key, result: result})
+	s.startCache[key] = elem
+	for s.startCacheOrder.Len() > modernStructureStartCacheCap {
+		tail := s.startCacheOrder.Back()
+		if tail == nil {
+			break
+		}
+		s.startCacheOrder.Remove(tail)
+		delete(s.startCache, tail.Value.(*modernStructureStartCacheEntry).key)
+	}
+}
+
+func (s *modernStructures) clearStartCache() {
+	if s == nil {
+		return
+	}
+	s.startCacheMu.Lock()
+	s.startCacheOrder = list.New()
+	s.startCache = make(map[modernStructureStartKey]*list.Element)
+	s.startCacheMu.Unlock()
+}
+
 type modernStructureStartKey struct {
 	set string
 	x   int32
 	z   int32
+}
+
+type modernStructureStartCacheEntry struct {
+	key    modernStructureStartKey
+	result modernStructureStartResult
 }
 
 type modernStructureStartResult struct {

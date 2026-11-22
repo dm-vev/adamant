@@ -21,7 +21,22 @@ import (
 // of about three rings of chunks, some 600 at a view distance of 32 chunks:
 // an evicted record is computed again. Generators tuned for more workers
 // raise the bound with the wider front they generate.
-const originRecordCacheSize = 1024
+const (
+	originRecordCacheSize = 1024
+	// originRecordCacheMaxBytes bounds the estimated heap retained by one
+	// originRecordCache (32 MiB per cache, 64 MiB across origins and contexts)
+	// so dense biomes or structures cannot push generator heap into hundreds of
+	// megabytes during exploration.
+	originRecordCacheMaxBytes int64 = 32 << 20
+
+	originRecordBaseBytes = 64
+	originStepBytes       = 160
+	recordedWriteBytes    = 32
+	recordedActorBytes    = 512
+	scheduledTickBytes    = 48
+	markerPosBytes        = 24
+	recordedEntityBytes   = 96
+)
 
 // originRecord holds what the features of one origin chunk wrote, step by
 // step, when they ran after the origins that precede it.
@@ -184,9 +199,18 @@ func (f *ModernFeatures) computeOriginRecord(origin world.ChunkPos, registry chu
 			n++
 		}
 	}
+	released := 0
+	defer func() {
+		for i := released; i < n; i++ {
+			if contexts[i] != nil {
+				f.contexts.abandon(contexts[i])
+			}
+		}
+	}()
 	for i := range n {
 		contexts[i].wait().steps[0].applyContext(region, predecessors[i])
-		f.contexts.release(predecessors[i], originSuccessors)
+		f.contexts.release(contexts[i], originSuccessors)
+		released = i + 1
 	}
 	f.decorateOrigin(region, origin, context, true, record)
 	for i := range record.steps {
@@ -258,6 +282,9 @@ type originRecordCache struct {
 	recent  list.List
 	// capacity bounds the entries kept, originRecordCacheSize if zero.
 	capacity int
+	// maxBytes bounds the estimated heap kept, originRecordCacheMaxBytes if zero.
+	maxBytes int64
+	bytes    int64
 }
 
 type originRecordEntry struct {
@@ -265,6 +292,9 @@ type originRecordEntry struct {
 	done    chan struct{}
 	record  *originRecord
 	uses    int
+	active  int
+	ready   bool
+	bytes   int64
 	element *list.Element
 	// failure is the panic computing the record, raised again for every
 	// chunk that waits for it.
@@ -297,7 +327,17 @@ func (c *originRecordCache) fill(entry *originRecordEntry, compute func() *origi
 			panic(r)
 		}
 	}()
-	entry.record = compute()
+	record := compute()
+	size := estimateOriginRecordBytes(record)
+	entry.record = record
+	c.mu.Lock()
+	entry.ready = true
+	if c.entries[entry.origin] == entry {
+		entry.bytes = size
+		c.bytes += size
+		c.evictLocked()
+	}
+	c.mu.Unlock()
 	close(entry.done)
 }
 
@@ -307,38 +347,99 @@ func (c *originRecordCache) acquire(origin world.ChunkPos) (entry *originRecordE
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if entry, ok := c.entries[origin]; ok {
+		entry.active++
 		c.recent.MoveToFront(entry.element)
 		return entry, false
 	}
 	if c.entries == nil {
 		c.entries = make(map[world.ChunkPos]*originRecordEntry)
 	}
-	entry = &originRecordEntry{origin: origin, done: make(chan struct{})}
+	entry = &originRecordEntry{origin: origin, done: make(chan struct{}), active: 1}
 	entry.element = c.recent.PushFront(entry)
 	c.entries[origin] = entry
-	capacity := c.capacity
-	if capacity == 0 {
-		capacity = originRecordCacheSize
-	}
-	if c.recent.Len() > capacity {
-		c.remove(c.recent.Back().Value.(*originRecordEntry))
-	}
+	c.evictLocked()
 	return entry, true
 }
 
-// release counts a use of the record of origin, dropping the record once it
-// has been used by all the users it has.
-func (c *originRecordCache) release(origin world.ChunkPos, users int) {
+// release counts a use of the record of entry, dropping the record once it has
+// been used by all the users it has and evicting idle entries if over budget.
+func (c *originRecordCache) release(entry *originRecordEntry, users int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if entry, ok := c.entries[origin]; ok {
-		if entry.uses++; entry.uses == users {
+	if entry.active > 0 {
+		entry.active--
+	}
+	if c.entries[entry.origin] == entry {
+		if entry.uses++; entry.uses >= users {
+			c.remove(entry)
+			return
+		}
+	}
+	c.evictLocked()
+}
+
+// abandon releases an active reference without counting a completed use, e.g.
+// when a caller aborts due to a panic in a sibling origin.
+func (c *originRecordCache) abandon(entry *originRecordEntry) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if entry.active > 0 {
+		entry.active--
+	}
+	c.evictLocked()
+}
+
+func (c *originRecordCache) maxCapacity() int {
+	if c.capacity > 0 {
+		return c.capacity
+	}
+	return originRecordCacheSize
+}
+
+func (c *originRecordCache) byteBudget() int64 {
+	if c.maxBytes > 0 {
+		return c.maxBytes
+	}
+	return originRecordCacheMaxBytes
+}
+
+func (c *originRecordCache) overBudgetLocked() bool {
+	return c.recent.Len() > c.maxCapacity() || c.bytes > c.byteBudget()
+}
+
+func (c *originRecordCache) evictLocked() {
+	if !c.overBudgetLocked() {
+		return
+	}
+	for el := c.recent.Back(); el != nil && c.overBudgetLocked(); {
+		prev := el.Prev()
+		entry := el.Value.(*originRecordEntry)
+		if entry.ready && entry.active == 0 {
 			c.remove(entry)
 		}
+		el = prev
 	}
 }
 
 func (c *originRecordCache) remove(entry *originRecordEntry) {
 	c.recent.Remove(entry.element)
 	delete(c.entries, entry.origin)
+	c.bytes -= entry.bytes
+	entry.bytes = 0
+}
+
+func estimateOriginRecordBytes(r *originRecord) int64 {
+	if r == nil {
+		return 0
+	}
+	n := int64(originRecordBaseBytes) + int64(cap(r.steps))*originStepBytes
+	for i := range r.steps {
+		s := &r.steps[i]
+		n += int64(cap(s.writes)) * recordedWriteBytes
+		n += int64(cap(s.ordered)) * recordedActorBytes
+		n += int64(cap(s.ticks)) * scheduledTickBytes
+		n += int64(cap(s.markers)) * markerPosBytes
+		n += int64(cap(s.entities)) * recordedEntityBytes
+	}
+	return n
 }

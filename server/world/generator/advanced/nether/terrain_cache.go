@@ -96,3 +96,16 @@ func (c *netherTerrainCache) load(pos world.ChunkPos, build func() *chunk.Chunk)
 	}
 	return flight.c
 }
+
+func (c *netherTerrainCache) clear() {
+	if c == nil {
+		return
+	}
+	for i := range c.shards {
+		s := &c.shards[i]
+		s.mu.Lock()
+		s.order = list.New()
+		s.index = make(map[world.ChunkPos]*list.Element, s.cap)
+		s.mu.Unlock()
+	}
+}

@@ -303,6 +303,14 @@ func (f *ModernFeatures) Decorate(pos world.ChunkPos, c *chunk.Chunk, context wo
 	for i, origin := range origins {
 		records[i] = f.originRecord(origin, c.BlockRegistry(), c.Range(), context)
 	}
+	released := 0
+	defer func() {
+		for i := released; i < len(records); i++ {
+			if records[i] != nil {
+				f.origins.abandon(records[i])
+			}
+		}
+	}()
 	for i, origin := range origins {
 		record := records[i].wait()
 		region.SetOrigin(origin[0], origin[1])
@@ -312,7 +320,8 @@ func (f *ModernFeatures) Decorate(pos world.ChunkPos, c *chunk.Chunk, context wo
 			}
 			record.steps[step].apply(region)
 		}
-		f.origins.release(origin, len(origins))
+		f.origins.release(records[i], len(origins))
+		released = i + 1
 	}
 	region.release()
 	return result

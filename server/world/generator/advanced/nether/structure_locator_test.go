@@ -31,3 +31,23 @@ func TestLocateUsesCandidateRatherThanRegionInput(t *testing.T) {
 		})
 	}
 }
+
+func TestNetherSpawnStructuresOnlyFortress(t *testing.T) {
+	t.Parallel()
+	g := NewNether(0)
+	fortressLoc, found, err := g.FindNearestMapFeature("minecraft:fortress", cube.Pos{0, 64, 0}, 4, nil)
+	if err != nil || !found {
+		t.Fatalf("locating fortress: found=%v err=%v", found, err)
+	}
+	areas := g.SpawnStructures(fortressLoc.StartChunk)
+	foundFortress := false
+	for _, a := range areas {
+		if a.ID != "minecraft:fortress" {
+			t.Fatalf("Nether.SpawnStructures returned unexpected structure %q", a.ID)
+		}
+		foundFortress = true
+	}
+	if !foundFortress {
+		t.Fatalf("expected minecraft:fortress at start chunk %v, got %+v", fortressLoc.StartChunk, areas)
+	}
+}

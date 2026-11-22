@@ -18,6 +18,7 @@ func (g *Overworld) ReleaseGenerationCaches() {
 	g.rawCache.clear()
 	g.chunkBiomes.clear()
 	g.worldgenHeights.clear()
+	g.modernStructures.clearStartCache()
 	g.modernFeatures.ReleaseCaches()
 }
 
@@ -58,10 +59,8 @@ func (c *originRecordCache) clear() {
 	for el := c.recent.Front(); el != nil; {
 		next := el.Next()
 		entry := el.Value.(*originRecordEntry)
-		select {
-		case <-entry.done:
+		if entry.ready {
 			c.remove(entry)
-		default:
 		}
 		el = next
 	}

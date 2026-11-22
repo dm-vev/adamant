@@ -90,11 +90,21 @@ func loadTemplate(name string, createMissing bool) (*Template, error) {
 	if strings.Contains(name, "..") || strings.HasSuffix(name, ".nbt") {
 		return nil, fmt.Errorf("structure: invalid name %q", name)
 	}
-	data, err := gamedata.Assets().ReadFile("assets/data/minecraft/structure/" + name + ".nbt")
+	template, err := defaultTemplateCache.load(name, func() (*Template, error) {
+		return decodeEmbeddedTemplate(name)
+	})
 	if err != nil {
 		if createMissing && errors.Is(err, fs.ErrNotExist) {
 			return &Template{}, nil
 		}
+		return nil, err
+	}
+	return template, nil
+}
+
+func decodeEmbeddedTemplate(name string) (*Template, error) {
+	data, err := gamedata.Assets().ReadFile("assets/data/minecraft/structure/" + name + ".nbt")
+	if err != nil {
 		return nil, fmt.Errorf("structure %q: %w", name, err)
 	}
 	if len(data) >= 2 && data[0] == 0x1f && data[1] == 0x8b {
