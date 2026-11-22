@@ -164,7 +164,7 @@ func (e *redstoneEngine) replaceCircuit(pos cube.Pos, before, after Block, publi
 }
 
 func (e *redstoneEngine) tickCircuits(tx *Tx, tick int64) {
-	e.activateProducers()
+	e.prepareLateCircuitTick(tx)
 	for pos, power := range e.circuitPowerOutputs {
 		delete(e.circuitPowerOutputs, pos)
 		b, loaded := tx.BlockLoaded(pos)
@@ -357,7 +357,7 @@ func (e *redstoneEngine) tickCircuits(tx *Tx, tick int64) {
 	e.cacheLateCircuitInputs(tx, positions)
 	for _, pos := range positions {
 		state := e.circuits[pos]
-		if _, late := state.(RedstoneCircuitLateInput); !late {
+		if _, late := state.(RedstoneCircuitLateInput); !late || e.lateCircuitSkipped(tx, pos, state) {
 			continue
 		}
 		next, output := state.Evaluate()
@@ -384,13 +384,187 @@ func (r RedstoneTransaction) SampleAnalogInput(pos cube.Pos) {
 	}
 }
 
+// lateChunkCache stores the 3x3 chunk neighborhood fingerprint of a chunk
+// containing non-directional RedstoneCircuitLateInput components.
+type lateChunkCache struct {
+	fp      [9][2]uint64
+	settled uint8
+}
+
+// lateCircuitSettleTicks is the number of consecutive quiescent even circuit
+// ticks required before skipping a chunk's non-directional late circuits.
+// Four even ticks exceeds lampCircuit's 3-step turn-off countdown.
+const lateCircuitSettleTicks = 4
+
+func bumpRedstoneTransient(w *World, pos cube.Pos) {
+	if w.scratchRedstoneTransient == nil {
+		w.scratchRedstoneTransient = make(map[ChunkPos]uint64)
+	}
+	w.scratchRedstoneTransientClock++
+	w.scratchRedstoneTransient[chunkPosFromBlockPos(pos)] = w.scratchRedstoneTransientClock
+}
+
+func lateChunkFingerprint(w *World, center ChunkPos) [9][2]uint64 {
+	var fp [9][2]uint64
+	transient := w.scratchRedstoneTransient
+	idx := 0
+	for dx := int32(-1); dx <= 1; dx++ {
+		for dz := int32(-1); dz <= 1; dz++ {
+			cp := ChunkPos{center[0] + dx, center[1] + dz}
+			if col, ok := w.chunks[cp]; ok && col != nil {
+				fp[idx][0] = col.blockVersion
+			}
+			if transient != nil {
+				fp[idx][1] = transient[cp]
+			}
+			idx++
+		}
+	}
+	return fp
+}
+
+func (e *redstoneEngine) prepareLateCircuitTick(tx *Tx) {
+	w := tx.World()
+	// Capture transient redstone activity before this tick drains pending
+	// producers, circuit power outputs, circuit outputs, and dirty positions.
+	// Unloaded positions in e.dirty are re-queued each tick by redstoneEngine.tick
+	// and cannot supply power until their chunk loads (which changes blockVersion).
+	for pos := range e.dirty {
+		if _, loaded := w.chunks[chunkPosFromBlockPos(pos)]; loaded {
+			bumpRedstoneTransient(w, pos)
+		}
+	}
+	for pos := range e.pendingProducers {
+		bumpRedstoneTransient(w, pos)
+	}
+	for pos, power := range e.circuitPowerOutputs {
+		if power != e.circuitPowers[pos] {
+			bumpRedstoneTransient(w, pos)
+		}
+	}
+	for pos := range e.circuitOutputs {
+		bumpRedstoneTransient(w, pos)
+		if w.scratchLateCircuitActive != nil {
+			w.scratchLateCircuitActive[chunkPosFromBlockPos(pos)] = true
+		}
+	}
+	if len(w.scratchLateCircuitEvaluated) != 0 {
+		for _, chunk := range w.scratchLateCircuitEvaluated {
+			entry := w.scratchLateChunkCache[chunk]
+			if w.scratchLateCircuitActive[chunk] {
+				entry.settled = 0
+			} else if entry.settled < lateCircuitSettleTicks {
+				entry.settled++
+			}
+			w.scratchLateChunkCache[chunk] = entry
+		}
+		w.scratchLateCircuitEvaluated = w.scratchLateCircuitEvaluated[:0]
+	}
+	if len(w.scratchLateCircuitActive) != 0 {
+		clear(w.scratchLateCircuitActive)
+	}
+	if len(w.scratchLateCircuitSkip) != 0 {
+		clear(w.scratchLateCircuitSkip)
+	}
+	e.activateProducers()
+}
+
+func (e *redstoneEngine) lateCircuitSkipped(tx *Tx, pos cube.Pos, state RedstoneCircuitState) bool {
+	if _, directional := state.(RedstoneCircuitDirection); directional {
+		return false
+	}
+	_, skip := tx.World().scratchLateCircuitSkip[chunkPosFromBlockPos(pos)]
+	return skip
+}
+
+func initLateCircuitScratch(w *World) {
+	if w.scratchLateChunkCache == nil {
+		w.scratchLateChunkCache = make(map[ChunkPos]lateChunkCache)
+	} else if len(w.scratchLateChunkCache) > len(w.chunks)*2+64 {
+		for cp := range w.scratchLateChunkCache {
+			if _, ok := w.chunks[cp]; !ok {
+				delete(w.scratchLateChunkCache, cp)
+			}
+		}
+	}
+	if len(w.scratchRedstoneTransient) > len(w.chunks)*2+64 {
+		for cp := range w.scratchRedstoneTransient {
+			if _, ok := w.chunks[cp]; !ok {
+				delete(w.scratchRedstoneTransient, cp)
+			}
+		}
+	}
+	if w.scratchLateCircuitSkip == nil {
+		w.scratchLateCircuitSkip = make(map[ChunkPos]struct{})
+	}
+	if w.scratchLateCircuitActive == nil {
+		w.scratchLateCircuitActive = make(map[ChunkPos]bool)
+	}
+}
+
 func (e *redstoneEngine) cacheLateCircuitInputs(tx *Tx, positions []cube.Pos) {
+	w := tx.World()
+	// Record outputs produced by non-late Evaluate() earlier in this tick
+	// before checking late-circuit chunk fingerprints.
+	for pos := range e.circuitOutputs {
+		bumpRedstoneTransient(w, pos)
+	}
+	for pos, power := range e.circuitPowerOutputs {
+		if power != e.circuitPowers[pos] {
+			bumpRedstoneTransient(w, pos)
+		}
+	}
+	initLateCircuitScratch(w)
+
 	previous := e.readingCircuitOutputs
 	e.readingCircuitOutputs = true
 	defer func() { e.readingCircuitOutputs = previous }()
+
 	for _, pos := range positions {
-		if state, late := e.circuits[pos].(RedstoneCircuitLateInput); late {
+		state, late := e.circuits[pos].(RedstoneCircuitLateInput)
+		if !late {
+			continue
+		}
+		if _, directional := state.(RedstoneCircuitDirection); directional {
 			e.circuits[pos] = state.CacheAfterSources(pos, tx)
+			continue
+		}
+		chunk := chunkPosFromBlockPos(pos)
+		if _, skip := w.scratchLateCircuitSkip[chunk]; skip {
+			continue
+		}
+		if _, decided := w.scratchLateCircuitActive[chunk]; !decided {
+			fp := lateChunkFingerprint(w, chunk)
+			entry, ok := w.scratchLateChunkCache[chunk]
+			if ok && entry.fp == fp && entry.settled >= lateCircuitSettleTicks {
+				w.scratchLateCircuitSkip[chunk] = struct{}{}
+				continue
+			}
+			if !ok || entry.fp != fp {
+				w.scratchLateChunkCache[chunk] = lateChunkCache{fp: fp}
+			}
+			w.scratchLateCircuitActive[chunk] = false
+			w.scratchLateCircuitEvaluated = append(w.scratchLateCircuitEvaluated, chunk)
+		}
+		prevStrength := -1
+		if cs, ok := state.(RedstoneCircuitConsumer); ok {
+			prevStrength = cs.CircuitConsumerStrength()
+		}
+		next := state.CacheAfterSources(pos, tx)
+		e.circuits[pos] = next
+		if next == nil {
+			w.scratchLateCircuitActive[chunk] = true
+			continue
+		}
+		if ic, ok := next.(RedstoneCircuitInputChange); ok {
+			if oldP, newP := ic.CircuitInputChange(); oldP != newP {
+				w.scratchLateCircuitActive[chunk] = true
+			}
+		}
+		if prevStrength >= 0 {
+			if cs, ok := next.(RedstoneCircuitConsumer); !ok || cs.CircuitConsumerStrength() != prevStrength {
+				w.scratchLateCircuitActive[chunk] = true
+			}
 		}
 	}
 }

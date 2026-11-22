@@ -111,12 +111,82 @@ func (h Hopper) RedstoneCircuitOutput(output world.Block) world.Block {
 	return nil
 }
 
+type containerLightDiffuser interface {
+	LightDiffusionLevel() uint8
+}
+
+// containerStrongConductor matches world's strong-power conductor rules so
+// containerCircuit avoids allocating a PowerFrom BFS when no power can reach
+// the container through face.
+func containerStrongConductor(pos cube.Pos, b world.Block, tx *world.Tx, face cube.Face) bool {
+	if !b.Model().FaceSolid(pos, face, tx) {
+		return false
+	}
+	if _, ok := b.(world.RedstoneNonConductive); ok {
+		return false
+	}
+	if diffuser, ok := b.(containerLightDiffuser); ok && diffuser.LightDiffusionLevel() == 0 {
+		return false
+	}
+	return true
+}
+
+// containerFacePower returns the redstone power reaching a poweredContainer at
+// pos through face, avoiding tx.Redstone().PowerFrom when neither the neighbour
+// nor any block powering a conductive neighbour can emit power.
+func containerFacePower(pos cube.Pos, tx *world.Tx, face cube.Face) int {
+	neighbourPos := pos.Side(face)
+	nb, loaded := tx.BlockLoaded(neighbourPos)
+	if !loaded {
+		return 0
+	}
+	if _, ok := nb.(world.RedstonePowerSource); ok {
+		return tx.Redstone().PowerFrom(pos, face)
+	}
+	if _, ok := nb.(world.RedstonePowerRelayer); ok {
+		return tx.Redstone().PowerFrom(pos, face)
+	}
+	if _, ok := nb.(world.RedstoneCircuitProducer); ok {
+		return tx.Redstone().PowerFrom(pos, face)
+	}
+	back := face.Opposite()
+	if !containerStrongConductor(neighbourPos, nb, tx, back) {
+		return 0
+	}
+	for _, srcFace := range cube.Faces() {
+		if srcFace == back {
+			continue
+		}
+		src, ok := tx.BlockLoaded(neighbourPos.Side(srcFace))
+		if !ok {
+			continue
+		}
+		if _, ok := src.(world.RedstoneStrongPowerSource); ok {
+			return tx.Redstone().PowerFrom(pos, face)
+		}
+		if _, ok := src.(world.RedstoneCircuitProducer); ok {
+			return tx.Redstone().PowerFrom(pos, face)
+		}
+		if _, ok := src.(world.RedstonePowerSource); ok {
+			if weak, ok := src.(world.RedstoneWeakBlockPowerer); ok && weak.RedstoneWeaklyPowersBlocks() {
+				return tx.Redstone().PowerFrom(pos, face)
+			}
+		}
+	}
+	return 0
+}
+
 func (s containerCircuit) Cache(cube.Pos, *world.Tx) world.RedstoneCircuitState { return s }
 func (s containerCircuit) CacheAfterSources(pos cube.Pos, tx *world.Tx) world.RedstoneCircuitState {
 	s.block = tx.Block(pos).(poweredContainer)
 	s.previousInput, s.input = s.input, 0
 	for _, face := range cube.Faces() {
-		s.input = max(s.input, tx.Redstone().PowerFrom(pos, face))
+		if p := containerFacePower(pos, tx, face); p > s.input {
+			s.input = p
+			if s.input == 15 {
+				break
+			}
+		}
 	}
 	return s
 }
