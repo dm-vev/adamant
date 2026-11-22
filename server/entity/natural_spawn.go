@@ -68,6 +68,8 @@ type spawnState struct {
 	// grid holds the indices of the players in cells of playerCell blocks,
 	// so that the players near a position are found among few.
 	grid map[[2]int32][]int
+	// playerPos caches each player's position in players order.
+	playerPos []mgl64.Vec3
 }
 
 // playerCell is the size of the cells of spawnState.grid: the 128 blocks
@@ -275,9 +277,19 @@ func (s *spawnState) spawningChunks(runs []chunkRun) []spawnChunk {
 // count towards the caps of their categories, near which players they are,
 // and the spawn potential of the mobs with spawn costs.
 func newSpawnState(tx *world.Tx, players []world.Entity, chunkCount int) *spawnState {
-	s := &spawnState{tx: tx, players: players, chunkCount: chunkCount, near: map[world.ChunkPos][]int{}, playerCounts: make([][8]int, len(players)), grid: map[[2]int32][]int{}}
+	s := &spawnState{
+		tx:           tx,
+		players:      players,
+		playerPos:    make([]mgl64.Vec3, len(players)),
+		chunkCount:   chunkCount,
+		near:         map[world.ChunkPos][]int{},
+		playerCounts: make([][8]int, len(players)),
+		grid:         map[[2]int32][]int{},
+	}
 	for i, p := range players {
-		c := playerCellOf(p.Position()[0], p.Position()[2])
+		pos := p.Position()
+		s.playerPos[i] = pos
+		c := playerCellOf(pos[0], pos[2])
 		s.grid[c] = append(s.grid[c], i)
 	}
 	for e := range tx.EntitiesOfType(countsTowardsCaps) {
@@ -321,11 +333,12 @@ func (s *spawnState) playersNear(pos world.ChunkPos) []int {
 	if near, ok := s.near[pos]; ok {
 		return near
 	}
+	ppos := s.ensurePlayerPos()
 	var near []int
 	x, z := float64(pos[0])*16+8, float64(pos[1])*16+8
 	s.playersAround(x, z, func(i int) {
-		p := s.players[i]
-		dx, dz := x-p.Position()[0], z-p.Position()[2]
+		p := ppos[i]
+		dx, dz := x-p[0], z-p[2]
 		if dx*dx+dz*dz < playerCell*playerCell {
 			near = append(near, i)
 		}
@@ -501,23 +514,122 @@ func sampleSpawnCount(e world.NaturalSpawnEntry, r *vanilla.Random) int {
 	return e.MinCount + int(r.NextInt(int32(e.MaxCount-e.MinCount+1)))
 }
 
+// ensurePlayerPos populates and returns the cached player positions on s.
+func (s *spawnState) ensurePlayerPos() []mgl64.Vec3 {
+	if len(s.playerPos) == len(s.players) {
+		return s.playerPos
+	}
+	s.playerPos = make([]mgl64.Vec3, len(s.players))
+	for i, p := range s.players {
+		s.playerPos[i] = p.Position()
+	}
+	return s.playerPos
+}
+
+// cellMinDistSqr returns the minimum squared horizontal distance from (x, z)
+// to any point in the given playerCell-sized grid cell.
+func cellMinDistSqr(cell [2]int32, x, z float64) float64 {
+	x0, x1 := float64(cell[0])*playerCell, float64(int64(cell[0])+1)*playerCell
+	var dx float64
+	if x < x0 {
+		dx = x0 - x
+	} else if x > x1 {
+		dx = x - x1
+	}
+	z0, z1 := float64(cell[1])*playerCell, float64(int64(cell[1])+1)*playerCell
+	var dz float64
+	if z < z0 {
+		dz = z0 - z
+	} else if z > z1 {
+		dz = z - z1
+	}
+	return dx*dx + dz*dz
+}
+
+// ringMinEdge returns the minimum horizontal distance from (x, z) to any cell
+// outside Chebyshev distance ring of cell c.
+func ringMinEdge(c [2]int32, ring int32, x, z float64) float64 {
+	dXLo := x - float64(int64(c[0])-int64(ring))*playerCell
+	dXHi := float64(int64(c[0])+int64(ring)+1)*playerCell - x
+	dZLo := z - float64(int64(c[1])-int64(ring))*playerCell
+	dZHi := float64(int64(c[1])+int64(ring)+1)*playerCell - z
+	m := min(dXLo, dXHi, dZLo, dZHi)
+	if m < 0 {
+		return 0
+	}
+	return m
+}
+
 // nearestPlayerDistSqr returns the squared distance to the nearest player
 // that is not spectating.
 func (s *spawnState) nearestPlayerDistSqr(pos mgl64.Vec3) (float64, bool) {
+	if len(s.players) == 0 {
+		return 0, false
+	}
+	ppos := s.ensurePlayerPos()
 	best, found := 0., false
-	s.playersAround(pos[0], pos[2], func(i int) {
-		if d := s.players[i].Position().Sub(pos).LenSqr(); !found || d < best {
+	if len(s.grid) == 0 {
+		for _, p := range ppos {
+			if d := p.Sub(pos).LenSqr(); !found || d < best {
+				best, found = d, true
+			}
+		}
+		return best, found
+	}
+	c := playerCellOf(pos[0], pos[2])
+	scanCell := func(cell [2]int32) {
+		if found && cellMinDistSqr(cell, pos[0], pos[2]) >= best {
+			return
+		}
+		for _, i := range s.grid[cell] {
+			if d := ppos[i].Sub(pos).LenSqr(); !found || d < best {
+				best, found = d, true
+			}
+		}
+	}
+	// Ring 0: the cell containing pos.
+	for _, i := range s.grid[c] {
+		if d := ppos[i].Sub(pos).LenSqr(); !found || d < best {
 			best, found = d, true
 		}
-	})
-	if found && best < playerCell*playerCell {
-		// Every player outside the cells around is further than a cell.
-		return best, true
 	}
-	best, found = 0., false
-	for _, p := range s.players {
-		if d := p.Position().Sub(pos).LenSqr(); !found || d < best {
-			best, found = d, true
+	if found {
+		if edge := ringMinEdge(c, 0, pos[0], pos[2]); edge > 0 && best < edge*edge {
+			return best, true
+		}
+	}
+	// Expand Chebyshev rings while probing the ring border is cheaper than
+	// scanning all populated cells in s.grid.
+	var scanned int32
+	for ring := int32(1); ring <= 2 && 8*int(ring) <= len(s.grid); ring++ {
+		for dx := -ring; dx <= ring; dx++ {
+			scanCell([2]int32{c[0] + dx, c[1] - ring})
+			scanCell([2]int32{c[0] + dx, c[1] + ring})
+		}
+		for dz := -ring + 1; dz <= ring-1; dz++ {
+			scanCell([2]int32{c[0] - ring, c[1] + dz})
+			scanCell([2]int32{c[0] + ring, c[1] + dz})
+		}
+		scanned = ring
+		if found {
+			if edge := ringMinEdge(c, ring, pos[0], pos[2]); edge > 0 && best < edge*edge {
+				return best, true
+			}
+		}
+	}
+	// Fallback: inspect remaining populated cells outside the scanned rings,
+	// pruning any cell whose minimum horizontal distance already meets best.
+	for cell, indices := range s.grid {
+		if cell[0] >= c[0]-scanned && cell[0] <= c[0]+scanned && cell[1] >= c[1]-scanned && cell[1] <= c[1]+scanned {
+			continue
+		}
+		if found && cellMinDistSqr(cell, pos[0], pos[2]) >= best {
+			continue
+		}
+		for _, i := range indices {
+			if d := ppos[i].Sub(pos).LenSqr(); !found || d < best {
+				best, found = d, true
+			}
 		}
 	}
 	return best, found

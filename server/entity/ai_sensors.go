@@ -119,6 +119,10 @@ func (s temptingSensor) doTick(m *Mob, b *Brain) {
 	var best world.Entity
 	bestDist := 0.0
 	for p := range m.tx.PlayersNear(m.data.Pos, max(c.rangeLimit, 2)) {
+		d := m.DistanceToSqr(p)
+		if best != nil && d >= bestDist {
+			continue
+		}
 		if spectator(p) || !c.test(m, p) || ridingOn(m.tx, p, m.H()) {
 			continue
 		}
@@ -130,9 +134,7 @@ func (s temptingSensor) doTick(m *Mob, b *Brain) {
 		if !s.items(m, main) && !s.items(m, off) {
 			continue
 		}
-		if d := m.DistanceToSqr(p); best == nil || d < bestDist {
-			best, bestDist = p, d
-		}
+		best, bestDist = p, d
 	}
 	b.setEntity(memTemptingPlayer, best)
 }
@@ -225,16 +227,20 @@ func (playerSensor) doTick(m *Mob, b *Brain) {
 		e    world.Entity
 		dist float64
 	}
-	var players []found
+	var buf [16]found
+	players := buf[:0]
+	r2 := r * r
 	for p := range m.tx.PlayersNear(m.data.Pos, r) {
 		if spectator(p) || !entityAlive(p) {
 			continue
 		}
-		if d := m.DistanceToSqr(p); d < r*r {
+		if d := m.DistanceToSqr(p); d < r2 {
 			players = append(players, found{p, d})
 		}
 	}
-	sort.SliceStable(players, func(i, j int) bool { return players[i].dist < players[j].dist })
+	if len(players) > 1 {
+		sort.SliceStable(players, func(i, j int) bool { return players[i].dist < players[j].dist })
+	}
 	handles := make([]*world.EntityHandle, len(players))
 	for i, p := range players {
 		handles[i] = p.e.H()

@@ -156,13 +156,17 @@ func nearestTarget(m *Mob, c targeting, candidates func(yield func(world.Entity)
 	var best world.Entity
 	bestDist := -1.0
 	candidates(func(e world.Entity) bool {
-		if !c.test(m, e) {
+		if e == nil {
 			return true
 		}
 		d := e.Position().Sub(eye).LenSqr()
-		if bestDist == -1 || d < bestDist {
-			best, bestDist = e, d
+		if bestDist != -1 && d >= bestDist {
+			return true
 		}
+		if !c.test(m, e) {
+			return true
+		}
+		best, bestDist = e, d
 		return true
 	})
 	return best

@@ -1,7 +1,6 @@
 package entity
 
 import (
-	"iter"
 	"math"
 
 	"github.com/df-mc/dragonfly/server/world"
@@ -75,41 +74,74 @@ func (ai *MobAI) checkDespawn(m *Mob) bool {
 	if p, ok := m.Self.(interface{ PersistenceRequired() bool }); ok && p.PersistenceRequired() {
 		persistent = true
 	}
+	if persistent && ai.noActionTime == 0 {
+		return false
+	}
+	const noDespawnDistSqr = noDespawnDistance * noDespawnDistance
 	nearest := -1.0
-	nearer := func(players iter.Seq[world.Entity]) {
-		for p := range players {
+	// Pass 1: check within the no-despawn radius (32 blocks). Any non-spectator
+	// player strictly within 32 blocks guarantees the mob stays and resets
+	// noActionTime, so we can stop on the first match.
+	for p := range m.tx.PlayersNear(m.data.Pos, noDespawnDistance) {
+		if spectator(p) {
+			continue
+		}
+		d := p.Position().Sub(m.data.Pos).LenSqr()
+		if d < noDespawnDistSqr {
+			nearest = d
+			break
+		}
+		if d == noDespawnDistSqr && (nearest < 0 || d < nearest) {
+			nearest = d
+		}
+	}
+	if nearest < 0 {
+		if persistent {
+			return false
+		}
+		far := despawnDistance(id)
+		farSqr := far * far
+		// Pass 2: check within this mob's instant-despawn radius. Since Pass 1
+		// found no player at or within 32 blocks, any player within far blocks
+		// satisfies noDespawnDistSqr < d <= farSqr <= 16384 and stops early.
+		for p := range m.tx.PlayersNear(m.data.Pos, far) {
 			if spectator(p) {
 				continue
 			}
-			if d := p.Position().Sub(m.data.Pos).LenSqr(); nearest < 0 || d < nearest {
+			if d := p.Position().Sub(m.data.Pos).LenSqr(); d <= farSqr {
 				nearest = d
+				break
 			}
 		}
-	}
-	// A player within the furthest despawn distance is the nearest of all
-	// once found among those near: look further only if none is.
-	nearer(m.tx.PlayersNear(m.data.Pos, despawnSearch))
-	if nearest < 0 || nearest > despawnSearch*despawnSearch {
-		nearest = -1
-		nearer(m.tx.Players())
-	}
-	if nearest < 0 {
-		if !m.tx.PlayersElsewhere() {
-			return false
+		// Pass 3: no player within far blocks; any non-spectator player
+		// anywhere in the world (or another region) is beyond farSqr.
+		if nearest < 0 {
+			for p := range m.tx.Players() {
+				if spectator(p) {
+					continue
+				}
+				nearest = p.Position().Sub(m.data.Pos).LenSqr()
+				break
+			}
 		}
-		// The nearest player is in another region, further than any
-		// despawn distance.
-		nearest = math.MaxFloat64
+		if nearest < 0 {
+			if !m.tx.PlayersElsewhere() {
+				return false
+			}
+			// The nearest player is in another region, further than any
+			// despawn distance.
+			nearest = math.MaxFloat64
+		}
 	}
 	far := despawnDistance(id)
 	if !persistent && nearest > far*far && mobRemoveWhenFarAway(m, id, nearest) {
 		discardMob(m)
 		return true
 	}
-	if !persistent && ai.noActionTime > 600 && m.Random().NextInt(800) == 0 && nearest > noDespawnDistance*noDespawnDistance && mobRemoveWhenFarAway(m, id, nearest) {
+	if !persistent && ai.noActionTime > 600 && m.Random().NextInt(800) == 0 && nearest > noDespawnDistSqr && mobRemoveWhenFarAway(m, id, nearest) {
 		discardMob(m)
 		return true
-	} else if nearest < noDespawnDistance*noDespawnDistance {
+	} else if nearest < noDespawnDistSqr {
 		ai.noActionTime = 0
 	}
 	return false
