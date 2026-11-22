@@ -351,28 +351,39 @@ func isAboveGround(bb structureBB) bool {
 // --- Fortress structure rendering ---
 
 func (g *Nether) applyNetherBridgeTo(chunkX, chunkZ int, c fortressRegion, r *vanilla.Random, placement *structure.Placement, transient bool) {
-	const scanRange = 8
+	const (
+		scanRange  = 8
+		salt       = int32(30084232)
+		spacing    = int32(27)
+		separation = int32(4)
+	)
 	chunkMinX, chunkMinZ := chunkX<<4, chunkZ<<4
 	chunkMaxX, chunkMaxZ := chunkMinX+15, chunkMinZ+15
 	chunkBB := structureBB{minX: chunkMinX, minY: 0, minZ: chunkMinZ, maxX: chunkMaxX, maxY: 127, maxZ: chunkMaxZ}
-	for sx := chunkX - scanRange; sx <= chunkX+scanRange; sx++ {
-		for sz := chunkZ - scanRange; sz <= chunkZ+scanRange; sz++ {
-			start, err := g.complexStart(int32(sx), int32(sz))
+	minSX, maxSX := int32(chunkX-scanRange), int32(chunkX+scanRange)
+	minSZ, maxSZ := int32(chunkZ-scanRange), int32(chunkZ+scanRange)
+	g.fortressStates.verifyLoadedWindow(minSX, maxSX, minSZ, maxSZ, g)
+
+	regMinX, regMaxX := floorDiv(minSX, spacing), floorDiv(maxSX, spacing)
+	regMinZ, regMaxZ := floorDiv(minSZ, spacing), floorDiv(maxSZ, spacing)
+	for rx := regMinX; rx <= regMaxX; rx++ {
+		for rz := regMinZ; rz <= regMaxZ; rz++ {
+			candidate, err := structure.PotentialChunk(g.seed, rx*spacing, rz*spacing, salt, spacing, separation, structure.Linear)
 			if err != nil {
 				panic(err)
 			}
-			key := fortressStartKey{x: int32(sx), z: int32(sz)}
+			sx, sz := candidate[0], candidate[1]
+			if sx < minSX || sx > maxSX || sz < minSZ || sz > maxSZ {
+				continue
+			}
+			start, err := g.cachedComplexStart(sx, sz)
+			if err != nil {
+				panic(err)
+			}
+			key := fortressStartKey{x: sx, z: sz}
 			if start == nil || start.fortress == nil {
-				if state := g.fortressStates.lookup(key); state != nil {
-					state.mu.Lock()
-					hasFlags := len(state.pending) != 0
-					for _, flags := range state.pieces {
-						hasFlags = hasFlags || flags.ChestPlaced || flags.SpawnerPlaced
-					}
-					state.mu.Unlock()
-					if hasFlags {
-						panic("nether: persisted fortress state has no matching source fortress start")
-					}
+				if state := g.fortressStates.lookup(key); state != nil && state.hasFlags() {
+					panic("nether: persisted fortress state has no matching source fortress start")
 				}
 				continue
 			}

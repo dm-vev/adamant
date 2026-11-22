@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/df-mc/dragonfly/internal/faultcheck"
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
@@ -28,57 +27,85 @@ type netherFossilFlight struct {
 	done   chan struct{}
 	result netherFossilResult
 }
-type netherFossilCache struct {
-	mu      sync.Mutex
+
+const (
+	netherFossilCacheShards     = 16
+	netherFossilEntriesPerShard = 128
+)
+
+type netherFossilShard struct {
+	mu      sync.RWMutex
 	starts  map[world.ChunkPos]netherFossilResult
 	flights map[world.ChunkPos]*netherFossilFlight
 }
 
+type netherLookupTables struct {
+	blockRIDs           [nbCount]uint32
+	blockUncarvable     [nbCount]bool
+	fossilAllowedBiomes [5]bool
+	uniformBiomes       [5][256]uint32
+}
+
+type netherFossilCache struct {
+	tables netherLookupTables
+	shards [netherFossilCacheShards]netherFossilShard
+}
+
+func (c *netherFossilCache) shard(key world.ChunkPos) *netherFossilShard {
+	h := uint64(uint32(key[0]))*0x9e3779b97f4a7c15 ^ uint64(uint32(key[1]))*0xbf58476d1ce4e5b9
+	return &c.shards[(h^(h>>32))&(netherFossilCacheShards-1)]
+}
+
 // fossilStart returns the immutable start for an exact random-spread candidate.
 func (g *Nether) fossilStart(cx, cz int32) (*netherFossilStart, error) {
-	candidate, err := structure.PotentialChunk(g.seed, cx, cz, netherFossilSalt, 2, 1, structure.Linear)
-	if err != nil {
-		return nil, err
-	}
-	if candidate != [2]int32{cx, cz} {
+	// Random-spread placement with spacing=2, separation=1 has limit=1, so the
+	// sole candidate in every 2x2 region is always the even-coordinate corner.
+	if cx&1 != 0 || cz&1 != 0 {
 		return nil, nil
 	}
 	key := world.ChunkPos{cx, cz}
-	cache := &g.fossils
-	cache.mu.Lock()
-	if cached, ok := cache.starts[key]; ok {
-		cache.mu.Unlock()
+	shard := g.fossils.shard(key)
+	shard.mu.RLock()
+	if cached, ok := shard.starts[key]; ok {
+		shard.mu.RUnlock()
 		return cached.start, cached.err
 	}
-	if flight, ok := cache.flights[key]; ok {
-		cache.mu.Unlock()
+	shard.mu.RUnlock()
+
+	shard.mu.Lock()
+	if cached, ok := shard.starts[key]; ok {
+		shard.mu.Unlock()
+		return cached.start, cached.err
+	}
+	if flight, ok := shard.flights[key]; ok {
+		shard.mu.Unlock()
 		<-flight.done
 		return flight.result.start, flight.result.err
 	}
-	if cache.starts == nil {
-		cache.starts = make(map[world.ChunkPos]netherFossilResult)
+	if shard.starts == nil {
+		shard.starts = make(map[world.ChunkPos]netherFossilResult)
 	}
-	if cache.flights == nil {
-		cache.flights = make(map[world.ChunkPos]*netherFossilFlight)
+	if shard.flights == nil {
+		shard.flights = make(map[world.ChunkPos]*netherFossilFlight)
 	}
 	flight := &netherFossilFlight{done: make(chan struct{})}
-	cache.flights[key] = flight
-	cache.mu.Unlock()
+	shard.flights[key] = flight
+	shard.mu.Unlock()
 
 	start, err := g.buildNetherFossilStart(cx, cz)
 	result := netherFossilResult{start: start, err: err}
-	cache.mu.Lock()
-	if len(cache.starts) >= 256 {
-		for old := range cache.starts {
-			delete(cache.starts, old)
+	shard.mu.Lock()
+	if len(shard.starts) >= netherFossilEntriesPerShard {
+		for old := range shard.starts {
+			delete(shard.starts, old)
 			break
 		}
 	}
-	cache.starts[key] = result
-	delete(cache.flights, key)
+	shard.starts[key] = result
+	delete(shard.flights, key)
 	flight.result = result
 	close(flight.done)
-	cache.mu.Unlock()
+	shard.mu.Unlock()
 	return start, err
 }
 
@@ -96,6 +123,11 @@ func (g *Nether) buildNetherFossilStart(cx, cz int32) (start *netherFossilStart,
 	// Embedded minecraft:nether_fossil uses uniform [absolute 32, below_top 2].
 	// In the Nether's minY=0,height=128 generation context this is [32,125].
 	y := int32(32 + random.NextInt(94))
+	// Nether biome climate is 2D (independent of Y), so reject ineligible biomes
+	// before sampling the full 128-block density column.
+	if !g.fossils.tables.fossilAllowedBiomes[netherBiomeIndex(g.biomes.Biome((x>>2)*4, (z>>2)*4))] {
+		return nil, nil
+	}
 	var column [128]uint32
 	g.baseColumn(x, z, &column)
 	for y > netherSeaLevel {
@@ -108,14 +140,6 @@ func (g *Nether) buildNetherFossilStart(cx, cz int32) (start *netherFossilStart,
 		}
 	}
 	if y <= netherSeaLevel {
-		return nil, nil
-	}
-	biome := g.featureSource.NoiseBiomeAt(x>>2, y>>2, z>>2)
-	allowed, err := gamedata.BiomeTagContains("#minecraft:has_structure/nether_fossil", biome)
-	if err != nil {
-		return nil, err
-	}
-	if !allowed {
 		return nil, nil
 	}
 	rotation := structure.Rotation(random.NextInt(4))

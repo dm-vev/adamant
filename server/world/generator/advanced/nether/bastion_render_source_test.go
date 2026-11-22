@@ -67,12 +67,12 @@ func TestBastionRenderedOutputMatchesReference(t *testing.T) {
 			g := NewNether(tc.seed)
 			levelRandom := vanilla.NewXoroshiroRandom(tc.seed)
 			env := structure.ProcessorEnvironment{
-				BaseBlock:   g.featureSource.BaseBlock,
-				BiomeAt: g.featureSource.BiomeAt,
-				BaseHeight:  g.featureSource.BaseHeight,
-				Random:      g.featureSource.structureStepRandom(tc.target, 18, 4),
-				LevelRandom: &levelRandom,
-				SourceDimension: "minecraft:the_nether",
+				BaseBlock:         g.featureSource.BaseBlock,
+				BiomeAt:           g.featureSource.BiomeAt,
+				BaseHeight:        g.featureSource.BaseHeight,
+				Random:            g.featureSource.structureStepRandom(tc.target, 18, 4),
+				LevelRandom:       &levelRandom,
+				SourceDimension:   "minecraft:the_nether",
 				GenerationContext: world.GenerationContext{Difficulty: world.LocalDifficulty{Base: world.DifficultyNormal}},
 			}
 			var placements []structure.Placement

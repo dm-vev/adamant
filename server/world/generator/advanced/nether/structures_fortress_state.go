@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
@@ -45,14 +46,19 @@ type fortressStartState struct {
 }
 
 type fortressStateStore struct {
-	mu     sync.Mutex
-	starts map[fortressStartKey]*fortressStartState
+	hasStates atomic.Bool
+	hasLoaded atomic.Bool
+	mu        sync.RWMutex
+	starts    map[fortressStartKey]*fortressStartState
 }
 
 func (s *fortressStateStore) lookup(key fortressStartKey) *fortressStartState {
-	s.mu.Lock()
+	if !s.hasStates.Load() {
+		return nil
+	}
+	s.mu.RLock()
 	state := s.starts[key]
-	s.mu.Unlock()
+	s.mu.RUnlock()
 	return state
 }
 
@@ -67,7 +73,48 @@ func (s *fortressStateStore) forStart(key fortressStartKey, pieces []bridgePiece
 	}
 	state := &fortressStartState{pieces: make([]structure.StructurePieceState, len(pieces))}
 	s.starts[key] = state
+	s.hasStates.Store(true)
 	return state
+}
+
+func (s *fortressStateStore) verifyLoadedWindow(minX, maxX, minZ, maxZ int32, g *Nether) {
+	if !s.hasLoaded.Load() {
+		return
+	}
+	var keys []fortressStartKey
+	s.mu.RLock()
+	for key := range s.starts {
+		if key.x >= minX && key.x <= maxX && key.z >= minZ && key.z <= maxZ {
+			keys = append(keys, key)
+		}
+	}
+	s.mu.RUnlock()
+	for _, key := range keys {
+		start, err := g.complexStart(key.x, key.z)
+		if err != nil {
+			panic(err)
+		}
+		if start != nil && start.fortress != nil {
+			continue
+		}
+		if state := s.lookup(key); state != nil && state.hasFlags() {
+			panic("nether: persisted fortress state has no matching source fortress start")
+		}
+	}
+}
+
+func (s *fortressStartState) hasFlags() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.pending) != 0 {
+		return true
+	}
+	for _, flags := range s.pieces {
+		if flags.ChestPlaced || flags.SpawnerPlaced {
+			return true
+		}
+	}
+	return false
 }
 
 func fortressPieceHasChestFlag(piece bridgePiece) bool {
@@ -162,6 +209,8 @@ func (g *Nether) LoadGenerationState(data []byte) error {
 	}
 	g.fortressStates.mu.Lock()
 	g.fortressStates.starts = states
+	g.fortressStates.hasStates.Store(len(states) != 0)
+	g.fortressStates.hasLoaded.Store(len(states) != 0)
 	g.fortressStates.mu.Unlock()
 	return nil
 }
@@ -171,7 +220,7 @@ func (g *Nether) LoadGenerationState(data []byte) error {
 func (g *Nether) SaveGenerationState() ([]byte, error) {
 	saved := savedFortressState{FormatVersion: fortressStateFormatVersion, DataVersion: fortressStateDataVersion, Seed: g.seed}
 	store := &g.fortressStates
-	store.mu.Lock()
+	store.mu.RLock()
 	for key, state := range store.starts {
 		start := savedFortressStartState{X: key.x, Z: key.z}
 		state.mu.Lock()
@@ -195,7 +244,7 @@ func (g *Nether) SaveGenerationState() ([]byte, error) {
 			saved.Starts = append(saved.Starts, start)
 		}
 	}
-	store.mu.Unlock()
+	store.mu.RUnlock()
 	sort.Slice(saved.Starts, func(i, j int) bool {
 		a, b := saved.Starts[i], saved.Starts[j]
 		if a.X != b.X {

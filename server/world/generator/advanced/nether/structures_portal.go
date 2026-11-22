@@ -40,7 +40,7 @@ type netherPortalStartFlight struct {
 
 // netherPortalCache is usable from a zero-value Nether and bounds retained starts.
 type netherPortalCache struct {
-	mu      sync.Mutex
+	mu      sync.RWMutex
 	starts  map[world.ChunkPos]netherPortalStartResult
 	flights map[world.ChunkPos]*netherPortalStartFlight
 }
@@ -53,8 +53,19 @@ func (g *Nether) portalStart(cx, cz int32) (*netherPortalStart, error) {
 	if candidate != [2]int32{cx, cz} {
 		return nil, nil
 	}
+	return g.cachedPortalStart(cx, cz)
+}
+
+func (g *Nether) cachedPortalStart(cx, cz int32) (*netherPortalStart, error) {
 	key := world.ChunkPos{cx, cz}
 	cache := &g.portals
+	cache.mu.RLock()
+	if result, ok := cache.starts[key]; ok {
+		cache.mu.RUnlock()
+		return result.start, result.err
+	}
+	cache.mu.RUnlock()
+
 	cache.mu.Lock()
 	if result, ok := cache.starts[key]; ok {
 		cache.mu.Unlock()
@@ -135,16 +146,21 @@ func (s *netherFeatureSource) placeRuinedPortalStep(pos world.ChunkPos, env stru
 	const salt, spacing, separation = int32(34222645), int32(40), int32(15)
 	targetX, targetZ := int32(pos[0]), int32(pos[1])
 	clip := structure.Bounds{Min: [3]int32{targetX * 16, 0, targetZ * 16}, Max: [3]int32{targetX*16 + 15, 127, targetZ*16 + 15}}
-	for sourceZ := targetZ - 2; sourceZ <= targetZ+2; sourceZ++ {
-		for sourceX := targetX - 2; sourceX <= targetX+2; sourceX++ {
-			candidate, err := structure.PotentialChunk(s.generator.seed, sourceX, sourceZ, salt, spacing, separation, structure.Linear)
+	minSX, maxSX := targetX-2, targetX+2
+	minSZ, maxSZ := targetZ-2, targetZ+2
+	regMinZ, regMaxZ := floorDiv(minSZ, spacing), floorDiv(maxSZ, spacing)
+	regMinX, regMaxX := floorDiv(minSX, spacing), floorDiv(maxSX, spacing)
+	for rz := regMinZ; rz <= regMaxZ; rz++ {
+		for rx := regMinX; rx <= regMaxX; rx++ {
+			candidate, err := structure.PotentialChunk(s.generator.seed, rx*spacing, rz*spacing, salt, spacing, separation, structure.Linear)
 			if err != nil {
 				panic(err)
 			}
-			if candidate[0] != sourceX || candidate[1] != sourceZ {
+			sourceX, sourceZ := candidate[0], candidate[1]
+			if sourceX < minSX || sourceX > maxSX || sourceZ < minSZ || sourceZ > maxSZ {
 				continue
 			}
-			start, err := s.generator.portalStart(sourceX, sourceZ)
+			start, err := s.generator.cachedPortalStart(sourceX, sourceZ)
 			if err != nil {
 				panic(err)
 			}
@@ -327,11 +343,12 @@ func portalTemplateBounds(template *structure.Template, origin [3]int32, mirror 
 
 func portalSuitableY(random *vanilla.Random, generator *Nether, min, max [3]int32, airPocket bool) int32 {
 	newY := int32(0)
-	if airPocket {
+	switch {
+	case airPocket:
 		newY = 32 + int32(random.NextInt(69))
-	} else if random.NextFloat() < .5 {
+	case random.NextFloat() < .5:
 		newY = 27 + int32(random.NextInt(3))
-	} else {
+	default:
 		newY = 29 + int32(random.NextInt(72))
 	}
 	corners := [4][2]int32{{min[0], min[2]}, {max[0], min[2]}, {min[0], max[2]}, {max[0], max[2]}}

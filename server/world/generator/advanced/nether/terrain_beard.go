@@ -35,8 +35,16 @@ func (g *Nether) forFossilReferences(pos world.ChunkPos, visit func(*netherFossi
 	count := 0
 	minX, minZ := pos[0]*16-12, pos[1]*16-12
 	maxX, maxZ := pos[0]*16+27, pos[1]*16+27
-	for sourceX := pos[0] - 8; sourceX <= pos[0]+8; sourceX++ {
-		for sourceZ := pos[1] - 8; sourceZ <= pos[1]+8; sourceZ++ {
+	startX := pos[0] - 8
+	if startX&1 != 0 {
+		startX++
+	}
+	startZ := pos[1] - 8
+	if startZ&1 != 0 {
+		startZ++
+	}
+	for sourceX := startX; sourceX <= pos[0]+8; sourceX += 2 {
+		for sourceZ := startZ; sourceZ <= pos[1]+8; sourceZ += 2 {
 			start, err := g.fossilStart(sourceX, sourceZ)
 			if err != nil {
 				panic(err)

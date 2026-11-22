@@ -25,12 +25,20 @@ var netherCaveUncarvableBlocks = func() map[string]struct{} {
 // netherCaves is the configured minecraft:nether_cave CaveWorldCarver.
 // Its only mutable state is the per-invocation carving mask.
 type netherCaves struct {
-	seed int64
-	g    *Nether
+	seed   int64
+	xScale int64
+	zScale int64
+	g      *Nether
 }
 
 func newNetherCaves(seed int64, g *Nether) *netherCaves {
-	return &netherCaves{seed: seed, g: g}
+	random := vanilla.NewLegacyRandom(seed)
+	return &netherCaves{
+		seed:   seed,
+		xScale: random.NextLong(),
+		zScale: random.NextLong(),
+		g:      g,
+	}
 }
 
 func (g *Nether) carveCaves(chunkX, chunkZ int, c *chunk.Chunk) {
@@ -41,13 +49,32 @@ func (c *netherCaves) generate(chunkX, chunkZ int, target *chunk.Chunk) {
 	var mask [netherCaveMaskWords]uint64
 	// NoiseBasedChunkGenerator visits the full 17x17 source window, X then Z.
 	for dx := -8; dx <= 8; dx++ {
+		sourceX := chunkX + dx
+		xPart := int64(sourceX)*c.xScale ^ c.seed
 		for dz := -8; dz <= 8; dz++ {
-			sourceX, sourceZ := chunkX+dx, chunkZ+dz
-			random := largeFeatureRandom(c.seed, sourceX, sourceZ)
+			sourceZ := chunkZ + dz
+			random := vanilla.NewLegacyRandom(xPart ^ int64(sourceZ)*c.zScale)
 			if random.NextFloat() > 0.2 {
 				continue
 			}
-			c.carveSource(chunkX, chunkZ, sourceX, sourceZ, target, &random, &mask)
+			c.carveSource(chunkX, chunkZ, sourceX, sourceZ, target, nil, &random, &mask)
+		}
+	}
+}
+
+func (c *netherCaves) generateGrid(chunkX, chunkZ int, grid *[16 * 16 * 128]uint8) {
+	var mask [netherCaveMaskWords]uint64
+	// NoiseBasedChunkGenerator visits the full 17x17 source window, X then Z.
+	for dx := -8; dx <= 8; dx++ {
+		sourceX := chunkX + dx
+		xPart := int64(sourceX)*c.xScale ^ c.seed
+		for dz := -8; dz <= 8; dz++ {
+			sourceZ := chunkZ + dz
+			random := vanilla.NewLegacyRandom(xPart ^ int64(sourceZ)*c.zScale)
+			if random.NextFloat() > 0.2 {
+				continue
+			}
+			c.carveSource(chunkX, chunkZ, sourceX, sourceZ, nil, grid, &random, &mask)
 		}
 	}
 }
@@ -58,7 +85,7 @@ func largeFeatureRandom(seed int64, chunkX, chunkZ int) vanilla.Random {
 	return vanilla.NewLegacyRandom(int64(chunkX)*xScale ^ int64(chunkZ)*zScale ^ seed)
 }
 
-func (c *netherCaves) carveSource(targetX, targetZ, sourceX, sourceZ int, target *chunk.Chunk, random *vanilla.Random, mask *[netherCaveMaskWords]uint64) {
+func (c *netherCaves) carveSource(targetX, targetZ, sourceX, sourceZ int, target *chunk.Chunk, grid *[16 * 16 * 128]uint8, random *vanilla.Random, mask *[netherCaveMaskWords]uint64) {
 	// VeryBiasedToBottomInt.of(0, 9): three nested inclusive draws.
 	count := random.NextInt(random.NextInt(random.NextInt(10)+1) + 1)
 	for range count {
@@ -74,7 +101,7 @@ func (c *netherCaves) carveSource(targetX, targetZ, sourceX, sourceZ int, target
 			roomVerticalMultiplier := float64(0.5)
 			thickness := float32(1) + random.NextFloat()*float32(6)
 			horizontalRadius := 1.5 + float64(vanilla.Sin(float64(float32(math.Pi/2)))*thickness)
-			c.carveEllipsoid(targetX, targetZ, target, x+1, y, z, horizontalRadius, horizontalRadius*roomVerticalMultiplier, floorLevel, mask)
+			c.carveEllipsoidInto(targetX, targetZ, target, grid, x+1, y, z, horizontalRadius, horizontalRadius*roomVerticalMultiplier, floorLevel, mask)
 			tunnels += int(random.NextInt(4))
 		}
 		for range tunnels {
@@ -83,7 +110,7 @@ func (c *netherCaves) carveSource(targetX, targetZ, sourceX, sourceZ int, target
 			thickness := sampleNetherCaveThickness(random)
 			distance := 112 - int(random.NextInt(28))
 			tunnelSeed := random.NextLong()
-			c.carveTunnelSeed(targetX, targetZ, target, tunnelSeed, x, y, z, thickness, horizontal, vertical, 0, distance, startVerticalMultiplier, horizontalMultiplier, verticalMultiplier, floorLevel, mask)
+			c.carveTunnelSeed(targetX, targetZ, target, grid, tunnelSeed, x, y, z, thickness, horizontal, vertical, 0, distance, startVerticalMultiplier, horizontalMultiplier, verticalMultiplier, floorLevel, mask)
 		}
 	}
 }
@@ -97,13 +124,17 @@ func sampleNetherCaveThickness(random *vanilla.Random) float32 {
 	return a*plateauEnd + b*plateauStart
 }
 
-func (c *netherCaves) carveTunnelSeed(targetX, targetZ int, target *chunk.Chunk, tunnelSeed int64, x, y, z float64, thickness, horizontal, vertical float32, step, distance int, startVerticalMultiplier, horizontalMultiplier, verticalMultiplier, floorLevel float64, mask *[netherCaveMaskWords]uint64) {
+func (c *netherCaves) carveTunnelSeed(targetX, targetZ int, target *chunk.Chunk, grid *[16 * 16 * 128]uint8, tunnelSeed int64, x, y, z float64, thickness, horizontal, vertical float32, step, distance int, startVerticalMultiplier, horizontalMultiplier, verticalMultiplier, floorLevel float64, mask *[netherCaveMaskWords]uint64) {
 	random := vanilla.NewLegacyRandom(tunnelSeed)
 	split := int(random.NextInt(int32(distance/2))) + distance/4
 	steep := random.NextInt(6) == 0
 	var yRotation, xRotation float32
+	midX, midZ := float64(targetX*16+8), float64(targetZ*16+8)
+	radius := float64(thickness) + 18
+	radiusSq := radius * radius
+	fDistance := float32(distance)
 	for current := step; current < distance; current++ {
-		sinAngle := float32(math.Pi) * float32(current) / float32(distance)
+		sinAngle := float32(math.Pi) * float32(current) / fDistance
 		horizontalRadius := 1.5 + float64(vanilla.Sin(float64(sinAngle))*thickness)
 		verticalRadius := horizontalRadius * startVerticalMultiplier
 		cosVertical := vanilla.Cos(float64(vertical))
@@ -124,26 +155,28 @@ func (c *netherCaves) carveTunnelSeed(targetX, targetZ int, target *chunk.Chunk,
 		if current == split && thickness > 1 {
 			branchSeed := random.NextLong()
 			branchThickness := random.NextFloat()*float32(0.5) + float32(0.5)
-			c.carveTunnelSeed(targetX, targetZ, target, branchSeed, x, y, z, branchThickness, horizontal-float32(math.Pi/2), vertical/float32(3), current, distance, 1, horizontalMultiplier, verticalMultiplier, floorLevel, mask)
+			c.carveTunnelSeed(targetX, targetZ, target, grid, branchSeed, x, y, z, branchThickness, horizontal-float32(math.Pi/2), vertical/float32(3), current, distance, 1, horizontalMultiplier, verticalMultiplier, floorLevel, mask)
 			branchSeed = random.NextLong()
 			branchThickness = random.NextFloat()*float32(0.5) + float32(0.5)
-			c.carveTunnelSeed(targetX, targetZ, target, branchSeed, x, y, z, branchThickness, horizontal+float32(math.Pi/2), vertical/float32(3), current, distance, 1, horizontalMultiplier, verticalMultiplier, floorLevel, mask)
+			c.carveTunnelSeed(targetX, targetZ, target, grid, branchSeed, x, y, z, branchThickness, horizontal+float32(math.Pi/2), vertical/float32(3), current, distance, 1, horizontalMultiplier, verticalMultiplier, floorLevel, mask)
 			return
 		}
 		if random.NextInt(4) != 0 {
 			remaining := float64(distance - current)
-			radius := float64(thickness) + 18
-			midX, midZ := float64(targetX*16+8), float64(targetZ*16+8)
 			dx, dz := x-midX, z-midZ
-			if dx*dx+dz*dz-remaining*remaining > radius*radius {
+			if dx*dx+dz*dz-remaining*remaining > radiusSq {
 				return
 			}
-			c.carveEllipsoid(targetX, targetZ, target, x, y, z, horizontalRadius*horizontalMultiplier, verticalRadius*verticalMultiplier, floorLevel, mask)
+			c.carveEllipsoidInto(targetX, targetZ, target, grid, x, y, z, horizontalRadius*horizontalMultiplier, verticalRadius*verticalMultiplier, floorLevel, mask)
 		}
 	}
 }
 
 func (c *netherCaves) carveEllipsoid(chunkX, chunkZ int, target *chunk.Chunk, x, y, z, horizontalRadius, verticalRadius, floorLevel float64, mask *[netherCaveMaskWords]uint64) {
+	c.carveEllipsoidInto(chunkX, chunkZ, target, nil, x, y, z, horizontalRadius, verticalRadius, floorLevel, mask)
+}
+
+func (c *netherCaves) carveEllipsoidInto(chunkX, chunkZ int, target *chunk.Chunk, grid *[16 * 16 * 128]uint8, x, y, z, horizontalRadius, verticalRadius, floorLevel float64, mask *[netherCaveMaskWords]uint64) {
 	centerX, centerZ := float64(chunkX*16+8), float64(chunkZ*16+8)
 	if math.Abs(x-centerX) > 16+horizontalRadius*2 || math.Abs(z-centerZ) > 16+horizontalRadius*2 {
 		return
@@ -157,23 +190,38 @@ func (c *netherCaves) carveEllipsoid(chunkX, chunkZ int, target *chunk.Chunk, x,
 	for localX := minX; localX <= maxX; localX++ {
 		worldX := float64(chunkX*16 + localX)
 		xd := (worldX + 0.5 - x) / horizontalRadius
+		xdSq := xd * xd
+		xBase := localX << 11
 		for localZ := minZ; localZ <= maxZ; localZ++ {
 			worldZ := float64(chunkZ*16 + localZ)
 			zd := (worldZ + 0.5 - z) / horizontalRadius
-			if xd*xd+zd*zd >= 1 {
+			zdSq := zd * zd
+			if xdSq+zdSq >= 1 {
 				continue
 			}
+			colBase := xBase | (localZ << 7)
 			for worldY := maxY; worldY > minY; worldY-- {
 				yd := (float64(worldY) - 0.5 - y) / verticalRadius
-				if yd <= floorLevel || xd*xd+yd*yd+zd*zd >= 1 {
+				if yd <= floorLevel || xdSq+yd*yd+zdSq >= 1 {
 					continue
 				}
-				maskIndex := (worldY*16+localZ)*16 + localX
-				word, bit := maskIndex>>6, uint(maskIndex&63)
+				idx := colBase | worldY
+				word, bit := idx>>6, uint(idx&63)
 				if mask[word]&(uint64(1)<<bit) != 0 {
 					continue
 				}
 				mask[word] |= uint64(1) << bit
+				if grid != nil {
+					if c.g.fossils.tables.blockUncarvable[grid[idx]] {
+						continue
+					}
+					if worldY < netherSeaLevel {
+						grid[idx] = nbLavaStill
+					} else {
+						grid[idx] = nbAir
+					}
+					continue
+				}
 				rid := target.Block(uint8(localX), int16(worldY), uint8(localZ), 0)
 				name, _, ok := target.BlockRegistry().RuntimeIDToState(rid)
 				if !ok {
