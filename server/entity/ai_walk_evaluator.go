@@ -2,6 +2,7 @@ package entity
 
 import (
 	"math"
+	"math/bits"
 	"strings"
 	"sync"
 
@@ -29,19 +30,24 @@ type walkNodeEvaluator struct {
 	// overriding getPathType to return BLOCKED do.
 	blocked func(m *Mob, pos cube.Pos) bool
 
-	// The maluses an amphibious evaluator changes while it finds a path.
-	oldMaluses map[PathType]float64
+	// The maluses an amphibious evaluator saves and restores while it finds a path.
+	oldWalkable, oldWaterBorder float64
+	hadWalkable, hadWaterBorder bool
 
 	m *Mob
 	// pw is what the evaluator reads the world through, the transaction
 	// of m unless a parallel phase set a read view before prepare.
-	pw pathWorld
+	pw      pathWorld
+	scratch *pathSearchScratch
 	// maxFall is Mob.getMaxFallDistance for the path being found.
 	maxFall                                int
-	nodes                                  map[int64]*pathNodeData
-	types                                  map[int64]PathType
-	collisions                             map[cube.BBox]bool
 	entityWidth, entityHeight, entityDepth int
+	multiCell                              bool
+	mobWidth, mobHeight, maxStepUp         float64
+	jumpStep                               int
+	mobPos                                 cube.Pos
+	mobOnRailChecked, mobOnRail            bool
+	seaLevel                               int
 	reusable                               [4]*pathNodeData
 }
 
@@ -52,53 +58,73 @@ var horizontalDirections = [4]cube.Pos{{0, 0, -1}, {1, 0, 0}, {0, 0, 1}, {-1, 0,
 // direction2D returns Direction.get2DDataValue of a horizontal direction.
 func direction2D(i int) int { return [4]int{2, 3, 0, 1}[i] }
 
-func (w *walkNodeEvaluator) prepare(m *Mob) {
+func (w *walkNodeEvaluator) pathWorld(m *Mob) pathWorld {
+	if w.pw != nil {
+		return w.pw
+	}
+	return m.tx
+}
+
+func (w *walkNodeEvaluator) prepare(m *Mob, scratch *pathSearchScratch, cache *pathTypeCache) {
 	w.m = m
+	w.scratch = scratch
 	if w.pw == nil {
 		w.pw, w.maxFall = m.tx, m.maxFallDistance()
 	}
 	if w.amphibious {
 		// AmphibiousNodeEvaluator.prepare: swimming costs nothing, walking
 		// costs and the water's edge too.
-		w.oldMaluses = make(map[PathType]float64, 2)
-		for _, t := range [...]PathType{PathWalkable, PathWaterBorder} {
-			if malus, ok := m.AI.maluses[t]; ok {
-				w.oldMaluses[t] = malus
-			}
-		}
+		w.oldWalkable, w.hadWalkable = m.AI.maluses[PathWalkable]
+		w.oldWaterBorder, w.hadWaterBorder = m.AI.maluses[PathWaterBorder]
 		m.AI.SetPathfindingMalus(PathWater, 0)
 		m.AI.SetPathfindingMalus(PathWalkable, 6)
 		m.AI.SetPathfindingMalus(PathWaterBorder, 4)
 	}
-	w.nodes = make(map[int64]*pathNodeData, 128)
-	w.types = make(map[int64]PathType, 256)
-	w.collisions = make(map[cube.BBox]bool, 16)
-	w.entityWidth = int(math.Floor(m.Width() + 1))
-	w.entityHeight = int(math.Floor(m.Height() + 1))
+	scratch.malus = pathMaluses
+	for t, malus := range m.AI.maluses {
+		scratch.malus[t] = malus
+	}
+	scratch.nodes.reset()
+	scratch.types.reset()
+	scratch.floors.reset()
+	scratch.reader.init(w.pw, cache)
+
+	bb := m.BBox()
+	w.mobWidth, w.mobHeight = bb.Width(), bb.Height()
+	w.entityWidth = int(math.Floor(w.mobWidth + 1))
+	w.entityHeight = int(math.Floor(w.mobHeight + 1))
 	w.entityDepth = w.entityWidth
+	w.multiCell = w.entityWidth > 1 || w.entityHeight > 1 || w.entityDepth > 1
+	if w.multiCell {
+		scratch.blockTypes.reset()
+	}
+	w.maxStepUp = math.Max(1.125, m.AI.StepHeight)
+	w.jumpStep = int(math.Floor(math.Max(1, m.AI.StepHeight)))
+	w.mobPos = m.BlockPos()
+	w.mobOnRailChecked, w.mobOnRail = false, false
+	if w.amphibious && w.prefersShallow {
+		w.seaLevel = seaLevel(m.tx)
+	}
 }
 
 func (w *walkNodeEvaluator) done() {
 	if w.amphibious && w.m != nil {
-		for _, t := range [...]PathType{PathWalkable, PathWaterBorder} {
-			if malus, ok := w.oldMaluses[t]; ok {
-				w.m.AI.maluses[t] = malus
-			} else {
-				delete(w.m.AI.maluses, t)
-			}
+		if w.hadWalkable {
+			w.m.AI.maluses[PathWalkable] = w.oldWalkable
+		} else {
+			delete(w.m.AI.maluses, PathWalkable)
+		}
+		if w.hadWaterBorder {
+			w.m.AI.maluses[PathWaterBorder] = w.oldWaterBorder
+		} else {
+			delete(w.m.AI.maluses, PathWaterBorder)
 		}
 	}
-	w.m, w.pw, w.nodes, w.types, w.collisions = nil, nil, nil, nil, nil
+	w.m, w.pw, w.scratch = nil, nil, nil
 }
 
 func (w *walkNodeEvaluator) node(x, y, z int) *pathNodeData {
-	key := pathNodeKey(x, y, z)
-	if n, ok := w.nodes[key]; ok {
-		return n
-	}
-	n := newPathNode(x, y, z)
-	w.nodes[key] = n
-	return n
+	return w.scratch.nodes.getOrAlloc(x, y, z, &w.scratch.arena)
 }
 
 // blockAt returns the block at a position, or air if its chunk isn't
@@ -157,7 +183,8 @@ func (w *walkNodeEvaluator) start() *pathNodeData {
 		startY = int(math.Floor(pos[1] + .5))
 	default:
 		y := int(math.Floor(pos[1] + 1))
-		for y > w.pw.Range().Min() {
+		minY := w.scratch.reader.minY
+		for y > minY {
 			startY = y
 			y--
 			below := cube.Pos{x, y, z}
@@ -181,13 +208,13 @@ func (w *walkNodeEvaluator) start() *pathNodeData {
 func (w *walkNodeEvaluator) startNode(x, y, z int) *pathNodeData {
 	n := w.node(x, y, z)
 	n.typ = w.cachedPathType(x, y, z)
-	n.costMalus = float32(w.m.PathfindingMalus(n.typ))
+	n.costMalus = float32(w.scratch.malus[n.typ])
 	return n
 }
 
 func (w *walkNodeEvaluator) canStartAt(x, y, z int) bool {
 	t := w.cachedPathType(x, y, z)
-	return t != PathOpen && w.m.PathfindingMalus(t) >= 0
+	return t != PathOpen && w.scratch.malus[t] >= 0
 }
 
 // neighbours ports WalkNodeEvaluator.getNeighbors.
@@ -195,8 +222,8 @@ func (w *walkNodeEvaluator) neighbours(out []*pathNodeData, pos *pathNodeData) i
 	p, jumpSize := 0, 0
 	above := w.cachedPathType(pos.x, pos.y+1, pos.z)
 	current := w.cachedPathType(pos.x, pos.y, pos.z)
-	if w.m.PathfindingMalus(above) >= 0 && current != PathStickyHoney {
-		jumpSize = int(math.Floor(math.Max(1, w.m.AI.StepHeight)))
+	if w.scratch.malus[above] >= 0 && current != PathStickyHoney {
+		jumpSize = w.jumpStep
 	}
 	height := w.floorLevel(cube.Pos{pos.x, pos.y, pos.z})
 	for i, d := range horizontalDirections {
@@ -208,7 +235,7 @@ func (w *walkNodeEvaluator) neighbours(out []*pathNodeData, pos *pathNodeData) i
 		}
 	}
 	for i, d := range horizontalDirections {
-		second := (i + 1) % 4
+		second := (i + 1) & 3
 		if !w.diagonalValid(pos, w.reusable[direction2D(i)], w.reusable[direction2D(second)]) {
 			continue
 		}
@@ -222,22 +249,20 @@ func (w *walkNodeEvaluator) neighbours(out []*pathNodeData, pos *pathNodeData) i
 	if w.amphibious {
 		// AmphibiousNodeEvaluator.getNeighbors: a swimmer also moves up and
 		// down through water.
-		valid := func(n *pathNodeData) bool {
-			return n != nil && !n.closed && (n.costMalus >= 0 || pos.costMalus < 0) && n.typ == PathWater
-		}
 		up := w.findAcceptedNode(pos.x, pos.y+1, pos.z, max(0, jumpSize-1), height, directionUp, current)
 		down := w.findAcceptedNode(pos.x, pos.y-1, pos.z, jumpSize, height, directionDown, current)
-		if valid(up) {
+		if up != nil && !up.closed && (up.costMalus >= 0 || pos.costMalus < 0) && up.typ == PathWater {
 			out[p] = up
 			p++
 		}
-		if valid(down) && current != PathTrapdoor {
+		if down != nil && !down.closed && (down.costMalus >= 0 || pos.costMalus < 0) && down.typ == PathWater && current != PathTrapdoor {
 			out[p] = down
 			p++
 		}
 		if w.prefersShallow {
+			shallowLimit := w.seaLevel - 10
 			for _, n := range out[:p] {
-				if n.typ == PathWater && n.y < seaLevel(w.m.tx)-10 {
+				if n.typ == PathWater && n.y < shallowLimit {
 					n.costMalus++
 				}
 			}
@@ -270,10 +295,10 @@ func (w *walkNodeEvaluator) diagonalValid(pos, ew, ns *pathNodeData) bool {
 	if ew.typ == PathWalkableDoor || ns.typ == PathWalkableDoor {
 		return false
 	}
-	if w.m.Width() > 1 && (ew.costMalus > 0 || ns.costMalus > 0) {
+	if w.mobWidth > 1 && (ew.costMalus > 0 || ns.costMalus > 0) {
 		return false
 	}
-	betweenPosts := ns.typ == PathFence && ew.typ == PathFence && w.m.Width() < .5
+	betweenPosts := ns.typ == PathFence && ew.typ == PathFence && w.mobWidth < .5
 	return (ns.y < pos.y || ns.costMalus >= 0 || betweenPosts) && (ew.y < pos.y || ew.costMalus >= 0 || betweenPosts)
 }
 
@@ -301,19 +326,32 @@ func (w *walkNodeEvaluator) canReachWithoutCollision(to *pathNodeData) bool {
 	return true
 }
 
-// floorLevel ports WalkNodeEvaluator.getFloorLevel.
+// floorLevel ports WalkNodeEvaluator.getFloorLevel, caching per-position
+// results for the duration of one search.
 func (w *walkNodeEvaluator) floorLevel(pos cube.Pos) float64 {
-	if (w.canFloat || w.amphibious) && pathWater(w.pw, pos) {
-		return float64(pos.Y()) + .5
+	key := pathNodeKey(pos[0], pos[1], pos[2])
+	if fl, ok := w.scratch.floors.get(key); ok {
+		return fl
 	}
-	return pathFloorLevel(w.pw, pos)
+	var fl float64
+	if (w.canFloat || w.amphibious) && pathWater(w.pw, pos) {
+		fl = float64(pos[1]) + .5
+	} else {
+		fl = pathFloorLevel(w.pw, pos)
+	}
+	w.scratch.floors.put(key, fl)
+	return fl
 }
 
 // pathFloorLevel returns the height of the floor of a position: the top of
 // the collision shape of the block below.
 func pathFloorLevel(tx pathWorld, pos cube.Pos) float64 {
 	below := pos.Side(cube.FaceDown)
-	top, ok := collisionTop(tx, below, pathBlockAt(tx, below))
+	b := pathBlockAt(tx, below)
+	if isAir(b) {
+		return float64(below.Y())
+	}
+	top, ok := collisionTop(tx, below, b)
 	if !ok {
 		return float64(below.Y())
 	}
@@ -336,11 +374,11 @@ func collisionTop(tx pathWorld, pos cube.Pos, b world.Block) (float64, bool) {
 // findAcceptedNode ports WalkNodeEvaluator.findAcceptedNode.
 func (w *walkNodeEvaluator) findAcceptedNode(x, y, z, jumpSize int, nodeHeight float64, dir int, current PathType) *pathNodeData {
 	var best *pathNodeData
-	if w.floorLevel(cube.Pos{x, y, z})-nodeHeight > math.Max(1.125, w.m.AI.StepHeight) {
+	if w.floorLevel(cube.Pos{x, y, z})-nodeHeight > w.maxStepUp {
 		return nil
 	}
 	t := w.cachedPathType(x, y, z)
-	cost := w.m.PathfindingMalus(t)
+	cost := w.scratch.malus[t]
 	if cost >= 0 {
 		best = w.nodeWithCost(x, y, z, t, cost)
 	}
@@ -388,16 +426,15 @@ func (w *walkNodeEvaluator) tryJumpOn(x, y, z, jumpSize int, nodeHeight float64,
 	if above == nil {
 		return nil
 	}
-	width := w.m.Width()
-	if width >= 1 || above.typ != PathOpen && above.typ != PathWalkable {
+	if w.mobWidth >= 1 || above.typ != PathOpen && above.typ != PathWalkable {
 		return above
 	}
 	d := directionStep(dir)
 	cx, cz := float64(x-d[0])+.5, float64(z-d[2])+.5
-	half := width / 2
+	half := w.mobWidth / 2
 	floorFrom := w.floorLevel(cube.PosFromVec3(mgl64.Vec3{cx, float64(y + 1), cz}))
 	floorTo := w.floorLevel(cube.Pos{above.x, above.y, above.z})
-	box := cube.Box(cx-half, floorFrom+.001, cz-half, cx+half, w.m.Height()+floorTo-.002, cz+half)
+	box := cube.Box(cx-half, floorFrom+.001, cz-half, cx+half, w.mobHeight+floorTo-.002, cz+half)
 	if w.hasCollisions(box) {
 		return nil
 	}
@@ -405,24 +442,26 @@ func (w *walkNodeEvaluator) tryJumpOn(x, y, z, jumpSize int, nodeHeight float64,
 }
 
 func (w *walkNodeEvaluator) firstNonWaterBelow(x, y, z int, best *pathNodeData) *pathNodeData {
-	for y--; y > w.pw.Range().Min(); y-- {
+	minY := w.scratch.reader.minY
+	for y--; y > minY; y-- {
 		t := w.cachedPathType(x, y, z)
 		if t != PathWater {
 			return best
 		}
-		best = w.nodeWithCost(x, y, z, t, w.m.PathfindingMalus(t))
+		best = w.nodeWithCost(x, y, z, t, w.scratch.malus[t])
 	}
 	return best
 }
 
 func (w *walkNodeEvaluator) firstGroundNodeBelow(x, y, z int) *pathNodeData {
 	maxFall := w.maxFall
-	for current := y - 1; current >= w.pw.Range().Min(); current-- {
+	minY := w.scratch.reader.minY
+	for current := y - 1; current >= minY; current-- {
 		if y-current > maxFall {
 			return w.blockedNode(x, current, z)
 		}
 		t := w.cachedPathType(x, current, z)
-		cost := w.m.PathfindingMalus(t)
+		cost := w.scratch.malus[t]
 		if t != PathOpen {
 			if cost >= 0 {
 				return w.nodeWithCost(x, current, z, t, cost)
@@ -435,11 +474,16 @@ func (w *walkNodeEvaluator) firstGroundNodeBelow(x, y, z int) *pathNodeData {
 
 // hasCollisions reports if a block collides with a box.
 func (w *walkNodeEvaluator) hasCollisions(box cube.BBox) bool {
-	if c, ok := w.collisions[box]; ok {
-		return c
+	if w.scratch.collisions != nil {
+		if c, ok := w.scratch.collisions[box]; ok {
+			return c
+		}
 	}
 	c := !boxFree(w.pw, box)
-	w.collisions[box] = c
+	if w.scratch.collisions == nil {
+		w.scratch.collisions = make(map[cube.BBox]bool, 16)
+	}
+	w.scratch.collisions[box] = c
 	return c
 }
 
@@ -451,7 +495,11 @@ func boxFree(tx pathWorld, box cube.BBox) bool {
 		for y := minY; y <= maxY; y++ {
 			for z := minZ; z <= maxZ; z++ {
 				pos := cube.Pos{x, y, z}
-				for _, bb := range pathBlockAt(tx, pos).Model().BBox(pos, tx) {
+				b := pathBlockAt(tx, pos)
+				if isAir(b) {
+					continue
+				}
+				for _, bb := range b.Model().BBox(pos, tx) {
 					if bb.Translate(pos.Vec3()).IntersectsWith(box) {
 						return false
 					}
@@ -464,36 +512,61 @@ func boxFree(tx pathWorld, box cube.BBox) bool {
 
 func (w *walkNodeEvaluator) cachedPathType(x, y, z int) PathType {
 	key := pathNodeKey(x, y, z)
-	if t, ok := w.types[key]; ok {
+	if t, ok := w.scratch.types.get(key); ok {
 		return t
 	}
 	t := w.pathTypeOfMob(x, y, z)
-	w.types[key] = t
+	w.scratch.types.put(key, t)
 	return t
+}
+
+func (w *walkNodeEvaluator) cachedBlockType(x, y, z int) PathType {
+	if !w.multiCell {
+		return w.blockType(cube.Pos{x, y, z})
+	}
+	key := pathNodeKey(x, y, z)
+	if t, ok := w.scratch.blockTypes.get(key); ok {
+		return t
+	}
+	t := w.blockType(cube.Pos{x, y, z})
+	w.scratch.blockTypes.put(key, t)
+	return t
+}
+
+func (w *walkNodeEvaluator) isMobOnRail() bool {
+	if !w.mobOnRailChecked {
+		w.mobOnRailChecked = true
+		w.mobOnRail = w.scratch.reader.pathTypeStatic(w.mobPos) == PathRail ||
+			w.scratch.reader.pathTypeStatic(w.mobPos.Side(cube.FaceDown)) == PathRail
+	}
+	return w.mobOnRail
 }
 
 // pathTypeOfMob ports WalkNodeEvaluator.getPathTypeOfMob: the type of the
 // blocks the mob would stand in.
 func (w *walkNodeEvaluator) pathTypeOfMob(x, y, z int) PathType {
-	var types [pathTypeCount]bool
+	var mask uint32
 	count := 0
-	var only PathType
-	mobPos := w.m.BlockPos()
+	var only, originRaw PathType
 	for dx := range w.entityWidth {
 		for dy := range w.entityHeight {
 			for dz := range w.entityDepth {
-				t := w.blockType(cube.Pos{x + dx, y + dy, z + dz})
+				t := w.cachedBlockType(x+dx, y+dy, z+dz)
+				if dx == 0 && dy == 0 && dz == 0 {
+					originRaw = t
+				}
 				if t == PathDoorWoodClosed && w.canOpenDoors && w.canPassDoors {
 					t = PathWalkableDoor
 				}
 				if t == PathDoorOpen && !w.canPassDoors {
 					t = PathBlocked
 				}
-				if t == PathRail && pathTypeStatic(w.pw, mobPos) != PathRail && pathTypeStatic(w.pw, mobPos.Side(cube.FaceDown)) != PathRail {
+				if t == PathRail && !w.isMobOnRail() {
 					t = PathUnpassableRail
 				}
-				if !types[t] {
-					types[t] = true
+				bit := uint32(1) << t
+				if mask&bit == 0 {
+					mask |= bit
 					count++
 					only = t
 				}
@@ -503,18 +576,17 @@ func (w *walkNodeEvaluator) pathTypeOfMob(x, y, z int) PathType {
 	if count == 1 {
 		return only
 	}
-	if types[PathFence] {
+	if mask&(1<<PathFence) != 0 {
 		return PathFence
 	}
-	if types[PathUnpassableRail] {
+	if mask&(1<<PathUnpassableRail) != 0 {
 		return PathUnpassableRail
 	}
-	highest, highestMalus := PathBlocked, w.m.PathfindingMalus(PathBlocked)
-	for t := range pathTypeCount {
-		if !types[t] {
-			continue
-		}
-		malus := w.m.PathfindingMalus(t)
+	malusTable := &w.scratch.malus
+	highest, highestMalus := PathBlocked, malusTable[PathBlocked]
+	for rem := mask; rem != 0; rem &= rem - 1 {
+		t := PathType(bits.TrailingZeros32(rem))
+		malus := malusTable[t]
 		if malus < 0 {
 			return t
 		}
@@ -522,18 +594,30 @@ func (w *walkNodeEvaluator) pathTypeOfMob(x, y, z int) PathType {
 			highest, highestMalus = t, malus
 		}
 	}
-	current := w.blockType(cube.Pos{x, y, z})
 	if w.entityWidth > 1 {
-		cheaper := w.m.PathfindingMalus(current) < highestMalus
-		if cheaper && w.m.PathfindingMalus(PathBigMobsCloseToDanger) < highestMalus {
+		cheaper := malusTable[originRaw] < highestMalus
+		if cheaper && malusTable[PathBigMobsCloseToDanger] < highestMalus {
 			return PathBigMobsCloseToDanger
 		}
 		return highest
 	}
-	if current == PathOpen && highest != PathOpen && highestMalus == 0 {
+	if originRaw == PathOpen && highest != PathOpen && highestMalus == 0 {
 		return PathOpen
 	}
 	return highest
+}
+
+// frogPreferJumpTo checks whether the block below pos is in the
+// frog_prefer_jump_to tag using the block state ID bitset when available.
+func (w *walkNodeEvaluator) frogPreferJumpTo(below cube.Pos) bool {
+	if below[1] < w.scratch.reader.minY || below[1] > w.scratch.reader.maxY {
+		return false
+	}
+	if id, err := w.pw.BlockStateID(below); err == nil && id != 0 {
+		in, _ := gamedata.BlockTagContainsID("frog_prefer_jump_to", id)
+		return in
+	}
+	return blockInTag(w.blockAt(below), "frog_prefer_jump_to")
 }
 
 // blockType returns the path type of a block, as WalkNodeEvaluator.getPathType
@@ -544,16 +628,18 @@ func (w *walkNodeEvaluator) blockType(pos cube.Pos) PathType {
 		return PathBlocked
 	}
 	if w.fly {
-		return flyPathType(w.m, pos)
+		return w.scratch.reader.flyPathType(w.mobPos, pos)
 	}
-	if w.frog && blockInTag(w.blockAt(pos.Side(cube.FaceDown)), "frog_prefer_jump_to") {
+	if w.frog && w.frogPreferJumpTo(pos.Side(cube.FaceDown)) {
 		return PathOpen
 	}
-	if !w.amphibious || pathTypeFromState(w.pw, pos) != PathWater {
-		return pathTypeStatic(w.pw, pos)
+	r := &w.scratch.reader
+	if !w.amphibious || r.stateAt(pos[0], pos[1], pos[2]) != PathWater {
+		return r.pathTypeStatic(pos)
 	}
 	for _, f := range cube.Faces() {
-		if pathTypeFromState(w.pw, pos.Side(f)) == PathBlocked {
+		s := pos.Side(f)
+		if r.stateAt(s[0], s[1], s[2]) == PathBlocked {
 			return PathWaterBorder
 		}
 	}
@@ -569,15 +655,134 @@ func (w *walkNodeEvaluator) pathType(m *Mob, pos cube.Pos) PathType {
 	return pathTypeStatic(m.tx, pos)
 }
 
-// pathTypeStatic ports WalkNodeEvaluator.getPathTypeStatic: the type of a
-// block, where an open block above a floor is walkable unless the floor or
-// a neighbour is dangerous.
-func pathTypeStatic(tx pathWorld, pos cube.Pos) PathType {
-	t := pathTypeFromState(tx, pos)
-	if t != PathOpen || pos.Y() < tx.Range().Min()+1 {
+// pathChunkVer caches one column's block version for the duration of a single
+// immutable pathfinding or classification pass.
+type pathChunkVer struct {
+	pos     world.ChunkPos
+	version uint64
+	loaded  bool
+}
+
+// pathStateReader amortizes world.Local, world.Range, and ColumnBlockVersion
+// lookups across an immutable read pass (one findPath, pathTypeStatic, or
+// RandomPos sampling call).
+type pathStateReader struct {
+	pw        pathWorld
+	tx        *world.Tx
+	rv        *world.ReadView
+	cache     *pathTypeCache
+	minY      int
+	maxY      int
+	keySafeY  bool
+	lastCX    int32
+	lastCZ    int32
+	lastVer   uint64
+	lastLoad  bool
+	hasLast   bool
+	validMask uint16
+	chunks    [16]pathChunkVer
+}
+
+func (r *pathStateReader) init(pw pathWorld, cache *pathTypeCache) {
+	r.pw = pw
+	r.cache = cache
+	r.hasLast = false
+	r.validMask = 0
+	rng := pw.Range()
+	r.minY, r.maxY = rng.Min(), rng.Max()
+	r.keySafeY = r.minY >= -2048 && r.maxY <= 2047
+	r.tx, r.rv = nil, nil
+	switch w := pw.(type) {
+	case *world.Tx:
+		r.tx = w
+	case *world.ReadView:
+		r.rv = w
+	}
+}
+
+func (r *pathStateReader) initFromWorld(pw pathWorld) {
+	var cache *pathTypeCache
+	if local := worldLocalFor(pw); local != nil {
+		cache = &local.typeCache
+	}
+	r.init(pw, cache)
+}
+
+func (r *pathStateReader) chunkVersionSlow(cx, cz int32) (uint64, bool) {
+	chunk := world.ChunkPos{cx, cz}
+	slot := uint(((cx & 3) << 2) | (cz & 3))
+	if r.validMask&(1<<slot) != 0 && r.chunks[slot].pos == chunk {
+		e := r.chunks[slot]
+		r.lastCX, r.lastCZ, r.lastVer, r.lastLoad, r.hasLast = cx, cz, e.version, e.loaded, true
+		return e.version, e.loaded
+	}
+	var ver uint64
+	var loaded bool
+	if r.tx != nil {
+		ver, loaded = r.tx.ColumnBlockVersion(chunk)
+	} else if r.rv != nil {
+		ver, loaded = r.rv.ColumnBlockVersion(chunk)
+	}
+	r.chunks[slot] = pathChunkVer{pos: chunk, version: ver, loaded: loaded}
+	r.validMask |= 1 << slot
+	r.lastCX, r.lastCZ, r.lastVer, r.lastLoad, r.hasLast = cx, cz, ver, loaded, true
+	return ver, loaded
+}
+
+func (r *pathStateReader) chunkVersion(cx, cz int32) (uint64, bool) {
+	if r.hasLast && r.lastCX == cx && r.lastCZ == cz {
+		return r.lastVer, r.lastLoad
+	}
+	return r.chunkVersionSlow(cx, cz)
+}
+
+func (r *pathStateReader) stateAtMiss(x, y, z int, key int64, ver uint64, idx int) PathType {
+	t, ready := computePathTypeFromState(r.pw, cube.Pos{x, y, z})
+	if ready {
+		// A column still generating changes without a new version.
+		r.cache.entries[idx] = pathTypeCacheEntry{key: key, verType: (ver << 8) | uint64(t)}
+	}
+	return t
+}
+
+func (r *pathStateReader) stateAt(x, y, z int) PathType {
+	if y < r.minY || y > r.maxY {
+		return PathOpen
+	}
+	if r.cache == nil {
+		t, _ := computePathTypeFromState(r.pw, cube.Pos{x, y, z})
 		return t
 	}
-	switch below := pathTypeFromState(tx, pos.Side(cube.FaceDown)); below {
+	cx, cz := int32(x>>4), int32(z>>4)
+	var ver uint64
+	var loaded bool
+	if r.hasLast && r.lastCX == cx && r.lastCZ == cz {
+		ver, loaded = r.lastVer, r.lastLoad
+	} else {
+		ver, loaded = r.chunkVersionSlow(cx, cz)
+	}
+	if !loaded {
+		return PathOpen
+	}
+	if !r.keySafeY || (uint64(x+(1<<25))|uint64(z+(1<<25))) >= (1<<26) || ver == 0 || ver >= (1<<56) {
+		t, _ := computePathTypeFromState(r.pw, cube.Pos{x, y, z})
+		return t
+	}
+	key := pathNodeKey(x, y, z)
+	idx := pathTypeCacheSlot(key)
+	e := r.cache.entries[idx]
+	if e.key == key && (e.verType>>8) == ver {
+		return PathType(e.verType)
+	}
+	return r.stateAtMiss(x, y, z, key, ver, idx)
+}
+
+func (r *pathStateReader) pathTypeStatic(pos cube.Pos) PathType {
+	t := r.stateAt(pos[0], pos[1], pos[2])
+	if t != PathOpen || pos[1] < r.minY+1 {
+		return t
+	}
+	switch below := r.stateAt(pos[0], pos[1]-1, pos[2]); below {
 	case PathOpen, PathWater, PathLava, PathWalkable:
 		return PathOpen
 	case PathFire, PathDamaging, PathStickyHoney, PathDamageCautious:
@@ -587,18 +792,51 @@ func pathTypeStatic(tx pathWorld, pos cube.Pos) PathType {
 	case PathTrapdoor:
 		return PathOnTopOfTrapdoor
 	}
-	return checkNeighbourBlocks(tx, pos, PathWalkable)
+	return r.checkNeighbourBlocks(pos, PathWalkable)
 }
 
-// checkNeighbourBlocks ports WalkNodeEvaluator.checkNeighbourBlocks.
-func checkNeighbourBlocks(tx pathWorld, pos cube.Pos, t PathType) PathType {
+func (r *pathStateReader) checkNeighbourBlocks(pos cube.Pos, t PathType) PathType {
+	x, y, z := pos[0], pos[1], pos[2]
+	if r.cache != nil && r.keySafeY && y-1 >= r.minY && y+1 <= r.maxY &&
+		uint64(x+(1<<25)-1) < (1<<26)-2 && uint64(z+(1<<25)-1) < (1<<26)-2 {
+		if (x&15) >= 1 && (x&15) <= 14 && (z&15) >= 1 && (z&15) <= 14 {
+			ver, loaded := r.chunkVersion(int32(x>>4), int32(z>>4))
+			if !loaded {
+				return t
+			}
+			if ver != 0 && ver < (1<<56) {
+				return r.checkNeighbourBlocksInterior(x, y, z, ver, t)
+			}
+		} else {
+			return r.checkNeighbourBlocksBoundary(x, y, z, t)
+		}
+	}
+	return r.checkNeighbourBlocksFallback(x, y, z, t)
+}
+
+func (r *pathStateReader) checkNeighbourBlocksInterior(x, y, z int, ver uint64, t PathType) PathType {
+	entries := &r.cache.entries
 	for dx := -1; dx <= 1; dx++ {
+		nx := x + dx
+		xKey := int64(nx&0x3ffffff) << 38
 		for dy := -1; dy <= 1; dy++ {
+			ny := y + dy
+			xyKey := xKey | int64(ny&0xfff)
 			for dz := -1; dz <= 1; dz++ {
 				if dx == 0 && dz == 0 {
 					continue
 				}
-				switch pathTypeFromState(tx, pos.Add(cube.Pos{dx, dy, dz})) {
+				nz := z + dz
+				key := xyKey | int64(nz&0x3ffffff)<<12
+				idx := pathTypeCacheSlot(key)
+				e := entries[idx]
+				var nt PathType
+				if e.key == key && (e.verType>>8) == ver {
+					nt = PathType(e.verType)
+				} else {
+					nt = r.stateAtMiss(nx, ny, nz, key, ver, idx)
+				}
+				switch nt {
 				case PathDamaging:
 					return PathDamagingInNeighbour
 				case PathFire, PathLava:
@@ -614,6 +852,103 @@ func checkNeighbourBlocks(tx pathWorld, pos cube.Pos, t PathType) PathType {
 	return t
 }
 
+func (r *pathStateReader) checkNeighbourBlocksBoundary(x, y, z int, t PathType) PathType {
+	entries := &r.cache.entries
+	czs := [3]int32{int32((z - 1) >> 4), int32(z >> 4), int32((z + 1) >> 4)}
+	for dx := -1; dx <= 1; dx++ {
+		nx := x + dx
+		cx := int32(nx >> 4)
+		var vers [3]uint64
+		var loads [3]bool
+		vers[0], loads[0] = r.chunkVersion(cx, czs[0])
+		if czs[1] == czs[0] {
+			vers[1], loads[1] = vers[0], loads[0]
+		} else {
+			vers[1], loads[1] = r.chunkVersion(cx, czs[1])
+		}
+		if czs[2] == czs[1] {
+			vers[2], loads[2] = vers[1], loads[1]
+		} else {
+			vers[2], loads[2] = r.chunkVersion(cx, czs[2])
+		}
+		xKey := int64(nx&0x3ffffff) << 38
+		for dy := -1; dy <= 1; dy++ {
+			ny := y + dy
+			xyKey := xKey | int64(ny&0xfff)
+			for dz := -1; dz <= 1; dz++ {
+				if dx == 0 && dz == 0 || !loads[dz+1] {
+					continue
+				}
+				nz := z + dz
+				ver := vers[dz+1]
+				var nt PathType
+				if ver == 0 || ver >= (1<<56) {
+					nt, _ = computePathTypeFromState(r.pw, cube.Pos{nx, ny, nz})
+				} else {
+					key := xyKey | int64(nz&0x3ffffff)<<12
+					idx := pathTypeCacheSlot(key)
+					e := entries[idx]
+					if e.key == key && (e.verType>>8) == ver {
+						nt = PathType(e.verType)
+					} else {
+						nt = r.stateAtMiss(nx, ny, nz, key, ver, idx)
+					}
+				}
+				switch nt {
+				case PathDamaging:
+					return PathDamagingInNeighbour
+				case PathFire, PathLava:
+					return PathFireInNeighbour
+				case PathWater:
+					return PathWaterBorder
+				case PathDamageCautious:
+					return PathDamageCautious
+				}
+			}
+		}
+	}
+	return t
+}
+
+func (r *pathStateReader) checkNeighbourBlocksFallback(x, y, z int, t PathType) PathType {
+	for dx := -1; dx <= 1; dx++ {
+		for dy := -1; dy <= 1; dy++ {
+			for dz := -1; dz <= 1; dz++ {
+				if dx == 0 && dz == 0 {
+					continue
+				}
+				switch r.stateAt(x+dx, y+dy, z+dz) {
+				case PathDamaging:
+					return PathDamagingInNeighbour
+				case PathFire, PathLava:
+					return PathFireInNeighbour
+				case PathWater:
+					return PathWaterBorder
+				case PathDamageCautious:
+					return PathDamageCautious
+				}
+			}
+		}
+	}
+	return t
+}
+
+// pathTypeStatic ports WalkNodeEvaluator.getPathTypeStatic: the type of a
+// block, where an open block above a floor is walkable unless the floor or
+// a neighbour is dangerous.
+func pathTypeStatic(tx pathWorld, pos cube.Pos) PathType {
+	var r pathStateReader
+	r.initFromWorld(tx)
+	return r.pathTypeStatic(pos)
+}
+
+// checkNeighbourBlocks ports WalkNodeEvaluator.checkNeighbourBlocks.
+func checkNeighbourBlocks(tx pathWorld, pos cube.Pos, t PathType) PathType {
+	var r pathStateReader
+	r.initFromWorld(tx)
+	return r.checkNeighbourBlocks(pos, t)
+}
+
 // pathTypesByState caches the path types of blocks by Java block state ID,
 // as the PathTypeCache of a ServerLevel caches them by position.
 var pathTypesByState sync.Map
@@ -622,82 +957,35 @@ var pathTypesByState sync.Map
 // the type through the world's PathTypeCache when read through a
 // transaction.
 func pathTypeFromState(pw pathWorld, pos cube.Pos) PathType {
-	if pos.OutOfBounds(pw.Range()) {
-		return PathOpen
-	}
-	chunk := world.ChunkPos{int32(pos[0] >> 4), int32(pos[2] >> 4)}
-	var (
-		cache   *pathTypeCache
-		version uint64
-		loaded  bool
-	)
-	switch pw := pw.(type) {
-	case *world.Tx:
-		cache = pw.Local(pathTypeCacheKey{}, newPathTypeCache).(*pathTypeCache)
-		version, loaded = pw.ColumnBlockVersion(chunk)
-	case *world.ReadView:
-		// Each worker of the phase before the entities tick keeps a cache
-		// of its own.
-		cache = pw.Local(pathTypeCacheKey{}, newPathTypeCache).(*pathTypeCache)
-		version, loaded = pw.ColumnBlockVersion(chunk)
-	default:
-		t, _ := computePathTypeFromState(pw, pos)
-		return t
-	}
-	if !loaded {
-		return PathOpen
-	}
-	if t, ok := cache.get(pos, version); ok {
-		return t
-	}
-	t, ready := computePathTypeFromState(pw, pos)
-	if ready {
-		// A column still generating changes without a new version.
-		cache.put(pos, version, t)
-	}
-	return t
+	var r pathStateReader
+	r.initFromWorld(pw)
+	return r.stateAt(pos[0], pos[1], pos[2])
 }
 
+const (
+	pathTypeCacheSize = 8192
+	pathTypeCacheMask = pathTypeCacheSize - 1
+)
+
 // pathTypeCache ports PathTypeCache, which a ServerLevel keeps to look the
-// path types of blocks up by position. An entry holds the block version of
-// the column of its block, standing in for Java invalidating the position
-// when its block changes.
+// path types of blocks up by position. Each 16-byte entry packs the column
+// block version (high 56 bits) and cached PathType (low 8 bits) alongside the
+// packed BlockPos key so invalidation on block changes is automatic.
 type pathTypeCache struct {
-	entries [4096]pathTypeCacheEntry
+	entries [pathTypeCacheSize]pathTypeCacheEntry
 }
 
 type pathTypeCacheEntry struct {
-	pos     cube.Pos
-	version uint64
-	t       PathType
+	key     int64
+	verType uint64
 }
 
-// pathTypeCacheKey is the key of the pathTypeCache of a world in Tx.Local
-// and ReadView.Local: the world owner keeps one, as does each worker of the
-// parallel phases of the world.
-type pathTypeCacheKey struct{}
-
-func newPathTypeCache() any { return &pathTypeCache{} }
-
-// index ports PathTypeCache.index: HashCommon.mix of BlockPos.asLong.
-func (c *pathTypeCache) index(pos cube.Pos) int {
-	key := (int64(pos[0])&0x3ffffff)<<38 | (int64(pos[2])&0x3ffffff)<<12 | int64(pos[1])&0xfff
+// pathTypeCacheSlot mixes a packed position key into a pathTypeCache slot.
+func pathTypeCacheSlot(key int64) int {
 	h := uint64(key) * 0x9e3779b97f4a7c15
 	h ^= h >> 32
 	h ^= h >> 16
-	return int(h & 4095)
-}
-
-func (c *pathTypeCache) get(pos cube.Pos, version uint64) (PathType, bool) {
-	e := &c.entries[c.index(pos)]
-	if e.version == version && e.pos == pos && version != 0 {
-		return e.t, true
-	}
-	return 0, false
-}
-
-func (c *pathTypeCache) put(pos cube.Pos, version uint64, t PathType) {
-	c.entries[c.index(pos)] = pathTypeCacheEntry{pos: pos, version: version, t: t}
+	return int(h & pathTypeCacheMask)
 }
 
 // computePathTypeFromState computes what pathTypeFromState returns for a

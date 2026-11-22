@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -244,12 +245,15 @@ func (n *PathNavigation) CreatePath(m *Mob, pos cube.Pos, reachRange int) *mobPa
 		return v.AI.nav.CreatePath(v, pos, reachRange)
 	}
 	if n.wallClimber {
-		target := pos
-		n.pathToPosition = &target
+		if n.pathToPosition == nil {
+			n.pathToPosition = new(cube.Pos)
+		}
+		*n.pathToPosition = pos
 	}
 	if n.eval.fly {
 		// FlyingPathNavigation flies to the very block passed.
-		return n.createPath(m, []cube.Pos{pos}, reachRange, n.maxPathLength(m))
+		targets := [1]cube.Pos{pos}
+		return n.createPath(m, targets[:], reachRange, n.maxPathLength(m))
 	}
 	if _, ok := m.tx.BlockLoaded(pos); !ok && !pos.OutOfBounds(m.tx.Range()) {
 		return nil
@@ -257,7 +261,8 @@ func (n *PathNavigation) CreatePath(m *Mob, pos cube.Pos, reachRange int) *mobPa
 	if !n.CanPathToTargetsBelowSurface {
 		pos = surfacePosition(m.tx, pos)
 	}
-	return n.createPath(m, []cube.Pos{pos}, reachRange, n.maxPathLength(m))
+	targets := [1]cube.Pos{pos}
+	return n.createPath(m, targets[:], reachRange, n.maxPathLength(m))
 }
 
 // CreatePathWithLength finds a path to a position no longer than
@@ -266,7 +271,8 @@ func (n *PathNavigation) CreatePathWithLength(m *Mob, pos cube.Pos, reachRange i
 	if v := n.vehicle; v != nil {
 		return v.AI.nav.CreatePathWithLength(v, pos, reachRange, maxPathLength)
 	}
-	return n.createPath(m, []cube.Pos{pos}, reachRange, maxPathLength)
+	targets := [1]cube.Pos{pos}
+	return n.createPath(m, targets[:], reachRange, maxPathLength)
 }
 
 // CreatePathToEntity finds a path to the block an entity stands in.
@@ -329,8 +335,10 @@ func (n *PathNavigation) createPath(m *Mob, targets []cube.Pos, reachRange int, 
 		l.onPathfindingDone(m)
 	}
 	if path != nil {
-		target := path.Target()
-		n.targetPos = &target
+		if n.targetPos == nil {
+			n.targetPos = new(cube.Pos)
+		}
+		*n.targetPos = path.Target()
 		n.reachRange = reachRange
 		n.resetStuckTimeout()
 	}
@@ -389,8 +397,11 @@ func (n *PathNavigation) MoveToEntity(m *Mob, e world.Entity, speedModifier floa
 		if path := n.CreatePathToEntity(m, e, 0); path != nil {
 			return n.MoveTo(m, path, speedModifier)
 		}
-		target := cube.PosFromVec3(e.Position())
-		n.pathToPosition, n.speedModifier = &target, speedModifier
+		if n.pathToPosition == nil {
+			n.pathToPosition = new(cube.Pos)
+		}
+		*n.pathToPosition = cube.PosFromVec3(e.Position())
+		n.speedModifier = speedModifier
 		return true
 	}
 	return n.MoveToEntityReach(m, e, 1, speedModifier)
@@ -422,24 +433,26 @@ func (n *PathNavigation) tickNavigation(m *Mob) {
 	if n.IsDone() {
 		return
 	}
-	if n.canUpdatePath(m) {
-		n.followThePath(m)
-	} else if n.eval.fly && n.path != nil && !n.path.Done() {
+	width := m.Width()
+	switch {
+	case n.canUpdatePath(m):
+		n.followThePath(m, width)
+	case n.eval.fly && n.path != nil && !n.path.Done():
 		// FlyingPathNavigation.tick: a mob that may not follow its path
 		// passes the nodes it flies through.
-		next := n.path.entityPosAtNode(m.Width(), n.path.next)
+		next := n.path.entityPosAtNode(width, n.path.next)
 		if m.BlockPos() == cube.PosFromVec3(next) {
 			n.path.Advance()
 		}
-	} else if n.path != nil && !n.path.Done() {
+	case n.path != nil && !n.path.Done():
 		pos := n.tempMobPos(m)
-		next := n.path.entityPosAtNode(m.Width(), n.path.next)
+		next := n.path.entityPosAtNode(width, n.path.next)
 		if pos[1] > next[1] && !m.OnGround() && math.Floor(pos[0]) == math.Floor(next[0]) && math.Floor(pos[2]) == math.Floor(next[2]) {
 			n.path.Advance()
 		}
 	}
 	if !n.IsDone() {
-		target := n.path.entityPosAtNode(m.Width(), n.path.next)
+		target := n.path.entityPosAtNode(width, n.path.next)
 		m.AI.move.SetWantedPosition(target[0], n.groundY(m, target), target[2], n.speedModifier)
 	}
 }
@@ -450,10 +463,11 @@ func (n *PathNavigation) tickWallClimber(m *Mob) {
 		return
 	}
 	p := *n.pathToPosition
-	width := m.Width()
-	near := func(pos cube.Pos) bool { return pos.Vec3Centre().Sub(m.data.Pos).LenSqr() < width*width }
+	widthSqr := m.Width()
+	widthSqr *= widthSqr
 	column := cube.PosFromVec3(mgl64.Vec3{float64(p.X()), m.data.Pos[1], float64(p.Z())})
-	if !near(p) && (m.data.Pos[1] <= float64(p.Y()) || !near(column)) {
+	nearP := p.Vec3Centre().Sub(m.data.Pos).LenSqr() < widthSqr
+	if !nearP && (m.data.Pos[1] <= float64(p.Y()) || column.Vec3Centre().Sub(m.data.Pos).LenSqr() >= widthSqr) {
 		m.AI.move.SetWantedPosition(float64(p.X()), float64(p.Y()), float64(p.Z()), n.speedModifier)
 		return
 	}
@@ -465,16 +479,21 @@ func (n *PathNavigation) groundY(m *Mob, target mgl64.Vec3) float64 {
 		return target[1]
 	}
 	pos := cube.PosFromVec3(target)
-	if isAir(pathBlockAt(m.tx, pos.Side(cube.FaceDown))) {
+	below := pos.Side(cube.FaceDown)
+	b := pathBlockAt(m.tx, below)
+	if isAir(b) {
 		return target[1]
 	}
-	return pathFloorLevel(m.tx, pos)
+	top, ok := collisionTop(m.tx, below, b)
+	if !ok {
+		return float64(below.Y())
+	}
+	return float64(below.Y()) + top
 }
 
 // followThePath ports PathNavigation.followThePath.
-func (n *PathNavigation) followThePath(m *Mob) {
+func (n *PathNavigation) followThePath(m *Mob, width float64) {
 	pos := n.tempMobPos(m)
-	width := m.Width()
 	if width > .75 {
 		n.maxDistanceToWaypoint = width / 2
 	} else {
@@ -491,7 +510,7 @@ func (n *PathNavigation) followThePath(m *Mob) {
 		maxYd = .5
 	}
 	close := xd < n.maxDistanceToWaypoint && zd < n.maxDistanceToWaypoint && yd < maxYd
-	if close || n.canCutCorner(n.path.nodes[n.path.next].typ) && n.shouldTargetNextNode(m, pos) {
+	if close || n.canCutCorner(n.path.nodes[n.path.next].typ) && n.shouldTargetNextNode(m, pos, width) {
 		n.path.Advance()
 	}
 	n.doStuckDetection(m, pos)
@@ -509,29 +528,31 @@ func canCutCorner(t PathType) bool {
 }
 
 // shouldTargetNextNode ports PathNavigation.shouldTargetNextNodeInDirection.
-func (n *PathNavigation) shouldTargetNextNode(m *Mob, pos mgl64.Vec3) bool {
+func (n *PathNavigation) shouldTargetNextNode(m *Mob, pos mgl64.Vec3, width float64) bool {
 	if n.path.next+1 >= n.path.NodeCount() {
 		return false
 	}
-	current := n.path.nextNodePos().Vec3Middle()
-	current[1] = float64(n.path.nextNodePos().Y())
-	if pos.Sub(current).Len() >= 2 {
+	curNode := n.path.nextNodePos()
+	current := mgl64.Vec3{float64(curNode[0]) + .5, float64(curNode[1]), float64(curNode[2]) + .5}
+	toCurrent := current.Sub(pos)
+	currentSqr := toCurrent.LenSqr()
+	if currentSqr >= 4 {
 		return false
 	}
-	if n.canMoveDirectly(m, pos, n.path.entityPosAtNode(m.Width(), n.path.next)) {
+	if (n.eval.fly || n.swim != nil || n.amphibious && m.InLiquid()) && n.canMoveDirectly(m, pos, n.path.entityPosAtNode(width, n.path.next)) {
 		return true
 	}
 	nextPos := n.path.nodePos(n.path.next + 1)
-	next := mgl64.Vec3{float64(nextPos.X()) + .5, float64(nextPos.Y()), float64(nextPos.Z()) + .5}
-	toCurrent, toNext := current.Sub(pos), next.Sub(pos)
-	currentSqr, nextSqr := toCurrent.LenSqr(), toNext.LenSqr()
+	next := mgl64.Vec3{float64(nextPos[0]) + .5, float64(nextPos[1]), float64(nextPos[2]) + .5}
+	toNext := next.Sub(pos)
+	nextSqr := toNext.LenSqr()
 	if nextSqr >= currentSqr && currentSqr >= .5 {
 		return false
 	}
 	if currentSqr == 0 || nextSqr == 0 {
 		return false
 	}
-	return toNext.Normalize().Dot(toCurrent.Normalize()) < 0
+	return toNext.Dot(toCurrent) < 0
 }
 
 // doStuckDetection ports PathNavigation.doStuckDetection.
@@ -558,10 +579,10 @@ func (n *PathNavigation) doStuckDetection(m *Mob, pos mgl64.Vec3) {
 		n.timeoutTimer += time - n.lastTimeoutCheck
 	} else {
 		n.timeoutCachedNode = node
-		dist := pos.Sub(mgl64.Vec3{float64(node.X()) + .5, float64(node.Y()), float64(node.Z()) + .5}).Len()
+		dist := pos.Sub(mgl64.Vec3{float64(node[0]) + .5, float64(node[1]), float64(node[2]) + .5}).Len()
 		n.timeoutLimit = 0
-		if m.Speed() > 0 {
-			n.timeoutLimit = dist / m.Speed() * 20
+		if speed := m.Speed(); speed > 0 {
+			n.timeoutLimit = dist / speed * 20
 		}
 	}
 	if n.timeoutLimit > 0 && float64(n.timeoutTimer) > n.timeoutLimit*3 {
@@ -585,7 +606,7 @@ func (n *PathNavigation) trimPath(m *Mob) {
 		return
 	}
 	for i, node := range n.path.nodes {
-		if !blockInTag(pathBlockAt(m.tx, node.Pos()), "minecraft:cauldrons") {
+		if _, cauldron := pathBlockAt(m.tx, node.Pos()).(block.Cauldron); !cauldron {
 			continue
 		}
 		n.path.nodes[i] = node.cloneAndMove(node.x, node.y+1, node.z)

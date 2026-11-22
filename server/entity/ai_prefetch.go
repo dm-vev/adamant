@@ -256,6 +256,15 @@ func (w *walkNodeEvaluator) config() walkNodeConfig {
 	return walkNodeConfig{w.canPassDoors, w.canOpenDoors, w.canFloat, w.canWalkOverFences, w.amphibious, w.prefersShallow, w.frog, w.fly}
 }
 
+func (ai *MobAI) findMeleeAttackGoal() (*MeleeAttackGoal, *wrappedGoal) {
+	for _, w := range ai.Goals.goals {
+		if g, ok := w.goal.(interface{ meleeAttackGoal() *MeleeAttackGoal }); ok {
+			return g.meleeAttackGoal(), w
+		}
+	}
+	return nil, nil
+}
+
 // prefetchPath finds, on a worker, the path the melee attack goal of the
 // mob is expected to ask for this tick: when it checks whether it can start
 // or recalculates its path to its target. Only walking mobs whose paths
@@ -270,16 +279,7 @@ func (ai *MobAI) prefetchPath(e *Ent, self world.Entity, v *world.ReadView) {
 	if _, listens := e.Behaviour().(mobPathfindingListener); listens {
 		return
 	}
-	var (
-		melee   *MeleeAttackGoal
-		wrapped *wrappedGoal
-	)
-	for _, w := range ai.Goals.goals {
-		if g, ok := w.goal.(interface{ meleeAttackGoal() *MeleeAttackGoal }); ok {
-			melee, wrapped = g.meleeAttackGoal(), w
-			break
-		}
-	}
+	melee, wrapped := ai.findMeleeAttackGoal()
 	if melee == nil || !ai.started {
 		// The id that staggers the goals is known once the AI has started.
 		return
@@ -335,7 +335,8 @@ func (ai *MobAI) prefetchPath(e *Ent, self world.Entity, v *world.ReadView) {
 	v.Track()
 	ev := n.eval
 	ev.pw, ev.maxFall = v, maxFall
-	path := findPath(m, &ev, []cube.Pos{target}, float32(maxPathLength), 0, visited)
+	targets := [1]cube.Pos{target}
+	path := findPath(m, &ev, targets[:], float32(maxPathLength), 0, visited)
 	if v.Missed() {
 		return
 	}
@@ -351,12 +352,16 @@ func (ai *MobAI) prefetchPath(e *Ent, self world.Entity, v *world.ReadView) {
 	p.ok, p.tick, p.path, p.target, p.reach, p.maxPathLength, p.visited = true, tick, path, target, 0, maxPathLength, visited
 	p.pos, p.box, p.onGround, p.inWater, p.step, p.maxFall = e.data.Pos, m.BBox(), ai.onGround, ai.waterHeight > 0, ai.StepHeight, maxFall
 	p.config = n.eval.config()
-	clear(p.maluses)
-	if p.maluses == nil {
-		p.maluses = make(map[PathType]float64, len(ai.maluses))
+	if len(p.maluses) > 0 {
+		clear(p.maluses)
 	}
-	for t, malus := range ai.maluses {
-		p.maluses[t] = malus
+	if len(ai.maluses) > 0 {
+		if p.maluses == nil {
+			p.maluses = make(map[PathType]float64, len(ai.maluses))
+		}
+		for t, malus := range ai.maluses {
+			p.maluses[t] = malus
+		}
 	}
 }
 

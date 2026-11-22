@@ -33,8 +33,11 @@ func (n *Navigator) MoveTo(tx *world.Tx, start, target cube.Pos, profile GroundP
 	if n.HasTarget && n.Target == target && len(n.Path) > n.Index {
 		return true
 	}
-	if n.HasTarget && tick-n.LastComputeTick < 20 && n.Target.Sub(target).Vec3().Len() <= 4 {
-		return len(n.Path) > n.Index
+	if n.HasTarget && tick-n.LastComputeTick < 20 {
+		dx, dy, dz := n.Target[0]-target[0], n.Target[1]-target[1], n.Target[2]-target[2]
+		if dx*dx+dy*dy+dz*dz <= 16 {
+			return len(n.Path) > n.Index
+		}
 	}
 	n.Path = FindGroundPath(tx, start, target, profile)
 	n.Target, n.HasTarget, n.Index, n.LastComputeTick = target, true, 0, tick
@@ -44,14 +47,22 @@ func (n *Navigator) MoveTo(tx *world.Tx, start, target cube.Pos, profile GroundP
 // Tick advances reached waypoints and returns the next centered waypoint.
 func (n *Navigator) Tick(position mgl64.Vec3, tick int64, width float64) (mgl64.Vec3, bool) {
 	if tick-n.LastStuckCheck >= 100 {
-		if tick > 0 && position.Sub(n.LastPosition).Len() < math.Max(.1, width*.1) {
-			n.Path, n.Index, n.HasTarget = nil, 0, false
+		if tick > 0 {
+			minMove := math.Max(.1, width*.1)
+			if position.Sub(n.LastPosition).LenSqr() < minMove*minMove {
+				n.Path, n.Index, n.HasTarget = nil, 0, false
+			}
 		}
 		n.LastStuckCheck, n.LastPosition = tick, position
 	}
+	reach := math.Max(.5, width)
+	reachSqr := reach * reach
 	for n.Index < len(n.Path) {
 		p := n.Path[n.Index]
-		if position.Sub(p.Vec3().Add(mgl64.Vec3{.5, 0, .5})).Len() > math.Max(.5, width) {
+		dx := position[0] - (float64(p[0]) + .5)
+		dy := position[1] - float64(p[1])
+		dz := position[2] - (float64(p[2]) + .5)
+		if dx*dx+dy*dy+dz*dz > reachSqr {
 			break
 		}
 		n.Index++
@@ -59,5 +70,6 @@ func (n *Navigator) Tick(position mgl64.Vec3, tick int64, width float64) (mgl64.
 	if n.Index >= len(n.Path) {
 		return mgl64.Vec3{}, false
 	}
-	return n.Path[n.Index].Vec3().Add(mgl64.Vec3{.5, 0, .5}), true
+	p := n.Path[n.Index]
+	return mgl64.Vec3{float64(p[0]) + .5, float64(p[1]), float64(p[2]) + .5}, true
 }

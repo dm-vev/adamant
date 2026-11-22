@@ -20,14 +20,17 @@ func (w flyNodeEvaluator) start() *pathNodeData {
 	var startY int
 	if w.canFloat && m.InWater() {
 		startY = int(math.Floor(m.data.Pos[1]))
-		for pathWater(m.tx, cube.Pos{x, startY, z}) {
+		for pathWater(w.pw, cube.Pos{x, startY, z}) {
 			startY++
 		}
 	} else {
 		startY = int(math.Floor(m.data.Pos[1] + .5))
 	}
 	if !w.canFlyFrom(x, startY, z) {
-		for _, pos := range w.startCandidates() {
+		var buf [10]cube.Pos
+		n := w.startCandidates(&buf)
+		for i := range n {
+			pos := buf[i]
 			if w.canFlyFrom(pos[0], pos[1], pos[2]) {
 				return w.startNode(pos[0], pos[1], pos[2])
 			}
@@ -38,35 +41,63 @@ func (w flyNodeEvaluator) start() *pathNodeData {
 
 // canFlyFrom ports FlyNodeEvaluator.canStartAt.
 func (w flyNodeEvaluator) canFlyFrom(x, y, z int) bool {
-	return w.m.PathfindingMalus(w.cachedPathType(x, y, z)) >= 0
+	return w.scratch.malus[w.cachedPathType(x, y, z)] >= 0
 }
 
 // startCandidates ports
 // FlyNodeEvaluator.iteratePathfindingStartNodeCandidatePositions: the
 // corners of a big mob, or ten random blocks in the box of a small mob grown
 // to a block and a tenth.
-func (w flyNodeEvaluator) startCandidates() []cube.Pos {
+func (w flyNodeEvaluator) startCandidates(out *[10]cube.Pos) int {
 	m := w.m
 	bb := m.BBox()
-	min, max := bb.Min(), bb.Max()
+	loV, hiV := bb.Min(), bb.Max()
 	if (bb.Width()+bb.Height()+bb.Length())/3 >= 1 {
-		y := m.BlockPos().Y()
-		corner := func(x, z float64) cube.Pos { return cube.Pos{int(math.Floor(x)), y, int(math.Floor(z))} }
-		return []cube.Pos{corner(min[0], min[2]), corner(min[0], max[2]), corner(max[0], min[2]), corner(max[0], max[2])}
+		y := w.mobPos.Y()
+		out[0] = cube.Pos{int(math.Floor(loV[0])), y, int(math.Floor(loV[2]))}
+		out[1] = cube.Pos{int(math.Floor(loV[0])), y, int(math.Floor(hiV[2]))}
+		out[2] = cube.Pos{int(math.Floor(hiV[0])), y, int(math.Floor(loV[2]))}
+		out[3] = cube.Pos{int(math.Floor(hiV[0])), y, int(math.Floor(hiV[2]))}
+		return 4
 	}
 	xPad, yPad, zPad := math.Max(0, 1.1-bb.Width()), math.Max(0, 1.1-bb.Height()), math.Max(0, 1.1-bb.Length())
-	lo := cube.Pos{int(math.Floor(min[0] - xPad)), int(math.Floor(min[1] - yPad)), int(math.Floor(min[2] - zPad))}
-	hi := cube.Pos{int(math.Floor(max[0] + xPad)), int(math.Floor(max[1] + yPad)), int(math.Floor(max[2] + zPad))}
+	lo := cube.Pos{int(math.Floor(loV[0] - xPad)), int(math.Floor(loV[1] - yPad)), int(math.Floor(loV[2] - zPad))}
+	hi := cube.Pos{int(math.Floor(hiV[0] + xPad)), int(math.Floor(hiV[1] + yPad)), int(math.Floor(hiV[2] + zPad))}
 	r := m.Random()
-	out := make([]cube.Pos, 10)
-	for i := range out {
+	dx, dy, dz := int32(hi[0]-lo[0]+1), int32(hi[1]-lo[1]+1), int32(hi[2]-lo[2]+1)
+	for i := range 10 {
 		// BlockPos.randomBetweenClosed.
-		x := lo[0] + int(r.NextInt(int32(hi[0]-lo[0]+1)))
-		y := lo[1] + int(r.NextInt(int32(hi[1]-lo[1]+1)))
-		z := lo[2] + int(r.NextInt(int32(hi[2]-lo[2]+1)))
+		x := lo[0] + int(r.NextInt(dx))
+		y := lo[1] + int(r.NextInt(dy))
+		z := lo[2] + int(r.NextInt(dz))
 		out[i] = cube.Pos{x, y, z}
 	}
-	return out
+	return 10
+}
+
+func flyPassable(n *pathNodeData) bool { return n != nil && n.costMalus >= 0 }
+
+func flyAdd0(out []*pathNodeData, count *int, n *pathNodeData) *pathNodeData {
+	if n != nil && !n.closed {
+		out[*count] = n
+		*count++
+	}
+	return n
+}
+
+func flyAdd2(out []*pathNodeData, count *int, n, a, b *pathNodeData) *pathNodeData {
+	if n != nil && !n.closed && flyPassable(a) && flyPassable(b) {
+		out[*count] = n
+		*count++
+	}
+	return n
+}
+
+func flyAdd6(out []*pathNodeData, count *int, n, a, b, c, d, e, f *pathNodeData) {
+	if n != nil && !n.closed && flyPassable(a) && flyPassable(b) && flyPassable(c) && flyPassable(d) && flyPassable(e) && flyPassable(f) {
+		out[*count] = n
+		*count++
+	}
 }
 
 // neighbours ports FlyNodeEvaluator.getNeighbors: the six blocks around a
@@ -74,46 +105,33 @@ func (w flyNodeEvaluator) startCandidates() []cube.Pos {
 // only where the blocks between are passable.
 func (w flyNodeEvaluator) neighbours(out []*pathNodeData, pos *pathNodeData) int {
 	count := 0
-	add := func(n *pathNodeData, between ...*pathNodeData) *pathNodeData {
-		if n == nil || n.closed {
-			return n
-		}
-		for _, b := range between {
-			if b == nil || b.costMalus < 0 {
-				return n
-			}
-		}
-		out[count] = n
-		count++
-		return n
-	}
-	at := func(dx, dy, dz int) *pathNodeData { return w.flyAcceptedNode(pos.x+dx, pos.y+dy, pos.z+dz) }
-	south := add(at(0, 0, 1))
-	west := add(at(-1, 0, 0))
-	east := add(at(1, 0, 0))
-	north := add(at(0, 0, -1))
-	up := add(at(0, 1, 0))
-	down := add(at(0, -1, 0))
-	southUp := add(at(0, 1, 1), south, up)
-	westUp := add(at(-1, 1, 0), west, up)
-	eastUp := add(at(1, 1, 0), east, up)
-	northUp := add(at(0, 1, -1), north, up)
-	southDown := add(at(0, -1, 1), south, down)
-	westDown := add(at(-1, -1, 0), west, down)
-	eastDown := add(at(1, -1, 0), east, down)
-	northDown := add(at(0, -1, -1), north, down)
-	northEast := add(at(1, 0, -1), north, east)
-	southEast := add(at(1, 0, 1), south, east)
-	northWest := add(at(-1, 0, -1), north, west)
-	southWest := add(at(-1, 0, 1), south, west)
-	add(at(1, 1, -1), northEast, north, east, up, northUp, eastUp)
-	add(at(1, 1, 1), southEast, south, east, up, southUp, eastUp)
-	add(at(-1, 1, -1), northWest, north, west, up, northUp, westUp)
-	add(at(-1, 1, 1), southWest, south, west, up, southUp, westUp)
-	add(at(1, -1, -1), northEast, north, east, down, northDown, eastDown)
-	add(at(1, -1, 1), southEast, south, east, down, southDown, eastDown)
-	add(at(-1, -1, -1), northWest, north, west, down, northDown, westDown)
-	add(at(-1, -1, 1), southWest, south, west, down, southDown, westDown)
+	x, y, z := pos.x, pos.y, pos.z
+	south := flyAdd0(out, &count, w.flyAcceptedNode(x, y, z+1))
+	west := flyAdd0(out, &count, w.flyAcceptedNode(x-1, y, z))
+	east := flyAdd0(out, &count, w.flyAcceptedNode(x+1, y, z))
+	north := flyAdd0(out, &count, w.flyAcceptedNode(x, y, z-1))
+	up := flyAdd0(out, &count, w.flyAcceptedNode(x, y+1, z))
+	down := flyAdd0(out, &count, w.flyAcceptedNode(x, y-1, z))
+	southUp := flyAdd2(out, &count, w.flyAcceptedNode(x, y+1, z+1), south, up)
+	westUp := flyAdd2(out, &count, w.flyAcceptedNode(x-1, y+1, z), west, up)
+	eastUp := flyAdd2(out, &count, w.flyAcceptedNode(x+1, y+1, z), east, up)
+	northUp := flyAdd2(out, &count, w.flyAcceptedNode(x, y+1, z-1), north, up)
+	southDown := flyAdd2(out, &count, w.flyAcceptedNode(x, y-1, z+1), south, down)
+	westDown := flyAdd2(out, &count, w.flyAcceptedNode(x-1, y-1, z), west, down)
+	eastDown := flyAdd2(out, &count, w.flyAcceptedNode(x+1, y-1, z), east, down)
+	northDown := flyAdd2(out, &count, w.flyAcceptedNode(x, y-1, z-1), north, down)
+	northEast := flyAdd2(out, &count, w.flyAcceptedNode(x+1, y, z-1), north, east)
+	southEast := flyAdd2(out, &count, w.flyAcceptedNode(x+1, y, z+1), south, east)
+	northWest := flyAdd2(out, &count, w.flyAcceptedNode(x-1, y, z-1), north, west)
+	southWest := flyAdd2(out, &count, w.flyAcceptedNode(x-1, y, z+1), south, west)
+	flyAdd6(out, &count, w.flyAcceptedNode(x+1, y+1, z-1), northEast, north, east, up, northUp, eastUp)
+	flyAdd6(out, &count, w.flyAcceptedNode(x+1, y+1, z+1), southEast, south, east, up, southUp, eastUp)
+	flyAdd6(out, &count, w.flyAcceptedNode(x-1, y+1, z-1), northWest, north, west, up, northUp, westUp)
+	flyAdd6(out, &count, w.flyAcceptedNode(x-1, y+1, z+1), southWest, south, west, up, southUp, westUp)
+	flyAdd6(out, &count, w.flyAcceptedNode(x+1, y-1, z-1), northEast, north, east, down, northDown, eastDown)
+	flyAdd6(out, &count, w.flyAcceptedNode(x+1, y-1, z+1), southEast, south, east, down, southDown, eastDown)
+	flyAdd6(out, &count, w.flyAcceptedNode(x-1, y-1, z-1), northWest, north, west, down, northDown, westDown)
+	flyAdd6(out, &count, w.flyAcceptedNode(x-1, y-1, z+1), southWest, south, west, down, southDown, westDown)
 	return count
 }
 
@@ -121,7 +139,7 @@ func (w flyNodeEvaluator) neighbours(out []*pathNodeData, pos *pathNodeData) int
 // may fly through, where flying right above the ground costs a little more.
 func (w flyNodeEvaluator) flyAcceptedNode(x, y, z int) *pathNodeData {
 	t := w.cachedPathType(x, y, z)
-	cost := w.m.PathfindingMalus(t)
+	cost := w.scratch.malus[t]
 	if cost < 0 {
 		return nil
 	}
@@ -134,14 +152,11 @@ func (w flyNodeEvaluator) flyAcceptedNode(x, y, z int) *pathNodeData {
 	return n
 }
 
-// flyPathType ports FlyNodeEvaluator.getPathType: open air takes on the
-// danger of the block below it, and air right above the ground is walkable.
-func flyPathType(m *Mob, pos cube.Pos) PathType {
-	tx := m.tx
-	t := pathTypeFromState(tx, pos)
-	if t == PathOpen && pos.Y() >= tx.Range().Min()+1 {
-		below := pos.Side(cube.FaceDown)
-		switch belowType := pathTypeFromState(tx, below); belowType {
+func (r *pathStateReader) flyPathType(mobPos, pos cube.Pos) PathType {
+	t := r.stateAt(pos[0], pos[1], pos[2])
+	if t == PathOpen && pos[1] >= r.minY+1 {
+		below := cube.Pos{pos[0], pos[1] - 1, pos[2]}
+		switch belowType := r.stateAt(below[0], below[1], below[2]); belowType {
 		case PathFire, PathLava:
 			t = PathFire
 		case PathDamaging:
@@ -149,7 +164,7 @@ func flyPathType(m *Mob, pos cube.Pos) PathType {
 		case PathCocoa:
 			t = PathCocoa
 		case PathFence:
-			if below != m.BlockPos() {
+			if below != mobPos {
 				t = PathFence
 			}
 		case PathWalkable, PathOpen, PathWater:
@@ -158,7 +173,15 @@ func flyPathType(m *Mob, pos cube.Pos) PathType {
 		}
 	}
 	if t == PathWalkable || t == PathOpen {
-		t = checkNeighbourBlocks(tx, pos, t)
+		t = r.checkNeighbourBlocks(pos, t)
 	}
 	return t
+}
+
+// flyPathType ports FlyNodeEvaluator.getPathType: open air takes on the
+// danger of the block below it, and air right above the ground is walkable.
+func flyPathType(m *Mob, pos cube.Pos) PathType {
+	var r pathStateReader
+	r.initFromWorld(m.tx)
+	return r.flyPathType(m.BlockPos(), pos)
 }

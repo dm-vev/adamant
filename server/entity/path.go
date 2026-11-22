@@ -1,8 +1,8 @@
 package entity
 
 import (
-	"container/heap"
 	"math"
+	"sync"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -14,41 +14,293 @@ type pathNode struct {
 	g, f   float64
 	parent *pathNode
 	index  int
+	closed bool
 }
 
-type pathHeap []*pathNode
+const groundNodeSlabSize = 64
 
-func (h pathHeap) Len() int           { return len(h) }
-func (h pathHeap) Less(i, j int) bool { return h[i].f < h[j].f }
-func (h pathHeap) Swap(i, j int) {
-	h[i], h[j] = h[j], h[i]
-	h[i].index = i
-	h[j].index = j
+type groundNodeArena struct {
+	slabs   []*[groundNodeSlabSize]pathNode
+	slabIdx int
+	slotIdx int
 }
-func (h *pathHeap) Push(x any) {
-	n := x.(*pathNode)
+
+func (a *groundNodeArena) reset() {
+	a.slabIdx, a.slotIdx = 0, 0
+}
+
+func (a *groundNodeArena) alloc(pos cube.Pos, g, f float64, parent *pathNode) *pathNode {
+	if a.slotIdx == groundNodeSlabSize {
+		a.slabIdx++
+		a.slotIdx = 0
+	}
+	if a.slabIdx >= len(a.slabs) {
+		a.slabs = append(a.slabs, new([groundNodeSlabSize]pathNode))
+	}
+	n := &a.slabs[a.slabIdx][a.slotIdx]
+	a.slotIdx++
+	*n = pathNode{pos: pos, g: g, f: f, parent: parent, index: -1}
+	return n
+}
+
+func groundPosHash(p cube.Pos) uint64 {
+	h := uint64(p[0])*0x9e3779b97f4a7c15 ^ uint64(p[2])*0xbf58476d1ce4e5b9 ^ uint64(p[1])*0x94d049bb133111eb
+	return h ^ (h >> 32)
+}
+
+type groundNodeEntry struct {
+	pos  cube.Pos
+	node *pathNode
+	gen  uint32
+}
+
+type groundNodeTable struct {
+	entries []groundNodeEntry
+	mask    uint64
+	count   int
+	gen     uint32
+}
+
+func (t *groundNodeTable) reset() {
+	if len(t.entries) == 0 {
+		t.entries = make([]groundNodeEntry, 256)
+		t.mask = 255
+	}
+	t.count = 0
+	t.gen++
+	if t.gen == 0 {
+		clear(t.entries)
+		t.gen = 1
+	}
+}
+
+func (t *groundNodeTable) grow() {
+	old := t.entries
+	newCap := len(old) * 2
+	t.entries = make([]groundNodeEntry, newCap)
+	t.mask = uint64(newCap - 1)
+	gen := t.gen
+	for i := range old {
+		if old[i].gen != gen {
+			continue
+		}
+		idx := groundPosHash(old[i].pos) & t.mask
+		for t.entries[idx].gen == gen {
+			idx = (idx + 1) & t.mask
+		}
+		t.entries[idx] = old[i]
+	}
+}
+
+func (t *groundNodeTable) get(pos cube.Pos) *pathNode {
+	idx := groundPosHash(pos) & t.mask
+	gen := t.gen
+	for {
+		e := &t.entries[idx]
+		if e.gen != gen {
+			return nil
+		}
+		if e.pos == pos {
+			return e.node
+		}
+		idx = (idx + 1) & t.mask
+	}
+}
+
+func (t *groundNodeTable) put(pos cube.Pos, n *pathNode) {
+	if (t.count+1)*2 >= len(t.entries) {
+		t.grow()
+	}
+	idx := groundPosHash(pos) & t.mask
+	gen := t.gen
+	for {
+		e := &t.entries[idx]
+		if e.gen != gen {
+			e.pos, e.node, e.gen = pos, n, gen
+			t.count++
+			return
+		}
+		if e.pos == pos {
+			e.node = n
+			return
+		}
+		idx = (idx + 1) & t.mask
+	}
+}
+
+type groundWalkEntry struct {
+	pos      cube.Pos
+	cost     float64
+	gen      uint32
+	walkable bool
+}
+
+type groundWalkTable struct {
+	entries []groundWalkEntry
+	mask    uint64
+	count   int
+	gen     uint32
+}
+
+func (t *groundWalkTable) reset() {
+	if len(t.entries) == 0 {
+		t.entries = make([]groundWalkEntry, 512)
+		t.mask = 511
+	}
+	t.count = 0
+	t.gen++
+	if t.gen == 0 {
+		clear(t.entries)
+		t.gen = 1
+	}
+}
+
+func (t *groundWalkTable) grow() {
+	old := t.entries
+	newCap := len(old) * 2
+	t.entries = make([]groundWalkEntry, newCap)
+	t.mask = uint64(newCap - 1)
+	gen := t.gen
+	for i := range old {
+		if old[i].gen != gen {
+			continue
+		}
+		idx := groundPosHash(old[i].pos) & t.mask
+		for t.entries[idx].gen == gen {
+			idx = (idx + 1) & t.mask
+		}
+		t.entries[idx] = old[i]
+	}
+}
+
+func (t *groundWalkTable) eval(tx *world.Tx, pos cube.Pos, p GroundProfile, rng cube.Range, radius, vertical int) (bool, float64) {
+	if (t.count+1)*2 >= len(t.entries) {
+		t.grow()
+	}
+	idx := groundPosHash(pos) & t.mask
+	gen := t.gen
+	for {
+		e := &t.entries[idx]
+		if e.gen != gen {
+			ok, cost := groundWalkableAndCost(tx, pos, p, rng, radius, vertical)
+			e.pos, e.walkable, e.cost, e.gen = pos, ok, cost, gen
+			t.count++
+			return ok, cost
+		}
+		if e.pos == pos {
+			return e.walkable, e.cost
+		}
+		idx = (idx + 1) & t.mask
+	}
+}
+
+type groundHeap []*pathNode
+
+func (h *groundHeap) reset() {
+	if len(*h) > 0 {
+		clear(*h)
+		*h = (*h)[:0]
+	}
+}
+
+func (h *groundHeap) push(n *pathNode) {
 	n.index = len(*h)
 	*h = append(*h, n)
-}
-func (h *pathHeap) Pop() any {
-	old := *h
-	n := len(old)
-	item := old[n-1]
-	old[n-1] = nil
-	item.index = -1
-	*h = old[:n-1]
-	return item
+	h.up(n.index)
 }
 
-// FindGroundPath finds a route using Java-like eight-way ground navigation.
-func FindGroundPath(tx *world.Tx, start, goal cube.Pos, profile GroundProfile) []cube.Pos {
-	if start == goal {
-		return nil
+func (h *groundHeap) pop() *pathNode {
+	s := *h
+	n := len(s) - 1
+	top := s[0]
+	s[0] = s[n]
+	s[0].index = 0
+	s[n] = nil
+	*h = s[:n]
+	top.index = -1
+	if n > 0 {
+		h.down(0)
 	}
-	if profile.StepHeight < 0 {
-		profile.StepHeight = 0
+	return top
+}
+
+func (h *groundHeap) fix(i int) {
+	if !h.down(i) {
+		h.up(i)
 	}
-	if profile.StepHeight == 0 {
+}
+
+func (h *groundHeap) up(j int) {
+	s := *h
+	for {
+		i := (j - 1) / 2
+		if i == j || !(s[j].f < s[i].f) {
+			break
+		}
+		s[i], s[j] = s[j], s[i]
+		s[i].index, s[j].index = i, j
+		j = i
+	}
+}
+
+func (h *groundHeap) down(i0 int) bool {
+	s := *h
+	n := len(s)
+	i := i0
+	for {
+		j1 := 2*i + 1
+		if j1 >= n || j1 < 0 {
+			break
+		}
+		j := j1
+		if j2 := j1 + 1; j2 < n && s[j2].f < s[j1].f {
+			j = j2
+		}
+		if !(s[j].f < s[i].f) {
+			break
+		}
+		s[i], s[j] = s[j], s[i]
+		s[i].index, s[j].index = i, j
+		i = j
+	}
+	return i > i0
+}
+
+type groundPathScratch struct {
+	inUse    bool
+	fromPool bool
+	open     groundHeap
+	arena    groundNodeArena
+	nodes    groundNodeTable
+	walkable groundWalkTable
+}
+
+var groundPathScratchPool = sync.Pool{
+	New: func() any { return &groundPathScratch{} },
+}
+
+func acquireGroundScratch(tx *world.Tx) *groundPathScratch {
+	if local := worldLocalFor(tx); local != nil && !local.ground.inUse {
+		local.ground.inUse = true
+		return &local.ground
+	}
+	s := groundPathScratchPool.Get().(*groundPathScratch)
+	s.inUse, s.fromPool = true, true
+	return s
+}
+
+func releaseGroundScratch(s *groundPathScratch) {
+	s.open.reset()
+	s.arena.reset()
+	s.inUse = false
+	if s.fromPool {
+		s.fromPool = false
+		groundPathScratchPool.Put(s)
+	}
+}
+
+func normalizeGroundProfile(profile GroundProfile) (GroundProfile, int, int) {
+	if profile.StepHeight <= 0 {
 		profile.StepHeight = 1
 	}
 	if profile.MaxFall <= 0 {
@@ -62,60 +314,91 @@ func FindGroundPath(tx *world.Tx, start, goal cube.Pos, profile GroundProfile) [
 			profile.MaxVisitedNodes = 256
 		}
 	}
-	open := pathHeap{}
-	heap.Init(&open)
-	index := make(map[cube.Pos]*pathNode, profile.MaxVisitedNodes)
-	closed := make(map[cube.Pos]struct{}, profile.MaxVisitedNodes)
-	n := &pathNode{pos: start, f: heuristic(start, goal)}
-	index[start] = n
-	heap.Push(&open, n)
+	width := profile.Width
+	if width <= 0 {
+		width = .6
+	}
+	height := profile.Height
+	if height <= 0 {
+		height = 1.8
+	}
+	return profile, int(math.Floor(width / 2)), int(math.Ceil(height))
+}
+
+// FindGroundPath finds a route using Java-like eight-way ground navigation.
+func FindGroundPath(tx *world.Tx, start, goal cube.Pos, profile GroundProfile) []cube.Pos {
+	if start == goal {
+		return nil
+	}
+	profile, radius, vertical := normalizeGroundProfile(profile)
+	rng := tx.Range()
+
+	s := acquireGroundScratch(tx)
+	defer releaseGroundScratch(s)
+	s.open.reset()
+	s.nodes.reset()
+	s.walkable.reset()
+
+	startNode := s.arena.alloc(start, 0, heuristic(start, goal), nil)
+	s.nodes.put(start, startNode)
+	s.open.push(startNode)
 	expanded := 0
-	for open.Len() > 0 && expanded < profile.MaxVisitedNodes {
-		current := heap.Pop(&open).(*pathNode)
-		if _, seen := closed[current.pos]; seen {
+	for len(s.open) > 0 && expanded < profile.MaxVisitedNodes {
+		current := s.open.pop()
+		if current.closed {
 			continue
 		}
-		closed[current.pos] = struct{}{}
+		current.closed = true
 		expanded++
 		if current.pos == goal {
 			return reconstructPath(current)
 		}
+		cx, cy, cz := current.pos[0], current.pos[1], current.pos[2]
 		for dx := -1; dx <= 1; dx++ {
 			for dz := -1; dz <= 1; dz++ {
 				if dx == 0 && dz == 0 {
 					continue
 				}
+				horiz := 1.0
+				if dx != 0 && dz != 0 {
+					horiz = math.Sqrt2
+				}
 				for dy := profile.StepHeight; dy >= -profile.MaxFall; dy-- {
-					next := current.pos.Add(cube.Pos{dx, dy, dz})
-					if !groundWalkable(tx, next, profile) {
+					next := cube.Pos{cx + dx, cy + dy, cz + dz}
+					ok, stepCost := s.walkable.eval(tx, next, profile, rng, radius, vertical)
+					if !ok {
 						continue
 					}
 					// Java diagonal movement requires both orthogonal sides to be
 					// traversable; checking them at the destination height prevents corner clipping.
 					if dx != 0 && dz != 0 {
-						if !groundWalkable(tx, current.pos.Add(cube.Pos{dx, dy, 0}), profile) ||
-							!groundWalkable(tx, current.pos.Add(cube.Pos{0, dy, dz}), profile) {
+						okX, _ := s.walkable.eval(tx, cube.Pos{cx + dx, cy + dy, cz}, profile, rng, radius, vertical)
+						if !okX {
+							continue
+						}
+						okZ, _ := s.walkable.eval(tx, cube.Pos{cx, cy + dy, cz + dz}, profile, rng, radius, vertical)
+						if !okZ {
 							continue
 						}
 					}
 					if profile.Allowed != nil && !profile.Allowed(next) {
 						continue
 					}
-					if _, seen := closed[next]; seen {
+					old := s.nodes.get(next)
+					if old != nil && old.closed {
 						continue
 					}
-					cost := groundStepCost(tx, next, profile)*math.Hypot(float64(dx), float64(dz)) + math.Abs(float64(dy))
-					g := current.g + cost
-					if old := index[next]; old != nil {
+					g := current.g + stepCost*horiz + math.Abs(float64(dy))
+					if old != nil {
 						if g < old.g {
 							old.g, old.parent, old.f = g, current, g+heuristic(next, goal)
-							heap.Fix(&open, old.index)
+							s.open.fix(old.index)
 						}
 						continue
 					}
-					node := &pathNode{pos: next, g: g, f: g + heuristic(next, goal), parent: current}
-					index[next] = node
-					heap.Push(&open, node)
+					node := s.arena.alloc(next, g, g+heuristic(next, goal), current)
+					s.nodes.put(next, node)
+					s.open.push(node)
 				}
 			}
 		}
@@ -124,110 +407,93 @@ func FindGroundPath(tx *world.Tx, start, goal cube.Pos, profile GroundProfile) [
 }
 
 func reconstructPath(current *pathNode) []cube.Pos {
-	path := make([]cube.Pos, 0, 8)
-	for current != nil && current.parent != nil {
-		path = append(path, current.pos)
-		current = current.parent
+	count := 0
+	for n := current; n != nil && n.parent != nil; n = n.parent {
+		count++
 	}
-	for i, j := 0, len(path)-1; i < j; i, j = i+1, j-1 {
-		path[i], path[j] = path[j], path[i]
+	path := make([]cube.Pos, count)
+	for i := count - 1; i >= 0; i-- {
+		path[i] = current.pos
+		current = current.parent
 	}
 	return path
 }
 
 func heuristic(a, b cube.Pos) float64 {
-	dx, dy, dz := float64(a.X()-b.X()), float64(a.Y()-b.Y()), float64(a.Z()-b.Z())
+	dx, dy, dz := float64(a[0]-b[0]), float64(a[1]-b[1]), float64(a[2]-b[2])
 	return math.Sqrt(dx*dx + dy*dy + dz*dz)
 }
 
-func groundStepCost(tx *world.Tx, pos cube.Pos, p GroundProfile) float64 {
-	cost := 1.0
-	if l, ok := tx.Liquid(pos); ok {
-		switch l.(type) {
-		case block.Water:
-			if p.AllowWater {
-				cost += 8
-			} else {
-				return 1e6
+func groundWalkableAndCost(tx *world.Tx, pos cube.Pos, p GroundProfile, rng cube.Range, radius, vertical int) (bool, float64) {
+	if pos[1] < rng[0] || pos[1] > rng[1] {
+		return false, 0
+	}
+	b := tx.Block(pos)
+	fire := false
+	if !isAir(b) {
+		switch v := b.(type) {
+		case block.Fire:
+			fire = true
+		case block.WoodDoor:
+			if !v.Open && !p.AllowDoors {
+				return false, 0
 			}
-		case block.Lava:
-			return 1e6
-		default:
-			cost += 8
+		case block.CopperDoor:
+			if !v.Open && !p.AllowDoors {
+				return false, 0
+			}
+		}
+		if len(b.Model().BBox(pos, tx)) != 0 {
+			return false, 0
 		}
 	}
-	switch b := tx.Block(pos).(type) {
-	case block.Fire:
+	if !solidBelow(tx, pos) {
+		return false, 0
+	}
+	cost := 1.0
+	if fire {
 		cost += 16
-	case block.WoodDoor:
-		if !b.Open && !p.AllowDoors {
-			return 1e6
-		}
-	case block.CopperDoor:
-		if !b.Open && !p.AllowDoors {
-			return 1e6
-		}
-	}
-	return cost
-}
-
-func groundWalkable(tx *world.Tx, pos cube.Pos, p GroundProfile) bool {
-	if pos.OutOfBounds(tx.Range()) {
-		return false
 	}
 	if liquid, ok := tx.Liquid(pos); ok {
 		switch liquid.(type) {
 		case block.Lava:
-			return false
-		case block.Water:
-			if !p.AllowWater {
-				return false
-			}
+			return false, 0
 		default:
 			if !p.AllowWater {
-				return false
+				return false, 0
 			}
+			cost += 8
 		}
 	}
-	if !p.AllowDoors {
-		switch b := tx.Block(pos).(type) {
-		case block.WoodDoor:
-			if !b.Open {
-				return false
-			}
-		case block.CopperDoor:
-			if !b.Open {
-				return false
-			}
-		}
-	}
-	width := p.Width
-	if width <= 0 {
-		width = .6
-	}
-	height := p.Height
-	if height <= 0 {
-		height = 1.8
-	}
-	radius := int(math.Floor(width / 2))
-	vertical := int(math.Ceil(height))
 	for dx := -radius; dx <= radius; dx++ {
 		for dz := -radius; dz <= radius; dz++ {
 			for dy := range vertical {
-				clearance := pos.Add(cube.Pos{dx, dy, dz})
-				if clearance.OutOfBounds(tx.Range()) || !isPassable(tx, clearance) {
-					return false
+				if dx == 0 && dy == 0 && dz == 0 {
+					continue
+				}
+				clearance := cube.Pos{pos[0] + dx, pos[1] + dy, pos[2] + dz}
+				if clearance[1] < rng[0] || clearance[1] > rng[1] || !isPassable(tx, clearance) {
+					return false, 0
 				}
 			}
 		}
 	}
-	return solidBelow(tx, pos)
+	return true, cost
 }
 
 func solidBelow(tx *world.Tx, pos cube.Pos) bool {
-	below := pos.Side(cube.FaceDown)
-	return len(tx.Block(below).Model().BBox(below, tx)) > 0
+	below := cube.Pos{pos[0], pos[1] - 1, pos[2]}
+	b := tx.Block(below)
+	if isAir(b) {
+		return false
+	}
+	return len(b.Model().BBox(below, tx)) > 0
 }
+
 func isPassable(tx *world.Tx, pos cube.Pos) bool {
-	return len(tx.Block(pos).Model().BBox(pos, tx)) == 0
+	b := tx.Block(pos)
+	if isAir(b) {
+		return true
+	}
+	return len(b.Model().BBox(pos, tx)) == 0
 }

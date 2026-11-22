@@ -3,7 +3,9 @@ package entity
 import (
 	"math"
 
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/world"
 )
 
 // swimNodeEvaluator finds the nodes a mob swims to through water, ported
@@ -13,30 +15,45 @@ type swimNodeEvaluator struct {
 	allowBreaching bool
 
 	m                                      *Mob
-	nodes                                  map[int64]*pathNodeData
-	types                                  map[int64]PathType
+	scratch                                *pathSearchScratch
+	minY, maxY                             int
 	entityWidth, entityHeight, entityDepth int
 }
 
-func (w *swimNodeEvaluator) prepare(m *Mob) {
+func (w *swimNodeEvaluator) pathWorld(m *Mob) pathWorld { return m.tx }
+
+func (w *swimNodeEvaluator) prepare(m *Mob, scratch *pathSearchScratch, _ *pathTypeCache) {
 	w.m = m
-	w.nodes = make(map[int64]*pathNodeData, 128)
-	w.types = make(map[int64]PathType, 256)
-	w.entityWidth = int(math.Floor(m.Width() + 1))
-	w.entityHeight = int(math.Floor(m.Height() + 1))
+	w.scratch = scratch
+	scratch.malus = pathMaluses
+	for t, malus := range m.AI.maluses {
+		scratch.malus[t] = malus
+	}
+	scratch.nodes.reset()
+	scratch.types.reset()
+	rng := m.tx.Range()
+	w.minY, w.maxY = rng.Min(), rng.Max()
+	bb := m.BBox()
+	w.entityWidth = int(math.Floor(bb.Width() + 1))
+	w.entityHeight = int(math.Floor(bb.Height() + 1))
 	w.entityDepth = w.entityWidth
 }
 
-func (w *swimNodeEvaluator) done() { w.m, w.nodes, w.types = nil, nil, nil }
+func (w *swimNodeEvaluator) done() { w.m, w.scratch = nil, nil }
 
 func (w *swimNodeEvaluator) node(x, y, z int) *pathNodeData {
-	key := pathNodeKey(x, y, z)
-	if n, ok := w.nodes[key]; ok {
-		return n
+	return w.scratch.nodes.getOrAlloc(x, y, z, &w.scratch.arena)
+}
+
+func (w *swimNodeEvaluator) blockAt(pos cube.Pos) world.Block {
+	if pos[1] < w.minY || pos[1] > w.maxY {
+		return block.Air{}
 	}
-	n := newPathNode(x, y, z)
-	w.nodes[key] = n
-	return n
+	b, ok := w.m.tx.BlockLoaded(pos)
+	if !ok {
+		return block.Air{}
+	}
+	return b
 }
 
 // start ports SwimNodeEvaluator.getStart.
@@ -48,6 +65,10 @@ func (w *swimNodeEvaluator) start() *pathNodeData {
 // swimDirections are Java's Direction.values() in order: down, up, north,
 // south, west and east.
 var swimDirections = [6]cube.Pos{{0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}, {-1, 0, 0}, {1, 0, 0}}
+
+// swimHorizontal are Direction.Plane.HORIZONTAL indices into swimDirections:
+// north, east, south, west.
+var swimHorizontal = [4]int{2, 5, 3, 4}
 
 // neighbours ports SwimNodeEvaluator.getNeighbors.
 func (w *swimNodeEvaluator) neighbours(out []*pathNodeData, pos *pathNodeData) int {
@@ -61,13 +82,10 @@ func (w *swimNodeEvaluator) neighbours(out []*pathNodeData, pos *pathNodeData) i
 			count++
 		}
 	}
-	hasMalus := func(n *pathNodeData) bool { return n != nil && n.costMalus >= 0 }
-	// Direction.Plane.HORIZONTAL: north, east, south, west, each with the
-	// direction clockwise of it.
-	horizontal := [4]int{2, 5, 3, 4}
-	for i, d := range horizontal {
-		second := horizontal[(i+1)%4]
-		if !hasMalus(around[d]) || !hasMalus(around[second]) {
+	for i, d := range swimHorizontal {
+		second := swimHorizontal[(i+1)&3]
+		na, nb := around[d], around[second]
+		if na == nil || na.costMalus < 0 || nb == nil || nb.costMalus < 0 {
 			continue
 		}
 		a, b := swimDirections[d], swimDirections[second]
@@ -84,29 +102,32 @@ func (w *swimNodeEvaluator) neighbours(out []*pathNodeData, pos *pathNodeData) i
 // air a breaching mob leaps through at a cost.
 func (w *swimNodeEvaluator) findAcceptedNode(x, y, z int) *pathNodeData {
 	t := w.cachedType(x, y, z)
-	if !(w.allowBreaching && t == PathBreach || t == PathWater) {
+	if (!w.allowBreaching || t != PathBreach) && t != PathWater {
 		return nil
 	}
-	cost := w.m.PathfindingMalus(t)
+	cost := w.scratch.malus[t]
 	if cost < 0 {
 		return nil
 	}
 	n := w.node(x, y, z)
 	n.typ = t
 	n.costMalus = max(n.costMalus, float32(cost))
-	if _, liquid := w.m.tx.Liquid(cube.Pos{x, y, z}); !liquid {
-		n.costMalus += 8
+	if t == PathBreach {
+		// PathWater guarantees water at (x, y, z); only PathBreach may lack liquid there.
+		if _, liquid := w.m.tx.Liquid(cube.Pos{x, y, z}); !liquid {
+			n.costMalus += 8
+		}
 	}
 	return n
 }
 
 func (w *swimNodeEvaluator) cachedType(x, y, z int) PathType {
 	key := pathNodeKey(x, y, z)
-	if t, ok := w.types[key]; ok {
+	if t, ok := w.scratch.types.get(key); ok {
 		return t
 	}
 	t := w.pathTypeOfMob(x, y, z)
-	w.types[key] = t
+	w.scratch.types.put(key, t)
 	return t
 }
 
@@ -119,17 +140,21 @@ func (w *swimNodeEvaluator) pathTypeOfMob(x, y, z int) PathType {
 		for yy := y; yy < y+w.entityHeight; yy++ {
 			for zz := z; zz < z+w.entityDepth; zz++ {
 				last = cube.Pos{xx, yy, zz}
-				_, liquid := tx.Liquid(last)
-				if !liquid && pathfindableWater(w.m, last.Side(cube.FaceDown)) && isAir(pathBlockAt(tx, last)) {
-					return PathBreach
+				l, liquid := tx.Liquid(last)
+				if !liquid {
+					if pathfindableWater(w.m, cube.Pos{xx, yy - 1, zz}) && isAir(w.blockAt(last)) {
+						return PathBreach
+					}
+					return PathBlocked
 				}
-				if !pathWater(tx, last) {
+				if l.LiquidType() != "water" {
 					return PathBlocked
 				}
 			}
 		}
 	}
-	if pathfindableWater(w.m, last) {
+	// Every cell in the box including last is confirmed water; only collision clearance remains.
+	if len(w.blockAt(last).Model().BBox(last, tx)) == 0 {
 		return PathWater
 	}
 	return PathBlocked
