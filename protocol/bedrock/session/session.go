@@ -121,6 +121,16 @@ type Session struct {
 	interestTick  int
 	interestShown []rangedEntity
 	interestFar   []*world.EntityHandle
+	// moveThrottle holds per-entity throttling state for distant entities,
+	// protected by moveThrottleMu. hasThrottled and hasPendingThrottled allow
+	// lock-free fast paths when empty, and moveTick counts session ticks for
+	// interval pacing and trailing-edge flushes: see move_throttle.go.
+	moveThrottleMu      sync.Mutex
+	moveThrottle        map[*world.EntityHandle]moveThrottleState
+	moveThrottleFlush   []throttledFlushPacket
+	hasThrottled        atomic.Bool
+	hasPendingThrottled atomic.Bool
+	moveTick            atomic.Uint64
 	// deathAnimations records ordinary mobs whose death event lets the client
 	// finish the animation and remove the actor itself. Protected by entityMutex.
 	deathAnimations map[uint64]struct{}
@@ -567,6 +577,7 @@ func (s *Session) Close(tx *world.Tx) {
 			s.entityMutex.Unlock()
 		})
 	}
+	run(s.clearMoveThrottle)
 	if panicValue != nil {
 		panic(panicValue)
 	}
@@ -710,6 +721,7 @@ func (s *Session) updateSafely(tx *world.Tx, c Controllable) (err error) {
 	s.commandState.update(s, c)
 	s.updateCongestion(tx)
 	s.updateInterest(tx, c.Position())
+	s.tickMoveThrottle()
 	s.sendChunks(tx, c)
 	return nil
 }

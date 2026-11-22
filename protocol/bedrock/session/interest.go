@@ -174,6 +174,7 @@ type rangedEntity struct {
 // hideFar hides an entity shown that went out of range, keeping it to be
 // shown again once it comes back.
 func (s *Session) hideFar(e world.Entity) {
+	s.forgetMoveThrottle(e.H())
 	s.entityMutex.Lock()
 	id, shown := s.entityRuntimeIDs[e.H()]
 	if shown {

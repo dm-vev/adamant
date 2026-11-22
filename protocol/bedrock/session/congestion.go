@@ -155,6 +155,7 @@ func (s *Session) updateCongestion(tx *world.Tx) {
 		if g, ok := e.(interface{ OnGround() bool }); ok {
 			onGround = g.OnGround()
 		}
+		s.resetMoveThrottle(h, e.Position(), onGround)
 		s.writePacket(absoluteMove(id, e, e.Position(), e.Rotation(), onGround, false))
 		if v, ok := e.(interface{ Velocity() mgl64.Vec3 }); ok {
 			s.writePacket(&mc.SetActorMotionPacket{EntityRuntimeID: id, Velocity: vec64To32(v.Velocity())})

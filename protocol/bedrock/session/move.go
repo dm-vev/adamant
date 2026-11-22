@@ -28,6 +28,9 @@ func (s *Session) ViewEntityMove(e world.Entity, m *world.EntityMove) {
 	}
 	id := s.entityRuntimeID(e)
 	if m.Absolute {
+		if suppress, _ := s.throttleMove(id, e, m.Pos, m.Rot, 0, false, m.OnGround, 0, 1); suppress {
+			return
+		}
 		shared, _ := m.Shared.(*netconn.Shared)
 		if shared == nil {
 			shared = &netconn.Shared{Packet: absoluteMove(id, e, m.Pos, m.Rot, m.OnGround, false)}
@@ -38,6 +41,23 @@ func (s *Session) ViewEntityMove(e world.Entity, m *world.EntityMove) {
 	}
 	// A move may change the velocity alone, which goes without a delta.
 	delta := m.Changed&^world.MoveVelocity != 0
+	var extraParts world.MoveParts
+	if delta {
+		var suppress bool
+		suppress, extraParts = s.throttleMove(id, e, m.Pos, m.Rot, m.HeadYaw, true, m.OnGround, m.Changed&^world.MoveVelocity, m.Ticks)
+		if suppress {
+			return
+		}
+	}
+	extraParts &^= m.Changed | world.MoveVelocity
+	if extraParts != 0 {
+		pk, motion := moveActorDelta(id, e, m, m.Changed|extraParts)
+		s.writePacket(pk)
+		if motion != nil {
+			s.writePacket(motion)
+		}
+		return
+	}
 	shared, _ := m.Shared.(*sharedMove)
 	if shared == nil {
 		pk, motion := moveActorDelta(id, e, m, m.Changed)

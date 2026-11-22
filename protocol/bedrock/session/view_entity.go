@@ -297,6 +297,7 @@ func (s *Session) ViewEntityGameMode(e world.Entity) {
 // HideEntity ...
 func (s *Session) HideEntity(e world.Entity) {
 	s.forgetFar(e.H())
+	s.forgetMoveThrottle(e.H())
 	s.entityMutex.Lock()
 	id, ok := s.entityRuntimeIDs[e.H()]
 	_, finishingDeath := s.deathAnimations[id]
@@ -331,6 +332,9 @@ func (s *Session) ViewEntityMovement(e world.Entity, pos mgl64.Vec3, rot cube.Ro
 	if (id == selfEntityRuntimeID && s.moving.Load()) || s.entityHidden(e) || s.keepBack(e) {
 		return
 	}
+	if suppress, _ := s.throttleMove(id, e, pos, rot, 0, false, onGround, 0, 1); suppress {
+		return
+	}
 	s.viewEntityAbsoluteMovement(id, e, pos, rot, onGround, false)
 }
 
@@ -340,6 +344,7 @@ func (s *Session) ViewEntityDisplacement(e world.Entity, pos mgl64.Vec3, rot cub
 		return
 	}
 	id := s.entityRuntimeID(e)
+	s.resetMoveThrottle(e.H(), pos, onGround)
 	s.viewEntityAbsoluteMovement(id, e, pos, rot, onGround, true)
 }
 
@@ -459,6 +464,11 @@ func (s *Session) ViewEntityTeleport(e world.Entity, position mgl64.Vec3) {
 	if s.entityHidden(e) {
 		return
 	}
+	onGround := false
+	if g, ok := e.(interface{ OnGround() bool }); ok {
+		onGround = g.OnGround()
+	}
+	s.resetMoveThrottle(e.H(), position, onGround)
 
 	yaw, pitch := e.Rotation().Elem()
 	if id == selfEntityRuntimeID {

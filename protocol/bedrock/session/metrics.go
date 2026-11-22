@@ -30,4 +30,6 @@ var (
 		"Entities a session kept unseen for being farther from its player than their range.")
 	staleShown = metrics.Default.Counter("adamant_session_stale_entities_shown_total",
 		"Entities shown where they are once the congestion of a client cleared.")
+	movesThrottled = metrics.Default.Counter("adamant_session_moves_throttled_total",
+		"Moves of distant entities suppressed by distance-based throttling.")
 )
