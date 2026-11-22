@@ -65,16 +65,17 @@ func scan(axis cube.Axis, framePos cube.Pos, tx *world.Tx, matchers []string) ([
 			}
 
 			// Plan new iterations.
-			if axis == cube.Z {
+			switch axis {
+			case cube.Z:
 				queue.PushBack(scanIteration{lastPos: pos, face: cube.FaceSouth})
 				queue.PushBack(scanIteration{lastPos: pos, face: cube.FaceNorth})
-			} else if axis == cube.X {
+			case cube.X:
 				queue.PushBack(scanIteration{lastPos: pos, face: cube.FaceWest})
 				queue.PushBack(scanIteration{lastPos: pos, face: cube.FaceEast})
 			}
 			queue.PushBack(scanIteration{lastPos: pos, face: cube.FaceUp})
 			queue.PushBack(scanIteration{lastPos: pos, face: cube.FaceDown})
-		} else if _, ok = positionsMap[pos]; !(ok || b == obsidian()) {
+		} else if _, ok = positionsMap[pos]; !ok && b != obsidian() {
 			completed = false
 		}
 	}

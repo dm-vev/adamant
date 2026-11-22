@@ -70,13 +70,13 @@ func (t oldFilled) Params(l language.Tag) []string {
 		switch v := arg.(type) {
 		case chat.TranslationString:
 			params[i] = v.Resolve(l)
-		case oldTranslation:
+		case oldTranslation: //nolint:gocritic,staticcheck // Frozen oracle keeps the original case order; see file header.
 			if v.params == 0 {
 				params[i] = v.Resolve(l)
 			} else {
 				params[i] = v.str.Resolve(l)
 			}
-		case oldFilled:
+		case oldFilled: //nolint:gocritic,staticcheck // Frozen oracle keeps the original case order; see file header.
 			if len(v.params) == 0 {
 				params[i] = v.Resolve(l)
 			} else {

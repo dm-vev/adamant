@@ -42,10 +42,6 @@ func isCandleCakeBlock(name string) bool {
 	if name == "minecraft:candle_cake" {
 		return true
 	}
-	// Guard against short names before trimming the minecraft: prefix.
-	const prefix = "minecraft:"
-	if strings.HasPrefix(name, prefix) {
-		name = name[len(prefix):]
-	}
+	name = strings.TrimPrefix(name, "minecraft:")
 	return strings.Contains(name, "candle_cake")
 }

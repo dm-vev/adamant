@@ -251,7 +251,7 @@ func (d Data) longKeyValues() []keyValue {
 	plugins := d.Engine
 	if d.Plugins != "" {
 		// Lumi prefixes plugin metadata with the engine label.
-		plugins = plugins + ":"
+		plugins += ":"
 		// QueryRegenerateEvent adds a leading space before each plugin entry, so the value becomes "Lumi: <plugin>".
 		if d.Plugins[0] != ' ' {
 			plugins += " "

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"slices"
 	"strings"
 	"testing"
 
@@ -158,7 +159,7 @@ func TestReadWorldStatesDistinguishesEOFAndTruncation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data := append(first, second...)
+	data := slices.Concat(first, second)
 	got, err := readWorldStates(bytes.NewReader(data))
 	if err != nil {
 		t.Fatal(err)
