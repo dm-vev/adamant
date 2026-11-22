@@ -180,11 +180,12 @@ func EncodeBatch(comp Compression, packets ...[]byte) ([]byte, error) {
 	total := 0
 	for _, p := range packets {
 		n := len(p)
-		if n < 0x80 {
+		switch {
+		case n < 0x80:
 			total += 1 + n
-		} else if n < 0x4000 {
+		case n < 0x4000:
 			total += 2 + n
-		} else {
+		default:
 			total += binary.MaxVarintLen64 + n
 		}
 	}

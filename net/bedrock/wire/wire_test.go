@@ -173,7 +173,9 @@ func TestAlloc(t *testing.T) {
 		t.Fatal("read after the bound was passed")
 	}
 	r = NewReader(nil)
-	if !r.Alloc(1<<40) || !r.Alloc(1<<40) || r.Err() != nil {
+	first := r.Alloc(1 << 40)
+	second := r.Alloc(1 << 40)
+	if !first || !second || r.Err() != nil {
 		t.Fatalf("charged to no bound: %v", r.Err())
 	}
 	r = NewReader(nil)

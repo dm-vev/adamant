@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/flate"
 	"errors"
-	"fmt"
 	"io"
 	"testing"
 )
@@ -85,7 +84,7 @@ func TestConnRoundTrip(t *testing.T) {
 	// Before NetworkSettings a batch has no algorithm byte.
 	_ = ca.WritePacket(packet(193, []byte{0, 0, 8, 0x91}))
 	_ = ca.Flush()
-	if got := a.sent[0]; !bytes.Equal(got, []byte{4, 0xc1, 0x01, 0, 0, 8, 0x91}[:]) && got[0] != 6 {
+	if got := a.sent[0]; !bytes.Equal(got, []byte{4, 0xc1, 0x01, 0, 0, 8, 0x91}) && got[0] != 6 {
 		t.Fatalf("first batch % x", got)
 	}
 	p, err := cb.ReadPacket()
@@ -217,7 +216,7 @@ func FuzzReadBatch(f *testing.F) {
 				return
 			}
 		}
-		t.Fatal(fmt.Sprint("read more packets than the limit allows"))
+		t.Fatal("read more packets than the limit allows")
 	})
 }
 
