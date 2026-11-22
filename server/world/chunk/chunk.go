@@ -356,11 +356,12 @@ func (chunk *Chunk) LayerStorageWithTwoRuntimeIDs(y int16, layer uint8, runtimeI
 			index1 = uint16(valueCount)
 			valueCount++
 		}
-		if runtimeID2 == sub.air {
+		switch runtimeID2 {
+		case sub.air:
 			index2 = 0
-		} else if runtimeID2 == runtimeID1 {
+		case runtimeID1:
 			index2 = index1
-		} else {
+		default:
 			index2 = uint16(valueCount)
 			valueCount++
 		}
@@ -454,14 +455,15 @@ func (chunk *Chunk) FillBiomes2D(biomes []uint32) {
 
 	size := paletteSizeFor(len(paletteValues))
 	var storage *PalettedStorage
-	if size == 0 && paletteValues[0] == 0 {
+	switch {
+	case size == 0 && paletteValues[0] == 0:
 		storage = zeroBiomeStorage
-	} else if size == 0 {
+	case size == 0:
 		storage = emptyStorage(paletteValues[0])
 		if len(chunk.biomes) > 1 {
 			storage.markShared()
 		}
-	} else {
+	default:
 		valuesCopy := make([]uint32, len(paletteValues))
 		copy(valuesCopy, paletteValues)
 		storage = newPalettedStorageWithValues(make([]uint32, size.uint32s()), size, valuesCopy)

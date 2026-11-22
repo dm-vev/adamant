@@ -119,7 +119,7 @@ func (bpe blockPaletteMigrationEncoding) encode(buf *bytes.Buffer, v uint32) {
 	index := bpe.migration.index
 	entry, ok := bpe.migration.entries[index]
 	if !ok {
-		entry = missingStateEntry{state: bpe.BlockPaletteEncoding.EncodeBlockState(v)}
+		entry = missingStateEntry{state: bpe.EncodeBlockState(v)}
 	}
 	if bpe.javaIDs[index] == 0 && writeFastBlockEntry(buf, entry.state) {
 		bpe.migration.index++
@@ -177,7 +177,7 @@ func (bpe blockPaletteMigrationEncoding) decode(buf *bytes.Buffer) (uint32, erro
 			delete(m, "adamant:java")
 		}
 	}
-	rid, missing, entry, err := bpe.BlockPaletteEncoding.decodeBlockState(m)
+	rid, missing, entry, err := bpe.decodeBlockState(m)
 	if err != nil {
 		return 0, fmt.Errorf("error decoding block palette entry %d: %w", index, err)
 	}
