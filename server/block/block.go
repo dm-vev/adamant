@@ -327,6 +327,9 @@ type flammableEntity interface {
 // dropItem ...
 func dropItem(tx *world.Tx, it item.Stack, pos mgl64.Vec3) {
 	create := tx.World().EntityRegistry().Config().Item
+	if create == nil {
+		return
+	}
 	opts := world.EntitySpawnOpts{Position: pos, Velocity: mgl64.Vec3{rand.Float64()*0.2 - 0.1, 0.2, rand.Float64()*0.2 - 0.1}}
 	tx.AddEntity(create(opts, it))
 }
