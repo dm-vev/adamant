@@ -56,6 +56,15 @@ func (c *netherFossilCache) shard(key world.ChunkPos) *netherFossilShard {
 	return &c.shards[(h^(h>>32))&(netherFossilCacheShards-1)]
 }
 
+func (c *netherFossilCache) clear() {
+	for i := range c.shards {
+		shard := &c.shards[i]
+		shard.mu.Lock()
+		clear(shard.starts)
+		shard.mu.Unlock()
+	}
+}
+
 // fossilStart returns the immutable start for an exact random-spread candidate.
 func (g *Nether) fossilStart(cx, cz int32) (*netherFossilStart, error) {
 	// Random-spread placement with spacing=2, separation=1 has limit=1, so the
