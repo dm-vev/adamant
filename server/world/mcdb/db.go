@@ -739,8 +739,8 @@ func (db *DB) storeColumn(s store, k dbKey, col *chunk.Column) error {
 // inhabited time of col in s.
 func (db *DB) storeActors(s store, k dbKey, col *chunk.Column) {
 	db.emu.Lock()
-	defer db.emu.Unlock()
 	db.storeEntities(s, k, col.Entities)
+	db.emu.Unlock()
 	db.storeBlockEntities(s, k, col.BlockEntities)
 	db.storeScheduledUpdates(s, k, col.ScheduledTicks)
 	inhabitedTime := make([]byte, 8)
@@ -752,10 +752,10 @@ func (db *DB) storeVersion(s store, k dbKey, ver uint8) {
 	s.put(k.Sum(keyVersion), []byte{ver})
 }
 
-var emptyHeightmap = make([]byte, 512)
-
 func (db *DB) storeBiomes(s store, k dbKey, biomes []byte) {
-	s.put(k.Sum(key3DData), append(emptyHeightmap, biomes...))
+	b := make([]byte, 512+len(biomes))
+	copy(b[512:], biomes)
+	s.put(k.Sum(key3DData), b)
 }
 
 func (db *DB) storeSubChunks(s store, k dbKey, subChunks [][]byte, r cube.Range) {
@@ -1024,9 +1024,22 @@ type dbKey struct {
 	dim world.Dimension
 }
 
-// Sum converts k to its []byte representation and appends p.
+// Sum converts k to its []byte representation and appends p in a single
+// allocation.
 func (k dbKey) Sum(p ...byte) []byte {
-	return append(index(k.pos, k.dim), p...)
+	dim, _ := world.DimensionID(k.dim)
+	base := 8
+	if dim != 0 {
+		base = 12
+	}
+	b := make([]byte, base+len(p))
+	binary.LittleEndian.PutUint32(b, uint32(k.pos[0]))
+	binary.LittleEndian.PutUint32(b[4:], uint32(k.pos[1]))
+	if dim != 0 {
+		binary.LittleEndian.PutUint32(b[8:], uint32(dim))
+	}
+	copy(b[base:], p)
+	return b
 }
 
 // index returns a byte buffer holding the written index of the chunk position passed. If the dimension passed

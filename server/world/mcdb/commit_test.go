@@ -22,6 +22,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/goleveldb/leveldb"
+	"github.com/df-mc/goleveldb/leveldb/opt"
 	"github.com/google/uuid"
 )
 
@@ -348,5 +349,122 @@ func TestNoOwnerWritesDuringCommit(t *testing.T) {
 	data, err := db.LoadWorldData("test:round")
 	if err != nil || string(data) != fmt.Sprint(round.Load()) {
 		t.Errorf("world data after closing = %q (%v), want the last round, %d", data, err, round.Load())
+	}
+}
+
+// TestDefaultOptionsReadExistingFlateDB checks that a database written with
+// FlateCompression (the goleveldb default) opens and reads cleanly with the
+// default SnappyCompression options, and coexists with newly written Snappy
+// blocks across reopens.
+func TestDefaultOptionsReadExistingFlateDB(t *testing.T) {
+	dir := t.TempDir()
+	flateOpts := &opt.Options{Compression: opt.FlateCompression}
+	db, err := Config{LDBOptions: flateOpts, Log: slog.New(slog.DiscardHandler)}.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Caller's options must not be mutated by Open.
+	if flateOpts.Compression != opt.FlateCompression {
+		t.Fatalf("Open mutated caller LDBOptions.Compression to %v", flateOpts.Compression)
+	}
+	c := db.BeginCommit()
+	if err := c.StoreColumn(markerA, world.Overworld, markerColumn(t, block.Stone{})); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.SavePlayer(commitAlice, []byte("flate-player")); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Commit(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	db, err = Config{Log: slog.New(slog.DiscardHandler)}.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := blockAt(t, db, markerA); got != (block.Stone{}) {
+		t.Fatalf("markerA from Flate DB = %v, want Stone", got)
+	}
+	if got, err := db.LoadPlayer(commitAlice); err != nil || string(got) != "flate-player" {
+		t.Fatalf("player from Flate DB = %q (%v), want flate-player", got, err)
+	}
+	c = db.BeginCommit()
+	if err := c.StoreColumn(markerB, world.Overworld, markerColumn(t, block.Dirt{})); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Commit(2); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	db, err = Config{Log: slog.New(slog.DiscardHandler)}.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if got := blockAt(t, db, markerA); got != (block.Stone{}) {
+		t.Errorf("markerA after mixed reopen = %v, want Stone", got)
+	}
+	if got := blockAt(t, db, markerB); got != (block.Dirt{}) {
+		t.Errorf("markerB after mixed reopen = %v, want Dirt", got)
+	}
+}
+
+// TestCommitDeduplicatesOverwrittenKeys checks that overwriting keys within a
+// single Commit keeps the latest value before and after both batch and
+// transaction commits, and that sorting transaction ops preserves all values.
+func TestCommitDeduplicatesOverwrittenKeys(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		limit int
+	}{
+		{name: "batch", limit: 32 << 20},
+		{name: "transaction", limit: 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			origLimit := commitBatchLimit
+			commitBatchLimit = tc.limit
+			t.Cleanup(func() { commitBatchLimit = origLimit })
+
+			dir := t.TempDir()
+			db, err := Config{Log: slog.New(slog.DiscardHandler)}.Open(dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer db.Close()
+
+			c := db.BeginCommit().(*Commit)
+			if err := c.StoreColumn(markerA, world.Overworld, markerColumn(t, block.Stone{})); err != nil {
+				t.Fatal(err)
+			}
+			if err := c.StoreColumn(markerA, world.Overworld, markerColumn(t, block.Dirt{})); err != nil {
+				t.Fatal(err)
+			}
+			buf := []byte("first")
+			if err := c.SaveWorldData("test:dedup", buf); err != nil {
+				t.Fatal(err)
+			}
+			buf[0] = 'X' // External mutation must not affect the commit.
+			if got, err := c.LoadWorldData("test:dedup"); err != nil || string(got) != "first" {
+				t.Fatalf("world data after external mutation = %q (%v), want first", got, err)
+			}
+			if err := c.SaveWorldData("test:dedup", []byte("second")); err != nil {
+				t.Fatal(err)
+			}
+			if err := c.Commit(1); err != nil {
+				t.Fatal(err)
+			}
+			if got := blockAt(t, db, markerA); got != (block.Dirt{}) {
+				t.Errorf("markerA = %v, want Dirt", got)
+			}
+			if got, err := db.LoadWorldData("test:dedup"); err != nil || string(got) != "second" {
+				t.Errorf("world data = %q (%v), want second", got, err)
+			}
+		})
 	}
 }

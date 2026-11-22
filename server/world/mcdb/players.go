@@ -1,6 +1,7 @@
 package mcdb
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -38,7 +39,7 @@ func (db *DB) SavePlayer(id uuid.UUID, record []byte) error {
 	db.cmu.Lock()
 	defer db.cmu.Unlock()
 	if c := db.open; c != nil {
-		c.put(key, record)
+		c.put(key, slices.Clone(record))
 		c.mu.Lock()
 		c.players[string(key)] = true
 		c.mu.Unlock()

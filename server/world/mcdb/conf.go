@@ -13,6 +13,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/mcdb/leveldat"
 	"github.com/df-mc/goleveldb/leveldb"
+	"github.com/df-mc/goleveldb/leveldb/filter"
 	"github.com/df-mc/goleveldb/leveldb/opt"
 )
 
@@ -39,12 +40,12 @@ func (conf Config) Open(dir string) (*DB, error) {
 		conf.Log = slog.Default()
 	}
 	conf.Log = logging.Sub(conf.Log, logging.Save).With("provider", "mcdb")
-	if conf.LDBOptions == nil {
-		conf.LDBOptions = new(opt.Options)
+	opts := new(opt.Options)
+	if conf.LDBOptions != nil {
+		*opts = *conf.LDBOptions
 	}
-	if conf.LDBOptions.BlockSize == 0 {
-		conf.LDBOptions.BlockSize = 16 * opt.KiB
-	}
+	applyDefaultLDBOptions(opts)
+	conf.LDBOptions = opts
 
 	_ = os.MkdirAll(filepath.Join(dir, "db"), 0777)
 
@@ -54,7 +55,7 @@ func (conf Config) Open(dir string) (*DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
-	ldb, err := leveldb.OpenFile(filepath.Join(dir, "db"), conf.LDBOptions)
+	ldb, err := leveldb.OpenFile(filepath.Join(dir, "db"), opts)
 	if err != nil {
 		return nil, fmt.Errorf("open db: leveldb: %w", err)
 	}
@@ -125,4 +126,43 @@ func decodeLevelDat(path, name string, dst *leveldat.Data) error {
 	}
 	*dst = data
 	return nil
+}
+
+// applyDefaultLDBOptions fills unset LevelDB options with defaults tuned for
+// checkpoint-heavy Minecraft worlds: Snappy compression avoids goleveldb's
+// global mutex on Flate compression/decompression while still reading existing
+// Flate blocks transparently; a 10-bit Bloom filter avoids disk seeks on
+// missing chunk/actor keys; and larger write buffers and compaction tables
+// keep multi-thousand-chunk commits from stalling on L0->L1 compaction cascades.
+func applyDefaultLDBOptions(opts *opt.Options) {
+	if opts.BlockSize == 0 {
+		opts.BlockSize = 16 * opt.KiB
+	}
+	if opts.Compression == opt.DefaultCompression {
+		opts.Compression = opt.SnappyCompression
+	}
+	if opts.Filter == nil {
+		opts.Filter = filter.NewBloomFilter(10)
+	}
+	if opts.BlockCacheCapacity == 0 {
+		opts.BlockCacheCapacity = 32 * opt.MiB
+	}
+	if opts.WriteBuffer == 0 {
+		opts.WriteBuffer = 16 * opt.MiB
+	}
+	if opts.CompactionTableSize == 0 {
+		opts.CompactionTableSize = 8 * opt.MiB
+	}
+	if opts.CompactionTotalSize == 0 {
+		opts.CompactionTotalSize = 64 * opt.MiB
+	}
+	if opts.CompactionL0Trigger == 0 {
+		opts.CompactionL0Trigger = 8
+	}
+	if opts.WriteL0SlowdownTrigger == 0 {
+		opts.WriteL0SlowdownTrigger = max(20, opts.CompactionL0Trigger+4)
+	}
+	if opts.WriteL0PauseTrigger == 0 {
+		opts.WriteL0PauseTrigger = max(32, opts.WriteL0SlowdownTrigger+4)
+	}
 }

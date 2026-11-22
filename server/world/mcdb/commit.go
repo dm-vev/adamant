@@ -187,20 +187,31 @@ func (c *Commit) get(key []byte) ([]byte, error) {
 	return slices.Clone(op.value), nil
 }
 
+// put records a write of key and value. Callers hand ownership of both slices
+// to the commit; external entry points clone caller-owned buffers first.
 func (c *Commit) put(key, value []byte) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.add(commitOp{key: slices.Clone(key), value: slices.Clone(value)})
+	c.add(commitOp{key: key, value: value})
+	c.mu.Unlock()
 }
 
+// delete records a deletion of key. Callers hand ownership of key to the commit.
 func (c *Commit) delete(key []byte) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.add(commitOp{key: slices.Clone(key), del: true})
+	c.add(commitOp{key: key, del: true})
+	c.mu.Unlock()
 }
 
-// add appends op. The caller holds mu.
+// add records op, overwriting an earlier write of the same key in place so
+// ops contains each key at most once. The caller holds mu.
 func (c *Commit) add(op commitOp) {
+	if i, ok := c.index[string(op.key)]; ok {
+		old := c.ops[i]
+		c.size -= len(old.key) + len(old.value)
+		c.ops[i] = op
+		c.size += len(op.key) + len(op.value)
+		return
+	}
 	c.index[string(op.key)] = len(c.ops)
 	c.ops = append(c.ops, op)
 	c.size += len(op.key) + len(op.value)
@@ -214,9 +225,10 @@ func (c *Commit) keys(prefix []byte, f func(key []byte)) error {
 	if err != nil {
 		return err
 	}
+	pfx := string(prefix)
 	c.mu.Lock()
 	for key, i := range c.index {
-		if strings.HasPrefix(key, string(prefix)) {
+		if strings.HasPrefix(key, pfx) {
 			held[key] = !c.ops[i].del
 		}
 	}
@@ -314,7 +326,7 @@ func (c *Commit) SaveWorldData(namespace string, data []byte) error {
 	if c.ended.Load() {
 		return errCommitEnded
 	}
-	c.put(worldDataKey(namespace), data)
+	c.put(worldDataKey(namespace), slices.Clone(data))
 	return nil
 }
 
@@ -424,9 +436,13 @@ func (c *Commit) Commit(id uint64) error {
 	c.put([]byte(keyCheckpoint), record)
 
 	c.mu.Lock()
-	ops, size := c.ops, c.size
+	ops := slices.Clone(c.ops)
+	size := c.size
 	c.mu.Unlock()
 	if size <= commitBatchLimit {
+		if len(ops) > 1024 {
+			sortCommitOps(ops)
+		}
 		err = db.ldb.Write(batchOf(ops), &opt.WriteOptions{Sync: true})
 	} else {
 		err = db.commitTransaction(ops)
@@ -444,6 +460,12 @@ func (c *Commit) Commit(id uint64) error {
 		db.lmu.Unlock()
 	}
 	return nil
+}
+
+// sortCommitOps sorts deduplicated commit ops in ascending LevelDB key order so
+// transaction flushes produce disjoint-key L0 tables with minimal L1 overlap.
+func sortCommitOps(ops []commitOp) {
+	slices.SortFunc(ops, func(a, b commitOp) int { return bytes.Compare(a.key, b.key) })
 }
 
 // record encodes the record of checkpoint id, with the level.dat ldat.
@@ -480,21 +502,30 @@ func batchOf(ops []commitOp) *leveldb.Batch {
 	return b
 }
 
-// commitTransaction writes the writes passed through a transaction, in
-// batches of up to transactionChunk bytes, and commits it.
+// commitTransaction writes the writes passed through a transaction, in sorted
+// key order and in reused batches of up to transactionChunk bytes, and commits it.
 func (db *DB) commitTransaction(ops []commitOp) error {
+	sortCommitOps(ops)
 	tr, err := db.ldb.OpenTransaction()
 	if err != nil {
 		return err
 	}
+	var batch leveldb.Batch
 	written, half := 0, len(ops)/2
 	for start := 0; start < len(ops); {
 		end, size := start, 0
+		batch.Reset()
 		for end < len(ops) && (end == start || size < transactionChunk) {
-			size += len(ops[end].key) + len(ops[end].value)
+			op := ops[end]
+			if op.del {
+				batch.Delete(op.key)
+			} else {
+				batch.Put(op.key, op.value)
+			}
+			size += len(op.key) + len(op.value)
 			end++
 		}
-		if err := tr.Write(batchOf(ops[start:end]), nil); err != nil {
+		if err := tr.Write(&batch, nil); err != nil {
 			tr.Discard()
 			return err
 		}
