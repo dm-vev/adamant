@@ -215,3 +215,203 @@ func TestReadAheadIsDroppedWhenStale(t *testing.T) {
 		}
 	})
 }
+
+type slowCommit struct {
+	*slowProvider
+}
+
+func (*slowCommit) SaveSettings(*Settings)    {}
+func (*slowCommit) SaveTick(Dimension, int64) {}
+func (*slowCommit) Commit(uint64) error       { return nil }
+func (*slowCommit) Discard()                  {}
+
+// TestPrefetchSaturatedNeverReadsOnOwner checks that an async concurrentLoader
+// never falls back to synchronous LoadColumn on the world owner when many
+// loaders or a saturated prefetch map exhaust prefetch capacity.
+func TestPrefetchSaturatedNeverReadsOnOwner(t *testing.T) {
+	const (
+		delay   = 15 * time.Millisecond
+		loaders = 8
+		radius  = 3
+	)
+	p := &slowProvider{NopProvider: NopProvider{Set: defaultSettings()}, delay: delay, positions: map[ChunkPos]int{}}
+	w := Config{Provider: p}.New()
+	defer w.Close()
+	w.readSlots = make(chan struct{}, 16)
+
+	ls := make([]*Loader, loaders)
+	for i := range ls {
+		ls[i] = NewLoader(radius, w, NopViewer{})
+	}
+	// Pre-fill w.prefetched beyond prefetchLimit + demand slack with dummy
+	// in-flight entries so the very first Load ticks hit hard saturation.
+	dummyDone := make(chan struct{})
+	defer close(dummyDone)
+	var dummyKeys []ChunkPos
+	<-w.Exec(func(tx *Tx) {
+		for i, l := range ls {
+			l.Move(tx, mgl64.Vec3{float64(i*200 + 8), 64, 8})
+		}
+		capFill := w.prefetchLimit() + max(16, w.viewerCount()) + 8
+		for i := range capFill {
+			pos := ChunkPos{int32(-10000 - i), -10000}
+			w.prefetched[pos] = &columnRead{done: dummyDone, at: time.Now()}
+			dummyKeys = append(dummyKeys, pos)
+		}
+		// While completely saturated, Load must defer and never read on owner.
+		for _, l := range ls {
+			l.Load(tx, 4)
+		}
+	})
+	if on := p.onOwner.Load(); on != 0 {
+		t.Fatalf("%d columns read on owner while prefetch was hard-saturated, want 0", on)
+	}
+	// Release dummy saturation entries and verify all loaders finish off-owner.
+	<-w.Exec(func(*Tx) {
+		for _, pos := range dummyKeys {
+			delete(w.prefetched, pos)
+		}
+	})
+
+	wantPerLoader := len(chunksAround(radius))
+	var longest time.Duration
+	deadline := time.Now().Add(20 * time.Second)
+	for time.Now().Before(deadline) {
+		allDone := true
+		<-w.Exec(func(tx *Tx) {
+			start := time.Now()
+			for _, l := range ls {
+				l.Load(tx, 4)
+			}
+			longest = max(longest, time.Since(start))
+		})
+		for _, l := range ls {
+			l.mu.RLock()
+			if len(l.loaded) < wantPerLoader {
+				allDone = false
+			}
+			l.mu.RUnlock()
+		}
+		if allDone {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	for i, l := range ls {
+		l.mu.RLock()
+		got := len(l.loaded)
+		l.mu.RUnlock()
+		if got != wantPerLoader {
+			t.Fatalf("loader %d loaded %d columns, want %d", i, got, wantPerLoader)
+		}
+	}
+	if on := p.onOwner.Load(); on != 0 {
+		t.Errorf("%d columns read on the owner under %d loaders, want 0", on, loaders)
+	}
+	if longest >= delay {
+		t.Errorf("longest owner load took %v with delay %v", longest, delay)
+	}
+}
+
+// TestPrefetchSaverBusyDefersAndCommitPrefetches checks that a loader defers
+// when the saver is writing/encoding a column and prefetches off-owner when the
+// column is held in an uncommitted Commit.
+func TestPrefetchSaverBusyDefersAndCommitPrefetches(t *testing.T) {
+	const delay = 15 * time.Millisecond
+	p := &slowProvider{NopProvider: NopProvider{Set: defaultSettings()}, delay: delay, positions: map[ChunkPos]int{}}
+	w := Config{Provider: p}.New()
+	defer w.Close()
+
+	pos := ChunkPos{0, 0}
+	l := NewLoader(0, w, NopViewer{})
+	// Hold pos in saver.waiting: Loader.Load must defer and not read on owner.
+	w.saver.mu.Lock()
+	w.saver.waiting[pos] = &pendingColumn{pos: pos}
+	w.saver.mu.Unlock()
+	<-w.Exec(func(tx *Tx) {
+		l.Move(tx, mgl64.Vec3{8, 64, 8})
+		l.Load(tx, 1)
+	})
+	if on := p.onOwner.Load(); on != 0 {
+		t.Fatalf("%d owner reads while saver held waiting column, want 0", on)
+	}
+	l.mu.RLock()
+	loaded := len(l.loaded)
+	l.mu.RUnlock()
+	if loaded != 0 {
+		t.Fatalf("loaded %d columns while saver held waiting column, want 0", loaded)
+	}
+
+	// Move pos to saver.inCommit with a slowCommit provider: loader must
+	// prefetch it off-owner from the commit and mark the reloaded column modified.
+	cp := &slowProvider{NopProvider: NopProvider{Set: defaultSettings()}, delay: delay, positions: map[ChunkPos]int{}}
+	commit := &slowCommit{slowProvider: cp}
+	w.saver.mu.Lock()
+	delete(w.saver.waiting, pos)
+	w.saver.inCommit[pos] = commit
+	w.saver.mu.Unlock()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		<-w.Exec(func(tx *Tx) {
+			l.Load(tx, 1)
+		})
+		l.mu.RLock()
+		loaded = len(l.loaded)
+		l.mu.RUnlock()
+		if loaded == 1 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if loaded != 1 {
+		t.Fatal("column in saver.inCommit did not load")
+	}
+	if on := cp.onOwner.Load(); on != 0 {
+		t.Errorf("%d commit reads ran on the owner, want 0", on)
+	}
+	if off := cp.offOwner.Load(); off != 1 {
+		t.Errorf("%d commit reads ran off the owner, want 1", off)
+	}
+	if on := p.onOwner.Load(); on != 0 {
+		t.Errorf("%d provider reads ran on the owner, want 0", on)
+	}
+	var modified bool
+	<-w.Exec(func(*Tx) {
+		if c, ok := w.chunks[pos]; ok {
+			modified = c.modified.Load()
+		}
+	})
+	if !modified {
+		t.Error("column reloaded from uncommitted commit was not marked modified")
+	}
+}
+
+// TestPrefetchCloseCancelsQueuedReads checks that World.Close does not block
+// waiting for prefetch goroutines queued on a full readSlots semaphore.
+func TestPrefetchCloseCancelsQueuedReads(t *testing.T) {
+	p := &slowProvider{NopProvider: NopProvider{Set: defaultSettings()}, delay: 5 * time.Second, positions: map[ChunkPos]int{}}
+	w := Config{Provider: p}.New()
+	w.readSlots = make(chan struct{}, 1)
+	w.readSlots <- struct{}{} // Occupy the single slot so prefetches block in select.
+
+	<-w.Exec(func(*Tx) {
+		for i := range 8 {
+			w.prefetchColumn(ChunkPos{int32(i), 0})
+		}
+	})
+	closed := make(chan error, 1)
+	go func() {
+		closed <- w.Close()
+	}()
+	select {
+	case err := <-closed:
+		if err != nil {
+			t.Fatalf("World.Close: %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		<-w.readSlots
+		t.Fatal("World.Close blocked on queued prefetch goroutines")
+	}
+	<-w.readSlots
+}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"slices"
 	"sync/atomic"
+	"time"
 
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/goleveldb/leveldb"
@@ -31,6 +32,9 @@ type chunkStore struct {
 	// chunkCount tracks the size of chunks so callers outside the world
 	// goroutine can read the count without racing map mutations.
 	chunkCount atomic.Int64
+	// prefetchPrunedAt records the last time dropStalePrefetched scanned
+	// w.prefetched, preventing repeated full-map scans when saturated.
+	prefetchPrunedAt time.Time
 }
 
 type chunkCallback func(tx *Tx, col *Column)
@@ -209,17 +213,21 @@ func (w *World) readColumn(pos ChunkPos) (column *chunk.Column, staged bool, err
 	if w.saver != nil {
 		var from Provider
 		if column, staged, from, err = w.saver.takeStaged(pos); staged {
+			delete(w.prefetched, pos)
 			return column, true, err
 		}
 		if from != nil {
+			if column, _, ahead, err := w.takePrefetchedState(pos, from); ahead {
+				return column, true, err
+			}
 			// The commit may still fail: the column is saved whole by the
 			// next capture, as one taken from staging is.
 			column, err = from.LoadColumn(pos, w.conf.Dim)
 			return column, true, err
 		}
 	}
-	if column, ahead, err := w.takePrefetched(pos); ahead {
-		return column, false, err
+	if column, staged, ahead, err := w.takePrefetchedState(pos, nil); ahead {
+		return column, staged, err
 	}
 	column, err = w.conf.Provider.LoadColumn(pos, w.conf.Dim)
 	return column, false, err
