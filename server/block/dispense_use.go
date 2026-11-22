@@ -35,12 +35,18 @@ func entitiesInBlock(tx *world.Tx, pos cube.Pos) iter.Seq[world.Entity] {
 	}
 }
 
-// dispenseFlintAndSteel ports FlintAndSteelDispenseItemBehavior: fire goes
-// into the air in front where it survives, a campfire, candle or cake there
-// is lit and TNT is primed; otherwise the dispenser clicks and keeps the item.
-// A success wears the item down by one.
+// dispenseFlintAndSteel ports FlintAndSteelDispenseItemBehavior: an explosive
+// sulfur cube in front is primed first; otherwise fire goes into the air in
+// front where it survives, a campfire, candle or cake there is lit and TNT is
+// primed; otherwise the dispenser clicks and keeps the item. A success wears
+// the item down by one.
 func dispenseFlintAndSteel(src dispenseSource) dispensed {
 	tx, front := src.tx, src.front()
+	for e := range entitiesInBlock(tx, front) {
+		if primer, ok := e.(interface{ Prime() bool }); ok && primer.Prime() {
+			return dispensed{left: src.stack.Damage(1), effects: dispenseEffects{click: clickDone}}
+		}
+	}
 	switch b := tx.Block(front).(type) {
 	case Air:
 		if !tx.PlaceFire(front) {

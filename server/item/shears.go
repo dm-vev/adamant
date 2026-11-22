@@ -103,14 +103,15 @@ func (s Shears) UseOnEntity(target world.Entity, tx *world.Tx, user User, ctx *U
 	}
 	if mob, ok := target.(interface {
 		ShearHarness(*world.Tx, world.Entity) bool
-	}); ok && mob.ShearHarness(tx, user) {
+	}); ok && !userSneaking(user) && mob.ShearHarness(tx, user) {
+		tx.EmitGameEvent(world.GameEventShear, target.Position(), world.GameEventContext{Source: user})
 		ctx.DamageItem(1)
 		return true
 	}
 	if mob, ok := target.(interface {
 		CanShearBodyArmor(world.Entity) bool
 		RemoveBodyArmor(*world.Tx) Stack
-	}); ok && mob.CanShearBodyArmor(user) {
+	}); ok && !userSneaking(user) && mob.CanShearBodyArmor(user) {
 		if armour := mob.RemoveBodyArmor(tx); !armour.Empty() {
 			ctx.NewItem = armour
 			ctx.NewItemSurvivalOnly = true
@@ -120,8 +121,13 @@ func (s Shears) UseOnEntity(target world.Entity, tx *world.Tx, user User, ctx *U
 				shearSound = soundProvider.ArmorShearingSound()
 			}
 			tx.PlaySound(target.Position(), shearSound)
+			tx.EmitGameEvent(world.GameEventShear, target.Position(), world.GameEventContext{Source: user})
 			return true
 		}
+	}
+	if primed, ok := target.(interface{ Primed() bool }); ok && primed.Primed() {
+		// SulfurCube.mobInteract returns PASS while primed, before checking shears.
+		return false
 	}
 	if shearable, ok := target.(interface{ ShearIfReady(*world.Tx) bool }); ok && shearable.ShearIfReady(tx) {
 		// The mobInteract of a Shearable: it plays its own sound and drops its

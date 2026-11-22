@@ -679,19 +679,13 @@ func (h *HappyGhast) EquipHarness(tx *world.Tx, _ world.Entity, i world.Item) bo
 	b.harness = true
 	b.harnessName = name
 	h.viewArmour(tx)
+	tx.PlaySound(h.Position(), sound.Custom{Name: "entity.happy_ghast.equip", Volume: 1, Pitch: 1})
 	return true
 }
 func (h *HappyGhast) ShearHarness(tx *world.Tx, _ world.Entity) bool {
 	b := h.state()
-	if !b.harness {
+	if !b.harness || b.hasRiders() {
 		return false
-	}
-	for _, passenger := range b.riders {
-		if passenger != nil {
-			if p, ok := passenger.Entity(tx); ok {
-				h.Dismount(tx, p)
-			}
-		}
 	}
 	if b.harnessName != "" {
 		if it, ok := world.ItemByName(b.harnessName, 0); ok {
@@ -701,6 +695,7 @@ func (h *HappyGhast) ShearHarness(tx *world.Tx, _ world.Entity) bool {
 	b.harness = false
 	b.harnessName = ""
 	h.viewArmour(tx)
+	tx.PlaySound(h.Position(), sound.Custom{Name: "entity.happy_ghast.unequip", Volume: 1, Pitch: 1})
 	return true
 }
 func (h *HappyGhast) Harnessed() bool        { return h.state().harness }

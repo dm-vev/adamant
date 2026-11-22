@@ -62,10 +62,13 @@ func dispenseGlowstone(src dispenseSource) dispensed {
 }
 
 // convertibleToMud reports whether a water bottle turns the block into mud: the
-// blocks of the tag convertible_to_mud.
+// blocks of the tag convertible_to_mud (dirt, coarse dirt, rooted dirt).
 func convertibleToMud(b world.Block) bool {
-	_, dirt := b.(Dirt)
-	return dirt
+	switch b.(type) {
+	case Dirt, DirtWithRoots:
+		return true
+	}
+	return false
 }
 
 // dispensePotion ports the behaviour of Items.POTION: a water bottle turns the

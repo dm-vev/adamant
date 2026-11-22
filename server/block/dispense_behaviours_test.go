@@ -448,3 +448,73 @@ func TestDispenserKeepsTNTWithoutExplosions(t *testing.T) {
 		t.Fatalf("sounds %v, want the failure click", got)
 	}
 }
+
+// TestDispenserWaterBottleConvertsRootedDirtToMud checks Java 26.3
+// DispenseItemBehavior (BlockTags.CONVERTIBLE_TO_MUD): a water bottle turns
+// rooted dirt (minecraft:dirt_with_roots) in front into mud, leaves an empty
+// bottle, plays item.bottle.empty and spawns five splashes.
+func TestDispenserWaterBottleConvertsRootedDirtToMud(t *testing.T) {
+	t.Parallel()
+	dt := newDispenserTest(t, cube.FaceEast)
+	dt.dispense(func(tx *world.Tx, front cube.Pos) {
+		tx.SetBlock(front, block.DirtWithRoots{}, nil)
+	}, item.NewStack(item.Potion{Type: potion.Water()}, 1))
+	<-dt.w.Exec(func(tx *world.Tx) {
+		if _, ok := tx.Block(dt.front()).(block.Mud); !ok {
+			t.Fatalf("front is %T, want mud", tx.Block(dt.front()))
+		}
+	})
+	if got := dt.slot(0); got.Empty() || got.Item() != (item.GlassBottle{}) {
+		t.Fatalf("slot holds %v, want glass bottle", got)
+	}
+	splashes := 0
+	for _, p := range dt.recorder.particles {
+		if _, ok := p.p.(particle.WaterSplash); ok {
+			splashes++
+		}
+	}
+	if splashes != 5 {
+		t.Fatalf("splashes = %d, want 5", splashes)
+	}
+	foundBottleSound := false
+	for _, s := range dt.recorder.sounds {
+		if c, ok := s.s.(sound.Custom); ok && c.Name == "item.bottle.empty" {
+			foundBottleSound = true
+		}
+	}
+	if !foundBottleSound {
+		t.Fatal("missing item.bottle.empty sound")
+	}
+}
+
+// TestDispenserArmourStandSpawnsAtRest checks Java 26.3 DispenseItemBehavior
+// for Items.ARMOR_STAND: the stand spawns in front at rest (zero velocity).
+func TestDispenserArmourStandSpawnsAtRest(t *testing.T) {
+	t.Parallel()
+	dt := newDispenserTest(t, cube.FaceEast)
+	dt.dispense(nil, item.NewStack(item.ArmourStand{}, 1))
+	stands := dt.entities("minecraft:armor_stand")
+	if len(stands) != 1 {
+		t.Fatalf("%d armour stands, want 1", len(stands))
+	}
+	if v := stands[0].(*entity.Ent).Velocity(); v != (mgl64.Vec3{}) {
+		t.Fatalf("armour stand velocity = %v, want zero", v)
+	}
+}
+
+// TestDispenserTNTEmitsEntityPlaceGameEvent checks Java 26.3
+// DispenseItemBehavior for Blocks.TNT: priming TNT emits GameEventEntityPlace.
+func TestDispenserTNTEmitsEntityPlaceGameEvent(t *testing.T) {
+	t.Parallel()
+	dt := newDispenserTest(t, cube.FaceEast)
+	sensor := cube.Pos{1, 64, 2}
+	dt.dispense(func(tx *world.Tx, _ cube.Pos) {
+		tx.SetBlock(sensor, block.NewSculkSensor(), nil)
+	}, item.NewStack(block.TNT{}, 1))
+	<-dt.w.Exec(func(tx *world.Tx) {
+		data := tx.Block(sensor).(world.VibrationListener).VibrationData()
+		if data == nil || !data.Selector.HasCandidate || data.Selector.Candidate.Event != world.GameEventEntityPlace {
+			t.Fatalf("sculk sensor candidate = %+v, want GameEventEntityPlace", data)
+		}
+	})
+}

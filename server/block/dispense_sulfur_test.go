@@ -147,3 +147,48 @@ func TestDispenserEmptiesSulfurCubeBucket(t *testing.T) {
 		t.Fatalf("slot holds %v, want an empty bucket", got)
 	}
 }
+
+// TestDispenserFlintAndSteelPrimesSulfurCube checks Java 26.3
+// FlintAndSteelDispenseItemBehavior.tryIgniteExplosiveEntities: flint and steel
+// primes an explosive sulfur cube in front without placing fire, and wears down
+// by one. A non-explosive cube falls through to placing fire.
+func TestDispenserFlintAndSteelPrimesSulfurCube(t *testing.T) {
+	t.Parallel()
+	t.Run("primes explosive cube without placing fire", func(t *testing.T) {
+		t.Parallel()
+		dt := newDispenserTest(t, cube.FaceEast)
+		dt.dispense(sulfurCubeInFront(0, block.TNT{}), item.NewStack(item.FlintAndSteel{}, 1))
+		<-dt.w.Exec(func(tx *world.Tx) {
+			var cubes []*entity.SulfurCube
+			for e := range tx.Entities() {
+				if c, ok := e.(*entity.SulfurCube); ok {
+					cubes = append(cubes, c)
+				}
+			}
+			if len(cubes) != 1 || !cubes[0].Primed() {
+				t.Fatalf("cubes = %v, want one primed sulfur cube", cubes)
+			}
+			if _, ok := tx.Block(dt.front()).(block.Air); !ok {
+				t.Errorf("block in front is %T, want air (no fire placed)", tx.Block(dt.front()))
+			}
+		})
+		if got := dt.slot(0); got.Durability() != got.MaxDurability()-1 {
+			t.Fatalf("flint and steel durability = %d of %d, want one less", got.Durability(), got.MaxDurability())
+		}
+	})
+	t.Run("non-explosive cube falls through to fire", func(t *testing.T) {
+		t.Parallel()
+		dt := newDispenserTest(t, cube.FaceEast)
+		dt.dispense(sulfurCubeInFront(0, block.Stone{}), item.NewStack(item.FlintAndSteel{}, 1))
+		<-dt.w.Exec(func(tx *world.Tx) {
+			for e := range tx.Entities() {
+				if c, ok := e.(*entity.SulfurCube); ok && c.Primed() {
+					t.Fatal("non-explosive sulfur cube was primed")
+				}
+			}
+			if _, ok := tx.Block(dt.front()).(block.Fire); !ok {
+				t.Errorf("block in front is %T, want fire", tx.Block(dt.front()))
+			}
+		})
+	})
+}

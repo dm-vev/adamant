@@ -116,12 +116,6 @@ func (src dispenseSource) direction() mgl64.Vec3 {
 	return src.front().Vec3Centre().Sub(src.pos.Vec3Centre())
 }
 
-// launch returns where and how fast a projectile leaves the dispenser.
-func (src dispenseSource) launch() world.EntitySpawnOpts {
-	direction := src.direction()
-	return world.EntitySpawnOpts{Position: src.pos.Vec3Centre().Add(direction.Mul(0.7)), Velocity: direction.Mul(1.1)}
-}
-
 // dispenseDefault drops one item of the stack in front of the dispenser, as
 // DefaultDispenseItemBehavior.
 func dispenseDefault(src dispenseSource) dispensed {
@@ -353,9 +347,10 @@ func dispenseArmourStand(src dispenseSource) dispensed {
 		return dispenseDefault(src)
 	}
 	direction := src.direction()
-	opts := src.launch()
-	opts.Position = src.front().Vec3Middle()
-	opts.Rotation = cube.Rotation{math.Atan2(direction[2], direction[0])*180/math.Pi + 90, 0}
+	opts := world.EntitySpawnOpts{
+		Position: src.front().Vec3Middle(),
+		Rotation: cube.Rotation{math.Atan2(direction[2], direction[0])*180/math.Pi + 90, 0},
+	}
 	src.tx.AddEntity(create(opts))
 	return src.done()
 }
@@ -379,6 +374,7 @@ func dispenseTNT(src dispenseSource) dispensed {
 	src.tx.AddEntity(create(world.EntitySpawnOpts{Position: src.front().Vec3Middle()}, 4*time.Second, nil))
 	// level.playSound(TNT_PRIMED); BDS plays the fuse at the launch point.
 	src.tx.PlaySound(src.launchPoint(), sound.TNT{})
+	src.tx.EmitGameEvent(world.GameEventEntityPlace, src.front().Vec3Centre(), world.GameEventContext{})
 	return src.done()
 }
 

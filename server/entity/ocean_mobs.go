@@ -924,6 +924,11 @@ func (m *oceanMob) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) 
 				tx.PlaySound(m.Position(), sound.Custom{Name: "item.nautilus_saddle_equip", Volume: 1, Pitch: 1})
 				return true
 			}
+		case item.Shears:
+			if m.shearSaddle(tx, user) {
+				ctx.DamageItem(1)
+				return true
+			}
 		case item.Cod:
 			if !b.tamed && !it.Cooked {
 				ctx.SubtractFromCount(1)
@@ -959,12 +964,33 @@ func (m *oceanMob) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) 
 			}
 		}
 	}
+	if s, ok := user.(interface{ Sneaking() bool }); ok && s.Sneaking() {
+		return false
+	}
 	if b.tamed && b.saddle {
 		if passenger, ok := user.(world.Entity); ok && m.Mount(tx, passenger) {
 			return true
 		}
 	}
 	return false
+}
+
+// shearSaddle shears the saddle off an unmounted nautilus when the player is not sneaking.
+func (m *oceanMob) shearSaddle(tx *world.Tx, user item.User) bool {
+	b := m.b()
+	if !b.saddle || m.hasPassenger(tx) {
+		return false
+	}
+	if s, ok := user.(interface{ Sneaking() bool }); ok && s.Sneaking() {
+		return false
+	}
+	b.saddle = false
+	var by world.Entity
+	if e, ok := user.(world.Entity); ok {
+		by = e
+	}
+	shearOff(tx, m, by, item.NewStack(item.Saddle{}, 1), 0.925, "unsaddle")
+	return true
 }
 func (m *oceanMob) ControlsVehicle(passenger world.Entity) bool {
 	r, ok := passenger.(Rider)
