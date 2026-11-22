@@ -535,34 +535,17 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 		// NOP if the simulation distance is 0 and no forced chunks exist.
 		return
 	}
-	columns := w.activeColumns
-	if w.conf.Synchronous || len(w.forcedChunks) != 0 {
+	var columns []columnRef
+	if w.conf.Synchronous {
 		columns = make([]columnRef, 0, len(w.chunks))
 		for pos, col := range w.chunks {
-			if w.conf.Synchronous {
-				columns = append(columns, columnRef{pos: pos, col: col})
-			} else if _, forced := w.forcedChunks[pos]; forced {
-				columns = append(columns, columnRef{pos: pos, col: col})
-			}
+			columns = append(columns, columnRef{pos: pos, col: col})
 		}
-		if !w.conf.Synchronous {
-			for _, ref := range w.activeColumns {
-				if _, forced := w.forcedChunks[ref.pos]; !forced {
-					columns = append(columns, ref)
-				}
-			}
+		sortColumnRefs(columns)
+		if len(columns) == 0 {
+			return
 		}
-		slices.SortFunc(columns, func(a, b columnRef) int {
-			if a.pos[0] < b.pos[0] || a.pos[0] == b.pos[0] && a.pos[1] < b.pos[1] {
-				return -1
-			}
-			if a.pos != b.pos {
-				return 1
-			}
-			return 0
-		})
-	}
-	if len(columns) == 0 {
+	} else if len(w.activeColumns) == 0 && len(w.forcedChunks) == 0 {
 		return
 	}
 	randomTickSpeed := w.conf.RandomTickSpeed
@@ -583,13 +566,22 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 	// still participates in this pass. ItemActor::postNormalTick itself runs
 	// globally after queued block actions, not inline in each chunk.
 	if w.pendingBlockTickChunks == nil {
-		w.pendingBlockTickChunks = make(map[ChunkPos]struct{}, len(columns))
+		w.pendingBlockTickChunks = make(map[ChunkPos]struct{})
 	}
 	clear(w.pendingBlockTickChunks)
-	for _, ref := range columns {
-		if (w.conf.Synchronous || blockColumnWithinAreas(ref.pos, areas)) && w.blockTickingReady(ref.pos, ref.col) {
-			w.pendingBlockTickChunks[ref.pos] = struct{}{}
+	areaSet := &w.scratchBlockAreaSet
+	eligible := w.scratchEligibleColumns
+	if w.conf.Synchronous {
+		for _, ref := range columns {
+			if w.blockTickingReady(ref.pos, ref.col) {
+				w.pendingBlockTickChunks[ref.pos] = struct{}{}
+			}
 		}
+	} else {
+		areaSet.reset(areas)
+		areaSet.expand()
+		eligible, columns = w.prepareAsyncBlockTickEligible(areaSet)
+		defer clear(eligible)
 	}
 	w.blockTickingPass = true
 	defer func() { w.blockTickingPass = false }()
@@ -602,14 +594,31 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 			}
 			return
 		}
-		eligible := make(map[ChunkPos]*Column, len(columns))
-		for _, ref := range columns {
-			eligible[ref.pos] = ref.col
+		if w.scratchSeenChunks == nil {
+			w.scratchSeenChunks = make(map[ChunkPos]struct{}, len(eligible))
 		}
-		seen := make(map[ChunkPos]struct{}, len(columns))
+		seen := w.scratchSeenChunks
+		clear(seen)
+		if w.scratchVisitedAreas == nil {
+			w.scratchVisitedAreas = make(map[blockAreaKey]struct{}, len(loaders))
+		}
+		visitedAreas := w.scratchVisitedAreas
+		clear(visitedAreas)
+		anyLargeUnvisited := false
 		for index, area := range areas[:len(loaders)] {
+			key := blockAreaKey{pos: area.pos, radius: area.radius, square: area.square}
+			shuffled := randomizeChunkArea(tick, uint64(index))
+			if _, done := visitedAreas[key]; done {
+				// An identical rectangle was already traversed against the
+				// frozen eligible snapshot; only its shuffled RNG draws remain.
+				if shuffled {
+					w.randomIntN(255)
+					w.randomIntN(255)
+				}
+				continue
+			}
 			minimum, maximum := ChunkPos{area.pos[0] - area.radius, area.pos[1] - area.radius}, ChunkPos{area.pos[0] + area.radius, area.pos[1] + area.radius}
-			visitChunkRectangle(minimum, maximum, randomizeChunkArea(tick, uint64(index)), w.randomIntN, func(pos ChunkPos) {
+			if visitChunkRectangle(minimum, maximum, shuffled, w.randomIntN, func(pos ChunkPos) {
 				if _, done := seen[pos]; done {
 					return
 				}
@@ -619,19 +628,16 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 				}
 				seen[pos] = struct{}{}
 				visit(columnRef{pos: pos, col: col})
-			})
+			}) {
+				visitedAreas[key] = struct{}{}
+			} else if area.radius >= 0 {
+				anyLargeUnvisited = true
+			}
 		}
 		// Explicit per-chunk force tickets and unusually large custom loader
 		// areas keep their existing coverage. Native standalone area grouping
 		// and persistence are separate from this player-area traversal.
-		for _, ref := range columns {
-			if _, done := seen[ref.pos]; done {
-				continue
-			}
-			if blockColumnWithinAreas(ref.pos, areas) {
-				visit(ref)
-			}
-		}
+		w.visitAsyncBlockAreaFallback(anyLargeUnvisited, columns, eligible, seen, areaSet, visit)
 	}
 
 	blockEntities := w.scratchBlockEntities[:0]
@@ -651,9 +657,6 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 
 	if !doRandomTicks {
 		visitColumns(func(ref columnRef) {
-			if !w.conf.Synchronous && !blockColumnWithinAreas(ref.pos, areas) {
-				return
-			}
 			c := ref.col
 			if !w.blockTickingReady(ref.pos, c) {
 				return
@@ -670,9 +673,6 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 	minSubY := tx.Range().Min() >> 4
 
 	visitColumns(func(ref columnRef) {
-		if !w.conf.Synchronous && !blockColumnWithinAreas(ref.pos, areas) {
-			return
-		}
 		c := ref.col
 		if !w.blockTickingReady(ref.pos, c) {
 			return
@@ -713,6 +713,112 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 	w.scratchLoaderAreas = areas[:0]
 	w.scratchRandom = randomBlocks[:0]
 	w.scratchBlockEntities = blockEntities[:0]
+}
+
+func (w *World) prepareAsyncBlockTickEligible(areaSet *blockAreaSet) (map[ChunkPos]*Column, []columnRef) {
+	eligible := w.scratchEligibleColumns
+	if eligible == nil {
+		eligible = make(map[ChunkPos]*Column, len(areaSet.chunks))
+		w.scratchEligibleColumns = eligible
+	} else {
+		clear(eligible)
+	}
+	if len(areaSet.large) == 0 {
+		// Every active area was expanded into areaSet.chunks, so only those
+		// coordinates can be eligible; skip scanning all active columns.
+		for pos := range areaSet.chunks {
+			col := w.activeOrForcedColumn(pos)
+			if col == nil {
+				continue
+			}
+			eligible[pos] = col
+			if w.blockTickingReady(pos, col) {
+				w.pendingBlockTickChunks[pos] = struct{}{}
+			}
+		}
+		return eligible, nil
+	}
+	columns := w.collectAsyncColumns()
+	for _, ref := range columns {
+		eligible[ref.pos] = ref.col
+		if areaSet.contains(ref.pos) && w.blockTickingReady(ref.pos, ref.col) {
+			w.pendingBlockTickChunks[ref.pos] = struct{}{}
+		}
+	}
+	return eligible, columns
+}
+
+func (w *World) visitAsyncBlockAreaFallback(anyLargeUnvisited bool, columns []columnRef, eligible map[ChunkPos]*Column, seen map[ChunkPos]struct{}, areaSet *blockAreaSet, visit func(columnRef)) {
+	if anyLargeUnvisited {
+		if columns == nil {
+			columns = w.collectAsyncColumns()
+		}
+		for _, ref := range columns {
+			if _, done := seen[ref.pos]; !done && areaSet.contains(ref.pos) {
+				visit(ref)
+			}
+		}
+		return
+	}
+	if len(w.forcedChunks) == 0 {
+		return
+	}
+	forced := w.scratchForcedColumns[:0]
+	for pos := range w.forcedChunks {
+		if _, done := seen[pos]; done {
+			continue
+		}
+		if col := eligible[pos]; col != nil {
+			forced = append(forced, columnRef{pos: pos, col: col})
+		}
+	}
+	sortColumnRefs(forced)
+	for _, ref := range forced {
+		visit(ref)
+	}
+	clear(forced)
+	w.scratchForcedColumns = forced[:0]
+}
+
+func sortColumnRefs(columns []columnRef) {
+	slices.SortFunc(columns, func(a, b columnRef) int {
+		if a.pos[0] < b.pos[0] || a.pos[0] == b.pos[0] && a.pos[1] < b.pos[1] {
+			return -1
+		}
+		if a.pos != b.pos {
+			return 1
+		}
+		return 0
+	})
+}
+
+func (w *World) activeOrForcedColumn(pos ChunkPos) *Column {
+	if idx, ok := w.activeColumnIndex[pos]; ok {
+		return w.activeColumns[idx].col
+	}
+	if _, forced := w.forcedChunks[pos]; forced {
+		return w.chunks[pos]
+	}
+	return nil
+}
+
+func (w *World) collectAsyncColumns() []columnRef {
+	if len(w.forcedChunks) == 0 {
+		return w.activeColumns
+	}
+	columns := make([]columnRef, 0, len(w.activeColumns)+len(w.forcedChunks))
+	for pos := range w.forcedChunks {
+		if col, ok := w.chunks[pos]; ok {
+			columns = append(columns, columnRef{pos: pos, col: col})
+		}
+	}
+	for _, ref := range w.activeColumns {
+		if _, forced := w.forcedChunks[ref.pos]; !forced {
+			columns = append(columns, ref)
+		}
+	}
+	sortColumnRefs(columns)
+	return columns
 }
 
 // randomTicksFrom runs the random ticks of the blocks at positions from i on
@@ -1570,21 +1676,21 @@ func (queue *scheduledTickQueue) tickPhase(tx *Tx, tick int64, circuitPhase bool
 
 	w := tx.World()
 	areas := w.scratchLoaderAreas[:0]
+	areaSet := &w.scratchBlockAreaSet
 	if circuitChunk == nil && !w.conf.Synchronous {
 		simulationRadius := int32(w.tickRange())
-		if len(loaders) != 0 {
-			for _, loader := range loaders {
-				areas = append(areas, loader.activeArea(simulationRadius))
-			}
-		} else {
-			for loader := range w.viewers {
-				areas = append(areas, loader.activeArea(simulationRadius))
-			}
+		areas = w.appendSimulationAreas(areas, simulationRadius, loaders)
+		areaSet.reset(areas)
+		// Expand into an O(1) lookup set when many chunks have scheduled ticks.
+		if len(queue.chunks) > 8 {
+			areaSet.expand()
 		}
 	}
+	// Preserve scratch capacity when the phase finishes.
+	// Collect due ticks from chunks eligible under the precomputed area set.
 	queue.dispatch = queue.dispatch[:0]
 	collect := func(pos ChunkPos, list *scheduledChunkTicks) {
-		if list == nil || list.due > tick || circuitChunk == nil && !w.scheduledTickChunkEligible(pos, areas) {
+		if list == nil || list.due > tick || circuitChunk == nil && !w.scheduledTickChunkEligibleInSet(pos, areaSet) {
 			return
 		}
 		for i, t := range list.ticks {
@@ -1827,6 +1933,19 @@ func (queue *scheduledTickQueue) removeSelected() {
 	queue.selected = queue.selected[:0]
 }
 
+func (w *World) appendSimulationAreas(areas []loaderActiveArea, simulationRadius int32, loaders []*Loader) []loaderActiveArea {
+	if len(loaders) != 0 {
+		for _, loader := range loaders {
+			areas = append(areas, loader.activeArea(simulationRadius))
+		}
+		return areas
+	}
+	for loader := range w.viewers {
+		areas = append(areas, loader.activeArea(simulationRadius))
+	}
+	return areas
+}
+
 func (w *World) scheduledTickChunkEligible(pos ChunkPos, areas []loaderActiveArea) bool {
 	if !w.chunkLoaded(pos) {
 		return false
@@ -1836,6 +1955,17 @@ func (w *World) scheduledTickChunkEligible(pos ChunkPos, areas []loaderActiveAre
 		return false
 	}
 	return w.conf.Synchronous || blockColumnWithinAreas(pos, areas) || w.IsChunkForced(pos)
+}
+
+func (w *World) scheduledTickChunkEligibleInSet(pos ChunkPos, areas *blockAreaSet) bool {
+	if !w.chunkLoaded(pos) {
+		return false
+	}
+	col := w.chunks[pos]
+	if !w.blockTickingReady(pos, col) {
+		return false
+	}
+	return w.conf.Synchronous || areas.contains(pos) || w.IsChunkForced(pos)
 }
 
 func compareScheduledTickDrainOrder(a, b scheduledTick) int {

@@ -15,4 +15,9 @@ type scratch struct {
 	scratchFocus                 []ChunkPos
 	scratchInhabitedPlayers      []inhabitedTimePlayer
 	scratchPostProcessingColumns []columnRef
+	scratchBlockAreaSet          blockAreaSet
+	scratchEligibleColumns       map[ChunkPos]*Column
+	scratchSeenChunks            map[ChunkPos]struct{}
+	scratchVisitedAreas          map[blockAreaKey]struct{}
+	scratchForcedColumns         []columnRef
 }

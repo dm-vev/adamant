@@ -3,6 +3,7 @@ package world
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"reflect"
 	"testing"
 
@@ -233,5 +234,151 @@ func TestAreaActorsRunBeforeTheNextAreaSelectsItsOrder(t *testing.T) {
 				t.Fatalf("actor words %v, want %v; draws=%d/%d", got, want, random.used, len(random.words))
 			}
 		})
+	}
+}
+
+func BenchmarkTickBlocksRandomlyTown100(b *testing.B) {
+	w := Config{Synchronous: true, RandomTickSpeed: -1, ReadOnly: true}.New()
+	defer w.Close()
+
+	// Simulate a 100-player town at view radius ~28 (~3000 active columns) with
+	// players clustered across a 6x6 chunk town and simulation distance 4.
+	loaders := make([]*Loader, 100)
+	for i := range loaders {
+		l := NewLoader(4, w, NopViewer{})
+		l.pos = ChunkPos{int32(i%6) - 3, int32((i/6)%6) - 3}
+		loaders[i] = l
+	}
+	<-w.Exec(func(tx *Tx) {
+		defer func() {
+			for _, l := range loaders {
+				l.Close(tx)
+			}
+		}()
+		for x := int32(-27); x <= 27; x++ {
+			for z := int32(-27); z <= 27; z++ {
+				pos := ChunkPos{x, z}
+				col := tx.chunk(pos)
+				w.addActiveColumn(pos, col)
+			}
+		}
+		w.conf.Synchronous = false
+		defer func() { w.conf.Synchronous = true }()
+
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := range b.N {
+			ticker{}.tickBlocksRandomly(tx, loaders, int64(i))
+		}
+		b.StopTimer()
+	})
+}
+
+func TestBlockAreaSetMatchesBlockColumnWithinAreas(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name  string
+		areas []loaderActiveArea
+		probe []ChunkPos
+	}{
+		{
+			name: "mixed_circle_square_forced_duplicate_negative",
+			areas: []loaderActiveArea{
+				{pos: ChunkPos{0, 0}, radius: 4},
+				{pos: ChunkPos{0, 0}, radius: 4}, // duplicate
+				{pos: ChunkPos{3, -2}, radius: 6, square: true},
+				{pos: ChunkPos{-10, 8}, radius: 0}, // forced chunk
+				{pos: ChunkPos{5, 5}, radius: -1},  // negative radius (empty)
+				{pos: ChunkPos{-4, -4}, radius: 12},
+			},
+		},
+		{
+			name: "large_custom_area_fallback",
+			areas: []loaderActiveArea{
+				{pos: ChunkPos{0, 0}, radius: 4},
+				{pos: ChunkPos{20, 0}, radius: 20},
+				{pos: ChunkPos{-15, 10}, radius: 18, square: true},
+			},
+		},
+		{
+			name: "int32_boundary_overflow_guard",
+			areas: []loaderActiveArea{
+				{pos: ChunkPos{math.MaxInt32 - 2, math.MinInt32 + 2}, radius: 5},
+			},
+			probe: []ChunkPos{
+				{math.MaxInt32, math.MinInt32},
+				{math.MaxInt32 - 2, math.MinInt32 + 2},
+				{math.MaxInt32 - 8, math.MinInt32 + 2},
+			},
+		},
+	}
+
+	var set blockAreaSet
+	for _, tc := range cases {
+		for _, expand := range []bool{false, true} {
+			set.reset(tc.areas)
+			if expand {
+				set.expand()
+			}
+			for x := int32(-25); x <= 42; x++ {
+				for z := int32(-25); z <= 30; z++ {
+					pos := ChunkPos{x, z}
+					want := blockColumnWithinAreas(pos, tc.areas)
+					if got := set.contains(pos); got != want {
+						t.Fatalf("%s (expand=%v): pos %v got %v, want %v", tc.name, expand, pos, got, want)
+					}
+				}
+			}
+			for _, pos := range tc.probe {
+				want := blockColumnWithinAreas(pos, tc.areas)
+				if got := set.contains(pos); got != want {
+					t.Fatalf("%s (expand=%v): probe %v got %v, want %v", tc.name, expand, pos, got, want)
+				}
+			}
+		}
+	}
+}
+
+func TestTickBlocksRandomlyForcedAndLargeAreaCoverage(t *testing.T) {
+	t.Parallel()
+	w := Config{Synchronous: true, RandomTickSpeed: -1}.New()
+	defer w.Close()
+
+	l1 := NewLoader(1, w, NopViewer{})
+	l2 := NewLoader(1, w, NopViewer{})
+	var visited []ChunkPos
+	<-w.Exec(func(tx *Tx) {
+		defer l1.Close(tx)
+		defer l2.Close(tx)
+		// Load ready 3x3 neighborhoods around (0,0), (10,10), and (10,12).
+		centres := []ChunkPos{{0, 0}, {10, 12}, {10, 10}}
+		for _, c := range centres {
+			for dx := int32(-1); dx <= 1; dx++ {
+				for dz := int32(-1); dz <= 1; dz++ {
+					tx.chunk(ChunkPos{c[0] + dx, c[1] + dz})
+				}
+			}
+		}
+		l1.pos, l1.forceActive, l1.square = ChunkPos{0, 0}, true, true
+		l2.pos, l2.forceActive, l2.square = ChunkPos{0, 0}, true, true // identical duplicate area
+		for _, c := range centres {
+			pos := c
+			actor := &actorIdentityTicker{}
+			actor.callback = func(*Tx) { visited = append(visited, pos) }
+			col := tx.chunk(pos)
+			col.updateBlockEntity(cube.Pos{int(pos[0]) * 16, 4, int(pos[1]) * 16}, actor)
+			if pos == (ChunkPos{0, 0}) {
+				w.addActiveColumn(pos, col)
+			}
+		}
+		_ = tx.ForceChunk(ChunkPos{10, 12}, true)
+		_ = tx.ForceChunk(ChunkPos{10, 10}, true)
+		w.conf.Synchronous = false
+		defer func() { w.conf.Synchronous = true }()
+		ticker{}.tickBlocksRandomly(tx, []*Loader{l1, l2}, 1)
+	})
+	want := []ChunkPos{{0, 0}, {10, 10}, {10, 12}}
+	if !reflect.DeepEqual(visited, want) {
+		t.Fatalf("visited %v, want %v", visited, want)
 	}
 }

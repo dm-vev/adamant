@@ -1,5 +1,7 @@
 package world
 
+import "math"
+
 // nextChunkVisitState is the nonzero eight-bit LFSR used by
 // TickingAreaView::tick's once-per-second rectangle traversal.
 func nextChunkVisitState(state uint8) uint8 {
@@ -40,6 +42,101 @@ func blockColumnWithinAreas(pos ChunkPos, areas []loaderActiveArea) bool {
 		}
 	}
 	return false
+}
+
+// blockAreaSetIndexMaxRadius is the maximum loader area radius expanded into
+// blockAreaSet.chunks. Standard Bedrock simulation distances (4..12) stay well
+// below this bound; larger custom areas fall back to blockAreaSet.large.
+const blockAreaSetIndexMaxRadius = 16
+
+// blockAreaKey identifies the geometry of a loaderActiveArea for deduplication.
+type blockAreaKey struct {
+	pos    ChunkPos
+	radius int32
+	square bool
+}
+
+// blockAreaSet caches chunk membership across a slice of loaderActiveAreas so
+// repeated containment queries are O(1) instead of O(len(areas)).
+type blockAreaSet struct {
+	chunks    map[ChunkPos]struct{}
+	seenAreas map[blockAreaKey]struct{}
+	unique    []loaderActiveArea
+	large     []loaderActiveArea
+	expanded  bool
+}
+
+func areaCanOverflowInt32(area loaderActiveArea) bool {
+	r := int64(area.radius)
+	return int64(area.pos[0])-r < math.MinInt32 || int64(area.pos[0])+r > math.MaxInt32 ||
+		int64(area.pos[1])-r < math.MinInt32 || int64(area.pos[1])+r > math.MaxInt32
+}
+
+// reset deduplicates areas into s.unique and clears any previously expanded set.
+func (s *blockAreaSet) reset(areas []loaderActiveArea) {
+	s.expanded = false
+	s.unique = s.unique[:0]
+	s.large = s.large[:0]
+	if len(areas) == 0 {
+		return
+	}
+	if s.seenAreas == nil {
+		s.seenAreas = make(map[blockAreaKey]struct{}, len(areas))
+	} else {
+		clear(s.seenAreas)
+	}
+	for _, area := range areas {
+		if area.radius < 0 {
+			continue
+		}
+		key := blockAreaKey{pos: area.pos, radius: area.radius, square: area.square}
+		if _, dup := s.seenAreas[key]; dup {
+			continue
+		}
+		s.seenAreas[key] = struct{}{}
+		s.unique = append(s.unique, area)
+	}
+}
+
+// expand precomputes the exact set of ChunkPos covered by s.unique (up to
+// blockAreaSetIndexMaxRadius), placing unusually large areas in s.large.
+func (s *blockAreaSet) expand() {
+	if s.chunks == nil {
+		s.chunks = make(map[ChunkPos]struct{})
+	} else {
+		clear(s.chunks)
+	}
+	for _, area := range s.unique {
+		if area.radius == 0 {
+			s.chunks[area.pos] = struct{}{}
+			continue
+		}
+		if area.radius > blockAreaSetIndexMaxRadius || areaCanOverflowInt32(area) {
+			s.large = append(s.large, area)
+			continue
+		}
+		r := area.radius
+		for dx := -r; dx <= r; dx++ {
+			for dz := -r; dz <= r; dz++ {
+				if area.square || nativeChunkCircleContains(int64(dx), int64(dz), r) {
+					s.chunks[ChunkPos{area.pos[0] + dx, area.pos[1] + dz}] = struct{}{}
+				}
+			}
+		}
+	}
+	s.expanded = true
+}
+
+// contains reports whether pos lies within any area of s, with exact
+// equivalence to blockColumnWithinAreas(pos, areas).
+func (s *blockAreaSet) contains(pos ChunkPos) bool {
+	if !s.expanded {
+		return blockColumnWithinAreas(pos, s.unique)
+	}
+	if _, ok := s.chunks[pos]; ok {
+		return true
+	}
+	return len(s.large) != 0 && blockColumnWithinAreas(pos, s.large)
 }
 
 // visitChunkRectangle visits each coordinate once. Ordinary ticks use z/x
