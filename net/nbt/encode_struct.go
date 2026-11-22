@@ -132,7 +132,7 @@ func (e *Encoder) encodeSliceReflect(val reflect.Value, tagName string) error {
 		return err
 	}
 	n := val.Len()
-	if elemType != nil && elemType.Kind() == reflect.Struct && n > 0 {
+	if val.Type().Elem().Kind() == reflect.Struct && n > 0 {
 		elemInfo := getStructInfo(elemType)
 		elemSize := elemType.Size()
 		elemBase := val.Index(0).Addr().UnsafePointer()

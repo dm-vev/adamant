@@ -657,3 +657,46 @@ func TestConcurrentMarshalUnmarshalRace(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestInterfaceSliceOfStructs(t *testing.T) {
+	type itemCompound struct {
+		Name  string         `nbt:"Name"`
+		Count byte           `nbt:"Count"`
+		Extra map[string]any `nbt:"Extra,omitempty"`
+	}
+	type namedAnySlice []any
+	type container struct {
+		Recipes      []any         `nbt:"Recipes"`
+		NamedRecipes namedAnySlice `nbt:"NamedRecipes"`
+	}
+	in := container{
+		Recipes: []any{
+			itemCompound{Name: "minecraft:emerald", Count: 3, Extra: map[string]any{"level": int32(2)}},
+			itemCompound{Name: "minecraft:bread", Count: 6, Extra: map[string]any{"fresh": byte(1)}},
+		},
+		NamedRecipes: namedAnySlice{
+			itemCompound{Name: "minecraft:diamond", Count: 1, Extra: map[string]any{"tag": "rare"}},
+			itemCompound{Name: "minecraft:apple", Count: 4},
+		},
+	}
+	for _, enc := range []Encoding{LittleEndian, NetworkLittleEndian, BigEndian, NetworkBigEndian} {
+		b, err := MarshalEncoding(in, enc)
+		if err != nil {
+			t.Fatalf("%T marshal: %v", enc, err)
+		}
+		var out map[string]any
+		if err := UnmarshalEncoding(b, &out, enc); err != nil {
+			t.Fatalf("%T unmarshal: %v", enc, err)
+		}
+		for _, field := range []string{"Recipes", "NamedRecipes"} {
+			got, ok := out[field].([]any)
+			if !ok || len(got) != 2 {
+				t.Fatalf("%T %s: got %#v", enc, field, out[field])
+			}
+			first, ok := got[0].(map[string]any)
+			if !ok || first["Name"] == "" {
+				t.Fatalf("%T %s[0]: got %#v", enc, field, got[0])
+			}
+		}
+	}
+}
