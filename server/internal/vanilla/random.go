@@ -7,20 +7,21 @@ import (
 )
 
 type State struct {
-	Legacy uint64 `json:"legacy"`
-	XorLo uint64 `json:"xor_lo"`
-	XorHi uint64 `json:"xor_hi"`
-	LegacyMode bool `json:"legacy_mode"`
-	WorldgenMode bool `json:"worldgen_mode,omitempty"`
-	Gaussian float64 `json:"gaussian"`
-	HasGaussian bool `json:"has_gaussian"`
+	Legacy       uint64  `json:"legacy"`
+	XorLo        uint64  `json:"xor_lo"`
+	XorHi        uint64  `json:"xor_hi"`
+	LegacyMode   bool    `json:"legacy_mode"`
+	WorldgenMode bool    `json:"worldgen_mode,omitempty"`
+	Gaussian     float64 `json:"gaussian"`
+	HasGaussian  bool    `json:"has_gaussian"`
 }
+
 const (
-	legacyMultiplier        uint64 = 25214903917
-	legacyAddend            uint64 = 11
-	legacyMask              uint64 = (1 << 48) - 1
-	xoroshiroZeroState0     uint64 = 0x9e3779b97f4a7c15
-	xoroshiroZeroState1     uint64 = 7640891576956012809
+	legacyMultiplier    uint64 = 25214903917
+	legacyAddend        uint64 = 11
+	legacyMask          uint64 = (1 << 48) - 1
+	xoroshiroZeroState0 uint64 = 0x9e3779b97f4a7c15
+	xoroshiroZeroState1 uint64 = 7640891576956012809
 )
 
 // Random is a mutable Java26 random stream. Copying it copies its stream state.
@@ -32,8 +33,9 @@ type Random struct {
 	gaussian     float64
 	hasGaussian  bool
 }
+
 func (r Random) State() State {
-	return State{Legacy:r.legacy, XorLo:r.xorLo, XorHi:r.xorHi, LegacyMode:r.legacyMode, WorldgenMode:r.worldgenMode, Gaussian:r.gaussian, HasGaussian:r.hasGaussian}
+	return State{Legacy: r.legacy, XorLo: r.xorLo, XorHi: r.xorHi, LegacyMode: r.legacyMode, WorldgenMode: r.worldgenMode, Gaussian: r.gaussian, HasGaussian: r.hasGaussian}
 }
 
 // FromState restores a Java random stream from its complete mutable state.
@@ -145,7 +147,6 @@ func (r *Random) NextBoolean() bool {
 	return r.xoroshiro()&1 != 0
 }
 
-
 func (r *Random) NextGaussian() float64 {
 	if r.hasGaussian {
 		r.hasGaussian = false
@@ -242,6 +243,7 @@ func NewWorldgenLegacyRandom(seed int64) Random {
 	r.worldgenMode = true
 	return r
 }
+
 // NewRandomSequence creates the native Java random stream for a persisted
 // random-sequence key, matching RandomSequences/RandomSequence.
 func NewRandomSequence(seed int64, key string) Random {

@@ -6,7 +6,7 @@ import "math"
 // decoration and the dragon respawn ritual.
 type EndSpike struct {
 	X, Z, Radius, Height int
-	Guarded bool
+	Guarded              bool
 }
 
 // EndSpikes follows EndSpikeFeature's low-16-bit legacy seed and size shuffle.
@@ -24,10 +24,10 @@ func EndSpikes(seed int64) (spikes [10]EndSpike) {
 	for i, size := range sizes {
 		angle := 2 * (-math.Pi + (math.Pi/10)*float64(i))
 		spikes[i] = EndSpike{
-			X: int(math.Floor(42 * math.Cos(angle))),
-			Z: int(math.Floor(42 * math.Sin(angle))),
-			Radius: 2 + size/3,
-			Height: 76 + size*3,
+			X:       int(math.Floor(42 * math.Cos(angle))),
+			Z:       int(math.Floor(42 * math.Sin(angle))),
+			Radius:  2 + size/3,
+			Height:  76 + size*3,
 			Guarded: size == 1 || size == 2,
 		}
 	}
@@ -65,10 +65,18 @@ func (s *EndSpike) BlockAt(x, y, z, minY int) (EndSpikeMaterial, uint8) {
 		xSide, zSide, top := dx == -2 || dx == 2, dz == -2 || dz == 2, y == s.Height+3
 		if xSide || zSide || top {
 			var connections uint8
-			if (xSide || top) && dz != -2 { connections |= 1 }
-			if (zSide || top) && dx != 2 { connections |= 2 }
-			if (xSide || top) && dz != 2 { connections |= 4 }
-			if (zSide || top) && dx != -2 { connections |= 8 }
+			if (xSide || top) && dz != -2 {
+				connections |= 1
+			}
+			if (zSide || top) && dx != 2 {
+				connections |= 2
+			}
+			if (xSide || top) && dz != 2 {
+				connections |= 4
+			}
+			if (zSide || top) && dx != -2 {
+				connections |= 8
+			}
 			return EndSpikeIronBars, connections
 		}
 	}
