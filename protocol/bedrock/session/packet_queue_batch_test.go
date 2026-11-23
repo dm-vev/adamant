@@ -109,6 +109,82 @@ func TestWriteBatchReturnsErrorWithoutFlush(t *testing.T) {
 	}
 }
 
+type batchWriterTestConn struct {
+	Conn
+	fn      func(pk proto.Packet) error
+	written []proto.Packet
+	calls   int
+	flushes int
+}
+
+func (c *batchWriterTestConn) WritePacket(proto.Packet) error {
+	panic("WritePacket should not be called when batchPacketWriter is implemented")
+}
+
+func (c *batchWriterTestConn) Flush() error {
+	panic("Flush should not be called when batchPacketWriter is implemented")
+}
+
+func (c *batchWriterTestConn) WriteBatch(batch []proto.Packet, onPanic func(pk proto.Packet, r any)) error {
+	c.calls++
+	for i := 0; i < len(batch); {
+		next, err := c.writeFrom(batch, i, onPanic)
+		if err != nil {
+			return err
+		}
+		i = next
+	}
+	c.flushes++
+	return nil
+}
+
+func (c *batchWriterTestConn) writeFrom(batch []proto.Packet, start int, onPanic func(pk proto.Packet, r any)) (next int, err error) {
+	i := start
+	defer func() {
+		if r := recover(); r != nil {
+			onPanic(batch[i], r)
+			next, err = i+1, nil
+		}
+	}()
+	for ; i < len(batch); i++ {
+		if c.fn != nil {
+			if err = c.fn(batch[i]); err != nil {
+				return len(batch), err
+			}
+		}
+		c.written = append(c.written, batch[i])
+	}
+	return len(batch), nil
+}
+
+func TestSessionWriteBatchUsesBatchPacketWriter(t *testing.T) {
+	t.Parallel()
+	bad := &mc.TextPacket{Message: "panic"}
+	ok1 := &mc.SetTimePacket{Time: 10}
+	ok2 := &mc.SetTimePacket{Time: 20}
+	conn := &batchWriterTestConn{
+		fn: func(pk proto.Packet) error {
+			if pk == bad {
+				panic(faultcheck.Expected{Why: "batch writer panic"})
+			}
+			return nil
+		},
+	}
+	s := &Session{
+		conf: Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))},
+		conn: conn,
+	}
+	if err := s.writeBatch([]proto.Packet{bad, ok1, ok2}); err != nil {
+		t.Fatalf("writeBatch err = %v", err)
+	}
+	if conn.calls != 1 || conn.flushes != 1 {
+		t.Fatalf("calls=%d flushes=%d, want 1, 1", conn.calls, conn.flushes)
+	}
+	if len(conn.written) != 2 || conn.written[0] != ok1 || conn.written[1] != ok2 {
+		t.Fatalf("written = %v, want [ok1 ok2]", conn.written)
+	}
+}
+
 type inboxTestHandler struct {
 	fn func(pk proto.Packet) error
 }

@@ -93,89 +93,215 @@ func makeSmallBatches(rng *rand.Rand, count, bodySize int) [][]byte {
 	return out
 }
 
-func BenchmarkFlate(b *testing.B) {
-	rng := rand.New(rand.NewPCG(11, 12))
-	small := makeSmallBatches(rng, 32, 320)
-	ticks := make([][]byte, 32)
+func makeBenchBatches(seed1, seed2 uint64) (small, ticks, chunks8, chunks24 [][]byte) {
+	rng := rand.New(rand.NewPCG(seed1, seed2))
+	small = makeSmallBatches(rng, 32, 320)
+	ticks = make([][]byte, 32)
 	for i := range ticks {
 		ticks[i] = tickBatch(rng)
 	}
-	chunks8 := make([][]byte, 16)
-	chunks24 := make([][]byte, 16)
+	chunks8 = make([][]byte, 16)
+	chunks24 = make([][]byte, 16)
 	for i := range chunks8 {
 		chunks8[i] = chunkBatch(rng, 8<<10)
 		chunks24[i] = chunkBatch(rng, 24<<10)
 	}
+	return small, ticks, chunks8, chunks24
+}
 
-	benchCompress := func(name string, comp Flate, inputs [][]byte, parallel bool) {
-		b.Run(name, func(b *testing.B) {
-			totalIn := 0
-			for _, in := range inputs {
-				totalIn += len(in)
-			}
-			avgIn := totalIn / len(inputs)
-			b.SetBytes(int64(avgIn))
-			b.ReportAllocs()
-			if parallel {
-				var idx atomic.Uint64
-				b.RunParallel(func(pb *testing.PB) {
-					var dst []byte
-					for pb.Next() {
-						in := inputs[idx.Add(1)%uint64(len(inputs))]
-						var err error
-						dst, err = comp.Compress(dst[:0], in)
-						if err != nil {
-							b.Fatal(err)
-						}
-					}
-				})
-				return
-			}
-			var dst []byte
-			totalOut := 0
-			for i := 0; b.Loop(); i++ {
-				var err error
-				dst, err = comp.Compress(dst[:0], inputs[i%len(inputs)])
-				if err != nil {
-					b.Fatal(err)
-				}
-				totalOut += len(dst)
-			}
-			b.ReportMetric(float64(totalOut)/float64(b.N)/float64(avgIn), "ratio")
-		})
-	}
-
-	benchDecompress := func(name string, comp Flate, inputs [][]byte) {
-		compressed := make([][]byte, len(inputs))
+func benchAlgCompress(b *testing.B, name string, comp Compression, inputs [][]byte, parallel bool) {
+	b.Run(name, func(b *testing.B) {
 		totalIn := 0
-		for i, in := range inputs {
-			c, err := comp.Compress(nil, in)
+		for _, in := range inputs {
+			totalIn += len(in)
+		}
+		avgIn := totalIn / len(inputs)
+		b.SetBytes(int64(avgIn))
+		b.ReportAllocs()
+		if parallel {
+			var idx atomic.Uint64
+			b.RunParallel(func(pb *testing.PB) {
+				var dst []byte
+				for pb.Next() {
+					in := inputs[idx.Add(1)%uint64(len(inputs))]
+					var err error
+					dst, err = comp.Compress(dst[:0], in)
+					if err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
+			return
+		}
+		var dst []byte
+		totalOut := 0
+		for i := 0; b.Loop(); i++ {
+			var err error
+			dst, err = comp.Compress(dst[:0], inputs[i%len(inputs)])
 			if err != nil {
 				b.Fatal(err)
 			}
-			compressed[i] = c
-			totalIn += len(in)
+			totalOut += len(dst)
 		}
+		b.ReportMetric(float64(totalOut)/float64(b.N)/float64(avgIn), "ratio")
+	})
+}
+
+func benchAlgDecompress(b *testing.B, name string, comp Compression, inputs [][]byte) {
+	compressed := make([][]byte, len(inputs))
+	totalIn := 0
+	for i, in := range inputs {
+		c, err := comp.Compress(nil, in)
+		if err != nil {
+			b.Fatal(err)
+		}
+		compressed[i] = c
+		totalIn += len(in)
+	}
+	b.Run(name, func(b *testing.B) {
+		b.SetBytes(int64(totalIn / len(inputs)))
+		b.ReportAllocs()
+		for i := 0; b.Loop(); i++ {
+			out, err := comp.Decompress(nil, compressed[i%len(compressed)], 1<<20)
+			if err != nil || len(out) == 0 {
+				b.Fatal(err)
+			}
+		}
+	})
+}
+
+func BenchmarkFlate(b *testing.B) {
+	small, ticks, chunks8, chunks24 := makeBenchBatches(11, 12)
+	benchAlgCompress(b, "Compress/Small320B", Flate{}, small, false)
+	benchAlgCompress(b, "Compress/Tick1850B", Flate{}, ticks, false)
+	benchAlgCompress(b, "Compress/Chunk8KiB_Fixed", Flate{}, chunks8, false)
+	benchAlgCompress(b, "Compress/Chunk24KiB_Stdlib", Flate{}, chunks24, false)
+	benchAlgCompress(b, "Parallel/Tick1850B_Fixed", Flate{}, ticks, true)
+	benchAlgCompress(b, "Parallel/Chunk24KiB_Stdlib", Flate{}, chunks24, true)
+	benchAlgDecompress(b, "Decompress/Tick1850B", Flate{}, ticks)
+	benchAlgDecompress(b, "Decompress/Chunk24KiB", Flate{}, chunks24)
+}
+
+func BenchmarkSnappy(b *testing.B) {
+	small, ticks, chunks8, chunks24 := makeBenchBatches(11, 12)
+	var sn Snappy
+	benchAlgCompress(b, "Compress/Small320B", sn, small, false)
+	benchAlgCompress(b, "Compress/Tick1850B", sn, ticks, false)
+	benchAlgCompress(b, "Compress/Chunk8KiB", sn, chunks8, false)
+	benchAlgCompress(b, "Compress/Chunk24KiB", sn, chunks24, false)
+	benchAlgCompress(b, "Parallel/Tick1850B", sn, ticks, true)
+	benchAlgCompress(b, "Parallel/Chunk24KiB", sn, chunks24, true)
+	benchAlgDecompress(b, "Decompress/Tick1850B", sn, ticks)
+	benchAlgDecompress(b, "Decompress/Chunk24KiB", sn, chunks24)
+}
+
+type crowdPacket struct {
+	raw    []byte
+	framed []byte
+	id     uint32
+	cut    bool
+}
+
+func buildCrowdTicks(numTicks, numPlayers int) (shared [][]crowdPacket, personal [][][]byte, rawBytesPerTick int) {
+	rng := rand.New(rand.NewPCG(71, 72))
+	shared = make([][]crowdPacket, numTicks)
+	personal = make([][][]byte, numTicks)
+	for t := range numTicks {
+		tickBody := tickBatch(rng)
+		var pks []crowdPacket
+		idx := 0
+		_ = Packets(tickBody, 1024, func(raw []byte) error {
+			id, _ := packetID(raw)
+			cp := bytes.Clone(raw)
+			pks = append(pks, crowdPacket{
+				raw:    cp,
+				framed: AppendPacket(nil, cp),
+				id:     uint32(id),
+				cut:    idx%12 == 11,
+			})
+			if t == 0 {
+				rawBytesPerTick += len(pks[len(pks)-1].framed)
+			}
+			idx++
+			return nil
+		})
+		shared[t] = pks
+
+		perTick := make([][]byte, numPlayers)
+		for p := range numPlayers {
+			per := make([]byte, 240)
+			for k := range per {
+				per[k] = byte(rng.Uint32())
+			}
+			pk := packet(9, per)
+			if t == 0 && p == 0 {
+				rawBytesPerTick += len(AppendPacket(nil, pk))
+			}
+			perTick[p] = pk
+		}
+		personal[t] = perTick
+	}
+	return shared, personal, rawBytesPerTick * numPlayers
+}
+
+func BenchmarkFlateSegmentedCrowd100(b *testing.B) {
+	const (
+		numPlayers = 100
+		numTicks   = 256
+	)
+	shared, personal, rawPerTick := buildCrowdTicks(numTicks, numPlayers)
+
+	runMode := func(name string, comp Compression, segmented bool) {
 		b.Run(name, func(b *testing.B) {
-			b.SetBytes(int64(totalIn / len(inputs)))
+			bc := NewBatchCache()
+			transports := make([]*discardTransport, numPlayers)
+			conns := make([]*Conn, numPlayers)
+			for i := range numPlayers {
+				transports[i] = &discardTransport{}
+				conns[i] = NewConn(transports[i], Config{Cache: bc})
+				conns[i].EnableCompression(comp)
+			}
+			b.SetBytes(int64(rawPerTick))
 			b.ReportAllocs()
+			b.ResetTimer()
 			for i := 0; b.Loop(); i++ {
-				out, err := comp.Decompress(nil, compressed[i%len(compressed)], 1<<20)
-				if err != nil || len(out) == 0 {
-					b.Fatal(err)
+				tIdx := i % numTicks
+				sh := shared[tIdx]
+				per := personal[tIdx]
+				for p := range numPlayers {
+					c := conns[p]
+					if err := c.WriteBatch(func(bw *BatchWriter) error {
+						for k := range sh {
+							if err := bw.WriteFramed(sh[k].framed, sh[k].id, len(sh[k].raw)); err != nil {
+								return err
+							}
+							if segmented && sh[k].cut {
+								bw.MarkSegment()
+							}
+						}
+						if segmented {
+							bw.MarkSegment()
+						}
+						if err := bw.WritePacket(per[p]); err != nil {
+							return err
+						}
+						return bw.Flush()
+					}); err != nil {
+						b.Fatal(err)
+					}
 				}
 			}
+			var wireTotal uint64
+			for _, tr := range transports {
+				wireTotal += tr.sent.Load()
+			}
+			b.ReportMetric(float64(wireTotal)/float64(b.N)/float64(rawPerTick), "ratio")
 		})
 	}
 
-	benchCompress("Compress/Small320B", Flate{}, small, false)
-	benchCompress("Compress/Tick1850B", Flate{}, ticks, false)
-	benchCompress("Compress/Chunk8KiB_Fixed", Flate{}, chunks8, false)
-	benchCompress("Compress/Chunk24KiB_Stdlib", Flate{}, chunks24, false)
-	benchCompress("Parallel/Tick1850B_Fixed", Flate{}, ticks, true)
-	benchCompress("Parallel/Chunk24KiB_Stdlib", Flate{}, chunks24, true)
-	benchDecompress("Decompress/Tick1850B", Flate{}, ticks)
-	benchDecompress("Decompress/Chunk24KiB", Flate{}, chunks24)
+	runMode("WholeFlate", Flate{Level: 1}, false)
+	runMode("SegmentedFlate", Flate{Level: 1}, true)
+	runMode("Snappy", Snappy{}, false)
 }
 
 func BenchmarkBatchCache(b *testing.B) {

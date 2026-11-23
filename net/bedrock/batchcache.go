@@ -51,8 +51,27 @@ type batchCacheEntry struct {
 	data    []byte // data[:bodyLen] is body, data[bodyLen:] is msg
 }
 
+// algFlateSegment is the BatchCache algorithm key for sync-flushed non-final
+// fixed DEFLATE segments (distinct from whole-batch AlgorithmFlate).
+const algFlateSegment = AlgorithmFlate | 0x8000
+
 // NewBatchCache returns a BatchCache that holds nothing.
 func NewBatchCache() *BatchCache { return &BatchCache{seed: maphash.MakeSeed()} }
+
+// lookup checks if body under algorithm key a is cached and, on hit, appends
+// the cached bytes to dst and increments batchCacheHits.
+func (bc *BatchCache) lookup(dst []byte, a uint16, body []byte) ([]byte, bool) {
+	if len(body) > batchCacheMaxBody {
+		return dst, false
+	}
+	sum := maphash.Bytes(bc.seed, body)
+	s := &bc.shards[sum&(batchCacheShards-1)]
+	out, ok := s.lookup(dst, sum, a, body)
+	if ok {
+		batchCacheHits.Inc()
+	}
+	return out, ok
+}
 
 // compress appends the batch of body compressed with alg to dst: the one a
 // connection compressed alike before if the cache holds it, compressed
@@ -64,17 +83,10 @@ func (bc *BatchCache) compress(dst []byte, alg Compression, body []byte) ([]byte
 	}
 	sum := maphash.Bytes(bc.seed, body)
 	s := &bc.shards[sum&(batchCacheShards-1)]
-	s.mu.RLock()
-	for i := range s.entries {
-		e := &s.entries[i]
-		if e.data != nil && e.sum == sum && e.alg == a && int(e.bodyLen) == len(body) && bytes.Equal(e.data[:e.bodyLen], body) {
-			dst = append(dst, e.data[e.bodyLen:]...)
-			s.mu.RUnlock()
-			batchCacheHits.Inc()
-			return dst, nil
-		}
+	if out, ok := s.lookup(dst, sum, a, body); ok {
+		batchCacheHits.Inc()
+		return out, nil
 	}
-	s.mu.RUnlock()
 
 	start := len(dst)
 	dst, err := alg.Compress(append(dst, byte(a)), body)
@@ -83,6 +95,39 @@ func (bc *BatchCache) compress(dst []byte, alg Compression, body []byte) ([]byte
 	}
 	s.store(sum, a, body, dst[start:])
 	return dst, nil
+}
+
+// compressSegment appends the sync-flushed non-final fixed DEFLATE block for
+// seg to dst, caching segments by content under algFlateSegment.
+func (bc *BatchCache) compressSegment(dst []byte, _ Flate, seg []byte) ([]byte, error) {
+	if len(seg) > batchCacheMaxBody {
+		return fixedDeflateBlock(dst, seg, false), nil
+	}
+	sum := maphash.Bytes(bc.seed, seg)
+	s := &bc.shards[sum&(batchCacheShards-1)]
+	if out, ok := s.lookup(dst, sum, algFlateSegment, seg); ok {
+		batchCacheHits.Inc()
+		return out, nil
+	}
+
+	start := len(dst)
+	dst = fixedDeflateBlock(dst, seg, false)
+	s.store(sum, algFlateSegment, seg, dst[start:])
+	return dst, nil
+}
+
+func (s *batchCacheShard) lookup(dst []byte, sum uint64, a uint16, body []byte) ([]byte, bool) {
+	s.mu.RLock()
+	for i := range s.entries {
+		e := &s.entries[i]
+		if e.data != nil && e.sum == sum && e.alg == a && int(e.bodyLen) == len(body) && bytes.Equal(e.data[:e.bodyLen], body) {
+			dst = append(dst, e.data[e.bodyLen:]...)
+			s.mu.RUnlock()
+			return dst, true
+		}
+	}
+	s.mu.RUnlock()
+	return dst, false
 }
 
 func (s *batchCacheShard) store(sum uint64, a uint16, body, msg []byte) {

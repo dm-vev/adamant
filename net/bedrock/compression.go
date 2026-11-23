@@ -93,13 +93,16 @@ func (f Flate) level() int {
 	return f.Level
 }
 
+func (f Flate) fixedBelow() int {
+	if f.FixedBelow == 0 {
+		return defaultFixedBelow
+	}
+	return f.FixedBelow
+}
+
 // Compress appends src compressed to dst.
 func (f Flate) Compress(dst, src []byte) ([]byte, error) {
-	fixedBelow := f.FixedBelow
-	if fixedBelow == 0 {
-		fixedBelow = defaultFixedBelow
-	}
-	if len(src) < fixedBelow {
+	if len(src) < f.fixedBelow() {
 		return fixedDeflate(dst, src), nil
 	}
 	level := f.level()

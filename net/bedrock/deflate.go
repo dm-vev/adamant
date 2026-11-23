@@ -6,16 +6,28 @@ import (
 	"sync"
 )
 
-// fixedDeflate appends src to dst as raw DEFLATE (RFC 1951) in one block
-// of the fixed Huffman codes. Building the code tables of a dynamic block
-// costs compress/flate more than finding the matches on the small batches
-// a server sends every tick, and on those the tables a dynamic block
-// carries take most of what they save.
+// deflateFinalEmpty closes a stream of sync-flushed non-final DEFLATE blocks
+// with a final empty stored block (BFINAL=1, BTYPE=00, LEN=0, NLEN=0xffff).
+var deflateFinalEmpty = [5]byte{0x01, 0x00, 0x00, 0xFF, 0xFF}
+
+// fixedDeflate appends src to dst as raw DEFLATE (RFC 1951) in one final
+// block of the fixed Huffman codes. Building the code tables of a dynamic
+// block costs compress/flate more than finding the matches on the small batches
+// a server sends every tick, and on those the tables a dynamic block carries
+// take most of what they save.
 func fixedDeflate(dst, src []byte) []byte {
+	return fixedDeflateBlock(dst, src, true)
+}
+
+// fixedDeflateBlock appends src to dst as a raw DEFLATE fixed-Huffman block.
+// When final is false, it emits BFINAL=0, BTYPE=01 followed by a non-final empty
+// sync-flush stored block (BFINAL=0, BTYPE=00, 0-padded to byte boundary,
+// 0x00, 0x00, 0xFF, 0xFF) so blocks can be concatenated on byte boundaries.
+func fixedDeflateBlock(dst, src []byte, final bool) []byte {
 	// Every literal takes at most 9 bits and every match (length >= 4) takes at
-	// most 31 bits (< 4*9), so the worst-case output is 9*len(src)+17 bits plus
-	// 8 bytes of slack for branchless 64-bit stores.
-	maxOut := len(src) + len(src)>>3 + 16
+	// most 31 bits (< 4*9), so the worst-case output is 9*len(src)+20 bits plus
+	// 4 bytes for non-final sync-flush and 8 bytes slack for 64-bit stores.
+	maxOut := len(src) + len(src)>>3 + 24
 	start := len(dst)
 	if cap(dst)-start < maxOut {
 		grown := make([]byte, start, start+maxOut)
@@ -24,13 +36,16 @@ func fixedDeflate(dst, src []byte) []byte {
 	}
 	out := dst[:start+maxOut]
 	pos := start
-	// The last block, of the fixed codes: BFINAL 1, BTYPE 01.
-	var bits uint64 = 0b011
+	// Fixed Huffman block: BTYPE 01, with BFINAL 1 when final or 0 otherwise.
+	var bits uint64 = 0b010
+	if final {
+		bits = 0b011
+	}
 	var nbits uint = 3
 
 	if len(src) < minMatch {
 		pos, bits, nbits = emitLiterals(out, pos, bits, nbits, src)
-		return finishFixedDeflate(out, pos, bits, nbits)
+		return finishFixedDeflate(out, pos, bits, nbits, final)
 	}
 
 	m, _ := matchers.Get().(*matcher)
@@ -68,15 +83,24 @@ func fixedDeflate(dst, src []byte) []byte {
 	if lit < len(src) {
 		pos, bits, nbits = emitLiterals(out, pos, bits, nbits, src[lit:])
 	}
-	return finishFixedDeflate(out, pos, bits, nbits)
+	return finishFixedDeflate(out, pos, bits, nbits, final)
 }
 
-func finishFixedDeflate(out []byte, pos int, bits uint64, nbits uint) []byte {
+func finishFixedDeflate(out []byte, pos int, bits uint64, nbits uint, final bool) []byte {
 	// The end of the block, code 256: seven zero bits.
 	nbits += 7
+	if final {
+		binary.LittleEndian.PutUint64(out[pos:], bits)
+		pos += int((nbits + 7) >> 3)
+		return out[:pos]
+	}
+	// Non-final empty sync-flush stored block: BFINAL=0, BTYPE=00 (3 zero bits),
+	// zero-padded to byte boundary, then LEN=0x0000 and NLEN=0xFFFF.
+	nbits += 3
 	binary.LittleEndian.PutUint64(out[pos:], bits)
 	pos += int((nbits + 7) >> 3)
-	return out[:pos]
+	binary.LittleEndian.PutUint32(out[pos:], 0xffff0000)
+	return out[:pos+4]
 }
 
 // emitLiterals writes fixed Huffman codes for lit into out starting at pos.

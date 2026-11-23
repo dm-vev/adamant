@@ -174,12 +174,24 @@ func (s *Session) flush() {
 // for the next: the rare burst of a spawn is not kept for good.
 const maxKeptBatch = 1024
 
+// batchPacketWriter is an optional interface implemented by connections that
+// write and flush an entire packet batch under a single lock.
+type batchPacketWriter interface {
+	WriteBatch(batch []proto.Packet, onPanic func(pk proto.Packet, r any)) error
+}
+
 // writeBatch writes packets to the connection and flushes them: what a tick
 // showed goes out as one batch, when the tick ends rather than on a timer of
 // the connection.
 func (s *Session) writeBatch(batch []proto.Packet) error {
 	s.connWriteMu.Lock()
 	defer s.connWriteMu.Unlock()
+	if bw, ok := s.conn.(batchPacketWriter); ok {
+		if s.onPanic == nil {
+			s.onPanic = s.logPacketPanic
+		}
+		return bw.WriteBatch(batch, s.onPanic)
+	}
 	for i := 0; i < len(batch); {
 		next, err := s.writeBatchFrom(batch, i)
 		if err != nil {
@@ -198,8 +210,7 @@ func (s *Session) writeBatchFrom(batch []proto.Packet, start int) (next int, err
 	i := start
 	defer func() {
 		if r := recover(); r != nil {
-			faultcheck.Report("session packet encode", r)
-			s.conf.Log.Error("drop session packet that does not encode", "packet", fmt.Sprintf("%T", batch[i]), "panic", r)
+			s.logPacketPanic(batch[i], r)
 			next, err = i+1, nil
 		}
 	}()
@@ -209,6 +220,11 @@ func (s *Session) writeBatchFrom(batch []proto.Packet, start int) (next int, err
 		}
 	}
 	return len(batch), nil
+}
+
+func (s *Session) logPacketPanic(pk proto.Packet, r any) {
+	faultcheck.Report("session packet encode", r)
+	s.conf.Log.Error("drop session packet that does not encode", "packet", fmt.Sprintf("%T", pk), "panic", r)
 }
 
 // clearPacketQueue releases payloads retained by a session that is closing.
