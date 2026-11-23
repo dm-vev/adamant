@@ -257,16 +257,19 @@ type packetConn struct {
 	packets chan any
 }
 
-func (*packetConn) Close() error                                             { return nil }
-func (*packetConn) ClientData() login.ClientData                             { return login.ClientData{} }
-func (*packetConn) ClientCacheEnabled() bool                                 { return false }
-func (*packetConn) ChunkRadius() int                                         { return 1 }
-func (*packetConn) Latency() time.Duration                                   { return 0 }
-func (*packetConn) Flush() error                                             { return nil }
-func (*packetConn) RemoteAddr() net.Addr                                     { return &net.TCPAddr{} }
-func (*packetConn) ReadPacket() (proto.Packet, error)                        { return nil, io.EOF }
-func (c *packetConn) WritePacket(pk proto.Packet) error                      { c.packets <- pk; return nil }
-func (c *packetConn) WriteProto(pk proto.Packet) error                       { c.packets <- pk; return nil }
+func (*packetConn) Close() error                      { return nil }
+func (*packetConn) ClientData() login.ClientData      { return login.ClientData{} }
+func (*packetConn) ClientCacheEnabled() bool          { return false }
+func (*packetConn) ChunkRadius() int                  { return 1 }
+func (*packetConn) Latency() time.Duration            { return 0 }
+func (*packetConn) Flush() error                      { return nil }
+func (*packetConn) RemoteAddr() net.Addr              { return &net.TCPAddr{} }
+func (*packetConn) ReadPacket() (proto.Packet, error) { return nil, io.EOF }
+func (c *packetConn) WritePacket(pk proto.Packet) error {
+	c.packets <- netconn.Unwrap(pk)
+	return nil
+}
+func (c *packetConn) WriteProto(pk proto.Packet) error                       { c.packets <- netconn.Unwrap(pk); return nil }
 func (*packetConn) StartGameContext(context.Context, netconn.GameData) error { return nil }
 func (*packetConn) IdentityData() login.Identity {
 	return login.Identity{Identity: uuid.NewString(), DisplayName: "viewer"}
