@@ -20,6 +20,7 @@ type clock struct {
 	// tick is the per-world tick counter used by worlds that do not advance the
 	// shared Settings, such as the Nether, End and custom dimensions.
 	tick        int64
+	currentTick atomic.Int64
 	tickFrozen  atomic.Bool
 	stepTicks   atomic.Int64
 	sprintTicks atomic.Int64
@@ -77,9 +78,7 @@ func (w *World) CurrentTick() int64 {
 	if w == nil {
 		return 0
 	}
-	w.set.Lock()
-	defer w.set.Unlock()
-	return w.currentTickLocked()
+	return w.currentTick.Load()
 }
 
 // TPS returns the current average ticks per second of the world. The value is

@@ -1,16 +1,17 @@
 package world
 
 import (
+	"cmp"
 	"fmt"
 	"maps"
 	"math"
 	"math/bits"
 	"slices"
-	"sort"
 	"sync"
 	"sync/atomic"
 
 	"github.com/brentp/intintmap"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/segmentio/fasthash/fnv1"
 )
@@ -63,51 +64,112 @@ type BlockRegistry interface {
 	// BlockHash returns a unique identifier of the block including the block states. The hash is internal to Dragonfly
 	// and is used for fast map lookups; it does not need to match any in-game identifiers.
 	BlockHash(b Block) uint64
+	// BlockFlags returns the precomputed per-runtime-ID metadata flags for rid.
+	BlockFlags(rid uint32) BlockFlags
+	// LiquidInfo returns the liquid kind (0=none, 1=water, 2=lava), depth (0..8), and falling state for rid.
+	LiquidInfo(rid uint32) (kind uint8, depth uint8, falling bool)
 }
 
+// BlockFlags is a bitmask of per-runtime-ID block properties computed during BlockRegistry.Finalize.
+type BlockFlags uint32
+
 const (
-	blockFlagNBT uint16 = 1 << iota
+	blockFlagNBT BlockFlags = 1 << iota
 	blockFlagRandomTick
 	blockFlagLiquid
 	blockFlagLiquidDisplacing
+	blockFlagEmptyCollision
+	blockFlagFullCubeCollision
+	blockFlagEntityInsider
+	blockFlagEntityStepper
+	blockFlagRedstoneRelevant
+	blockFlagPowderSnow
+	blockFlagClimbable
+	blockFlagSlowBlock
+	blockFlagHoneyBlock
 )
+
+// EmptyCollision reports whether the block model unconditionally produces no collision boxes.
+func (f BlockFlags) EmptyCollision() bool { return f&blockFlagEmptyCollision != 0 }
+
+// FullCubeCollision reports whether the block model unconditionally spans a full 1x1x1 cube.
+func (f BlockFlags) FullCubeCollision() bool { return f&blockFlagFullCubeCollision != 0 }
+
+// HasEntityInsider reports whether the block reacts to entities inside its bounds.
+func (f BlockFlags) HasEntityInsider() bool { return f&blockFlagEntityInsider != 0 }
+
+// HasEntityStepper reports whether the block reacts to entities standing on top of it.
+func (f BlockFlags) HasEntityStepper() bool { return f&blockFlagEntityStepper != 0 }
+
+// IsLiquid reports whether the block implements Liquid.
+func (f BlockFlags) IsLiquid() bool { return f&blockFlagLiquid != 0 }
+
+// IsRedstoneRelevant reports whether the block participates in redstone graph compilation.
+func (f BlockFlags) IsRedstoneRelevant() bool { return f&blockFlagRedstoneRelevant != 0 }
+
+// IsPowderSnow reports whether the block is powder snow.
+func (f BlockFlags) IsPowderSnow() bool { return f&blockFlagPowderSnow != 0 }
+
+// IsClimbable reports whether the block is climbable.
+func (f BlockFlags) IsClimbable() bool { return f&blockFlagClimbable != 0 }
+
+// IsSlowBlock reports whether the block slows movement (soul sand or honey block).
+func (f BlockFlags) IsSlowBlock() bool { return f&blockFlagSlowBlock != 0 }
+
+// IsHoneyBlock reports whether the block is a honey block.
+func (f BlockFlags) IsHoneyBlock() bool { return f&blockFlagHoneyBlock != 0 }
+
+// IsNBT reports whether the block uses NBT data.
+func (f BlockFlags) IsNBT() bool { return f&blockFlagNBT != 0 }
+
+// RandomTicks reports whether the block state receives random ticks.
+func (f BlockFlags) RandomTicks() bool { return f&blockFlagRandomTick != 0 }
+
+// LiquidDisplacing reports whether the block implements LiquidDisplacer.
+func (f BlockFlags) LiquidDisplacing() bool { return f&blockFlagLiquidDisplacing != 0 }
+
+const blockFlagsMask uint32 = (1 << 24) - 1
 
 // blockInfo is a packed set of per-runtime-ID properties used in hot paths (lighting, ticking, fluid checks, etc.).
 //
-// Layout (uint16):
-// - bits 0..3: boolean flags (blockFlag*).
-// - bits 8..11: 4-bit light emission level (0-15).
-// - bits 12..15: 4-bit light filtering level (0-15).
+// Layout (uint32):
+// - bits 0..23: boolean flags (BlockFlags).
+// - bits 24..27: 4-bit light emission level (0-15).
+// - bits 28..31: 4-bit light filtering level (0-15).
 //
 // Values are computed during BlockRegistry.Finalize() and stored in BasicBlockRegistry.blockInfos, indexed by runtime ID.
-type blockInfo uint16
+type blockInfo uint32
 
-func (b *blockInfo) set(flag uint16) {
+func (b *blockInfo) set(flag BlockFlags) {
 	*b |= blockInfo(flag)
 }
 
-func (b blockInfo) get(flag uint16) bool {
-	return uint16(b)&flag != 0
+func (b blockInfo) get(flag BlockFlags) bool {
+	return uint32(b)&uint32(flag) != 0
+}
+
+func (b blockInfo) flags() BlockFlags {
+	return BlockFlags(uint32(b) & blockFlagsMask)
 }
 
 func (b *blockInfo) setLight(light uint8) {
 	// Overwrite the 4-bit light emission field.
-	*b &^= blockInfo(0xF) << 8
-	*b |= blockInfo(light&0xF) << 8
+	*b &^= blockInfo(0xF) << 24
+	*b |= blockInfo(light&0xF) << 24
 }
 
 func (b *blockInfo) setLightFilter(light uint8) {
 	// Overwrite the 4-bit light filtering field.
-	*b &^= blockInfo(0xF) << 12
-	*b |= blockInfo(light&0xF) << 12
+	*b &^= blockInfo(0xF) << 28
+	*b |= blockInfo(light&0xF) << 28
 }
 
 func (b blockInfo) getLight() uint8 {
-	return uint8((b >> 8) & 0xF)
+	return uint8((b >> 24) & 0xF)
 }
 
 func (b blockInfo) getLightFilter() uint8 {
-	return uint8((b >> 12) & 0xF)
+	return uint8((b >> 28) & 0xF)
 }
 
 // BasicBlockRegistry is the default BlockRegistry implementation used by Dragonfly.
@@ -141,7 +203,8 @@ type BasicBlockRegistry struct {
 	// customBlocks maps a custom block's identifier to the custom block.
 	customBlocks map[string]CustomBlock
 
-	blockInfos []blockInfo
+	blockInfos  []blockInfo
+	liquidInfos []uint8
 
 	airRID uint32
 }
@@ -202,6 +265,32 @@ func (br *BasicBlockRegistry) LiquidBlock(rid uint32) bool {
 	return br.blockInfos[rid].get(blockFlagLiquid)
 }
 
+// BlockFlags returns the precomputed per-runtime-ID metadata flags for rid.
+func (br *BasicBlockRegistry) BlockFlags(rid uint32) BlockFlags {
+	if !br.finalized {
+		panic("BlockRegistry.BlockFlags called on non finalized BlockRegistry")
+	}
+	if rid >= uint32(len(br.blockInfos)) {
+		return 0
+	}
+	return br.blockInfos[rid].flags()
+}
+
+// LiquidInfo returns the liquid kind (0=none, 1=water, 2=lava), depth (0..8), and falling state for rid.
+func (br *BasicBlockRegistry) LiquidInfo(rid uint32) (kind uint8, depth uint8, falling bool) {
+	if !br.finalized {
+		panic("BlockRegistry.LiquidInfo called on non finalized BlockRegistry")
+	}
+	if rid >= uint32(len(br.liquidInfos)) {
+		return 0, 0, false
+	}
+	v := br.liquidInfos[rid]
+	if v == 0 {
+		return 0, 0, false
+	}
+	return (v >> 4) & 0x07, v & 0x0F, v&0x80 != 0
+}
+
 func (br *BasicBlockRegistry) Blocks() []Block {
 	if !br.finalized {
 		panic("BlockRegistry.Blocks called on non finalized BlockRegistry")
@@ -239,6 +328,7 @@ func (br *BasicBlockRegistry) clone(mutable bool) *BasicBlockRegistry {
 
 	if br2.finalized {
 		br2.blockInfos = slices.Clone(br.blockInfos)
+		br2.liquidInfos = slices.Clone(br.liquidInfos)
 		br2.states = br.states
 		br2.hashes = intintmap.New(len(br.blocks), 0.999)
 		for rid, b := range br2.blocks {
@@ -328,26 +418,14 @@ func (br *BasicBlockRegistry) Finalize() {
 	}
 
 	br.bitSize = bits.Len64(uint64(len(br.blocks)))
-	sort.SliceStable(br.blocks, func(i, j int) bool {
-		var nameOne string
-		if b1, ok := br.blocks[i].(unknownBlock); ok {
-			nameOne = b1.Name
-		} else {
-			nameOne, _ = br.blocks[i].EncodeBlock()
-		}
-		var nameTwo string
-		if b2, ok := br.blocks[j].(unknownBlock); ok {
-			nameTwo = b2.Name
-		} else {
-			nameTwo, _ = br.blocks[j].EncodeBlock()
-		}
-		return fnv1.HashString64(nameOne) < fnv1.HashString64(nameTwo)
-	})
+	br.sortBlocksLocked()
 
 	br.blockInfos = make([]blockInfo, len(br.blocks))
+	br.liquidInfos = make([]uint8, len(br.blocks))
 	br.states = make([]encodedState, len(br.blocks))
 	br.hashes = intintmap.New(len(br.blocks), 0.999)
 	br.stateRuntimeIDs = make(map[stateHash]uint32, len(br.blocks))
+	emptySrc := emptyBlockSource{air: unknownBlock{BlockState: BlockState{Name: "minecraft:air"}}}
 	foundAir := false
 
 	for idx, b := range br.blocks {
@@ -364,32 +442,9 @@ func (br *BasicBlockRegistry) Finalize() {
 		}
 		br.stateRuntimeIDs[h] = rid
 
-		var info blockInfo
-		// Default to fully opaque. Blocks that implement lightDiffuser may override this (e.g., air -> 0, leaves -> 1-14).
-		info.setLightFilter(15)
-		if diffuser, ok := b.(lightDiffuser); ok {
-			info.setLightFilter(diffuser.LightDiffusionLevel())
-		}
-		if emitter, ok := b.(lightEmitter); ok {
-			info.setLight(emitter.LightEmissionLevel())
-		}
-		if _, ok := b.(NBTer); ok {
-			info.set(blockFlagNBT)
-		}
-		if _, ok := b.(RandomTicker); ok {
-			// BlockState.isRandomlyTicking: a block may tick only in some
-			// of its states.
-			if r, ok := b.(interface{ RandomlyTicks() bool }); !ok || r.RandomlyTicks() {
-				info.set(blockFlagRandomTick)
-			}
-		}
-		if _, ok := b.(Liquid); ok {
-			info.set(blockFlagLiquid)
-		}
-		if _, ok := b.(LiquidDisplacer); ok {
-			info.set(blockFlagLiquidDisplacing)
-		}
+		info, liquidInfo := computeBlockMeta(b, name, emptySrc)
 		br.blockInfos[rid] = info
+		br.liquidInfos[rid] = liquidInfo
 
 		if _, hash := b.Hash(); hash != math.MaxUint64 {
 			h := int64(br.BlockHash(b))
@@ -403,6 +458,149 @@ func (br *BasicBlockRegistry) Finalize() {
 		panic("BlockRegistry.Finalize: no minecraft:air block state registered")
 	}
 	br.finalized = true
+}
+
+func (br *BasicBlockRegistry) sortBlocksLocked() {
+	type sortEntry struct {
+		b    Block
+		hash uint64
+	}
+	entries := make([]sortEntry, len(br.blocks))
+	for i, b := range br.blocks {
+		var name string
+		if ub, ok := b.(unknownBlock); ok {
+			name = ub.Name
+		} else {
+			name, _ = b.EncodeBlock()
+		}
+		entries[i] = sortEntry{b: b, hash: fnv1.HashString64(name)}
+	}
+	slices.SortStableFunc(entries, func(a, b sortEntry) int {
+		return cmp.Compare(a.hash, b.hash)
+	})
+	for i, e := range entries {
+		br.blocks[i] = e.b
+	}
+}
+
+type emptyBlockSource struct{ air Block }
+
+func (s emptyBlockSource) Block(cube.Pos) Block { return s.air }
+
+var fullCubeBox = cube.Box(0, 0, 0, 1, 1, 1)
+
+func computeBlockMeta(b Block, name string, emptySrc BlockSource) (blockInfo, uint8) {
+	var info blockInfo
+	// Default to fully opaque. Blocks that implement lightDiffuser may override this (e.g., air -> 0, leaves -> 1-14).
+	info.setLightFilter(15)
+	if diffuser, ok := b.(lightDiffuser); ok {
+		info.setLightFilter(diffuser.LightDiffusionLevel())
+	}
+	if emitter, ok := b.(lightEmitter); ok {
+		info.setLight(emitter.LightEmissionLevel())
+	}
+	switch blockStaticCollisionKind(b, emptySrc) {
+	case CollisionEmpty:
+		info.set(blockFlagEmptyCollision)
+	case CollisionFullCube:
+		info.set(blockFlagFullCubeCollision)
+	}
+	if _, ok := b.(NBTer); ok {
+		info.set(blockFlagNBT)
+	}
+	if _, ok := b.(RandomTicker); ok {
+		if r, ok := b.(interface{ RandomlyTicks() bool }); !ok || r.RandomlyTicks() {
+			info.set(blockFlagRandomTick)
+		}
+	}
+	if _, ok := b.(LiquidDisplacer); ok {
+		info.set(blockFlagLiquidDisplacing)
+	}
+	if _, ok := b.(interface{ EntityInside(cube.Pos, *Tx, Entity) }); ok {
+		info.set(blockFlagEntityInsider)
+	}
+	if _, ok := b.(interface{ EntityStepOn(cube.Pos, *Tx, Entity) }); ok {
+		info.set(blockFlagEntityStepper)
+	}
+	if isRedstoneRelevant(b) {
+		info.set(blockFlagRedstoneRelevant)
+	}
+	var liquidInfo uint8
+	if liq, ok := b.(Liquid); ok {
+		info.set(blockFlagLiquid)
+		liquidInfo = encodeLiquidInfo(liq)
+	}
+	setNamedBlockFlags(&info, name)
+	return info, liquidInfo
+}
+
+func blockStaticCollisionKind(b Block, emptySrc BlockSource) (kind CollisionKind) {
+	// Zero-value registered NBT block prototypes (e.g. ShulkerBox with nil progress) can panic in Model().
+	// Such stateful blocks never have static collision anyway.
+	defer func() {
+		if recover() != nil {
+			kind = CollisionDynamic
+		}
+	}()
+	m := b.Model()
+	sc, ok := m.(StaticCollisionModel)
+	if !ok {
+		return CollisionDynamic
+	}
+	kind = sc.StaticCollisionKind()
+	switch kind {
+	case CollisionEmpty:
+		if len(m.BBox(cube.Pos{}, emptySrc)) != 0 {
+			return CollisionDynamic
+		}
+	case CollisionFullCube:
+		if boxes := m.BBox(cube.Pos{}, emptySrc); len(boxes) != 1 || boxes[0] != fullCubeBox {
+			return CollisionDynamic
+		}
+	}
+	return kind
+}
+
+func encodeLiquidInfo(liq Liquid) uint8 {
+	var kind uint8
+	switch liq.LiquidType() {
+	case "water":
+		kind = 1
+	case "lava":
+		kind = 2
+	default:
+		return 0
+	}
+	d := max(0, min(8, liq.LiquidDepth()))
+	v := (kind << 4) | uint8(d)
+	if liq.LiquidFalling() {
+		v |= 0x80
+	}
+	return v
+}
+
+func setNamedBlockFlags(info *blockInfo, name string) {
+	switch name {
+	case "minecraft:powder_snow":
+		info.set(blockFlagPowderSnow)
+	case "minecraft:honey_block":
+		info.set(blockFlagHoneyBlock)
+		info.set(blockFlagSlowBlock)
+	case "minecraft:soul_sand":
+		info.set(blockFlagSlowBlock)
+	case "minecraft:ladder",
+		"minecraft:vine",
+		"minecraft:scaffolding",
+		"minecraft:weeping_vines",
+		"minecraft:weeping_vines_plant",
+		"minecraft:twisting_vines",
+		"minecraft:twisting_vines_plant",
+		"minecraft:cave_vines",
+		"minecraft:cave_vines_plant",
+		"minecraft:cave_vines_head_with_berries",
+		"minecraft:cave_vines_body_with_berries":
+		info.set(blockFlagClimbable)
+	}
 }
 
 // AirRuntimeID returns the runtime ID of the air block.

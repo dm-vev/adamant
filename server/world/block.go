@@ -308,3 +308,23 @@ func replaceable(w *World, c *Column, pos cube.Pos, with Block) bool {
 type BlockAction interface {
 	BlockAction()
 }
+
+// CollisionKind classifies the static collision shape of a BlockModel.
+type CollisionKind uint8
+
+const (
+	// CollisionDynamic indicates a block model whose collision boxes depend on position, neighbours, or state,
+	// or have custom bounds other than empty or a full 1x1x1 cube.
+	CollisionDynamic CollisionKind = iota
+	// CollisionEmpty indicates a block model that unconditionally has no collision boxes.
+	CollisionEmpty
+	// CollisionFullCube indicates a block model that unconditionally spans a full 1x1x1 cube.
+	CollisionFullCube
+)
+
+// StaticCollisionModel is implemented by BlockModels whose collision shape is
+// unconditionally empty or a full 1x1x1 cube regardless of position or
+// neighbouring blocks.
+type StaticCollisionModel interface {
+	StaticCollisionKind() CollisionKind
+}

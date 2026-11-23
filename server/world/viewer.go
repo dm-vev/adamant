@@ -109,6 +109,13 @@ type SharedViewer interface {
 	ViewEntityAnimationShared(e Entity, a EntityAnimation, b *Broadcast)
 }
 
+// EntityStateSharedViewer is a Viewer shown entity metadata state updates through
+// a shared Broadcast so encoded packets or payloads can be reused across viewers.
+type EntityStateSharedViewer interface {
+	// ViewEntityStateShared views the current state of an entity using b to share work across viewers.
+	ViewEntityStateShared(e Entity, b *Broadcast)
+}
+
 // BatchViewer is a Viewer that may hold what it is shown while its world
 // ticks and pass it on at once when the tick ends, as Java flushes the
 // connection of a player once a tick rather than with every packet.

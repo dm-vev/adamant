@@ -127,12 +127,12 @@ type Column struct {
 	// faultyActors holds what the column keeps of the block entities whose
 	// ticks panicked, by position.
 	faultyActors                    map[cube.Pos]*actorFault
-	subChunkHeightMaps              map[int16]cachedSubChunkHeightMap
+	subChunkHeightMaps              []cachedSubChunkHeightMap
 	networkBiomePayload             cachedBlockEntityPayload
 	limitedChunkPayload             cachedBlockEntityPayload
 	chunkBlockEntityPayload         cachedBlockEntityPayload
 	chunkBlockEntityPayloadNoBorder cachedBlockEntityPayload
-	subChunkBlockEntityPayloads     map[int16]cachedBlockEntityPayload
+	subChunkBlockEntityPayloads     []cachedBlockEntityPayload
 
 	// ownCache holds the payloads of sub-chunks and of the chunk of no
 	// key, Cache(nil), and caches those of the keys adapters asked for.
@@ -309,12 +309,12 @@ func (c *Column) invalidateSubChunkHeightMaps() {
 		return
 	}
 	var freed int64
-	for _, hm := range c.subChunkHeightMaps {
+	for i, hm := range c.subChunkHeightMaps {
 		if hm.ready {
 			freed += int64(len(hm.mapData))
+			c.subChunkHeightMaps[i] = cachedSubChunkHeightMap{}
 		}
 	}
-	clear(c.subChunkHeightMaps)
 	c.subWireBytes(freed)
 }
 
@@ -346,13 +346,11 @@ func (c *Column) invalidateBlockEntityPayloads() {
 		freed += int64(len(c.chunkBlockEntityPayloadNoBorder.payload))
 		c.chunkBlockEntityPayloadNoBorder = cachedBlockEntityPayload{}
 	}
-	if len(c.subChunkBlockEntityPayloads) > 0 {
-		for _, p := range c.subChunkBlockEntityPayloads {
-			if p.ready {
-				freed += int64(len(p.payload))
-			}
+	for i, p := range c.subChunkBlockEntityPayloads {
+		if p.ready {
+			freed += int64(len(p.payload))
+			c.subChunkBlockEntityPayloads[i] = cachedBlockEntityPayload{}
 		}
-		clear(c.subChunkBlockEntityPayloads)
 	}
 	freed += c.invalidateKeyedPayloads(false)
 	c.subWireBytes(freed)
@@ -368,13 +366,27 @@ func (c *Column) invalidateKeyedPayloads(subChunks bool) int64 {
 	return freed
 }
 
+// ensureSubChunkSlice ensures s can index ind, pre-sizing to c.Sub() when available.
+func ensureSubChunkSlice[T any](s []T, c *Column, ind int16) []T {
+	n := int(ind) + 1
+	if c != nil && c.Chunk != nil {
+		n = max(n, len(c.Sub()))
+	}
+	if len(s) >= n {
+		return s
+	}
+	grown := make([]T, n)
+	copy(grown, s)
+	return grown
+}
+
 // CachedSubChunkHeightMap returns cached height map data for a sub-chunk.
 func (c *Column) CachedSubChunkHeightMap(ind int16) (byte, []int8, bool) {
-	if c.subChunkHeightMaps == nil {
+	if ind < 0 || int(ind) >= len(c.subChunkHeightMaps) {
 		return 0, nil, false
 	}
-	heightMap, ok := c.subChunkHeightMaps[ind]
-	if ok && heightMap.ready {
+	heightMap := c.subChunkHeightMaps[ind]
+	if heightMap.ready {
 		c.touchWireCache()
 		return heightMap.mapType, heightMap.mapData, true
 	}
@@ -383,10 +395,12 @@ func (c *Column) CachedSubChunkHeightMap(ind int16) (byte, []int8, bool) {
 
 // CacheSubChunkHeightMap stores height map data for a sub-chunk.
 func (c *Column) CacheSubChunkHeightMap(ind int16, mapType byte, mapData []int8) {
+	if ind < 0 {
+		return
+	}
+	c.subChunkHeightMaps = ensureSubChunkSlice(c.subChunkHeightMaps, c, ind)
 	var oldLen int
-	if c.subChunkHeightMaps == nil {
-		c.subChunkHeightMaps = make(map[int16]cachedSubChunkHeightMap, 4)
-	} else if prev, ok := c.subChunkHeightMaps[ind]; ok && prev.ready {
+	if prev := c.subChunkHeightMaps[ind]; prev.ready {
 		oldLen = len(prev.mapData)
 	}
 	c.subChunkHeightMaps[ind] = cachedSubChunkHeightMap{
@@ -494,11 +508,11 @@ func (c *Column) CacheChunkBlockEntityPayload(noBorder bool, payload []byte) {
 
 // CachedSubChunkBlockEntityPayload returns a cached encoded block entity payload for a sub-chunk.
 func (c *Column) CachedSubChunkBlockEntityPayload(ind int16) ([]byte, bool) {
-	if c.subChunkBlockEntityPayloads == nil {
+	if ind < 0 || int(ind) >= len(c.subChunkBlockEntityPayloads) {
 		return nil, false
 	}
-	payload, ok := c.subChunkBlockEntityPayloads[ind]
-	if ok && payload.ready {
+	payload := c.subChunkBlockEntityPayloads[ind]
+	if payload.ready {
 		c.touchWireCache()
 		return payload.payload, true
 	}
@@ -507,10 +521,12 @@ func (c *Column) CachedSubChunkBlockEntityPayload(ind int16) ([]byte, bool) {
 
 // CacheSubChunkBlockEntityPayload stores an encoded block entity payload for a sub-chunk.
 func (c *Column) CacheSubChunkBlockEntityPayload(ind int16, payload []byte) {
+	if ind < 0 {
+		return
+	}
+	c.subChunkBlockEntityPayloads = ensureSubChunkSlice(c.subChunkBlockEntityPayloads, c, ind)
 	var oldLen int
-	if c.subChunkBlockEntityPayloads == nil {
-		c.subChunkBlockEntityPayloads = make(map[int16]cachedBlockEntityPayload, 4)
-	} else if prev, ok := c.subChunkBlockEntityPayloads[ind]; ok && prev.ready {
+	if prev := c.subChunkBlockEntityPayloads[ind]; prev.ready {
 		oldLen = len(prev.payload)
 	}
 	c.subChunkBlockEntityPayloads[ind] = cachedBlockEntityPayload{payload: payload, ready: true}

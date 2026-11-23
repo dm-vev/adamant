@@ -149,9 +149,7 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 	// An entity transferred is in a world again.
 	handle.endTransfer()
 	pos := chunkPosFromVec3(handle.data.Pos)
-	w.set.Lock()
-	currentTick := w.currentTickLocked()
-	w.set.Unlock()
+	currentTick := w.CurrentTick()
 	state := &entityState{
 		pos:               pos,
 		lastTick:          currentTick,

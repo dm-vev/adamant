@@ -126,7 +126,7 @@ func (w *World) reconcileMissingBlockStates(pos ChunkPos) {
 			w.relightIfChanged(candidate.column, candidate.pos, oldLight)
 			candidate.column.invalidateRandomTickSubChunks()
 			candidate.column.invalidateSubChunkHeightMaps()
-			candidate.column.invalidateNetworkSubChunkPayloads()
+			candidate.column.invalidateSubChunk(candidate.column.SubIndex(int16(candidate.pos[1])))
 			candidate.column.setModified()
 			w.viewBlockUpdate(candidate.column, candidate.pos, updated, 0)
 		}
@@ -189,31 +189,29 @@ func (w *World) replacePositionTrackingBlock(tx *Tx, pos cube.Pos, old, replacem
 	return replacement
 }
 
+// liquidRIDInColumn returns the runtime ID of the liquid at pos in layer 0 or
+// layer 1 of column c, or (0, false) if neither layer holds a liquid.
+func (w *World) liquidRIDInColumn(c *Column, pos cube.Pos) (uint32, bool) {
+	x, y, z := uint8(pos[0]), int16(pos[1]), uint8(pos[2])
+	id := c.Block(x, y, z, 0)
+	if w.conf.Blocks.LiquidBlock(id) {
+		return id, true
+	}
+	id = c.Block(x, y, z, 1)
+	if w.conf.Blocks.LiquidBlock(id) {
+		return id, true
+	}
+	return 0, false
+}
+
 // liquidInColumn returns the liquid at pos in any layer of the column c
 // holding it.
 func (w *World) liquidInColumn(c *Column, pos cube.Pos) (Liquid, bool) {
-	x, y, z := uint8(pos[0]), int16(pos[1]), uint8(pos[2])
-
-	id := c.Block(x, y, z, 0)
-	if !w.conf.Blocks.LiquidBlock(id) {
-		// Most blocks hold no liquid: only look the layers up as blocks if
-		// the registry says one is a liquid.
-		id = c.Block(x, y, z, 1)
-		if !w.conf.Blocks.LiquidBlock(id) {
-			return nil, false
-		}
-	}
-	b, ok := w.conf.Blocks.BlockByRuntimeID(id)
+	id, ok := w.liquidRIDInColumn(c, pos)
 	if !ok {
-		w.log.Error("Liquid: no block with runtime ID", "ID", id)
 		return nil, false
 	}
-	if liq, ok := b.(Liquid); ok {
-		return liq, true
-	}
-	id = c.Block(x, y, z, 1)
-
-	b, ok = w.conf.Blocks.BlockByRuntimeID(id)
+	b, ok := w.conf.Blocks.BlockByRuntimeID(id)
 	if !ok {
 		w.log.Error("Liquid: no block with runtime ID", "ID", id)
 		return nil, false
@@ -275,7 +273,7 @@ func (w *World) removeLiquidOnLayer(c *Column, x uint8, y int16, z, layer uint8)
 		c.SetBlock(x, y, z, layer, airRID)
 		c.invalidateRandomTickSubChunks()
 		c.invalidateSubChunkHeightMaps()
-		c.invalidateNetworkSubChunkPayloads()
+		c.invalidateSubChunk(c.SubIndex(y))
 		return true, true
 	}
 	return id == airRID, false

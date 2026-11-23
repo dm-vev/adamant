@@ -369,6 +369,7 @@ func newWorldState(conf Config, s *Settings, providerUse *providerRef) *World {
 		activeColumnIndex:   make(map[ChunkPos]int),
 		entityColumnIndex:   make(map[ChunkPos]int),
 	}
+	w.currentTick.Store(currentTick)
 	return w
 }
 

@@ -90,12 +90,14 @@ func (tx *Tx) World() *World {
 	return tx.w
 }
 
+// Closed reports whether the transaction is nil or has already finished.
+func (tx *Tx) Closed() bool {
+	return tx == nil || tx.closed
+}
+
 // CurrentTick returns the current tick of the transaction's world.
 func (tx *Tx) CurrentTick() int64 {
-	w := tx.World()
-	w.set.Lock()
-	defer w.set.Unlock()
-	return w.currentTickLocked()
+	return tx.World().CurrentTick()
 }
 
 // close finishes the Tx, causing any following call on the Tx to panic. The

@@ -3,6 +3,7 @@ package chunk
 import (
 	"bytes"
 	"math"
+	"math/bits"
 	"slices"
 	"sync"
 
@@ -32,18 +33,62 @@ type lightQueue struct {
 	size  int
 }
 
-// initialLightQueueCapacity is the starting size for light propagation queues. A lightNode is 48 bytes on
-// 64-bit platforms, so 1024 entries cost about 48 KiB. This avoids the first grow/copy for busier lighting
-// runs while keeping the queue transient and able to grow for larger chunks.
-const initialLightQueueCapacity = 1024
+const (
+	// initialLightQueueCapacity is the starting size for standalone light propagation queues.
+	initialLightQueueCapacity = 1024
+	minPooledLightShift       = 6  // 64 entries
+	maxPooledLightShift       = 17 // 131072 entries
+	maxRetainedBucketCapacity = 8192
+	maxRetainedQueueCapacity  = 16384
+)
 
-// newLightQueue creates an empty queue sized to the next power of two >= capacity.
-func newLightQueue(capacity int) *lightQueue {
-	n := 1
+// lightNodeBuf wraps a pooled backing slice so sync.Pool.Put does not allocate a slice header box.
+type lightNodeBuf struct {
+	nodes []lightNode
+}
+
+var (
+	lightNodeBufPool = sync.Pool{New: func() any { return &lightNodeBuf{} }}
+	lightNodePools   [maxPooledLightShift - minPooledLightShift + 1]sync.Pool
+)
+
+// borrowLightNodes returns a power-of-two sized backing slice of at least capacity nodes from the pool when possible.
+func borrowLightNodes(capacity int) []lightNode {
+	n := 1 << minPooledLightShift
 	for n < capacity {
 		n <<= 1
 	}
-	return &lightQueue{nodes: make([]lightNode, n)}
+	shift := bits.TrailingZeros(uint(n))
+	if shift <= maxPooledLightShift {
+		if v := lightNodePools[shift-minPooledLightShift].Get(); v != nil {
+			h := v.(*lightNodeBuf)
+			nodes := h.nodes
+			h.nodes = nil
+			lightNodeBufPool.Put(h)
+			return nodes
+		}
+	}
+	return make([]lightNode, n)
+}
+
+// returnLightNodes returns an owned power-of-two backing slice to the size-classed pool.
+func returnLightNodes(nodes []lightNode) {
+	n := len(nodes)
+	if n == 0 || n&(n-1) != 0 {
+		return
+	}
+	shift := bits.TrailingZeros(uint(n))
+	if shift < minPooledLightShift || shift > maxPooledLightShift {
+		return
+	}
+	h := lightNodeBufPool.Get().(*lightNodeBuf)
+	h.nodes = nodes
+	lightNodePools[shift-minPooledLightShift].Put(h)
+}
+
+// newLightQueue creates an empty queue sized to the next power of two >= capacity.
+func newLightQueue(capacity int) *lightQueue {
+	return &lightQueue{nodes: borrowLightNodes(capacity)}
 }
 
 // push appends a node to the tail, growing storage if full.
@@ -74,16 +119,20 @@ func (q *lightQueue) empty() bool {
 
 // grow expands the ring buffer and reorders elements to start at index 0.
 func (q *lightQueue) grow() {
-	nodes := make([]lightNode, len(q.nodes)<<1)
-	if q.head < q.tail {
-		copy(nodes, q.nodes[q.head:q.tail])
-	} else {
-		n := copy(nodes, q.nodes[q.head:])
-		copy(nodes[n:], q.nodes[:q.tail])
+	old := q.nodes
+	nodes := borrowLightNodes(max(len(old)<<1, 1<<minPooledLightShift))
+	if q.size > 0 {
+		if q.head < q.tail {
+			copy(nodes, old[q.head:q.tail])
+		} else {
+			n := copy(nodes, old[q.head:])
+			copy(nodes[n:], old[:q.tail])
+		}
 	}
 	q.head = 0
 	q.tail = q.size
 	q.nodes = nodes
+	returnLightNodes(old)
 }
 
 // levelQueue holds light nodes by level and hands out the brightest first,
@@ -105,14 +154,23 @@ func newLevelQueue() *levelQueue {
 	return q
 }
 
+func putLightQueue(q *lightQueue) {
+	q.head, q.tail, q.size = 0, 0, 0
+	if len(q.nodes) > maxRetainedQueueCapacity {
+		returnLightNodes(q.nodes)
+		q.nodes = borrowLightNodes(initialLightQueueCapacity)
+	}
+	relightQueues.Put(q)
+}
+
 func putLevelQueue(q *levelQueue) {
 	q.top = 0
 	q.size = 0
-	for i, b := range q.buckets {
-		if len(b.nodes) > 4096 {
-			q.buckets[i] = newLightQueue(64)
-		} else {
-			b.head, b.tail, b.size = 0, 0, 0
+	for _, b := range q.buckets {
+		b.head, b.tail, b.size = 0, 0, 0
+		if len(b.nodes) > maxRetainedBucketCapacity {
+			returnLightNodes(b.nodes)
+			b.nodes = borrowLightNodes(64)
 		}
 	}
 	relightLevelQueues.Put(q)
@@ -428,8 +486,8 @@ func (a *lightArea) Relight(changed []cube.Pos) {
 // lit blocks around what was removed.
 func (a *lightArea) relight(changed []cube.Pos, lt light, source func(pos cube.Pos) uint8) {
 	removal, refill, spread := relightQueues.Get().(*lightQueue), relightQueues.Get().(*lightQueue), relightLevelQueues.Get().(*levelQueue)
-	defer relightQueues.Put(removal)
-	defer relightQueues.Put(refill)
+	defer putLightQueue(removal)
+	defer putLightQueue(refill)
 	defer putLevelQueue(spread)
 	for _, pos := range changed {
 		if !a.inside(pos) {

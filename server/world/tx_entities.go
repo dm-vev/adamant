@@ -136,3 +136,21 @@ func (tx *Tx) Sleepers() iter.Seq[Sleeper] {
 func (tx *Tx) ReleaseViewers(viewers []Viewer) {
 	tx.World().releaseViewers(viewers)
 }
+
+// BroadcastEntityState notifies all viewers of e of its state change, sharing any cached state across viewers
+// that implement EntityStateSharedViewer.
+func BroadcastEntityState(tx *Tx, e Entity) {
+	if tx == nil || tx.Closed() || e == nil {
+		return
+	}
+	viewers := tx.Viewers(e.Position())
+	var b Broadcast
+	for _, viewer := range viewers {
+		if sv, ok := viewer.(EntityStateSharedViewer); ok {
+			sv.ViewEntityStateShared(e, &b)
+		} else {
+			viewer.ViewEntityState(e)
+		}
+	}
+	tx.ReleaseViewers(viewers)
+}

@@ -13,6 +13,11 @@ func (Empty) BBox(cube.Pos, world.BlockSource) []cube.BBox {
 	return nil
 }
 
+// StaticCollisionKind reports that Empty unconditionally has no collision boxes.
+func (Empty) StaticCollisionKind() world.CollisionKind {
+	return world.CollisionEmpty
+}
+
 // FaceSolid always returns false.
 func (Empty) FaceSolid(cube.Pos, cube.Face, world.BlockSource) bool {
 	return false

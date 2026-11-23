@@ -22,6 +22,11 @@ func (Solid) BBox(cube.Pos, world.BlockSource) []cube.BBox {
 	return fullBoxes
 }
 
+// StaticCollisionKind reports that Solid unconditionally spans a full 1x1x1 cube.
+func (Solid) StaticCollisionKind() world.CollisionKind {
+	return world.CollisionFullCube
+}
+
 // FaceSolid always returns true.
 func (Solid) FaceSolid(cube.Pos, cube.Face, world.BlockSource) bool {
 	return true

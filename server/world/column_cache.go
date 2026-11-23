@@ -22,7 +22,7 @@ func (k *SlotKey) String() string { return k.name }
 // world.
 type ColumnCache struct {
 	col       *Column
-	subChunks map[int16]cachedBlockEntityPayload
+	subChunks []cachedBlockEntityPayload
 	full      cachedBlockEntityPayload
 }
 
@@ -50,8 +50,11 @@ func (c *Column) Cache(k *SlotKey) *ColumnCache {
 // CachedNetworkSubChunkPayload returns the cached encoded network payload
 // of a sub-chunk.
 func (c *ColumnCache) CachedNetworkSubChunkPayload(ind int16) ([]byte, bool) {
-	payload, ok := c.subChunks[ind]
-	if ok && payload.ready {
+	if ind < 0 || int(ind) >= len(c.subChunks) {
+		return nil, false
+	}
+	payload := c.subChunks[ind]
+	if payload.ready {
 		if c.col != nil {
 			c.col.touchWireCache()
 		}
@@ -63,10 +66,12 @@ func (c *ColumnCache) CachedNetworkSubChunkPayload(ind int16) ([]byte, bool) {
 // CacheNetworkSubChunkPayload stores the encoded network payload of a
 // sub-chunk.
 func (c *ColumnCache) CacheNetworkSubChunkPayload(ind int16, payload []byte) {
+	if ind < 0 {
+		return
+	}
+	c.subChunks = ensureSubChunkSlice(c.subChunks, c.col, ind)
 	var oldLen int
-	if c.subChunks == nil {
-		c.subChunks = make(map[int16]cachedBlockEntityPayload, 4)
-	} else if prev, ok := c.subChunks[ind]; ok && prev.ready {
+	if prev := c.subChunks[ind]; prev.ready {
 		oldLen = len(prev.payload)
 	}
 	c.subChunks[ind] = cachedBlockEntityPayload{payload: payload, ready: true}
@@ -98,17 +103,34 @@ func (c *ColumnCache) CacheFullChunkPayload(payload []byte) {
 	}
 }
 
+// invalidateSubChunk clears the full-chunk payload and the single sub-chunk
+// payload at subIdx, returning the total payload bytes freed.
+func (c *ColumnCache) invalidateSubChunk(subIdx int16) int64 {
+	var freed int64
+	if subIdx >= 0 && int(subIdx) < len(c.subChunks) {
+		if p := c.subChunks[subIdx]; p.ready {
+			freed += int64(len(p.payload))
+			c.subChunks[subIdx] = cachedBlockEntityPayload{}
+		}
+	}
+	if c.full.ready {
+		freed += int64(len(c.full.payload))
+		c.full = cachedBlockEntityPayload{}
+	}
+	return freed
+}
+
 // invalidate clears the payload of the chunk, and those of the sub-chunks
 // if subChunks is set, returning the total payload bytes freed.
 func (c *ColumnCache) invalidate(subChunks bool) int64 {
 	var freed int64
 	if subChunks && len(c.subChunks) > 0 {
-		for _, p := range c.subChunks {
+		for i, p := range c.subChunks {
 			if p.ready {
 				freed += int64(len(p.payload))
+				c.subChunks[i] = cachedBlockEntityPayload{}
 			}
 		}
-		clear(c.subChunks)
 	}
 	if c.full.ready {
 		freed += int64(len(c.full.payload))

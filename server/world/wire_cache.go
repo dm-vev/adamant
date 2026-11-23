@@ -282,6 +282,17 @@ func (c *Column) subWireBytes(freed int64) {
 	}
 }
 
+// invalidateSubChunk clears the full-chunk payload and the single sub-chunk
+// payload at subIdx across all keyed caches on c, subtracting freed bytes from
+// the wire cache.
+func (c *Column) invalidateSubChunk(subIdx int16) {
+	freed := c.ownCache.invalidateSubChunk(subIdx)
+	for _, cache := range c.caches {
+		freed += cache.invalidateSubChunk(subIdx)
+	}
+	c.subWireBytes(freed)
+}
+
 // clearAllWirePayloads releases all cached wire payload buffers and maps on c.
 // Keyed ColumnCache handles in c.caches are kept so existing handles remain
 // valid, while their sub-chunk maps and full payloads are cleared.

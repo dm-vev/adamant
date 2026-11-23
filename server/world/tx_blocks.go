@@ -97,20 +97,18 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	c := tx.chunk(chunkPosFromBlockPos(pos))
 
 	rid := w.conf.Blocks.BlockRuntimeID(b)
-	oldLight := w.cellLightAt(c, pos)
-	redstoneAfterRelevant := isRedstoneRelevant(b)
-	needOldBlock := !opts.DisableRedstoneUpdates || !redstoneAfterRelevant
-
 	oldRID := c.Block(x, y, z, 0)
 	if opts.nativeState == nil && w.sameBlockState(c, pos, rid) {
 		return
 	}
-	needOldBlock = needOldBlock || w.conf.Blocks.NBTBlock(oldRID)
+	afterFlags := w.conf.Blocks.BlockFlags(rid)
+	oldFlags := w.conf.Blocks.BlockFlags(oldRID)
+	newIsNBT := afterFlags.IsNBT()
+
 	oldBlock := w.conf.Blocks.BlockByRuntimeIDOrAir(oldRID)
-	if w.conf.Blocks.NBTBlock(oldRID) {
-		if blockEntity, ok := c.BlockEntities[pos]; ok {
-			oldBlock = blockEntity
-		}
+	oldEntity, hadBlockEntity := c.BlockEntities[pos]
+	if hadBlockEntity {
+		oldBlock = oldEntity
 	}
 	b = w.replacePositionTrackingBlock(tx, pos, oldBlock, b)
 	if handler, ok := oldBlock.(BlockRemovalHandler); ok && !opts.disableRemovalHandler {
@@ -121,7 +119,7 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	if rid != w.conf.Blocks.AirRuntimeID() && !opts.DisableLiquidDisplacement {
 		before = oldRID
 	}
-	lightBefore := w.cellLightAt(c, pos)
+	oldLight := w.cellLightAt(c, pos)
 
 	c.setModified()
 	if opts.nativeState == nil {
@@ -136,55 +134,20 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	c.blockVersion = blockVersionClock.Add(1)
 	c.invalidateRandomTickSubChunks()
 	c.invalidateSubChunkHeightMaps()
-	c.invalidateNetworkSubChunkPayloads()
-	if w.conf.Blocks.NBTBlock(rid) {
-		c.updateBlockEntity(pos, b)
-		c.invalidateBlockEntityPayloads()
-	} else {
-		c.updateBlockEntity(pos, nil)
-		c.invalidateBlockEntityPayloads()
-	}
+	c.invalidateSubChunk(c.SubIndex(y))
+	applyBlockEntityChange(c, pos, b, newIsNBT, hadBlockEntity)
 	w.forgetReplacedFaultyActor(c, pos)
 	if len(w.blockFaults.m) != 0 {
 		w.blockSet(pos, b)
 	}
 
 	if !opts.DisableLiquidDisplacement {
-		var secondLayer Block
-
-		airRID := w.conf.Blocks.AirRuntimeID()
-		if rid == airRID {
-			if li := c.Block(x, y, z, 1); li != airRID {
-				c.SetBlock(x, y, z, 0, li)
-				c.SetBlock(x, y, z, 1, airRID)
-				c.invalidateRandomTickSubChunks()
-				c.invalidateSubChunkHeightMaps()
-				c.invalidateNetworkSubChunkPayloads()
-				secondLayer = w.conf.Blocks.Air()
-				b = w.conf.Blocks.BlockByRuntimeIDOrAir(li)
-			}
-		} else if w.conf.Blocks.LiquidDisplacingBlock(rid) {
-			if w.conf.Blocks.LiquidBlock(before) {
-				l := w.conf.Blocks.BlockByRuntimeIDOrAir(before)
-				if b.(LiquidDisplacer).CanDisplace(l.(Liquid)) {
-					c.SetBlock(x, y, z, 1, before)
-					secondLayer = l
-				}
-			}
-		} else if li := c.Block(x, y, z, 1); li != airRID {
-			c.SetBlock(x, y, z, 1, airRID)
-			secondLayer = w.conf.Blocks.Air()
-		}
-
-		if secondLayer != nil {
-			w.viewBlockUpdate(c, pos, secondLayer, 1)
-		}
-	}
-	w.relightIfChanged(c, pos, lightBefore)
-	if redstoneAfterRelevant || (needOldBlock && isRedstoneRelevant(oldBlock)) {
-		w.redstone.forget(pos)
+		b = w.displaceLiquidOnSet(c, pos, b, rid, before)
 	}
 	w.relightIfChanged(c, pos, oldLight)
+	if afterFlags.IsRedstoneRelevant() || oldFlags.IsRedstoneRelevant() {
+		w.redstone.forget(pos)
+	}
 	w.redstone.replaceCircuit(pos, oldBlock, b, opts.circuitPublication)
 
 	if !opts.disableViewUpdates {
@@ -193,7 +156,6 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 			w.viewBlockUpdate(c, pos, w.conf.Blocks.BlockByRuntimeIDOrAir(opts.nativeState.Liquid), 1)
 		}
 	}
-
 	if !opts.DisableBlockUpdates {
 		tx.updateAroundSetBlock(pos, oldBlock, b)
 	}
@@ -204,6 +166,46 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	if handler, ok := b.(PlacementHandler); ok && !opts.disablePlacementHandler {
 		handler.Placed(pos, tx, oldBlock)
 	}
+}
+
+func applyBlockEntityChange(c *Column, pos cube.Pos, b Block, newIsNBT, hadBlockEntity bool) {
+	if newIsNBT {
+		c.updateBlockEntity(pos, b)
+	} else if hadBlockEntity {
+		c.updateBlockEntity(pos, nil)
+	}
+	if hadBlockEntity || newIsNBT {
+		c.invalidateBlockEntityPayloads()
+	}
+}
+
+func (w *World) displaceLiquidOnSet(c *Column, pos cube.Pos, b Block, rid, before uint32) Block {
+	x, y, z := uint8(pos[0]), int16(pos[1]), uint8(pos[2])
+	var secondLayer Block
+	airRID := w.conf.Blocks.AirRuntimeID()
+	if rid == airRID {
+		if li := c.Block(x, y, z, 1); li != airRID {
+			c.SetBlock(x, y, z, 0, li)
+			c.SetBlock(x, y, z, 1, airRID)
+			secondLayer = w.conf.Blocks.Air()
+			b = w.conf.Blocks.BlockByRuntimeIDOrAir(li)
+		}
+	} else if w.conf.Blocks.LiquidDisplacingBlock(rid) {
+		if w.conf.Blocks.LiquidBlock(before) {
+			l := w.conf.Blocks.BlockByRuntimeIDOrAir(before)
+			if b.(LiquidDisplacer).CanDisplace(l.(Liquid)) {
+				c.SetBlock(x, y, z, 1, before)
+				secondLayer = l
+			}
+		}
+	} else if li := c.Block(x, y, z, 1); li != airRID {
+		c.SetBlock(x, y, z, 1, airRID)
+		secondLayer = w.conf.Blocks.Air()
+	}
+	if secondLayer != nil {
+		w.viewBlockUpdate(c, pos, secondLayer, 1)
+	}
+	return b
 }
 
 // forgetReplacedFaultyActor forgets the block entity of the column c at pos
@@ -364,7 +366,7 @@ func (tx *Tx) buildStructure(pos cube.Pos, s Structure) {
 								sub.SetBlock(uint8(xOffset), uint8(yOffset), uint8(zOffset), 0, rid)
 								c.invalidateRandomTickSubChunks()
 								c.invalidateSubChunkHeightMaps()
-								c.invalidateNetworkSubChunkPayloads()
+								c.invalidateSubChunk(int16(i))
 
 								if w.conf.Blocks.NBTBlock(rid) {
 									c.updateBlockEntity(nbtPos, b)
@@ -480,7 +482,7 @@ func (tx *Tx) setLiquid(pos cube.Pos, b Liquid) {
 		c.SetBlock(x, y, z, 0, rid)
 		c.invalidateRandomTickSubChunks()
 		c.invalidateSubChunkHeightMaps()
-		c.invalidateNetworkSubChunkPayloads()
+		c.invalidateSubChunk(c.SubIndex(y))
 		w.viewBlockUpdate(c, pos, b, 0)
 	} else {
 		c.SetBlock(x, y, z, 1, rid)
@@ -773,11 +775,40 @@ func (tx *Tx) BlockLoaded(pos cube.Pos) (Block, bool) {
 	return tx.blockLoaded(pos)
 }
 
+// BlockRID returns the foreground block runtime ID at pos if pos is in bounds
+// and its column is loaded and ready, without loading or generating chunks.
+func (tx *Tx) BlockRID(pos cube.Pos) (uint32, bool) {
+	w := tx.World()
+	if pos.OutOfBounds(w.ra) {
+		return 0, false
+	}
+	c, ok := tx.readyColumn(chunkPosFromBlockPos(pos))
+	if !ok {
+		return 0, false
+	}
+	return c.Block(uint8(pos[0]), int16(pos[1]), uint8(pos[2]), 0), true
+}
+
 // Liquid attempts to return a Liquid block at the position passed. This
 // Liquid may be in the foreground or in any other layer. If found, the Liquid
 // is returned. If not, the bool returned is false.
 func (tx *Tx) Liquid(pos cube.Pos) (Liquid, bool) {
 	return tx.liquid(pos)
+}
+
+// LiquidRID returns the runtime ID of a liquid in layer 0 or layer 1 at pos if
+// pos is in bounds, its column is loaded and ready, and a liquid is present,
+// without loading or generating chunks.
+func (tx *Tx) LiquidRID(pos cube.Pos) (uint32, bool) {
+	w := tx.World()
+	if pos.OutOfBounds(w.ra) {
+		return 0, false
+	}
+	c, ok := tx.readyColumn(chunkPosFromBlockPos(pos))
+	if !ok {
+		return 0, false
+	}
+	return w.liquidRIDInColumn(c, pos)
 }
 
 // MayContainLiquid reports whether any block from lo to hi, inclusive, may

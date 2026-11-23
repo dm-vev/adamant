@@ -604,7 +604,11 @@ func (tx *Tx) readyColumn(pos ChunkPos) (*Column, bool) {
 		c := r.column(tx.w, pos)
 		return c, c != nil
 	}
-	c, ok := tx.w.chunks[pos]
+	w := tx.w
+	if w.lastChunk != nil && w.lastChunkPos == pos {
+		return w.lastChunk, true
+	}
+	c, ok := w.chunks[pos]
 	return c, ok && c.Ready()
 }
 

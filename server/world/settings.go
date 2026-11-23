@@ -142,6 +142,7 @@ func (s *Settings) unregisterWorldLocked(w *World) {
 				s.CurrentTick = next.tick
 			}
 			next.tick = s.CurrentTick
+			next.currentTick.Store(s.CurrentTick)
 			next.advance = true
 			s.owner = next
 			break

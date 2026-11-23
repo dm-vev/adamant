@@ -14,6 +14,11 @@ func (Leaves) BBox(cube.Pos, world.BlockSource) []cube.BBox {
 	return fullBoxes
 }
 
+// StaticCollisionKind reports that Leaves unconditionally spans a full 1x1x1 cube.
+func (Leaves) StaticCollisionKind() world.CollisionKind {
+	return world.CollisionFullCube
+}
+
 // FaceSolid always returns false.
 func (Leaves) FaceSolid(cube.Pos, cube.Face, world.BlockSource) bool {
 	return false

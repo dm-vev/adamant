@@ -322,6 +322,7 @@ func (ticker) advanceClock(w *World, idle, runStep bool) (c tickClock, ok bool) 
 	} else {
 		w.tick++
 	}
+	w.currentTick.Store(w.currentTickLocked())
 	if runStep {
 		w.stepTicks.Add(-1)
 	}

@@ -145,6 +145,19 @@ func (v *ReadView) BlockLoaded(pos cube.Pos) (Block, bool) {
 	return v.Block(pos), true
 }
 
+// BlockRID returns the foreground block runtime ID at pos if pos is in bounds
+// and its column is settled, marking the view missed if the column is absent.
+func (v *ReadView) BlockRID(pos cube.Pos) (uint32, bool) {
+	if pos.OutOfBounds(v.w.ra) {
+		return 0, false
+	}
+	c := v.column(chunkPosFromBlockPos(pos))
+	if c == nil {
+		return 0, false
+	}
+	return c.Block(uint8(pos[0]), int16(pos[1]), uint8(pos[2]), 0), true
+}
+
 // BlockStateID returns the canonical source state of the block at pos, as
 // Tx.BlockStateID does for a settled column.
 func (v *ReadView) BlockStateID(pos cube.Pos) (uint32, error) {
@@ -172,6 +185,19 @@ func (v *ReadView) Liquid(pos cube.Pos) (Liquid, bool) {
 		return nil, false
 	}
 	return v.w.liquidInColumn(c, pos)
+}
+
+// LiquidRID returns the runtime ID of the liquid at pos in layer 0 or layer 1
+// for a settled column, marking the view missed if the column is absent.
+func (v *ReadView) LiquidRID(pos cube.Pos) (uint32, bool) {
+	if pos.OutOfBounds(v.w.ra) {
+		return 0, false
+	}
+	c := v.column(chunkPosFromBlockPos(pos))
+	if c == nil {
+		return 0, false
+	}
+	return v.w.liquidRIDInColumn(c, pos)
 }
 
 // MayContainLiquid reports whether a block from lo to hi, inclusive, may
