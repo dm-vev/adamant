@@ -4,15 +4,7 @@
 
 **High-performance Minecraft: Bedrock Edition server in Go — drop-in BDS alternative with Java 26.3 parity and clean extensibility.**
 
-<p>
-  <a href="https://github.com/dm-vev/adamant/actions/workflows/ci.yml"><img src="https://github.com/dm-vev/adamant/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" height="20"></a>
-  <a href="go.mod"><img src="https://img.shields.io/badge/Go-1.27%2B-00ADD8?logo=go&logoColor=white" alt="Go 1.27+" height="20"></a>
-  <a href="docs/protocols.md"><img src="https://img.shields.io/badge/Bedrock-1.26.50%20%E2%80%93%201.26.61-62B47A" alt="Bedrock 1.26.50-1.26.61" height="20"></a>
-  <a href="docs/protocols.md"><img src="https://img.shields.io/badge/protocol-2193%20%7C%202225-0284C7" alt="Protocol 2193 | 2225" height="20"></a>
-  <a href="vanilla-reference.json"><img src="https://img.shields.io/badge/Java%20parity-26.3-E76F00" alt="Java parity 26.3" height="20"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-64748B" alt="License: MIT" height="20"></a>
-  <a href="https://github.com/dm-vev/adamant/stargazers"><img src="https://img.shields.io/github/stars/dm-vev/adamant?style=flat&color=F59E0B" alt="GitHub Stars" height="20"></a>
-</p>
+<p align="center"><a href="https://github.com/dm-vev/adamant/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/dm-vev/adamant/ci.yml?branch=main&label=CI" alt="CI" height="20"></a> <a href="go.mod"><img src="https://img.shields.io/badge/Go-1.27%2B-00ADD8?logo=go&logoColor=white" alt="Go 1.27+" height="20"></a> <a href="docs/protocols.md"><img src="https://img.shields.io/badge/Bedrock-1.26.50%E2%80%931.26.61-62B47A" alt="Bedrock 1.26.50-1.26.61" height="20"></a> <a href="docs/protocols.md"><img src="https://img.shields.io/badge/protocol-2193%20%7C%202225-0284C7" alt="Protocol 2193 | 2225" height="20"></a> <a href="vanilla-reference.json"><img src="https://img.shields.io/badge/Java-26.3-E76F00" alt="Java 26.3" height="20"></a> <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-64748B" alt="License: MIT" height="20"></a></p>
 
 [**Quick Start**](#quick-start) ·
 [**Why Adamant?**](#why-adamant) ·
