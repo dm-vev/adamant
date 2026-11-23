@@ -12,10 +12,15 @@ import (
 // hashing.
 type posIndex struct {
 	pages map[uint64]*indexPage
-	// last caches the page of the section read last, nil if it has none.
-	lastKey   uint64
-	last      *indexPage
-	lastValid bool
+	// slots caches the most recently accessed section pages in an 8-slot
+	// direct-mapped table to avoid map lookups across chunk/section borders.
+	slots [8]posIndexSlot
+}
+
+type posIndexSlot struct {
+	key   uint64
+	page  *indexPage
+	valid bool
 }
 
 // indexPage holds the index plus one of each position of a section, zero for
@@ -64,12 +69,17 @@ func indexInPage(p featurePos) int {
 	return int(p.x&15) | int(p.z&15)<<4 | int(p.y&15)<<8
 }
 
+func posIndexSlotIndex(key uint64) uint64 {
+	return (key ^ (key >> 22) ^ (key >> 44)) & 7
+}
+
 func (x *posIndex) page(key uint64) *indexPage {
-	if x.lastValid && x.lastKey == key {
-		return x.last
+	slot := &x.slots[posIndexSlotIndex(key)]
+	if slot.valid && slot.key == key {
+		return slot.page
 	}
 	page := x.pages[key]
-	x.lastKey, x.last, x.lastValid = key, page, true
+	slot.key, slot.page, slot.valid = key, page, true
 	return page
 }
 
@@ -84,14 +94,23 @@ func (x *posIndex) get(p featurePos) uint32 {
 // slot returns the index plus one of p for writing.
 func (x *posIndex) slot(p featurePos) *uint32 {
 	key := indexSectionKey(p)
-	page := x.page(key)
+	slot := &x.slots[posIndexSlotIndex(key)]
+	var page *indexPage
+	if slot.valid && slot.key == key {
+		page = slot.page
+	} else {
+		page = x.pages[key]
+		if page != nil {
+			slot.key, slot.page, slot.valid = key, page, true
+		}
+	}
 	if page == nil {
 		page = newIndexPage()
 		if x.pages == nil {
 			x.pages = make(map[uint64]*indexPage)
 		}
 		x.pages[key] = page
-		x.lastKey, x.last, x.lastValid = key, page, true
+		slot.key, slot.page, slot.valid = key, page, true
 	}
 	return &page[indexInPage(p)]
 }
@@ -111,9 +130,9 @@ type featureOverlay struct {
 }
 
 const (
-	overlayStatesInitCap      = 512
-	maxFreeOverlayStates      = 64
-	maxPooledOverlayStatesCap = 65536
+	overlayStatesInitCap      = 2048
+	maxFreeOverlayStates      = 32
+	maxPooledOverlayStatesCap = 262144
 )
 
 // freeOverlayStates keeps the state slices of released overlays for reuse.

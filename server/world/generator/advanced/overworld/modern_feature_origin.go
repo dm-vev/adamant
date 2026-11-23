@@ -22,15 +22,14 @@ import (
 // an evicted record is computed again. Generators tuned for more workers
 // raise the bound with the wider front they generate.
 const (
-	originRecordCacheSize = 1024
-	// originRecordCacheMaxBytes bounds the estimated heap retained by one
-	// originRecordCache (32 MiB per cache, 64 MiB across origins and contexts)
-	// so dense biomes or structures cannot push generator heap into hundreds of
-	// megabytes during exploration.
-	originRecordCacheMaxBytes int64 = 32 << 20
+	originRecordCacheSize = 1536
+	// originRecordCacheMaxBytes bounds the estimated heap retained by
+	// originRecordCache (64 MiB) so dense biomes or structures cannot push
+	// generator heap into hundreds of megabytes during exploration.
+	originRecordCacheMaxBytes int64 = 64 << 20
 
 	originRecordBaseBytes = 64
-	originStepBytes       = 160
+	originStepBytes       = 184
 	recordedWriteBytes    = 32
 	recordedActorBytes    = 512
 	scheduledTickBytes    = 48
@@ -166,15 +165,18 @@ type originRecord struct {
 }
 
 // originStep holds the writes and side outputs of the features of one
-// decoration step of an origin, across the chunks around it.
+// decoration step of an origin, across the chunks around it. structWrites holds
+// non-BeyondChunk structure block writes inside the origin chunk itself so
+// higher-color successor origins see them without double-decorating.
 type originStep struct {
-	writes   []recordedWrite
-	written  posIndex
-	actors   map[cube.Pos]recordedActor
-	ordered  []recordedActor
-	ticks    []chunk.ScheduledTick
-	markers  []cube.Pos
-	entities []recordedEntity
+	writes       []recordedWrite
+	structWrites []recordedWrite
+	written      posIndex
+	actors       map[cube.Pos]recordedActor
+	ordered      []recordedActor
+	ticks        []chunk.ScheduledTick
+	markers      []cube.Pos
+	entities     []recordedEntity
 }
 
 // recordedWrite is the state a feature left at a position and the state it
@@ -211,6 +213,13 @@ func (s *originStep) write(p featurePos, before, after world.NativeState) {
 	*i = uint32(len(s.writes))
 }
 
+func (s *originStep) writeStruct(p featurePos, before, after world.NativeState) {
+	if s.structWrites == nil {
+		s.structWrites = getStepWrites()
+	}
+	s.structWrites = append(s.structWrites, recordedWrite{pos: p, before: before, after: after})
+}
+
 func (s *originStep) actor(entry structure.Block, state world.NativeState) {
 	if s.actors == nil {
 		s.actors = make(map[cube.Pos]recordedActor)
@@ -242,6 +251,26 @@ func (s *originStep) release() {
 		putStepWrites(s.writes)
 		s.writes = nil
 	}
+	if s.structWrites != nil {
+		putStepWrites(s.structWrites)
+		s.structWrites = nil
+	}
+}
+
+func packStepWrites(dst *[]recordedWrite, slab []recordedWrite, off int) int {
+	if n := len(*dst); n > 0 {
+		scratch := *dst
+		packed := slab[off : off+n : off+n]
+		copy(packed, scratch)
+		*dst = packed
+		putStepWrites(scratch)
+		return off + n
+	}
+	if *dst != nil {
+		putStepWrites(*dst)
+		*dst = nil
+	}
+	return off
 }
 
 // seal packs every step's writes into one contiguous slab, returns the scratch
@@ -249,7 +278,7 @@ func (s *originStep) release() {
 func (r *originRecord) seal() {
 	totalWrites := 0
 	for i := range r.steps {
-		totalWrites += len(r.steps[i].writes)
+		totalWrites += len(r.steps[i].writes) + len(r.steps[i].structWrites)
 	}
 	var slab []recordedWrite
 	if totalWrites > 0 {
@@ -259,17 +288,8 @@ func (r *originRecord) seal() {
 	off := 0
 	for i := range r.steps {
 		s := &r.steps[i]
-		if n := len(s.writes); n > 0 {
-			scratch := s.writes
-			dst := slab[off : off+n : off+n]
-			copy(dst, scratch)
-			s.writes = dst
-			off += n
-			putStepWrites(scratch)
-		} else if s.writes != nil {
-			putStepWrites(s.writes)
-			s.writes = nil
-		}
+		off = packStepWrites(&s.writes, slab, off)
+		off = packStepWrites(&s.structWrites, slab, off)
 		s.seal()
 	}
 }
@@ -294,6 +314,7 @@ func (r *originRecord) recycle() {
 	}
 	for i := range r.steps {
 		r.steps[i].writes = nil
+		r.steps[i].structWrites = nil
 	}
 }
 
@@ -335,7 +356,7 @@ func (s *originStep) apply(r *featureRegion) {
 }
 
 // decorationOrigins returns the origin chunks whose decoration reaches the
-// chunk at pos, in the order Java decorates them.
+// chunk at pos, in row-major Java order (used by DecorateInOneRegion).
 func decorationOrigins(pos world.ChunkPos) [9]world.ChunkPos {
 	var origins [9]world.ChunkPos
 	for i := range origins {
@@ -344,41 +365,80 @@ func decorationOrigins(pos world.ChunkPos) [9]world.ChunkPos {
 	return origins
 }
 
-// originPrecedes reports whether a decorates before b.
-func originPrecedes(a, b world.ChunkPos) bool {
-	return a[1] < b[1] || a[1] == b[1] && a[0] < b[0]
+// originColor assigns a 4-color parity in [0..3] to each origin chunk so no two
+// distinct origins of the same color can write into each other's home chunk.
+// Dependency depth across the infinite grid is strictly bounded at 3.
+func originColor(pos world.ChunkPos) int {
+	return int(pos[0]&1) | (int(pos[1]&1) << 1)
 }
 
-// applyContext writes the context record of origin into a recording region:
-// like apply, a write lands only where the region still holds the state the
-// feature found, and kelp only where its floor holds. Side outputs other than
-// tick reservations are dropped as they are for an origin decorated only for
-// context.
-func (s *originStep) applyContext(r *featureRegion, origin world.ChunkPos) {
-	r.SetOrigin(origin[0], origin[1])
-	for _, w := range s.writes {
-		if r.nativeState(w.pos) == w.before && r.kelpFloorHolds(w.pos, w.after) {
-			r.setWithFlags(w.pos, w.after, 16)
+// originColorUsers is the total number of callers acquiring an originRecord of
+// each color: 9 target chunks in Decorate plus 8/6/2/0 higher-color successors.
+var originColorUsers = [4]int{17, 15, 11, 9}
+
+func originUsers(pos world.ChunkPos) int {
+	return originColorUsers[originColor(pos)]
+}
+
+// originPrecedes reports whether a decorates before b in 4-color DAG order.
+func originPrecedes(a, b world.ChunkPos) bool {
+	ca, cb := originColor(a), originColor(b)
+	if ca != cb {
+		return ca < cb
+	}
+	return a[1] < b[1] || (a[1] == b[1] && a[0] < b[0])
+}
+
+// coloredDecorationOrigins returns the 9 origins around pos sorted in
+// 4-color DAG order so parallel/single-pass decoration is deterministic.
+func coloredDecorationOrigins(pos world.ChunkPos) [9]world.ChunkPos {
+	origins := decorationOrigins(pos)
+	for i := 1; i < len(origins); i++ {
+		v := origins[i]
+		j := i
+		for j > 0 && originPrecedes(v, origins[j-1]) {
+			origins[j] = origins[j-1]
+			j--
+		}
+		origins[j] = v
+	}
+	return origins
+}
+
+func applyPredecessorWrites(r *featureRegion, origin world.ChunkPos, writes []recordedWrite) {
+	for _, w := range writes {
+		if absFeatureInt(w.pos.x>>4-origin[0]) <= 1 && absFeatureInt(w.pos.z>>4-origin[1]) <= 1 {
+			if w.before != w.after && r.nativeState(w.pos) == w.before && r.kelpFloorHolds(w.pos, w.after) {
+				r.setWithFlagsPrev(w.pos, w.after, w.before, true, 16)
+			}
 		}
 	}
+}
+
+// applyPredecessor writes a lower-color predecessor origin's step into origin's
+// recording region for positions falling within origin's 3x3 write area.
+func (s *originStep) applyPredecessor(r *featureRegion, origin world.ChunkPos) {
+	applyPredecessorWrites(r, origin, s.structWrites)
+	applyPredecessorWrites(r, origin, s.writes)
 	for _, actor := range s.ordered {
 		p := featurePos{actor.entry.Pos[0], actor.entry.Pos[1], actor.entry.Pos[2]}
-		if r.nativeState(p) == actor.state {
+		if absFeatureInt(p.x>>4-origin[0]) <= 1 && absFeatureInt(p.z>>4-origin[1]) <= 1 && r.nativeState(p) == actor.state {
 			entry := actor.entry
 			entry.NBT = maps.Clone(entry.NBT)
 			r.recordTemplateActor(entry)
 		}
 	}
 	for _, tick := range s.ticks {
-		r.reserveTick(tick)
+		if absFeatureInt(int32(tick.Pos[0])>>4-origin[0]) <= 1 && absFeatureInt(int32(tick.Pos[2])>>4-origin[1]) <= 1 {
+			r.reserveTick(tick)
+		}
 	}
 }
 
-// computeOriginRecord records the features of origin after the context
-// records of the origins around it that precede it, which hold what their
-// structures and features write against the base terrain. Every origin is
-// thus decorated once for its record and once for its context, rather than
-// again for each origin it precedes.
+const maxOriginPredecessors = 8
+
+// computeOriginRecord decorates origin ONCE against its lower-color neighbour
+// origin records (bounded DAG depth <= 3), eliminating redundant context passes.
 func (f *ModernFeatures) computeOriginRecord(origin world.ChunkPos, registry chunk.BlockRegistry, r cube.Range, context world.GenerationContext) *originRecord {
 	region := newRecordingRegion(f, registry, r)
 	record := &originRecord{steps: make([]originStep, f.generationSteps())}
@@ -389,29 +449,18 @@ func (f *ModernFeatures) computeOriginRecord(origin world.ChunkPos, registry chu
 			region.release()
 		}
 	}()
-	// The context records are acquired first, so that in parallel mode those
-	// this chunk owns are computed at once.
-	var contexts [originSuccessors]*originRecordEntry
-	var predecessors [originSuccessors]world.ChunkPos
-	n := 0
-	for _, o := range decorationOrigins(origin) {
-		if o != origin && originPrecedes(o, origin) {
-			predecessors[n], contexts[n] = o, f.contextRecord(o, registry, r, context)
-			n++
-		}
-	}
-	released := 0
-	defer func() {
-		for i := released; i < n; i++ {
-			if contexts[i] != nil {
-				f.contexts.abandon(contexts[i])
+	c := originColor(origin)
+	if c != 0 {
+		var predecessors [maxOriginPredecessors]world.ChunkPos
+		n := 0
+		for _, o := range coloredDecorationOrigins(origin) {
+			if originColor(o) < c {
+				predecessors[n] = o
+				n++
 			}
 		}
-	}()
-	for i := range n {
-		contexts[i].wait().steps[0].applyContext(region, predecessors[i])
-		f.contexts.release(contexts[i], originSuccessors)
-		released = i + 1
+		region.SetOrigin(origin[0], origin[1])
+		f.applyOriginPredecessors(region, origin, predecessors[:n], registry, r, context)
 	}
 	f.decorateOrigin(region, origin, context, true, record)
 	record.seal()
@@ -420,34 +469,47 @@ func (f *ModernFeatures) computeOriginRecord(origin world.ChunkPos, registry chu
 	return record
 }
 
-// originSuccessors is the number of origins an origin precedes among the
-// origins around them, each of which uses its context record once.
-const originSuccessors = 4
-
-// contextRecord returns the entry of the context record of origin, computing
-// it if no other chunk is. Context records depend on nothing but the base
-// terrain, so waiting for one never waits for an origin record.
-func (f *ModernFeatures) contextRecord(origin world.ChunkPos, registry chunk.BlockRegistry, r cube.Range, context world.GenerationContext) *originRecordEntry {
-	entry, owner := f.contexts.acquire(origin)
-	if owner {
-		f.fill(&f.contexts, entry, func() *originRecord {
-			region := newRecordingRegion(f, registry, r)
-			record := &originRecord{steps: make([]originStep, 1)}
-			sealed := false
-			defer func() {
-				if !sealed {
-					record.releaseScratch()
-					region.release()
+func (f *ModernFeatures) applyOriginPredecessors(region *featureRegion, origin world.ChunkPos, predecessors []world.ChunkPos, registry chunk.BlockRegistry, r cube.Range, context world.GenerationContext) {
+	if !f.parallel {
+		for _, p := range predecessors {
+			entry := f.originRecord(p, registry, r, context)
+			released := false
+			func() {
+				defer func() {
+					if !released {
+						f.origins.abandon(entry)
+					}
+				}()
+				rec := entry.wait()
+				for i := range rec.steps {
+					rec.steps[i].applyPredecessor(region, origin)
 				}
+				f.origins.release(entry, originUsers(p))
+				released = true
 			}()
-			f.decorateContext(region, origin, context, &record.steps[0])
-			record.seal()
-			sealed = true
-			region.release()
-			return record
-		})
+		}
+		return
 	}
-	return entry
+	var entries [maxOriginPredecessors]*originRecordEntry
+	for i, p := range predecessors {
+		entries[i] = f.originRecord(p, registry, r, context)
+	}
+	released := 0
+	defer func() {
+		for i := released; i < len(predecessors); i++ {
+			if entries[i] != nil {
+				f.origins.abandon(entries[i])
+			}
+		}
+	}()
+	for i, p := range predecessors {
+		rec := entries[i].wait()
+		for j := range rec.steps {
+			rec.steps[j].applyPredecessor(region, origin)
+		}
+		f.origins.release(entries[i], originUsers(p))
+		released = i + 1
+	}
 }
 
 // originRecord returns the entry of the record of origin, computing the
@@ -689,7 +751,7 @@ func estimateOriginRecordBytes(r *originRecord) int64 {
 	for i := range r.steps {
 		s := &r.steps[i]
 		if r.slab == nil {
-			n += int64(cap(s.writes)) * recordedWriteBytes
+			n += int64(cap(s.writes)+cap(s.structWrites)) * recordedWriteBytes
 		}
 		n += int64(cap(s.ordered)) * recordedActorBytes
 		n += int64(cap(s.ticks)) * scheduledTickBytes

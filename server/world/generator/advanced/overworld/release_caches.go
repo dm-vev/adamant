@@ -28,7 +28,6 @@ func (g *Overworld) ReleaseGenerationCaches() {
 // kept for those waiting for it.
 func (f *ModernFeatures) ReleaseCaches() {
 	f.origins.clear()
-	f.contexts.clear()
 	clearOriginWritePools()
 	clearOverlayPools()
 }

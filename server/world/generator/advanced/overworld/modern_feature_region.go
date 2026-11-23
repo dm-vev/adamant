@@ -31,7 +31,15 @@ const (
 	featFlagReplaceable
 	featFlagShapeOK
 	featFlagCanonicalErr
-	featFlagSturdyShift = 16 // 6 bits: cube.Face 0..5
+	featFlagCollisionFull
+
+	featFlagSturdyShift     = 16 // 6 bits: cube.Face 0..5 (bits 16..21)
+	featFlagAttachmentShift = 22 // 6 bits: cube.Face 0..5 (bits 22..27)
+
+	featFlagFire               uint32 = 1 << 28
+	featFlagSculkReplaceable   uint32 = 1 << 29
+	featFlagSculkReplaceableWG uint32 = 1 << 30
+	featFlagSculkBehavior      uint32 = 1 << 31
 )
 
 var defaultFeatureMeta = sync.OnceValue(func() []atomic.Uint32 {
@@ -81,11 +89,26 @@ func featureMetaForDefaultRID(rid uint32) uint32 {
 			if blockTagContains("height_specific_ore_replaceables", name) {
 				flags |= featFlagHeightSpecificOre
 			}
+			if name == "sculk" || name == "sculk_vein" {
+				flags |= featFlagSculkBehavior
+			}
+			if blockTagContains("fire", name) {
+				flags |= featFlagFire
+			}
+			if blockTagContains("sculk_replaceable", name) {
+				flags |= featFlagSculkReplaceable
+			}
+			if blockTagContains("sculk_replaceable_world_gen", name) {
+				flags |= featFlagSculkReplaceableWG
+			}
 		}
 		if shape, err := gamedata.BlockGenerationShapeID(id); err == nil {
-			flags |= featFlagShapeOK | (uint32(shape.Sturdy) << featFlagSturdyShift)
+			flags |= featFlagShapeOK | (uint32(shape.Sturdy) << featFlagSturdyShift) | (uint32(shape.Attachment) << featFlagAttachmentShift)
 			if shape.Replaceable {
 				flags |= featFlagReplaceable
+			}
+			if shape.CollisionFull {
+				flags |= featFlagCollisionFull
 			}
 		}
 	}
@@ -585,6 +608,7 @@ func (r *featureRegion) setWithFlagsPrev(p featurePos, state, prev world.NativeS
 	}
 	inTarget := r.hasTarget && p.x>>4 == r.target[0] && p.z>>4 == r.target[1]
 	recording := r.recordingAt(p)
+	recordStruct := recording == nil && r.structureRecording != nil && p.x>>4 == r.writeOriginX && p.z>>4 == r.writeOriginZ
 	if len(r.nativeProjections) != 0 {
 		pos := cube.Pos{int(p.x), int(p.y), int(p.z)}
 		if _, projected := r.nativeProjections[pos]; projected {
@@ -594,7 +618,7 @@ func (r *featureRegion) setWithFlagsPrev(p featurePos, state, prev world.NativeS
 	}
 	hasActors := len(r.blockActorRecords) != 0 || len(r.blockActorData) != 0 || len(r.result.BlockEntities) != 0 || (recording != nil && len(recording.actors) != 0)
 	previous := prev
-	if !hasPrev && (recording != nil || hasActors) {
+	if !hasPrev && (recording != nil || recordStruct || hasActors) {
 		previous = r.nativeState(p)
 	}
 	changedBlock := true
@@ -617,6 +641,8 @@ func (r *featureRegion) setWithFlagsPrev(p featurePos, state, prev world.NativeS
 	}
 	if recording != nil {
 		recording.write(p, previous, state)
+	} else if recordStruct {
+		r.structureRecording.writeStruct(p, previous, state)
 	}
 	if (inTarget || recording != nil) && flags&16 == 0 {
 		r.markBlockPostProcessing(p, state)
@@ -1145,16 +1171,30 @@ func (r *featureRegion) isOreAirExposed(x, y, z int32) bool {
 	return false
 }
 
+type cachedOreTargetSet struct {
+	targets      []fastOreTarget
+	allFastTags  bool
+	combinedMask uint32
+}
+
 func (r *featureRegion) resolveOreTargets(targets []any, origin featurePos, buf *[2]fastOreTarget) ([]fastOreTarget, bool, uint32) {
-	if r.currentOreName != "" && r.lastOreName == r.currentOreName {
-		return r.lastOreTargets[:r.lastOreCount], r.lastOreAllFast, r.lastOreMask
+	if r.currentOreName != "" {
+		if r.lastOreName == r.currentOreName {
+			return r.lastOreTargets[:r.lastOreCount], r.lastOreAllFast, r.lastOreMask
+		}
+		if r.isDefaultReg {
+			if cached, ok := r.f.oreTargets.Load(r.currentOreName); ok {
+				c := cached.(cachedOreTargetSet)
+				return c.targets, c.allFastTags, c.combinedMask
+			}
+		}
 	}
 	oreTargets := buf[:0]
 	if len(targets) > len(buf) {
 		oreTargets = make([]fastOreTarget, 0, len(targets))
 	}
 	allFastTags := true
-	cacheable := r.currentOreName != "" && len(targets) <= len(r.lastOreTargets)
+	cacheable := r.currentOreName != ""
 	var combinedMask uint32
 	for _, raw := range targets {
 		entry := raw.(map[string]any)
@@ -1178,11 +1218,18 @@ func (r *featureRegion) resolveOreTargets(targets []any, origin featurePos, buf 
 		oreTargets = append(oreTargets, fastOreTarget{rid: state, actor: actor, predicate: predicate, tagFlag: tagFlag, heightTagFlag: hFlag, heightMin: hMin, heightMax: hMax})
 	}
 	if cacheable {
-		r.lastOreName = r.currentOreName
-		r.lastOreCount = len(oreTargets)
-		r.lastOreAllFast = allFastTags
-		r.lastOreMask = combinedMask
-		copy(r.lastOreTargets[:], oreTargets)
+		if r.isDefaultReg {
+			copied := make([]fastOreTarget, len(oreTargets))
+			copy(copied, oreTargets)
+			r.f.oreTargets.Store(r.currentOreName, cachedOreTargetSet{targets: copied, allFastTags: allFastTags, combinedMask: combinedMask})
+		}
+		if len(oreTargets) <= len(r.lastOreTargets) {
+			r.lastOreName = r.currentOreName
+			r.lastOreCount = len(oreTargets)
+			r.lastOreAllFast = allFastTags
+			r.lastOreMask = combinedMask
+			copy(r.lastOreTargets[:], oreTargets)
+		}
 	}
 	return oreTargets, allFastTags, combinedMask
 }
@@ -1207,16 +1254,10 @@ func placeModernOreRegion(region *featureRegion, config map[string]any, origin f
 	horizontalRadius := int32(math.Ceil(float64(spread))) + maxRadius
 	xStart, yStart, zStart := origin.x-horizontalRadius, origin.y-2-maxRadius, origin.z-horizontalRadius
 	sizeXZ, sizeY := 2*horizontalRadius, 2*(2+maxRadius)
-	belowSurface := false
+	belowSurface := region.base != nil && yStart <= region.worldgenHeight(origin.x, origin.z, 3)
 	for x := xStart; x <= xStart+sizeXZ && !belowSurface; x++ {
 		for z := zStart; z <= zStart+sizeXZ; z++ {
-			var h int32
-			if region.base != nil {
-				h = region.worldgenHeight(x, z, 3)
-			} else {
-				h = region.placementHeight(x, z, "OCEAN_FLOOR_WG")
-			}
-			if yStart <= h {
+			if yStart <= region.placementHeightFast(x, z, "OCEAN_FLOOR_WG") {
 				belowSurface = true
 				break
 			}

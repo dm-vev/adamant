@@ -10,11 +10,10 @@ import (
 // cachedEntries returns how many origin records, terrain previews and noise
 // biomes the generator keeps.
 func cachedEntries(g *Overworld) (records, previews, biomes int) {
-	for _, c := range []*originRecordCache{&g.modernFeatures.origins, &g.modernFeatures.contexts} {
-		c.mu.Lock()
-		records += len(c.entries)
-		c.mu.Unlock()
-	}
+	c := &g.modernFeatures.origins
+	c.mu.Lock()
+	records += len(c.entries)
+	c.mu.Unlock()
 	for _, cache := range []*previewCache{g.previewCache, g.rawCache} {
 		for i := range cache.shards {
 			s := &cache.shards[i]
@@ -55,13 +54,12 @@ func TestReleasedCachesGiveTheSameChunks(t *testing.T) {
 	if records, previews, biomes = cachedEntries(g); records+previews+biomes != 0 {
 		t.Fatalf("%d records, %d previews and %d noise biomes still cached after the release", records, previews, biomes)
 	}
-	for _, c := range []*originRecordCache{&g.modernFeatures.origins, &g.modernFeatures.contexts} {
-		c.mu.Lock()
-		b := c.bytes
-		c.mu.Unlock()
-		if b != 0 {
-			t.Fatalf("originRecordCache still accounts for %d bytes after release", b)
-		}
+	c := &g.modernFeatures.origins
+	c.mu.Lock()
+	b := c.bytes
+	c.mu.Unlock()
+	if b != 0 {
+		t.Fatalf("originRecordCache still accounts for %d bytes after release", b)
 	}
 	g.modernStructures.startCacheMu.Lock()
 	starts := len(g.modernStructures.startCache)

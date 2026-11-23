@@ -3,6 +3,7 @@ package overworld
 import (
 	"log/slog"
 	"sync"
+	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -40,6 +41,7 @@ type Overworld struct {
 	// worldgenHeights keeps the WORLDGEN heightmaps of base terrain that
 	// left previewCache.
 	worldgenHeights worldgenHeightCache
+	hooks           atomic.Pointer[Hooks]
 }
 
 // SetLog sets where the structures of the generator log. It must be called
@@ -80,7 +82,15 @@ func NewOverworld(seed int64) *Overworld {
 func (g *Overworld) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk, context world.GenerationContext) world.GenerationResult {
 	base := g.terrainColumn(pos, false)
 	*c = *base.c.Clone()
+	h := g.hooks.Load()
+	if h != nil {
+		applyPreDecorationHooks(pos, c, h)
+	}
 	result := g.modernFeatures.Decorate(pos, c, context)
+	if h != nil && h.OnDecorate != nil {
+		rng := decorationHookRandom(g.seed, pos)
+		h.OnDecorate(pos, c, &rng)
+	}
 	decorationMarkers := result.PostProcessing
 	result.PostProcessing = nil
 	appendPostProcessing(&result, base.postProcessing)

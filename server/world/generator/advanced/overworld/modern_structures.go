@@ -44,9 +44,31 @@ type modernStructureStepEntry struct {
 	index int32
 }
 
+const (
+	placementKindOther uint8 = iota
+	placementKindRandomSpread
+	placementKindConcentricRings
+)
+
+type parsedStructurePlacement struct {
+	valid        bool
+	kind         uint8
+	spacing      int32
+	separation   int32
+	salt         int32
+	spreadType   structure.SpreadType
+	frequency    float32
+	freqMethod   structure.FrequencyReduction
+	hasExclusion bool
+	excludeCount int32
+	excludeSet   int
+	ringCoords   [][2]int32
+}
+
 type modernStructureSet struct {
 	name       string
 	placement  map[string]any
+	parsed     parsedStructurePlacement
 	structures []modernStructureEntry
 }
 type modernStructureEntry struct {
@@ -176,10 +198,54 @@ func newModernStructures(seed int64, source ModernFeatureSource) *modernStructur
 			for _, chunk := range order {
 				s.rings[name][chunk] = struct{}{}
 			}
+			s.sets[len(s.sets)-1].parsed.ringCoords = order
 		}
 	}
+	s.compileSetPlacements()
 	s.loadStructureSteps()
 	return s
+}
+
+func (s *modernStructures) compileSetPlacements() {
+	for i := range s.sets {
+		set := &s.sets[i]
+		p := set.placement
+		parsed := parsedStructurePlacement{valid: true, excludeSet: -1}
+		switch normalizeResource(stringValue(p["type"])) {
+		case "concentric_rings":
+			parsed.kind = placementKindConcentricRings
+			parsed.ringCoords = s.ringOrder[set.name]
+		case "random_spread":
+			parsed.kind = placementKindRandomSpread
+			parsed.spacing = int32(number(p["spacing"]))
+			parsed.separation = int32(number(p["separation"]))
+			parsed.salt = int32(number(p["salt"]))
+			if normalizeResource(stringValue(p["spread_type"])) == "triangular" {
+				parsed.spreadType = structure.Triangular
+			}
+			parsed.frequency = float32(number(p["frequency"]))
+			parsed.freqMethod = frequencyMethod(stringValue(p["frequency_reduction_method"]))
+			if zone, ok := p["exclusion_zone"].(map[string]any); ok {
+				otherName := normalizeResource(stringValue(zone["other_set"]))
+				idx := -1
+				for j := range s.sets {
+					if normalizeResource(s.sets[j].name) == otherName {
+						idx = j
+						break
+					}
+				}
+				if idx < 0 {
+					panic(fmt.Sprintf("overworld: structure set %s excludes unknown set %v", set.name, zone["other_set"]))
+				}
+				parsed.hasExclusion = true
+				parsed.excludeSet = idx
+				parsed.excludeCount = int32(number(zone["chunk_count"]))
+			}
+		default:
+			parsed.kind = placementKindOther
+		}
+		set.parsed = parsed
+	}
 }
 
 // loadStructureSteps groups the structures by decoration step in the order of
@@ -335,37 +401,110 @@ func (s *modernStructures) locatePreferredBiome(chunkX, chunkZ int32, preferredB
 	return selected, found != 0
 }
 
+type structurePrepCandidate struct {
+	x, z   int32
+	setIdx int
+}
+
 func (s *modernStructures) Prepare(pos world.ChunkPos) *modernStructureContext {
 	ctx := &modernStructureContext{seed: s.seed, structureSteps: s.structureSteps, pieceStates: &s.pieceStates}
-	for dz := int32(-8); dz <= 8; dz++ {
-		for dx := int32(-8); dx <= 8; dx++ {
-			startX, startZ := int32(pos[0])+dx, int32(pos[1])+dz
-			for _, set := range s.sets {
-				candidate, ok := s.candidate(set, startX, startZ)
-				if !ok {
-					continue
+	minX, maxX := int32(pos[0])-8, int32(pos[0])+8
+	minZ, maxZ := int32(pos[1])-8, int32(pos[1])+8
+	var candBuf [16]structurePrepCandidate
+	cands := candBuf[:0]
+	for setIdx := range s.sets {
+		set := &s.sets[setIdx]
+		if !set.parsed.valid {
+			for dz := int32(-8); dz <= 8; dz++ {
+				for dx := int32(-8); dx <= 8; dx++ {
+					startX, startZ := int32(pos[0])+dx, int32(pos[1])+dz
+					if cand, ok := s.candidate(*set, startX, startZ); ok {
+						cands = append(cands, structurePrepCandidate{x: cand[0], z: cand[1], setIdx: setIdx})
+					}
 				}
-				start, ok := s.makeStart(set, candidate[0], candidate[1])
-				if !ok {
-					continue
+			}
+			continue
+		}
+		switch set.parsed.kind {
+		case placementKindConcentricRings:
+			for _, rc := range set.parsed.ringCoords {
+				if rc[0] >= minX && rc[0] <= maxX && rc[1] >= minZ && rc[1] <= maxZ {
+					cands = append(cands, structurePrepCandidate{x: rc[0], z: rc[1], setIdx: setIdx})
 				}
-				if intersectsChunk(start.box, pos) {
-					ctx.starts = append(ctx.starts, start)
+			}
+		case placementKindRandomSpread:
+			sp := set.parsed.spacing
+			if sp <= 0 {
+				continue
+			}
+			rx0, rx1 := floorDiv32(minX, sp), floorDiv32(maxX, sp)
+			rz0, rz1 := floorDiv32(minZ, sp), floorDiv32(maxZ, sp)
+			for rz := rz0; rz <= rz1; rz++ {
+				for rx := rx0; rx <= rx1; rx++ {
+					cand, err := structure.PotentialChunk(s.seed, rx*sp, rz*sp, set.parsed.salt, sp, set.parsed.separation, set.parsed.spreadType)
+					if err != nil {
+						panic(fmt.Sprintf("overworld: structure set %s: %v", set.name, err))
+					}
+					if cand[0] >= minX && cand[0] <= maxX && cand[1] >= minZ && cand[1] <= maxZ {
+						if s.frequencyAllows(*set, cand[0], cand[1]) && !s.exclusionForbids(*set, cand[0], cand[1]) {
+							cands = append(cands, structurePrepCandidate{x: cand[0], z: cand[1], setIdx: setIdx})
+						}
+					}
 				}
 			}
 		}
 	}
-	pieces := make([]structure.RigidPiece, 0)
-	junctions := make([]structure.Junction, 0)
-	for _, start := range ctx.starts {
-		pieces = append(pieces, start.rigid...)
-		junctions = append(junctions, start.junctions...)
+	if len(cands) > 1 {
+		slices.SortFunc(cands, func(a, b structurePrepCandidate) int {
+			if a.z != b.z {
+				if a.z < b.z {
+					return -1
+				}
+				return 1
+			}
+			if a.x != b.x {
+				if a.x < b.x {
+					return -1
+				}
+				return 1
+			}
+			return a.setIdx - b.setIdx
+		})
 	}
-	ctx.beardifier = structure.NewChunkBeardifier(pos[0], pos[1], pieces, junctions)
+	for _, cand := range cands {
+		start, ok := s.makeStart(s.sets[cand.setIdx], cand.x, cand.z)
+		if ok && intersectsChunk(start.box, pos) {
+			ctx.starts = append(ctx.starts, start)
+		}
+	}
+	if len(ctx.starts) > 0 {
+		var pieces []structure.RigidPiece
+		var junctions []structure.Junction
+		for _, start := range ctx.starts {
+			pieces = append(pieces, start.rigid...)
+			junctions = append(junctions, start.junctions...)
+		}
+		ctx.beardifier = structure.NewChunkBeardifier(pos[0], pos[1], pieces, junctions)
+	}
 	return ctx
 }
 
 func (s *modernStructures) candidate(set modernStructureSet, x, z int32) ([2]int32, bool) {
+	if set.parsed.valid {
+		switch set.parsed.kind {
+		case placementKindConcentricRings:
+			_, ok := s.rings[set.name][[2]int32{x, z}]
+			return [2]int32{x, z}, ok
+		case placementKindRandomSpread:
+			cand := s.randomSpreadChunk(set, x, z)
+			if cand != [2]int32{x, z} {
+				return [2]int32{}, false
+			}
+			return cand, s.frequencyAllows(set, x, z) && !s.exclusionForbids(set, x, z)
+		default:
+			return [2]int32{}, false
+		}
+	}
 	placement := set.placement
 	kind := normalizeResource(stringValue(placement["type"]))
 	if kind == "concentric_rings" {
@@ -392,6 +531,21 @@ func (s *modernStructures) isStructureChunk(set modernStructureSet, x, z int32) 
 // chunk of the other set within chunk_count chunks forbids this one, whether
 // or not a structure starts there.
 func (s *modernStructures) exclusionForbids(set modernStructureSet, x, z int32) bool {
+	if set.parsed.valid {
+		if !set.parsed.hasExclusion {
+			return false
+		}
+		other := s.sets[set.parsed.excludeSet]
+		count := set.parsed.excludeCount
+		for testX := x - count; testX <= x+count; testX++ {
+			for testZ := z - count; testZ <= z+count; testZ++ {
+				if s.isStructureChunk(other, testX, testZ) {
+					return true
+				}
+			}
+		}
+		return false
+	}
 	zone, ok := set.placement["exclusion_zone"].(map[string]any)
 	if !ok {
 		return false
@@ -424,6 +578,13 @@ func (s *modernStructures) setByName(name string) (modernStructureSet, bool) {
 // randomSpreadChunk projects any chunk in a placement region onto its candidate.
 // Generation still uses candidate to require an exact match with the input chunk.
 func (s *modernStructures) randomSpreadChunk(set modernStructureSet, x, z int32) [2]int32 {
+	if set.parsed.valid {
+		candidate, err := structure.PotentialChunk(s.seed, x, z, set.parsed.salt, set.parsed.spacing, set.parsed.separation, set.parsed.spreadType)
+		if err != nil {
+			panic(fmt.Sprintf("overworld: structure set %s: %v", set.name, err))
+		}
+		return candidate
+	}
 	placement := set.placement
 	spacing := int32(number(placement["spacing"]))
 	separation := int32(number(placement["separation"]))
@@ -440,6 +601,9 @@ func (s *modernStructures) randomSpreadChunk(set modernStructureSet, x, z int32)
 }
 
 func (s *modernStructures) frequencyAllows(set modernStructureSet, x, z int32) bool {
+	if set.parsed.valid {
+		return set.parsed.frequency == 0 || structure.FrequencyApplies(s.seed, set.parsed.salt, x, z, set.parsed.frequency, set.parsed.freqMethod)
+	}
 	placement := set.placement
 	probability := float32(number(placement["frequency"]))
 	method := frequencyMethod(stringValue(placement["frequency_reduction_method"]))
