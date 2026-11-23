@@ -1,16 +1,18 @@
 <div align="center">
 
-<img src="docs/assets/banner.svg" alt="Adamant — High-performance Minecraft: Bedrock Edition server in Go" width="100%">
+# Adamant
 
-<br>
+**High-performance Minecraft: Bedrock Edition server in Go — drop-in BDS alternative with Java 26.3 parity and clean extensibility.**
 
-[![CI](https://github.com/dm-vev/adamant/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dm-vev/adamant/actions/workflows/ci.yml)
-[![Go](https://img.shields.io/badge/Go-1.27%2B-00ADD8?logo=go&logoColor=white)](go.mod)
-[![Bedrock](https://img.shields.io/badge/Bedrock-1.26.50%20%E2%80%93%201.26.61-62B47A)](docs/protocols.md)
-[![Protocol](https://img.shields.io/badge/protocol-2193%20%7C%202225-0284C7)](docs/protocols.md)
-[![Java Parity](https://img.shields.io/badge/Java%20parity-26.3-E76F00)](vanilla-reference.json)
-[![License: MIT](https://img.shields.io/badge/license-MIT-64748B)](LICENSE)
-[![Stars](https://img.shields.io/github/stars/dm-vev/adamant?style=flat&color=F59E0B)](https://github.com/dm-vev/adamant/stargazers)
+<p>
+  <a href="https://github.com/dm-vev/adamant/actions/workflows/ci.yml"><img src="https://github.com/dm-vev/adamant/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" height="20"></a>
+  <a href="go.mod"><img src="https://img.shields.io/badge/Go-1.27%2B-00ADD8?logo=go&logoColor=white" alt="Go 1.27+" height="20"></a>
+  <a href="docs/protocols.md"><img src="https://img.shields.io/badge/Bedrock-1.26.50%20%E2%80%93%201.26.61-62B47A" alt="Bedrock 1.26.50-1.26.61" height="20"></a>
+  <a href="docs/protocols.md"><img src="https://img.shields.io/badge/protocol-2193%20%7C%202225-0284C7" alt="Protocol 2193 | 2225" height="20"></a>
+  <a href="vanilla-reference.json"><img src="https://img.shields.io/badge/Java%20parity-26.3-E76F00" alt="Java parity 26.3" height="20"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-64748B" alt="License: MIT" height="20"></a>
+  <a href="https://github.com/dm-vev/adamant/stargazers"><img src="https://img.shields.io/github/stars/dm-vev/adamant?style=flat&color=F59E0B" alt="GitHub Stars" height="20"></a>
+</p>
 
 [**Quick Start**](#quick-start) ·
 [**Why Adamant?**](#why-adamant) ·
