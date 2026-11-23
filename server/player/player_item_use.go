@@ -184,11 +184,10 @@ func (p *Player) UseItem() {
 		return
 	}
 	i, _ := p.HeldItems()
-	ctx := NewEventContext(p.tx, p)
 	if p.HasCooldown(i.Item()) {
 		return
 	}
-	if p.Handler().HandleItemUse(ctx); ctx.Cancelled() {
+	if !p.dispatchItemUseEvent(i) {
 		return
 	}
 	i, left := p.HeldItems()
@@ -652,11 +651,7 @@ func (p *Player) tickItemUse(current int64) {
 	switch usable := held.Item().(type) {
 	case item.Consumable:
 		if current%4 == 0 {
-			viewers, release := p.viewers()
-			for _, v := range viewers {
-				v.ViewEntityAction(p, entity.EatAction{})
-			}
-			releaseBorrowedViewers(p.tx, viewers, release)
+			p.broadcastAction(entity.EatAction{})
 		}
 		p.tryConsumeItem(usable, held)
 	case item.Chargeable:

@@ -23,7 +23,7 @@ type combatState struct {
 	// Java's Player.attackStrengthTicker (tickAttackStrength), and
 	// lastMainHand is that item, by name and meta.
 	attackStrengthTicks int
-	lastMainHand struct {
+	lastMainHand        struct {
 		name  string
 		meta  int16
 		slot  uint32
@@ -109,8 +109,7 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 	}
 
 	immunity := time.Second / 2
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleHurt(ctx, &damageLeft, immune, &immunity, src); ctx.Cancelled() {
+	if !p.dispatchHurtEvent(&damageLeft, immune, &immunity, src) {
 		return 0, false
 	}
 	p.ReleaseShoulderParrots()
@@ -246,11 +245,7 @@ func (p *Player) hurtArmor(dmg float64, src world.DamageSource) {
 // either.
 func (p *Player) showHurt(src world.DamageSource) {
 	pos := p.Position()
-	viewers, release := p.viewers()
-	for _, viewer := range viewers {
-		viewer.ViewEntityAction(p, entity.HurtAction{})
-	}
-	releaseBorrowedViewers(p.tx, viewers, release)
+	p.broadcastAction(entity.HurtAction{})
 	if src.Fire() {
 		p.tx.PlaySound(pos, sound.Burning{})
 	} else if _, ok := src.(entity.DrowningDamageSource); ok {
@@ -317,11 +312,7 @@ func (p *Player) applyTotemEffects() {
 
 	p.tx.PlaySound(p.Position(), sound.Totem{})
 
-	viewers, release := p.viewers()
-	for _, viewer := range viewers {
-		viewer.ViewEntityAction(p, entity.TotemUseAction{})
-	}
-	releaseBorrowedViewers(p.tx, viewers, release)
+	p.broadcastAction(entity.TotemUseAction{})
 }
 
 // FinalDamageFrom resolves the final damage received by the player if it is attacked by the source passed
@@ -459,8 +450,7 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	destructible, isDestructible := e.(entity.Destructible)
 	attackable, isAttackable := e.(entity.Attackable)
 
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleAttackEntity(ctx, e, &force, &height, &critical); ctx.Cancelled() {
+	if !p.dispatchAttackEntityEvent(e, &force, &height, &critical) {
 		return false
 	}
 	if !isLiving && !isDestructible && !isAttackable {
@@ -675,25 +665,14 @@ func (p *Player) maceHurtEnemy(e world.Entity, smash maceSmash) {
 
 // magicCrit shows the enchanted hit on living (Player.magicCrit).
 func (p *Player) magicCrit(living entity.Living) {
-	viewers, release := borrowViewers(p.tx, living.Position())
-	// Enchanted hit particles trigger frequently; reuse the pooled buffer so multiple players swinging simultaneously doesn't allocate.
-	for _, v := range viewers {
-		v.ViewEntityAction(living, entity.EnchantedHitAction{})
-	}
-	releaseBorrowedViewers(p.tx, viewers, release)
+	world.BroadcastEntityAction(p.tx, living, entity.EnchantedHitAction{})
 }
 
 // attackVisualEffects shows the others what a hit of living leaves to see (Player.attackVisualEffects): a
 // critical hit's stars.
 func (p *Player) attackVisualEffects(living entity.Living, critical bool) {
 	if critical {
-		viewers, release := borrowViewers(p.tx, living.Position())
-		// Critical hit notifications follow the same pooling strategy to avoid churning slices during sustained
-		// fights.
-		for _, v := range viewers {
-			v.ViewEntityAction(living, entity.CriticalHitAction{})
-		}
-		releaseBorrowedViewers(p.tx, viewers, release)
+		world.BroadcastEntityAction(p.tx, living, entity.CriticalHitAction{})
 	}
 }
 
@@ -711,11 +690,7 @@ func (p *Player) SwingArm() {
 	if duration > 0 {
 		p.SetBlockingDelay(duration)
 	}
-	viewers, release := p.viewers()
-	for _, v := range viewers {
-		v.ViewEntityAction(p, entity.SwingArmAction{})
-	}
-	releaseBorrowedViewers(p.tx, viewers, release)
+	p.broadcastAction(entity.SwingArmAction{})
 }
 
 // PunchAir makes the player punch the air and plays the sound for attacking with no damage.

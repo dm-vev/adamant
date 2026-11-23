@@ -46,8 +46,7 @@ func (p *Player) StartSprinting() {
 	if !p.hunger.canSprint() && p.GameMode().AllowsTakingDamage() || p.crawling || p.sprinting {
 		return
 	}
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleToggleSprint(ctx, true); ctx.Cancelled() {
+	if !p.dispatchToggleSprintEvent(true) {
 		return
 	}
 	p.StopSneaking()
@@ -66,8 +65,7 @@ func (p *Player) StopSprinting() {
 	if !p.sprinting {
 		return
 	}
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleToggleSprint(ctx, false); ctx.Cancelled() {
+	if !p.dispatchToggleSprintEvent(false) {
 		return
 	}
 	p.sprinting = false
@@ -82,8 +80,7 @@ func (p *Player) StartSneaking() {
 	if p.sneaking {
 		return
 	}
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleToggleSneak(ctx, true); ctx.Cancelled() {
+	if !p.dispatchToggleSneakEvent(true) {
 		return
 	}
 	if p.sneaking {
@@ -107,8 +104,7 @@ func (p *Player) StopSneaking() {
 	if !p.sneaking {
 		return
 	}
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleToggleSneak(ctx, false); ctx.Cancelled() {
+	if !p.dispatchToggleSneakEvent(false) {
 		return
 	}
 	p.sneaking = false
@@ -223,8 +219,7 @@ func (p *Player) Jump() {
 // Teleport teleports the player to a target position in the world. Unlike Move, it immediately changes the
 // position of the player, rather than showing an animation.
 func (p *Player) Teleport(pos mgl64.Vec3) {
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleTeleport(ctx, pos); ctx.Cancelled() {
+	if !p.dispatchTeleportEvent(pos) {
 		return
 	}
 	p.StopFishing(p.tx, false)
@@ -357,11 +352,12 @@ func (p *Player) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 	}
 	var (
 		pos         = p.Position()
-		res, resRot = pos.Add(deltaPos), p.Rotation().Add(cube.Rotation{deltaYaw, deltaPitch})
+		oldRot      = p.Rotation()
+		res, resRot = pos.Add(deltaPos), oldRot.Add(cube.Rotation{deltaYaw, deltaPitch})
 	)
-	if !p.hasNopHandler() {
-		ctx := NewEventContext(p.tx, p)
-		if p.Handler().HandleMove(ctx, res, resRot); ctx.Cancelled() {
+	pBus, wBus, hasMoveBus := hasPlayerEventListeners[MoveEvent](p)
+	if !p.hasNopHandler() || hasMoveBus {
+		if !p.dispatchMoveEvent(pos, res, oldRot, resRot, pBus, wBus, hasMoveBus) {
 			if p.hasClient() && pos.ApproxEqual(p.Position()) {
 				// The position of the player was changed and the event cancelled. This means we still need to notify the
 				// player of this movement change.
@@ -554,11 +550,7 @@ func (p *Player) SetVelocity(velocity mgl64.Vec3) {
 	// The client applies the velocity within a round trip: the anti-cheat
 	// lets its moves carry it until then.
 	p.recordImpulse(velocity)
-	viewers, release := p.viewers()
-	for _, v := range viewers {
-		v.ViewEntityVelocity(p, velocity)
-	}
-	releaseBorrowedViewers(p.tx, viewers, release)
+	p.broadcastVelocity(velocity)
 }
 
 // Rotation returns the yaw and pitch of the player in degrees. Yaw is horizontal rotation (rotation around the

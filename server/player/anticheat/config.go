@@ -631,7 +631,7 @@ func parseRule(c Check, r Rule, log *slog.Logger) (Policy, error) {
 		return p, firstError(err)
 	}
 	for _, s := range r.ExemptGameModes {
-		mode, ok := ParseGameMode(s)
+		mode, ok := parseGameMode(s)
 		if !ok {
 			return p, fmt.Errorf("%s.ExemptGameModes: unknown game mode %q", key, s)
 		}
@@ -648,10 +648,10 @@ func parseRule(c Check, r Rule, log *slog.Logger) (Policy, error) {
 	return p, nil
 }
 
-// ParseGameMode returns the game mode of a name as /gamemode takes it:
+// parseGameMode returns the game mode of a name as /gamemode takes it:
 // "survival", "creative", "adventure" or "spectator", their short forms or
 // numbers, in any case.
-func ParseGameMode(s string) (world.GameMode, bool) {
+func parseGameMode(s string) (world.GameMode, bool) {
 	switch strings.ToLower(strings.TrimSpace(s)) {
 	case "0", "s", "survival":
 		return world.GameModeSurvival, true

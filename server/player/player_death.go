@@ -61,11 +61,7 @@ func (p *Player) DeathPosition() (mgl64.Vec3, world.Dimension, bool) {
 func (p *Player) kill(src world.DamageSource) {
 	// The container of a player that dies closes, as ServerPlayer.die does.
 	p.closeMenu(p.tx, false)
-	viewers, release := p.viewers()
-	for _, viewer := range viewers {
-		viewer.ViewEntityAction(p, entity.DeathAction{})
-	}
-	releaseBorrowedViewers(p.tx, viewers, release)
+	p.broadcastAction(entity.DeathAction{})
 
 	p.addHealth(-p.MaxHealth())
 
@@ -76,9 +72,12 @@ func (p *Player) kill(src world.DamageSource) {
 	entity.ForgiveDeadPlayer(p.tx, p)
 	p.vanishEnderPearls()
 	keepInv := p.tx.World().GameRuleBool("keep_inventory")
-	handledKeepInv := false
-	p.Handler().HandleDeath(p, src, &handledKeepInv)
-	keepInv = keepInv || handledKeepInv
+	if !p.hasNopHandler() {
+		handledKeepInv := false
+		p.Handler().HandleDeath(p, src, &handledKeepInv)
+		keepInv = keepInv || handledKeepInv
+	}
+	keepInv = p.dispatchDeathEvent(src, keepInv)
 	p.StopSneaking()
 	p.StopSprinting()
 

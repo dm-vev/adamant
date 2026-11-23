@@ -90,6 +90,7 @@ func (p *Player) close(msg text.Text) {
 func (p *Player) quit(msg text.Text) {
 	p.StopFishing(p.tx, false)
 	p.h.HandleQuit(p)
+	p.dispatchQuitEvent()
 	p.h = NopHandler{}
 
 	if c := p.c; c != nil {
