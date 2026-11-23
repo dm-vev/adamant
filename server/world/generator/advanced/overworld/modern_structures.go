@@ -246,27 +246,82 @@ func (s *modernStructures) concentricRingChunks(placement map[string]any) [][2]i
 	}
 	return out
 }
+type preferredBiomeSet struct {
+	byIndex [256]bool
+	byName  map[string]bool
+}
+
+var preferredBiomeTagCache sync.Map // preferredBiomes string -> *preferredBiomeSet
+
+func loadPreferredBiomeSet(preferredBiomes string) *preferredBiomeSet {
+	if cached, ok := preferredBiomeTagCache.Load(preferredBiomes); ok {
+		return cached.(*preferredBiomeSet)
+	}
+	set := &preferredBiomeSet{
+		byName: make(map[string]bool, vanilla.OverworldBiomeCount*2),
+	}
+	for i := range vanilla.OverworldBiomeCount {
+		full := vanilla.OverworldBiomeName(uint8(i))
+		allowed, err := gamedata.BiomeTagContains(preferredBiomes, full)
+		if err != nil {
+			panic(err)
+		}
+		set.byIndex[i] = allowed
+		set.byName[full] = allowed
+		if short, ok := strings.CutPrefix(full, "minecraft:"); ok {
+			set.byName[short] = allowed
+		}
+	}
+	actual, _ := preferredBiomeTagCache.LoadOrStore(preferredBiomes, set)
+	return actual.(*preferredBiomeSet)
+}
+
 func (s *modernStructures) locatePreferredBiome(chunkX, chunkZ int32, preferredBiomes string, random *vanilla.Random) ([2]int32, bool) {
 	centerX, centerZ := chunkX*16+8, chunkZ*16+8
 	quartX, quartZ := centerX>>2, centerZ>>2
 	const radius int32 = 28
+	tag := loadPreferredBiomeSet(preferredBiomes)
 	found := int32(0)
 	var selected [2]int32
-	matches := make(map[string]bool)
+	if src, ok := s.source.(modernTerrainSource); ok && src.generator != nil {
+		var hint vanilla.ClimateHint
+		for dz := -radius; dz <= radius; dz++ {
+			for dx := -radius; dx <= radius; dx++ {
+				if !tag.byIndex[src.noiseBiomeIndexAt(quartX+dx, 0, quartZ+dz, &hint)] {
+					continue
+				}
+				if found == 0 || random.NextInt(found+1) == 0 {
+					selected = [2]int32{(quartX + dx) >> 2, (quartZ + dz) >> 2}
+				}
+				found++
+			}
+		}
+		return selected, found != 0
+	}
+	var extra map[string]bool
 	for dz := -radius; dz <= radius; dz++ {
 		for dx := -radius; dx <= radius; dx++ {
-			biome := normalizeResource(s.source.NoiseBiomeAt(quartX+dx, 0, quartZ+dz))
-			if !strings.Contains(biome, ":") {
-				biome = "minecraft:" + biome
-			}
-			allowed, known := matches[biome]
+			raw := s.source.NoiseBiomeAt(quartX+dx, 0, quartZ+dz)
+			allowed, known := tag.byName[raw]
 			if !known {
-				var err error
-				allowed, err = gamedata.BiomeTagContains(preferredBiomes, biome)
-				if err != nil {
-					panic(err)
+				if extra != nil {
+					allowed, known = extra[raw]
 				}
-				matches[biome] = allowed
+				if !known {
+					biome := normalizeResource(raw)
+					if !strings.Contains(biome, ":") {
+						biome = "minecraft:" + biome
+					}
+					var err error
+					allowed, err = gamedata.BiomeTagContains(preferredBiomes, biome)
+					if err != nil {
+						panic(err)
+					}
+					if extra == nil {
+						extra = make(map[string]bool)
+					}
+					extra[raw] = allowed
+				}
 			}
 			if !allowed {
 				continue

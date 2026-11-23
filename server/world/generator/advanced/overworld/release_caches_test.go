@@ -69,6 +69,12 @@ func TestReleasedCachesGiveTheSameChunks(t *testing.T) {
 	if starts != 0 {
 		t.Fatalf("%d structure starts still cached after release", starts)
 	}
+	g.terrainScratchMu.Lock()
+	scratchCount := len(g.terrainScratchFree)
+	g.terrainScratchMu.Unlock()
+	if scratchCount != 0 {
+		t.Fatalf("%d terrain scratch buffers still cached after release", scratchCount)
+	}
 
 	got := generate(pos)
 	for y := int16(r.Min()); y <= int16(r.Max()); y++ {

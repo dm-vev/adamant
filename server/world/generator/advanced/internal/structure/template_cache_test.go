@@ -1,10 +1,16 @@
 package structure
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
+	"io"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 )
 
 func syntheticTemplate(blocks int) *Template {
@@ -156,5 +162,50 @@ func TestLoadSharesCachedTemplate(t *testing.T) {
 	}
 	if a != b {
 		t.Fatalf("Load and LoadOrCreate did not share cached *Template for %q", name)
+	}
+}
+
+func TestDecodeTemplateNBTMatchesGenericDecode(t *testing.T) {
+	t.Parallel()
+	names := []string{
+		"igloo/top",
+		"igloo/bottom",
+		"shipwreck/with_mast",
+		"underwater_ruin/big_brick_1",
+		"ruined_portal/portal_1",
+		"fossil/skull_1",
+		"village/plains/houses/plains_small_house_1",
+	}
+	for _, name := range names {
+		raw, err := gamedata.Assets().ReadFile("assets/data/minecraft/structure/" + name + ".nbt")
+		if err != nil {
+			t.Fatalf("read %q: %v", name, err)
+		}
+		if len(raw) >= 2 && raw[0] == 0x1f && raw[1] == 0x8b {
+			gr, err := gzip.NewReader(bytes.NewReader(raw))
+			if err != nil {
+				t.Fatalf("gzip %q: %v", name, err)
+			}
+			raw, err = io.ReadAll(gr)
+			_ = gr.Close()
+			if err != nil {
+				t.Fatalf("read gzip %q: %v", name, err)
+			}
+		}
+		root, err := decodeNBT(raw)
+		if err != nil {
+			t.Fatalf("decodeNBT(%q): %v", name, err)
+		}
+		want, err := decodeTemplate(root)
+		if err != nil {
+			t.Fatalf("decodeTemplate(%q): %v", name, err)
+		}
+		got, err := decodeTemplateNBT(raw, nil)
+		if err != nil {
+			t.Fatalf("decodeTemplateNBT(%q): %v", name, err)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("decodeTemplateNBT(%q) differs from generic decodeTemplate(decodeNBT)", name)
+		}
 	}
 }

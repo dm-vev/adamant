@@ -2,9 +2,11 @@ package overworld
 
 import (
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -201,5 +203,95 @@ func TestOriginRecordCacheConcurrentByteBudget(t *testing.T) {
 	cache.mu.Unlock()
 	if gotBytes > maxBytes {
 		t.Fatalf("concurrent cache bytes %d exceeds budget %d", gotBytes, maxBytes)
+	}
+}
+
+func TestOriginRecordSlabSealAndConcurrentRecycle(t *testing.T) {
+	t.Parallel()
+	buildSealed := func(seed int32) *originRecord {
+		rec := &originRecord{steps: make([]originStep, 4)}
+		for s := range rec.steps {
+			for i := range int32(40) {
+				p := featurePos{seed*100 + int32(s)*10 + i, int32(s), i}
+				rec.steps[s].write(p, world.NativeState{Block: 1}, world.NativeState{Block: uint32(i + 2)})
+			}
+		}
+		rec.seal()
+		return rec
+	}
+
+	// Verify single contiguous slab backing all non-empty steps.
+	rec := buildSealed(1)
+	if len(rec.slab) != 160 {
+		t.Fatalf("sealed slab len = %d, want 160", len(rec.slab))
+	}
+	for s := range rec.steps {
+		if len(rec.steps[s].writes) != 40 || cap(rec.steps[s].writes) != 40 {
+			t.Fatalf("step %d writes len/cap = %d/%d, want 40/40", s, len(rec.steps[s].writes), cap(rec.steps[s].writes))
+		}
+	}
+	rec.recycle()
+
+	// Stress concurrent acquire/fill/wait/release/abandon/clear with real slabs under -race.
+	unit := estimateOriginRecordBytes(buildSealed(0))
+	cache := originRecordCache{capacity: 16, maxBytes: unit * 6}
+	var wg sync.WaitGroup
+	for w := range 8 {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for i := range 48 {
+				pos := world.ChunkPos{int32((id*3 + i) % 12), int32(i % 2)}
+				entry, owner := cache.acquire(pos)
+				if owner {
+					cache.fill(entry, func() *originRecord { return buildSealed(pos[0]) })
+				}
+				r := entry.wait()
+				if r == nil || len(r.steps) != 4 {
+					t.Errorf("unexpected record %v", r)
+				} else {
+					for s := range r.steps {
+						if len(r.steps[s].writes) != 40 || r.steps[s].writes[0].after.Block != 2 {
+							t.Errorf("corrupted step %d writes after concurrent recycle", s)
+						}
+					}
+				}
+				if i%11 == 0 {
+					cache.clear()
+				}
+				if i%7 == 0 {
+					cache.abandon(entry)
+				} else {
+					cache.release(entry, 4)
+				}
+			}
+		}(w)
+	}
+	wg.Wait()
+	cache.clear()
+}
+
+func TestLocatePreferredBiomeZeroAllocs(t *testing.T) {
+	world.DefaultBlockRegistry.Finalize()
+	g := NewOverworld(12345)
+	s := g.modernStructures
+	// Warm the tag cache once.
+	rnd := vanilla.NewLegacyRandom(99)
+	got, ok := s.locatePreferredBiome(10, -10, "#minecraft:stronghold_biased_to", &rnd)
+	if !ok {
+		t.Fatal("expected preferred biome match near chunk (10, -10)")
+	}
+	// Verify determinism and zero allocations inside locatePreferredBiome.
+	rnd2 := vanilla.NewLegacyRandom(99)
+	got2, ok2 := s.locatePreferredBiome(10, -10, "#minecraft:stronghold_biased_to", &rnd2)
+	if ok2 != ok || got2 != got {
+		t.Fatalf("locatePreferredBiome not deterministic: got (%v,%v), want (%v,%v)", got2, ok2, got, ok)
+	}
+	allocs := testing.AllocsPerRun(5, func() {
+		r := vanilla.NewLegacyRandom(99)
+		s.locatePreferredBiome(10, -10, "#minecraft:stronghold_biased_to", &r)
+	})
+	if allocs != 0 {
+		t.Fatalf("locatePreferredBiome allocated %.1f objects/op, want 0", allocs)
 	}
 }

@@ -126,6 +126,10 @@ func (r *runtimeFeatures) place(tx *world.Tx, pos cube.Pos, run func(*ModernFeat
 	}
 	region := newRecordingRegion(f, world.DefaultBlockRegistry, tx.Range())
 	step := &originStep{}
+	defer func() {
+		region.release()
+		step.release()
+	}()
 	region.recording = step
 	region.SetOrigin(int32(pos[0]>>4), int32(pos[2]>>4))
 	if !run(f, region, featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}) {

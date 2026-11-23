@@ -36,12 +36,133 @@ const (
 	scheduledTickBytes    = 48
 	markerPosBytes        = 24
 	recordedEntityBytes   = 96
+
+	stepWritesInitCap      = 256
+	maxFreeStepWrites      = 64
+	maxPooledStepWritesCap = 32768
+	maxFreeWriteSlabBytes  = 32 << 20
+	maxFreeWriteSlabWrites = maxFreeWriteSlabBytes / recordedWriteBytes
 )
+
+var writeSlabCaps = [...]int{
+	512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072,
+}
+
+// freeStepWrites keeps scratch recording slices for reuse across originStep
+// recording passes. Unlike sync.Pool it survives GC cycles during generation
+// and is drained by ReleaseGenerationCaches.
+var freeStepWrites struct {
+	sync.Mutex
+	slices [][]recordedWrite
+}
+
+// freeWriteSlabs keeps sealed contiguous recordedWrite slabs bucketed by
+// half-power-of-2 capacity for reuse once finished originRecords are evicted
+// or retired with zero active readers.
+var freeWriteSlabs struct {
+	sync.Mutex
+	buckets     [len(writeSlabCaps)][][]recordedWrite
+	totalWrites int
+}
+
+func getStepWrites() []recordedWrite {
+	freeStepWrites.Lock()
+	if n := len(freeStepWrites.slices); n > 0 {
+		s := freeStepWrites.slices[n-1]
+		freeStepWrites.slices[n-1] = nil
+		freeStepWrites.slices = freeStepWrites.slices[:n-1]
+		freeStepWrites.Unlock()
+		return s[:0]
+	}
+	freeStepWrites.Unlock()
+	return make([]recordedWrite, 0, stepWritesInitCap)
+}
+
+func putStepWrites(s []recordedWrite) {
+	if cap(s) == 0 || cap(s) > maxPooledStepWritesCap {
+		return
+	}
+	s = s[:0]
+	freeStepWrites.Lock()
+	if len(freeStepWrites.slices) < maxFreeStepWrites {
+		freeStepWrites.slices = append(freeStepWrites.slices, s)
+	}
+	freeStepWrites.Unlock()
+}
+
+func writeSlabBucketForLen(n int) int {
+	for i, c := range writeSlabCaps {
+		if c >= n {
+			return i
+		}
+	}
+	return -1
+}
+
+func writeSlabBucketExact(c int) int {
+	for i, capSize := range writeSlabCaps {
+		if capSize == c {
+			return i
+		}
+	}
+	return -1
+}
+
+func getWriteSlab(n int) []recordedWrite {
+	if n <= 0 {
+		return nil
+	}
+	b := writeSlabBucketForLen(n)
+	if b < 0 {
+		return make([]recordedWrite, n)
+	}
+	freeWriteSlabs.Lock()
+	for idx := b; idx <= b+1 && idx < len(writeSlabCaps); idx++ {
+		if k := len(freeWriteSlabs.buckets[idx]); k > 0 {
+			slab := freeWriteSlabs.buckets[idx][k-1]
+			freeWriteSlabs.buckets[idx][k-1] = nil
+			freeWriteSlabs.buckets[idx] = freeWriteSlabs.buckets[idx][:k-1]
+			freeWriteSlabs.totalWrites -= cap(slab)
+			freeWriteSlabs.Unlock()
+			return slab[:n]
+		}
+	}
+	freeWriteSlabs.Unlock()
+	return make([]recordedWrite, n, writeSlabCaps[b])
+}
+
+func putWriteSlab(slab []recordedWrite) {
+	c := cap(slab)
+	b := writeSlabBucketExact(c)
+	if b < 0 {
+		return
+	}
+	slab = slab[:0]
+	freeWriteSlabs.Lock()
+	if freeWriteSlabs.totalWrites+c <= maxFreeWriteSlabWrites {
+		freeWriteSlabs.buckets[b] = append(freeWriteSlabs.buckets[b], slab)
+		freeWriteSlabs.totalWrites += c
+	}
+	freeWriteSlabs.Unlock()
+}
+
+func clearOriginWritePools() {
+	freeStepWrites.Lock()
+	freeStepWrites.slices = nil
+	freeStepWrites.Unlock()
+	freeWriteSlabs.Lock()
+	freeWriteSlabs.buckets = [len(writeSlabCaps)][][]recordedWrite{}
+	freeWriteSlabs.totalWrites = 0
+	freeWriteSlabs.Unlock()
+}
 
 // originRecord holds what the features of one origin chunk wrote, step by
 // step, when they ran after the origins that precede it.
 type originRecord struct {
 	steps []originStep
+	// slab backs every step's writes sub-slice once sealed so one allocation
+	// serves the whole record and can be recycled when no readers remain.
+	slab []recordedWrite
 }
 
 // originStep holds the writes and side outputs of the features of one
@@ -83,6 +204,9 @@ func (s *originStep) write(p featurePos, before, after world.NativeState) {
 		s.writes[*i-1].after = after
 		return
 	}
+	if s.writes == nil {
+		s.writes = getStepWrites()
+	}
 	s.writes = append(s.writes, recordedWrite{pos: p, before: before, after: after})
 	*i = uint32(len(s.writes))
 }
@@ -99,14 +223,84 @@ func (s *originStep) actor(entry structure.Block, state world.NativeState) {
 // position, so a record applies the same way every time.
 func (s *originStep) seal() {
 	s.written.release()
-	s.writes = slices.Clip(s.writes)
-	for _, actor := range s.actors {
-		s.ordered = append(s.ordered, actor)
+	if len(s.actors) > 0 {
+		s.ordered = make([]recordedActor, 0, len(s.actors))
+		for _, actor := range s.actors {
+			s.ordered = append(s.ordered, actor)
+		}
+		slices.SortFunc(s.ordered, func(a, b recordedActor) int {
+			return cmp.Or(cmp.Compare(a.entry.Pos[1], b.entry.Pos[1]), cmp.Compare(a.entry.Pos[2], b.entry.Pos[2]), cmp.Compare(a.entry.Pos[0], b.entry.Pos[0]))
+		})
+		s.actors = nil
 	}
-	slices.SortFunc(s.ordered, func(a, b recordedActor) int {
-		return cmp.Or(cmp.Compare(a.entry.Pos[1], b.entry.Pos[1]), cmp.Compare(a.entry.Pos[2], b.entry.Pos[2]), cmp.Compare(a.entry.Pos[0], b.entry.Pos[0]))
-	})
-	s.actors = nil
+}
+
+// release returns any scratch index pages and unsealed write slice to their pools.
+func (s *originStep) release() {
+	s.written.release()
+	if s.writes != nil {
+		putStepWrites(s.writes)
+		s.writes = nil
+	}
+}
+
+// seal packs every step's writes into one contiguous slab, returns the scratch
+// slices to freeStepWrites, and finalises each step's lookup and actor state.
+func (r *originRecord) seal() {
+	totalWrites := 0
+	for i := range r.steps {
+		totalWrites += len(r.steps[i].writes)
+	}
+	var slab []recordedWrite
+	if totalWrites > 0 {
+		slab = getWriteSlab(totalWrites)
+		r.slab = slab
+	}
+	off := 0
+	for i := range r.steps {
+		s := &r.steps[i]
+		if n := len(s.writes); n > 0 {
+			scratch := s.writes
+			dst := slab[off : off+n : off+n]
+			copy(dst, scratch)
+			s.writes = dst
+			off += n
+			putStepWrites(scratch)
+		} else if s.writes != nil {
+			putStepWrites(s.writes)
+			s.writes = nil
+		}
+		s.seal()
+	}
+}
+
+// releaseScratch returns scratch slices and index pages of an unsealed record
+// when recording aborts due to a panic.
+func (r *originRecord) releaseScratch() {
+	for i := range r.steps {
+		r.steps[i].release()
+	}
+}
+
+// recycle returns the sealed write slab to freeWriteSlabs once no cache entry
+// or active reader references this record.
+func (r *originRecord) recycle() {
+	if r == nil {
+		return
+	}
+	if r.slab != nil {
+		putWriteSlab(r.slab)
+		r.slab = nil
+	}
+	for i := range r.steps {
+		r.steps[i].writes = nil
+	}
+}
+
+func recycleOriginRecords(records []*originRecord) {
+	for _, r := range records {
+		r.recycle()
+	}
 }
 
 // apply writes the step into the target chunk of r. A write applies only
@@ -188,6 +382,13 @@ func (s *originStep) applyContext(r *featureRegion, origin world.ChunkPos) {
 func (f *ModernFeatures) computeOriginRecord(origin world.ChunkPos, registry chunk.BlockRegistry, r cube.Range, context world.GenerationContext) *originRecord {
 	region := newRecordingRegion(f, registry, r)
 	record := &originRecord{steps: make([]originStep, f.generationSteps())}
+	sealed := false
+	defer func() {
+		if !sealed {
+			record.releaseScratch()
+			region.release()
+		}
+	}()
 	// The context records are acquired first, so that in parallel mode those
 	// this chunk owns are computed at once.
 	var contexts [originSuccessors]*originRecordEntry
@@ -213,9 +414,8 @@ func (f *ModernFeatures) computeOriginRecord(origin world.ChunkPos, registry chu
 		released = i + 1
 	}
 	f.decorateOrigin(region, origin, context, true, record)
-	for i := range record.steps {
-		record.steps[i].seal()
-	}
+	record.seal()
+	sealed = true
 	region.release()
 	return record
 }
@@ -233,9 +433,17 @@ func (f *ModernFeatures) contextRecord(origin world.ChunkPos, registry chunk.Blo
 		f.fill(&f.contexts, entry, func() *originRecord {
 			region := newRecordingRegion(f, registry, r)
 			record := &originRecord{steps: make([]originStep, 1)}
+			sealed := false
+			defer func() {
+				if !sealed {
+					record.releaseScratch()
+					region.release()
+				}
+			}()
 			f.decorateContext(region, origin, context, &record.steps[0])
+			record.seal()
+			sealed = true
 			region.release()
-			record.steps[0].seal()
 			return record
 		})
 	}
@@ -294,6 +502,7 @@ type originRecordEntry struct {
 	uses    int
 	active  int
 	ready   bool
+	removed bool
 	bytes   int64
 	element *list.Element
 	// failure is the panic computing the record, raised again for every
@@ -320,7 +529,7 @@ func (c *originRecordCache) fill(entry *originRecordEntry, compute func() *origi
 			entry.failure = r
 			c.mu.Lock()
 			if c.entries[entry.origin] == entry {
-				c.remove(entry)
+				_ = c.removeLocked(entry)
 			}
 			c.mu.Unlock()
 			close(entry.done)
@@ -329,26 +538,33 @@ func (c *originRecordCache) fill(entry *originRecordEntry, compute func() *origi
 	}()
 	record := compute()
 	size := estimateOriginRecordBytes(record)
-	entry.record = record
+	var buf [8]*originRecord
+	recycled := buf[:0]
 	c.mu.Lock()
+	entry.record = record
 	entry.ready = true
 	if c.entries[entry.origin] == entry {
 		entry.bytes = size
 		c.bytes += size
-		c.evictLocked()
+		recycled = c.evictLocked(recycled)
+	} else if rec := c.detachLocked(entry); rec != nil {
+		recycled = append(recycled, rec)
 	}
 	c.mu.Unlock()
 	close(entry.done)
+	recycleOriginRecords(recycled)
 }
 
 // acquire returns the entry of origin. owner is true if the caller must
 // compute its record and close done.
 func (c *originRecordCache) acquire(origin world.ChunkPos) (entry *originRecordEntry, owner bool) {
+	var buf [8]*originRecord
+	recycled := buf[:0]
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	if entry, ok := c.entries[origin]; ok {
 		entry.active++
 		c.recent.MoveToFront(entry.element)
+		c.mu.Unlock()
 		return entry, false
 	}
 	if c.entries == nil {
@@ -357,36 +573,53 @@ func (c *originRecordCache) acquire(origin world.ChunkPos) (entry *originRecordE
 	entry = &originRecordEntry{origin: origin, done: make(chan struct{}), active: 1}
 	entry.element = c.recent.PushFront(entry)
 	c.entries[origin] = entry
-	c.evictLocked()
+	recycled = c.evictLocked(recycled)
+	c.mu.Unlock()
+	recycleOriginRecords(recycled)
 	return entry, true
 }
 
 // release counts a use of the record of entry, dropping the record once it has
 // been used by all the users it has and evicting idle entries if over budget.
 func (c *originRecordCache) release(entry *originRecordEntry, users int) {
+	var buf [8]*originRecord
+	recycled := buf[:0]
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	if entry.active > 0 {
 		entry.active--
 	}
 	if c.entries[entry.origin] == entry {
 		if entry.uses++; entry.uses >= users {
-			c.remove(entry)
+			if rec := c.removeLocked(entry); rec != nil {
+				recycled = append(recycled, rec)
+			}
+			c.mu.Unlock()
+			recycleOriginRecords(recycled)
 			return
 		}
+	} else if rec := c.detachLocked(entry); rec != nil {
+		recycled = append(recycled, rec)
 	}
-	c.evictLocked()
+	recycled = c.evictLocked(recycled)
+	c.mu.Unlock()
+	recycleOriginRecords(recycled)
 }
 
 // abandon releases an active reference without counting a completed use, e.g.
 // when a caller aborts due to a panic in a sibling origin.
 func (c *originRecordCache) abandon(entry *originRecordEntry) {
+	var buf [8]*originRecord
+	recycled := buf[:0]
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	if entry.active > 0 {
 		entry.active--
 	}
-	c.evictLocked()
+	if rec := c.detachLocked(entry); rec != nil {
+		recycled = append(recycled, rec)
+	}
+	recycled = c.evictLocked(recycled)
+	c.mu.Unlock()
+	recycleOriginRecords(recycled)
 }
 
 func (c *originRecordCache) maxCapacity() int {
@@ -407,35 +640,57 @@ func (c *originRecordCache) overBudgetLocked() bool {
 	return c.recent.Len() > c.maxCapacity() || c.bytes > c.byteBudget()
 }
 
-func (c *originRecordCache) evictLocked() {
+func (c *originRecordCache) evictLocked(recycled []*originRecord) []*originRecord {
 	if !c.overBudgetLocked() {
-		return
+		return recycled
 	}
 	for el := c.recent.Back(); el != nil && c.overBudgetLocked(); {
 		prev := el.Prev()
 		entry := el.Value.(*originRecordEntry)
 		if entry.ready && entry.active == 0 {
-			c.remove(entry)
+			if rec := c.removeLocked(entry); rec != nil {
+				recycled = append(recycled, rec)
+			}
 		}
 		el = prev
 	}
+	return recycled
 }
 
-func (c *originRecordCache) remove(entry *originRecordEntry) {
-	c.recent.Remove(entry.element)
+func (c *originRecordCache) detachLocked(entry *originRecordEntry) *originRecord {
+	if !entry.removed || !entry.ready || entry.active != 0 || entry.record == nil {
+		return nil
+	}
+	rec := entry.record
+	entry.record = nil
+	return rec
+}
+
+func (c *originRecordCache) removeLocked(entry *originRecordEntry) *originRecord {
+	if entry.removed {
+		return c.detachLocked(entry)
+	}
+	if entry.element != nil {
+		c.recent.Remove(entry.element)
+		entry.element = nil
+	}
 	delete(c.entries, entry.origin)
 	c.bytes -= entry.bytes
 	entry.bytes = 0
+	entry.removed = true
+	return c.detachLocked(entry)
 }
 
 func estimateOriginRecordBytes(r *originRecord) int64 {
 	if r == nil {
 		return 0
 	}
-	n := int64(originRecordBaseBytes) + int64(cap(r.steps))*originStepBytes
+	n := int64(originRecordBaseBytes) + int64(cap(r.steps))*originStepBytes + int64(cap(r.slab))*recordedWriteBytes
 	for i := range r.steps {
 		s := &r.steps[i]
-		n += int64(cap(s.writes)) * recordedWriteBytes
+		if r.slab == nil {
+			n += int64(cap(s.writes)) * recordedWriteBytes
+		}
 		n += int64(cap(s.ordered)) * recordedActorBytes
 		n += int64(cap(s.ticks)) * scheduledTickBytes
 		n += int64(cap(s.markers)) * markerPosBytes

@@ -372,6 +372,9 @@ func (f *ModernFeatures) decorateOrigin(region *featureRegion, origin world.Chun
 		}
 		f.placeFeatures(region, origin, step, possible)
 		region.recording = nil
+		if record != nil {
+			record.steps[step].written.release()
+		}
 	}
 }
 
@@ -431,9 +434,10 @@ func (f *ModernFeatures) placeStructures(region *featureRegion, origin world.Chu
 	originX, originZ := origin[0]<<4, origin[1]<<4
 	structureRandom := featureRandom(f.seed, originX, originZ, 0, step)
 	env := structure.ProcessorEnvironment{
-		Log:        f.log,
-		BaseBlock:  func(x, y, z int32) world.Block { return region.Block(featurePos{x, y, z}) },
-		BiomeAt:    f.source.BiomeAt,
+		Log:           f.log,
+		BaseBlock:     func(x, y, z int32) world.Block { return region.Block(featurePos{x, y, z}) },
+		BaseBlockName: func(x, y, z int32) string { return region.baseBlockName(featurePos{x, y, z}) },
+		BiomeAt:       f.source.BiomeAt,
 		BaseHeight: region.Height,
 		SeaLevel:   f.source.SeaLevel(),
 		MotionBlockingNoLeavesHeight: func(x, z int32) int32 {

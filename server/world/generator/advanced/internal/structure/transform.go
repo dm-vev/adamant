@@ -116,12 +116,16 @@ func (t *Template) place(palette int, origin [3]int32, rotation Rotation, mirror
 	if palette < 0 || palette >= len(t.Palettes) {
 		return Placement{}, fmt.Errorf("structure: palette %d outside [0,%d)", palette, len(t.Palettes))
 	}
-	out := Placement{Blocks: make([]Block, 0, len(t.Palettes[palette]))}
 	processEntirePiece, hasFinalizer := false, false
 	for _, processor := range processors {
 		processEntirePiece = processEntirePiece || processor.EvaluatesEntirePieceState
 		hasFinalizer = hasFinalizer || processor.finalize != nil
 	}
+	initCap := 0
+	if processEntirePiece {
+		initCap = len(t.Palettes[palette])
+	}
+	out := Placement{Blocks: make([]Block, 0, initCap)}
 	var originalIndices []int
 	if hasFinalizer {
 		originalIndices = make([]int, 0, len(t.Palettes[palette]))

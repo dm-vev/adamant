@@ -3,6 +3,7 @@ package overworld
 import (
 	"fmt"
 	"math"
+	"runtime"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -95,9 +96,39 @@ func (g *Overworld) terrainColumn(pos world.ChunkPos, raw bool) *previewCacheEnt
 	})
 }
 
+func (g *Overworld) acquireTerrainScratch() *modernTerrainScratch {
+	g.terrainScratchMu.Lock()
+	if n := len(g.terrainScratchFree); n > 0 {
+		work := g.terrainScratchFree[n-1]
+		g.terrainScratchFree[n-1] = nil
+		g.terrainScratchFree = g.terrainScratchFree[:n-1]
+		g.terrainScratchMu.Unlock()
+		return work
+	}
+	g.terrainScratchMu.Unlock()
+	return newModernTerrainScratch()
+}
+
+func (g *Overworld) releaseTerrainScratch(work *modernTerrainScratch) {
+	work.biomeChunks = [3][3]*chunkBiomes{}
+	limit := runtime.GOMAXPROCS(0) + 2
+	g.terrainScratchMu.Lock()
+	if len(g.terrainScratchFree) < limit {
+		g.terrainScratchFree = append(g.terrainScratchFree, work)
+	}
+	g.terrainScratchMu.Unlock()
+}
+
+func (g *Overworld) clearTerrainScratchPool() {
+	g.terrainScratchMu.Lock()
+	clear(g.terrainScratchFree)
+	g.terrainScratchFree = nil
+	g.terrainScratchMu.Unlock()
+}
+
 func (g *Overworld) buildTerrainColumn(pos world.ChunkPos, raw bool) *previewCacheEntry {
-	work := g.modernPool.Get().(*modernTerrainScratch)
-	defer g.modernPool.Put(work)
+	work := g.acquireTerrainScratch()
+	defer g.releaseTerrainScratch(work)
 	baseX, baseZ := pos[0]*16, pos[1]*16
 	var biomes vanilla.QuartBiomes
 	if !raw {
@@ -515,15 +546,19 @@ func (s modernTerrainSource) FeatureBiomeNames() []string {
 // the decoration of the chunks around it sampled them, and samples it alone
 // otherwise, as for the scattered positions of structure placement.
 func (s modernTerrainSource) NoiseBiomeAt(quartX, quartY, quartZ int32) string {
+	return vanilla.OverworldBiomeName(s.noiseBiomeIndexAt(quartX, quartY, quartZ, nil))
+}
+
+func (s modernTerrainSource) noiseBiomeIndexAt(quartX, quartY, quartZ int32, hint *vanilla.ClimateHint) uint8 {
 	quartY = max(-16, min(quartY, 79))
 	pos := world.ChunkPos{quartX >> 2, quartZ >> 2}
 	if biomes, ok := s.generator.chunkBiomes.get(pos); ok {
-		return vanilla.OverworldBiomeName(biomes.index[quartX&3][quartZ&3][quartY-chunkBiomeMinQuartY])
+		return biomes.index[quartX&3][quartZ&3][quartY-chunkBiomeMinQuartY]
 	}
 	if quartY == 0 && quartX&3 == 0 && quartZ&3 == 0 {
-		return vanilla.OverworldBiomeName(s.generator.chunkBiomes.originBiome(pos, s.generator.noise))
+		return s.generator.chunkBiomes.originBiome(pos, s.generator.noise)
 	}
-	return s.generator.noise.SampleBiomeColumn(quartX*4, quartZ*4).Biome(quartY * 4)
+	return s.generator.noise.SampleBiomeColumn(quartX*4, quartZ*4).BiomeIndexNear(quartY*4, hint)
 }
 
 func (s modernTerrainSource) BiomeAt(x, y, z int32) string {

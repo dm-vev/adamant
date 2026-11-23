@@ -20,6 +20,7 @@ func (g *Overworld) ReleaseGenerationCaches() {
 	g.worldgenHeights.clear()
 	g.modernStructures.clearStartCache()
 	g.modernFeatures.ReleaseCaches()
+	g.clearTerrainScratchPool()
 }
 
 // ReleaseCaches drops the records of the origins computed, which the chunks
@@ -28,6 +29,8 @@ func (g *Overworld) ReleaseGenerationCaches() {
 func (f *ModernFeatures) ReleaseCaches() {
 	f.origins.clear()
 	f.contexts.clear()
+	clearOriginWritePools()
+	clearOverlayPools()
 }
 
 // clear drops the previews of every shard.
@@ -54,17 +57,21 @@ func (c *chunkBiomeCache) clear() {
 // clear drops the entries whose record is computed. Whoever holds an entry
 // keeps it; an entry being computed stays for those waiting for it.
 func (c *originRecordCache) clear() {
+	var recycled []*originRecord
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	for el := c.recent.Front(); el != nil; {
 		next := el.Next()
 		entry := el.Value.(*originRecordEntry)
 		if entry.ready {
-			c.remove(entry)
+			if rec := c.removeLocked(entry); rec != nil {
+				recycled = append(recycled, rec)
+			}
 		}
 		el = next
 	}
 	if len(c.entries) == 0 {
 		c.entries = nil
 	}
+	c.mu.Unlock()
+	recycleOriginRecords(recycled)
 }

@@ -110,8 +110,53 @@ type featureOverlay struct {
 	states []world.NativeState
 }
 
+const (
+	overlayStatesInitCap      = 512
+	maxFreeOverlayStates      = 64
+	maxPooledOverlayStatesCap = 65536
+)
+
 // freeOverlayStates keeps the state slices of released overlays for reuse.
-var freeOverlayStates = sync.Pool{New: func() any { return new([]world.NativeState) }}
+// Like freeIndexPages it outlives GC cycles during generation and is drained
+// by ReleaseGenerationCaches.
+var freeOverlayStates struct {
+	sync.Mutex
+	slices [][]world.NativeState
+}
+
+func getOverlayStates() []world.NativeState {
+	freeOverlayStates.Lock()
+	if n := len(freeOverlayStates.slices); n > 0 {
+		s := freeOverlayStates.slices[n-1]
+		freeOverlayStates.slices[n-1] = nil
+		freeOverlayStates.slices = freeOverlayStates.slices[:n-1]
+		freeOverlayStates.Unlock()
+		return s[:0]
+	}
+	freeOverlayStates.Unlock()
+	return make([]world.NativeState, 0, overlayStatesInitCap)
+}
+
+func putOverlayStates(s []world.NativeState) {
+	if cap(s) == 0 || cap(s) > maxPooledOverlayStatesCap {
+		return
+	}
+	s = s[:0]
+	freeOverlayStates.Lock()
+	if len(freeOverlayStates.slices) < maxFreeOverlayStates {
+		freeOverlayStates.slices = append(freeOverlayStates.slices, s)
+	}
+	freeOverlayStates.Unlock()
+}
+
+func clearOverlayPools() {
+	freeOverlayStates.Lock()
+	freeOverlayStates.slices = nil
+	freeOverlayStates.Unlock()
+	freeIndexPages.Lock()
+	freeIndexPages.pages = nil
+	freeIndexPages.Unlock()
+}
 
 // get returns the state written at p, if any.
 func (o *featureOverlay) get(p featurePos) (world.NativeState, bool) {
@@ -129,7 +174,7 @@ func (o *featureOverlay) set(p featurePos, state world.NativeState) {
 		return
 	}
 	if o.states == nil {
-		o.states = (*freeOverlayStates.Get().(*[]world.NativeState))[:0]
+		o.states = getOverlayStates()
 	}
 	o.states = append(o.states, state)
 	*i = uint32(len(o.states))
@@ -139,8 +184,7 @@ func (o *featureOverlay) set(p featurePos, state world.NativeState) {
 func (o *featureOverlay) release() {
 	o.index.release()
 	if o.states != nil {
-		states := o.states[:0]
-		freeOverlayStates.Put(&states)
+		putOverlayStates(o.states)
 	}
 	*o = featureOverlay{}
 }

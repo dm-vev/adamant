@@ -507,6 +507,19 @@ func (r *featureRegion) Block(p featurePos) world.Block {
 	return block
 }
 
+func (r *featureRegion) baseBlockName(p featurePos) string {
+	state := r.nativeState(p)
+	if r.isDefaultReg {
+		name, _, found := world.DefaultBlockRegistry.RuntimeIDToStateView(state.Block)
+		if !found {
+			panic("overworld: feature region encountered unknown primary block runtime ID")
+		}
+		return name
+	}
+	name, _ := r.Block(p).EncodeBlock()
+	return name
+}
+
 func (r *featureRegion) Set(p featurePos, state world.NativeState) bool {
 	return r.setWithFlags(p, state, 3)
 }

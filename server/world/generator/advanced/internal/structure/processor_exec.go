@@ -16,9 +16,10 @@ import (
 // ProcessorEnvironment supplies world queries and placement context used by Java processors.
 type ProcessorEnvironment struct {
 	// Log is where the processors log; slog.Default() if nil.
-	Log        *slog.Logger
-	BaseBlock  func(x, y, z int32) world.Block
-	BiomeAt    func(x, y, z int32) string
+	Log           *slog.Logger
+	BaseBlock     func(x, y, z int32) world.Block
+	BaseBlockName func(x, y, z int32) string
+	BiomeAt       func(x, y, z int32) string
 	BaseHeight func(x, z int32, oceanFloor bool) int32
 	SeaLevel   int32
 	// MotionBlockingNoLeavesHeight queries the live post-decoration heightmap,
@@ -517,10 +518,14 @@ func compileProtectedBlocks(config map[string]any, env ProcessorEnvironment) (Pr
 		return Processor{}, fmt.Errorf("protected_blocks processor missing value tag")
 	}
 	return processor(func(ctx ProcessContext, b Block) (Block, bool, error) {
-		if env.BaseBlock == nil {
+		var base string
+		if env.BaseBlockName != nil {
+			base = env.BaseBlockName(ctx.Position[0], ctx.Position[1], ctx.Position[2])
+		} else if env.BaseBlock != nil {
+			base, _ = env.BaseBlock(ctx.Position[0], ctx.Position[1], ctx.Position[2]).EncodeBlock()
+		} else {
 			return b, true, nil
 		}
-		base, _ := env.BaseBlock(ctx.Position[0], ctx.Position[1], ctx.Position[2]).EncodeBlock()
 		protected, err := gamedata.BlockTagContains(tag, base)
 		return b, !protected, err
 	}), nil
