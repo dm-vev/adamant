@@ -340,7 +340,7 @@ func (c *Conn) writeBatchPacket(bw *bedrock.BatchWriter, pk proto.Packet, inPers
 				return err
 			}
 		}
-		if ((uint64(uintptr(unsafe.Pointer(sh))) >> 6) * 0x9e3779b97f4a7c15) >> 61 == 0 {
+		if ((uint64(uintptr(unsafe.Pointer(sh)))>>6)*0x9e3779b97f4a7c15)>>61 == 0 {
 			bw.MarkSegment()
 		}
 		return nil

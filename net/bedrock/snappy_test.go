@@ -104,7 +104,7 @@ func TestSnappyDecompressBounds(t *testing.T) {
 	}
 
 	// Copy4 valid packet check: 4 literal bytes + copy4(len=4, offset=4).
-	copy4Valid := []byte{8, 3<<2 | 0, 'a', 'b', 'c', 'd', 3<<2 | 3, 4, 0, 0, 0}
+	copy4Valid := []byte{8, 3 << 2, 'a', 'b', 'c', 'd', 3<<2 | 3, 4, 0, 0, 0}
 	if got, err := s.Decompress(nil, copy4Valid, 8); err != nil || string(got) != "abcdabcd" {
 		t.Fatalf("valid copy4: got=%q err=%v", got, err)
 	}
@@ -118,7 +118,7 @@ func TestSnappyDecompressBounds(t *testing.T) {
 		"huge_len_short":    append(binary.AppendUvarint(nil, 1<<20), 0x00, 'a'),
 		"trunc_lit_len60":   {2, 60 << 2},
 		"trunc_lit_len63":   {2, 63 << 2, 1, 0, 0},
-		"trunc_lit_payload": {4, 3<<2 | 0, 'a', 'b'},
+		"trunc_lit_payload": {4, 3 << 2, 'a', 'b'},
 		"trunc_copy1":       {4, 1, 0, 'a', snappyTagCopy1},
 		"trunc_copy2":       {4, 1, 0, 'a', snappyTagCopy2, 1},
 		"trunc_copy4":       {4, 1, 0, 'a', snappyTagCopy4, 1, 0, 0},

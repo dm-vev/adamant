@@ -371,7 +371,8 @@ func (c *Conn) flushSegmented(fl Flate) error {
 		c.out = out
 		return nil
 	}
-	out := append(c.out[:0], byte(AlgorithmFlate))
+	out := c.out[:0]
+	out = append(out, byte(AlgorithmFlate))
 	prev := 0
 	var err error
 	for _, end := range c.segments {
@@ -385,7 +386,8 @@ func (c *Conn) flushSegmented(fl Flate) error {
 			return err
 		}
 	}
-	c.out = append(out, deflateFinalEmpty[:]...)
+	out = append(out, deflateFinalEmpty[:]...)
+	c.out = out
 	return nil
 }
 

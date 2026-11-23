@@ -95,7 +95,9 @@ func (m pistonShapeNativeModel) BBox(pos cube.Pos, _ world.BlockSource) []cube.B
 	return []cube.BBox{m.block.bounds}
 }
 
-func (pistonShapeNativeModel) StaticCollisionKind() world.CollisionKind { return world.CollisionDynamic }
+func (pistonShapeNativeModel) StaticCollisionKind() world.CollisionKind {
+	return world.CollisionDynamic
+}
 
 type pistonShapeNativeSource struct{ piston *Piston }
 

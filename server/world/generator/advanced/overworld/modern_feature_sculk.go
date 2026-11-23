@@ -219,11 +219,12 @@ func sculkUpdateCursor(region *featureRegion, origin featurePos, c *sculkCursor,
 		}
 	}
 	behaviorKind := kind
-	if kind == sculkKindSculk {
+	switch {
+	case kind == sculkKindSculk:
 		c.charge = sculkUseSculkCharge(region, c, origin, random)
-	} else if kind == sculkKindVein {
+	case kind == sculkKindVein:
 		c.charge = sculkUseVeinCharge(region, c, faces, random, spreadVeins)
-	} else if c.decayDelay <= 0 {
+	case c.decayDelay <= 0:
 		c.charge = 0
 	}
 	if c.charge <= 0 {

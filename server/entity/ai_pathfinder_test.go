@@ -1031,8 +1031,8 @@ func BenchmarkDenseCrowdPathfinding(b *testing.B) {
 			}
 		}
 		for i := range 400 {
-			x := float64(-12 + (i%12))
-			z := float64(-12 + ((i/12)%24))
+			x := float64(-12 + (i % 12))
+			z := float64(-12 + ((i / 12) % 24))
 			tx.AddEntity(NewZombie(world.EntitySpawnOpts{Position: mgl64.Vec3{x + 0.5, 64, z + 0.5}}))
 		}
 	})

@@ -1,37 +1,60 @@
 <div align="center">
 
-# Adamant
+<img src="docs/assets/banner.svg" alt="Adamant — High-performance Minecraft: Bedrock Edition server in Go" width="100%">
 
-**High-performance Minecraft: Bedrock Edition server in Go, built for vanilla parity and clean extensibility.**
+<br>
 
+[![CI](https://github.com/dm-vev/adamant/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dm-vev/adamant/actions/workflows/ci.yml)
 [![Go](https://img.shields.io/badge/Go-1.27%2B-00ADD8?logo=go&logoColor=white)](go.mod)
-[![Bedrock](https://img.shields.io/badge/Bedrock-1.26.52%20%E2%80%93%201.26.61-62B47A)](docs/protocols.md)
-[![Protocol](https://img.shields.io/badge/protocol-2193%20%7C%202225-blue)](docs/protocols.md)
-[![Java reference](https://img.shields.io/badge/Java%20reference-26.3-E76F00)](vanilla-reference.json)
-[![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+[![Bedrock](https://img.shields.io/badge/Bedrock-1.26.50%20%E2%80%93%201.26.61-62B47A)](docs/protocols.md)
+[![Protocol](https://img.shields.io/badge/protocol-2193%20%7C%202225-0284C7)](docs/protocols.md)
+[![Java Parity](https://img.shields.io/badge/Java%20parity-26.3-E76F00)](vanilla-reference.json)
+[![License: MIT](https://img.shields.io/badge/license-MIT-64748B)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/dm-vev/adamant?style=flat&color=F59E0B)](https://github.com/dm-vev/adamant/stargazers)
 
-[Quick start](#quick-start) ·
-[Status](#status) ·
-[Architecture & SDK](#architecture--sdk) ·
-[Documentation](#documentation) ·
-[Development](#development)
+[**Quick Start**](#quick-start) ·
+[**Why Adamant?**](#why-adamant) ·
+[**Benchmarks**](#benchmarks) ·
+[**Architecture & SDK**](#architecture--sdk) ·
+[**Documentation**](#documentation) ·
+[**Contributing**](.github/CONTRIBUTING.md)
 
 </div>
 
 ---
 
-Adamant is a Minecraft: Bedrock Edition server in Go (originally forked from [Dragonfly](https://github.com/df-mc/dragonfly)). Clients connect over native NetherNet or RakNet as they would to Bedrock Dedicated Server, while world generation, mob AI, redstone, and survival rules are ported directly from vanilla references:
+**Adamant** is an open-source, high-performance **Minecraft: Bedrock Edition server written in Go** — designed as a fast, extensible drop-in alternative to **Bedrock Dedicated Server (BDS)**. Clients connect over native **NetherNet (WebRTC)** or **RakNet**, while world generation, structures, mob AI (`MobAI` & `Brain`), redstone, and survival mechanics are ported directly from vanilla **Java Edition 26.3** and **BDS 1.26.52.3** references ([`vanilla-reference.json`](vanilla-reference.json)).
 
-| Reference | Version | Scope |
+## Why Adamant?
+
+| Capability | **Adamant** | Vanilla BDS | PocketMine-MP / Nukkit | Upstream Dragonfly |
+|---|:---:|:---:|:---:|:---:|
+| **Vanilla Overworld, Nether, End & Structures** | ✅ Java 26.3 | ✅ | ⚠️ Basic / plugins | ⚠️ Basic Overworld |
+| **Full Vanilla Mob AI (`MobAI` + `Brain`, Raids, Villagers)** | ✅ | ✅ | ❌ | ❌ |
+| **Redstone, Crafting, Loot & Survival Parity** | ✅ | ✅ | ⚠️ Partial | ⚠️ Partial |
+| **Multi-Core Regions, Parallel AI & Crowd Batching** | ✅ | ⚠️ Limited | ❌ Single-tick bottlenecks | ⚠️ Single-world loop |
+| **Multi-Version Bedrock Protocol (`2193` & `2225`)** | ✅ Built-in | ❌ Single version | ⚠️ Via plugins | ❌ Single version |
+| **Typed Zero-Allocation Plugin SDK** | ✅ Go (`api/`) | ❌ Closed C++ | PHP / Java | Go (core-coupled) |
+| **Single Static Binary (`MIT`, Linux / Windows / macOS)** | ✅ | ❌ Proprietary | ❌ Runtime required | ✅ |
+
+## Benchmarks
+
+Measured on AMD Ryzen 7 8700F (`Go 1.27.3`, 20 TPS = `50 ms` tick budget):
+
+| Workload | Result | Notes |
 |---|---|---|
-| Java Edition ([MCP-Reborn](https://github.com/Hexeption/MCP-Reborn)) | **26.3** | World generation, structures, mob AI (`MobAI` & `Brain`), blocks, items, commands, survival |
-| Bedrock Dedicated Server | **1.26.52.3** | Wire protocol, 2,076 items, 22,079 block states, 89 biomes, LevelDB & NBT layout |
-
-Exact reference checksums are pinned in [`vanilla-reference.json`](vanilla-reference.json); parity checks are documented in [`docs/verification.md`](docs/verification.md).
+| **1,003 dense mobs in one area** (`RADIUS=5`) | **`7.77 ms` p50** (`11.27 ms` p99) | Parallel `Prefetch`, 64-shard `sharedPathCache`, 4×4 sub-cell broadphase, `0 GC` |
+| **1,678 mobs across 4 clusters** (`REGIONS=1`) | **`12.71 ms` p50** | 4×4 checkerboard parallel world regions (~25% of 50 ms tick budget) |
+| **100-player crowd packet flush** | **`163.5 µs`** (`1.02 GB/s`, `2 allocs`) | Sync-flushed RFC 1951 `Flate` segments in `BatchCache` (**2.82×** faster) |
+| **Pure-Go `bedrock.Snappy` codec** | **`1.61 GB/s`** decompress / **`698 MB/s`** compress | Zero-cgo `24 KiB` chunk in `35.2 µs`; `1.85 KiB` batch in `1.15 µs` |
+| **Java 26.3 Overworld generation** (`16×16`) | **`55.9 chunks/s`** (`17.9 ms/chunk`, 2 workers) | Single-pass 4-color DAG decoration (**-78%** memory & allocations) |
+| **ECS & EventBus hot path** | **`0.20 ns`** `Bag.Get` · **`9.3 ns`** `Bus` emit | `0 B/op`, `0 allocs/op`, zero reflection |
 
 ## Quick start
 
-Requires **Go 1.27+** (`toolchain go1.27.3`).
+**Prebuilt binaries:** grab the latest archive for Linux, Windows, or macOS from [**Releases**](https://github.com/dm-vev/adamant/releases) and run `./adamant`.
+
+**Build from source** (requires **Go 1.27+**):
 
 ```shell
 git clone https://github.com/dm-vev/adamant
@@ -39,31 +62,30 @@ cd adamant
 go run .
 ```
 
-- Reads [`config.toml`](config.toml) from the working directory (generates defaults on first run) and listens on `:19132`.
-- Supports Bedrock **1.26.50 – 1.26.61** (protocols `2193` and `2225`, automatic packet translation).
-- Pass `-headless` to disable the interactive console; stop cleanly with `Ctrl+C` or `stop`.
+- Generates default [`config.toml`](config.toml) on first launch and listens on UDP `:19132`.
+- Accepts Bedrock **1.26.50 – 1.26.61** clients out of the box (protocols `2193` and `2225` with automatic wire translation).
+- Pass `-headless` for non-interactive systemd/Docker deployments; stop cleanly with `Ctrl+C` or `stop`.
 
 ## Status
 
-| Area | State | Summary |
+| Subsystem | State | Highlights |
 |---|:---:|---|
-| Protocol & networking | ✅ | Protocols 2193 & 2225, NetherNet (WebRTC) + RakNet, `Flate` & `Snappy` crowd batching |
-| Registries & persistence | ✅ | Full BDS item/block/biome registries, native LevelDB worlds, background chunk saving |
+| Protocol & networking | ✅ | Protocols `2193` & `2225`, NetherNet (WebRTC) + RakNet, `Flate` & `Snappy` crowd batching |
+| Registries & persistence | ✅ | 2,076 BDS items, 22,079 block states, 89 biomes, LevelDB (`mcdb`), background chunk saving |
 | World generation | 🟢 | Java 26.3 Overworld, Nether & End, structures, single-pass 4-color DAG decoration |
 | Mob AI & spawning | 🟢 | Java `MobAI` + `Brain` for all species, riding, raids, villagers, `NaturalSpawner` |
 | Blocks, items & redstone | 🟢 | All vanilla blocks (except 5 Education blocks), BDS crafting, Java smelting/loot, [redstone](docs/redstone-audit.md) |
-| Commands & admin | 🟢 | Java 26.3 commands (`execute`, selectors, scoreboards), RBAC, bans, backups, anti-cheat |
+| Commands, security & ops | 🟢 | Java 26.3 `execute` & scoreboards, RBAC, bans, backups, [anti-cheat](docs/anticheat.md), Prometheus `/metrics` |
 
-**Known gaps:** 5 Education Edition blocks are unimplemented; Bedrock lacks banner map markers and a few Java-only Dragon effects; natural mob counts on generated terrain have not yet been cross-counted live on a Java server.
+**Known gaps:** 5 Education Edition blocks are unimplemented; Bedrock lacks banner map markers and a few Java-only Dragon effects; natural mob counts on generated terrain have not yet been cross-counted live against a running Java server ([`docs/verification.md`](docs/verification.md)).
 
 ## Architecture & SDK
 
-The engine separates a lean, data-oriented simulation core (`server/`) from protocol adapters (`protocol/`, `net/`) and an external plugin SDK (`api/`, `api/bedrock/`):
+Adamant isolates a data-oriented simulation core (`server/`) from wire adapters (`protocol/`, `net/`) and an external plugin SDK (`api/`, `api/bedrock/`), enforced in CI by architectural ratchets (`internal/archtest`):
 
-- **Zero-alloc ECS & EventBus (`server/ecs`, `server/event`):** dense typed component bags (`Key[T]` / `Bag` with optional NBT persistence) on entities, players, chunks, and worlds; zero-reflection prioritized `event.Bus` (`Cancellable`) on `Server`, `World`/`Tx`, and `Player`.
-- **Parallel world & crowd AI (`server/world`, `server/entity`):** `World.AddSystem(TickPhase)` with panic containment, `SetBlockRID` / `FillRID` volume ops, 4×4 checkerboard parallel world `Regions`, multi-core `Prefetch` (fluids, collisions, melee/ranged/brain A* paths), 64-shard `sharedPathCache`, and 4×4 sub-cell parallel broadphase collisions.
-- **High-density network pipeline (`net/bedrock`, `protocol/bedrock`):** pre-framed `netconn.Shared` broadcasts, single-lock `Conn.WriteBatch` session flushing, composable RFC 1951 sync-flushed DEFLATE segments in `BatchCache` (eliminating `N-1` crowd recompression), and a zero-dependency pure-Go `bedrock.Snappy` codec.
-- **External SDK (`api`, `api/bedrock`):** `App` / `Plugin` lifecycle, player facets (`Movement`, `Combat`, `UI`, `Net`), custom blocks, entities, AI goals, menus, commands, Overworld generation hooks (`overworld.Hooks`), and Bedrock `PacketInterceptor` / raw packet injection — without modifying core packages.
+- **Zero-alloc ECS & EventBus (`server/ecs`, `server/event`):** dense typed component bags (`Key[T]` / `Bag` with optional NBT persistence) on entities, players, chunks, and worlds; prioritized `event.Bus` (`Cancellable`) on `Server`, `World`/`Tx`, and `Player`.
+- **Parallel simulation (`server/world`, `server/entity`):** `World.AddSystem(TickPhase)` with panic containment, `SetBlockRID` / `FillRID` volume ops, 4×4 parallel world `Regions`, multi-core AI/fluid/collision `Prefetch`, and `sharedPathCache`.
+- **External SDK (`api`, `api/bedrock`):** `App` / `Plugin` lifecycle, player facets (`Movement`, `Combat`, `UI`, `Net`), custom blocks/entities/AI goals/menus/commands, Overworld hooks (`overworld.Hooks`), and Bedrock `PacketInterceptor` — without touching core packages.
 
 ```go
 app := api.New(srv).Use(api.FuncPlugin{
@@ -78,24 +100,22 @@ defer app.Close()
 
 ## Documentation
 
-All runtime settings live in [`config.toml`](config.toml). Detailed subsystem guides are in [`docs/`](docs):
+Runtime settings are documented in [`config.toml`](config.toml). Deep-dive guides live in [`docs/`](docs):
 
-- [`docs/protocols.md`](docs/protocols.md) — supported Bedrock versions, NetherNet signalling/WebRTC, and RakNet
+- [`docs/protocols.md`](docs/protocols.md) — Bedrock versions, NetherNet signalling/WebRTC, and RakNet
 - [`docs/anticheat.md`](docs/anticheat.md) — movement, combat, interaction, and timer checks (`[AntiCheat]`)
-- [`docs/admin.md`](docs/admin.md) — permission levels, roles, bans, online backups, audit log, and HTTPS Remote Admin API
-- [`docs/identity.md`](docs/identity.md) — Xbox Live authentication, `IdentityKey` (`xuid` / `name`), and `server-key.pem`
-- [`docs/operations.md`](docs/operations.md) — Prometheus `/metrics`, `/livez` & `/readyz` probes, `pprof`, and structured logging
-- [`docs/protocol-boundary.md`](docs/protocol-boundary.md) — core/adapter architecture and R1–R5 boundary ratchets
+- [`docs/admin.md`](docs/admin.md) — RBAC permissions, bans, online backups, audit log, and HTTPS Remote Admin API
+- [`docs/identity.md`](docs/identity.md) — Xbox Live authentication, `IdentityKey`, and `server-key.pem`
+- [`docs/operations.md`](docs/operations.md) — Prometheus `/metrics`, `/livez` & `/readyz` probes, `pprof`, and logging
+- [`docs/protocol-boundary.md`](docs/protocol-boundary.md) — core/adapter boundaries and R1–R5 architectural ratchets
 - [`docs/redstone-audit.md`](docs/redstone-audit.md) & [`docs/verification.md`](docs/verification.md) — BDS & Java 26.3 parity verification
-- [`docs/localization.md`](docs/localization.md) — command localization
 
-## Development
+## Development & contributing
 
 ```shell
 go build ./...
 go test ./...
 go test ./internal/archtest   # boundary, mutation, wait, API, entity-layer & func-length ratchets
-make lint                     # golangci-lint v2.15.0
 ```
 
 | Path | Contents |
@@ -103,13 +123,13 @@ make lint                     # golangci-lint v2.15.0
 | `main.go`, `internal/app` | Entrypoint, `config.toml` loader, logging, metrics, and service lifecycle |
 | `api`, `api/bedrock` | External plugin SDK and Bedrock packet interception / raw packet helpers |
 | `server/ecs`, `server/event` | Zero-allocation component bags and prioritized typed event bus |
-| `server/world` | World, chunks, tick systems, 4×4 parallel regions, LevelDB (`mcdb`), and generators (`generator/advanced`) |
-| `server/entity` | Entities, `MobAI` & `Brain` frameworks, parallel prefetch, `sharedPathCache`, and mob behaviours |
-| `server/player` | Players, zero-allocation facets, typed events, and anti-cheat |
-| `server/block`, `server/item`, `server/cmd` | Block/item registries & mechanics, Java 26.3 command engine |
-| `protocol/bedrock`, `net` | Bedrock adapter (`session`, `netconn`, `query`) and stdlib-only `net` transport/compression module |
-| `internal/archtest`, `cmd` | Architectural ratchets (R1–R5, API snapshot) and standalone BDS/Java audit tools |
+| `server/world`, `server/entity` | Parallel world regions, LevelDB, Java 26.3 worldgen, `MobAI` & `Brain` |
+| `server/player`, `server/block`, `server/item`, `server/cmd` | Player facets & anti-cheat, block/item mechanics, Java 26.3 commands |
+| `protocol/bedrock`, `net` | Bedrock session/wire adapter and stdlib-only `net` transport & compression module |
+| `internal/archtest`, `cmd` | Architectural ratchets (R1–R5, API snapshot) and BDS/Java parity audit tools |
+
+Contributions, bug reports, and parity fixes are welcome — see [**CONTRIBUTING.md**](.github/CONTRIBUTING.md) and open [**Issues**](https://github.com/dm-vev/adamant/issues). If Adamant helps your server or Go game-server research, **consider leaving a ⭐ on GitHub**!
 
 ## License
 
-Released under the [MIT License](LICENSE). Originally built on [Dragonfly](https://github.com/df-mc/dragonfly) and [gophertunnel](https://github.com/Sandertv/gophertunnel), with Java reference sources via [MCP-Reborn](https://github.com/Hexeption/MCP-Reborn). *Not an official Minecraft product; not approved by or associated with Mojang or Microsoft.*
+Released under the [MIT License](LICENSE). Originally forked from [Dragonfly](https://github.com/df-mc/dragonfly) and [gophertunnel](https://github.com/Sandertv/gophertunnel), with Java reference mechanics via [MCP-Reborn](https://github.com/Hexeption/MCP-Reborn). *Not an official Minecraft product; not approved by or associated with Mojang or Microsoft.*

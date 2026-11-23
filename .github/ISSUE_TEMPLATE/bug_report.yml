@@ -1,0 +1,31 @@
+name: Bug report
+description: Crash, race condition, disconnect, or broken behaviour
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Clear description of the bug and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start server with default config.toml
+        2. Connect with Bedrock 1.26.60
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Commit / Release & Client version
+      placeholder: "main (commit hash) / Bedrock 1.26.60 on Windows"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or stack trace
+      render: text

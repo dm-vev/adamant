@@ -29,7 +29,9 @@ func TestExplosionImpulseAddsToEntityTypeVelocity(t *testing.T) {
 	}{
 		{"TNT", func(opts world.EntitySpawnOpts) *world.EntityHandle { return NewTNT(opts, 4*time.Second, nil) }},
 		{"projectile", func(opts world.EntitySpawnOpts) *world.EntityHandle { return opts.New(ArrowType, arrowConf) }},
-		{"minecart", func(opts world.EntitySpawnOpts) *world.EntityHandle { return opts.New(entityMinecartType, minecartConf) }},
+		{"minecart", func(opts world.EntitySpawnOpts) *world.EntityHandle {
+			return opts.New(entityMinecartType, minecartConf)
+		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			w := world.Config{Synchronous: true}.New()

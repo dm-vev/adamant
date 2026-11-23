@@ -1,0 +1,24 @@
+name: Vanilla parity gap
+description: Difference from Java Edition 26.3 gameplay/worldgen or BDS 1.26.52 wire behaviour
+labels: ["parity"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Subsystem
+      options:
+        - World generation & structures
+        - Mob AI & spawning
+        - Blocks, fluids & redstone
+        - Items, crafting & loot
+        - Commands & game rules
+        - Bedrock protocol / client rendering
+    validations:
+      required: true
+  - type: textarea
+    id: diff
+    attributes:
+      label: Observed vs Vanilla behaviour
+      description: Compare what Adamant does against Java 26.3 or BDS 1.26.52.3 (cite class/method, seed, or packet if known).
+    validations:
+      required: true

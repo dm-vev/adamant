@@ -873,13 +873,14 @@ func (s *Session) addVehicleAndWitherMetadata(e any, m mc.Metadata, lo uint64) {
 			m[mc.EntityDataKeyControllingSeatIndex] = boxedBytes[0]
 		}
 	}
-	if lo&capContainerMeta != 0 {
+	switch {
+	case lo&capContainerMeta != 0:
 		m[mc.EntityDataKeyInteractText] = metaInteractContainer
-	} else if lo&capBoatFull != 0 {
+	case lo&capBoatFull != 0:
 		if !e.(boatFullMeta).Full() {
 			m[mc.EntityDataKeyInteractText] = metaInteractBoat
 		}
-	} else if lo&capMinecartRideable != 0 {
+	case lo&capMinecartRideable != 0:
 		v := e.(minecartRideableMeta)
 		if v.Rideable() && v.Passenger() == nil {
 			m[mc.EntityDataKeyInteractText] = metaInteractMinecart

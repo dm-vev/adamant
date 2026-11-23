@@ -127,7 +127,7 @@ func (c *crowdBatchConn) writeBatchFrom(bw *bedrock.BatchWriter, batch []proto.P
 			if err = bw.WriteFramed(framed, id, len(raw)); err != nil {
 				return len(batch), inPersonal, err
 			}
-			if ((uint64(uintptr(unsafe.Pointer(sh))) >> 6) * 0x9e3779b97f4a7c15) >> 61 == 0 {
+			if ((uint64(uintptr(unsafe.Pointer(sh)))>>6)*0x9e3779b97f4a7c15)>>61 == 0 {
 				bw.MarkSegment()
 			}
 			continue

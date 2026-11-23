@@ -20,8 +20,8 @@ type ProcessorEnvironment struct {
 	BaseBlock     func(x, y, z int32) world.Block
 	BaseBlockName func(x, y, z int32) string
 	BiomeAt       func(x, y, z int32) string
-	BaseHeight func(x, z int32, oceanFloor bool) int32
-	SeaLevel   int32
+	BaseHeight    func(x, z int32, oceanFloor bool) int32
+	SeaLevel      int32
 	// MotionBlockingNoLeavesHeight queries the live post-decoration heightmap,
 	// not the frozen *_WG terrain height used by BaseHeight.
 	MotionBlockingNoLeavesHeight func(x, z int32) int32
@@ -519,11 +519,12 @@ func compileProtectedBlocks(config map[string]any, env ProcessorEnvironment) (Pr
 	}
 	return processor(func(ctx ProcessContext, b Block) (Block, bool, error) {
 		var base string
-		if env.BaseBlockName != nil {
+		switch {
+		case env.BaseBlockName != nil:
 			base = env.BaseBlockName(ctx.Position[0], ctx.Position[1], ctx.Position[2])
-		} else if env.BaseBlock != nil {
+		case env.BaseBlock != nil:
 			base, _ = env.BaseBlock(ctx.Position[0], ctx.Position[1], ctx.Position[2]).EncodeBlock()
-		} else {
+		default:
 			return b, true, nil
 		}
 		protected, err := gamedata.BlockTagContains(tag, base)

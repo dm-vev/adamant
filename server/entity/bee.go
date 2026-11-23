@@ -142,10 +142,12 @@ type beeShownState struct{ angry, nectar bool }
 
 type Bee struct{ *Ent }
 
-func NewBee(opts world.EntitySpawnOpts) *world.EntityHandle { return opts.New(entityBeeType, beeConfig{}) }
-func (b *Bee) SpeciesType() world.EntityType                { return entityBeeType }
-func (b *Bee) state() *beeBehaviour                         { return b.Behaviour().(*beeBehaviour) }
-func (b *Bee) Tick(tx *world.Tx, n int64)                   { b.state().effects.Tick(b, tx); b.Ent.Tick(tx, n) }
+func NewBee(opts world.EntitySpawnOpts) *world.EntityHandle {
+	return opts.New(entityBeeType, beeConfig{})
+}
+func (b *Bee) SpeciesType() world.EntityType { return entityBeeType }
+func (b *Bee) state() *beeBehaviour          { return b.Behaviour().(*beeBehaviour) }
+func (b *Bee) Tick(tx *world.Tx, n int64)    { b.state().effects.Tick(b, tx); b.Ent.Tick(tx, n) }
 func (b *beeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	bee := &Bee{Ent: e}
 	ai := &b.ai
