@@ -44,9 +44,17 @@ type baseTopSource interface {
 	BaseTop(x, z int32) int32
 }
 
+type resolvedCarver struct {
+	name        string
+	typeName    string
+	config      map[string]any
+	probability float64
+}
+
 type modernBiomeFeatures struct {
 	stages            [][]string
 	carvers           []string
+	resolvedCarvers   []resolvedCarver
 	frozenTemperature bool
 	hasPrecipitation  bool
 }
@@ -73,16 +81,19 @@ type ModernFeatures struct {
 	temperatures map[string]float64
 	featureRanks [][]map[string]int
 	// origins caches what the features of each origin chunk write, shared by
-	// the chunks around it that are decorated with them.
+	// the chunks around it that are decorated with them and by higher-color
+	// successor origins.
 	origins originRecordCache
-	// contexts caches what the structures and features of each origin chunk
-	// write against the base terrain alone, shared by the origins it
-	// precedes as the context their records are computed against.
-	contexts originRecordCache
 	// parallel is true if the records a chunk owns are computed at once.
 	parallel bool
 	// heightmaps caches the heightmap predicates of each native state.
 	heightmaps sync.Map
+	// oreTargets caches resolved ore target specs by configured feature name
+	// for world.DefaultBlockRegistry.
+	oreTargets sync.Map
+	// biomeByIndex caches biome feature data indexed by vanilla Overworld biome index.
+	biomeByIndex     [vanilla.OverworldBiomeCount]modernBiomeFeatures
+	biomeByIndexOnce sync.Once
 	// log is where the structures log; slog.Default() if nil.
 	log *slog.Logger
 }
@@ -289,14 +300,14 @@ func (f *ModernFeatures) buildFeatureRanks() {
 
 // Decorate places the structures and features of the chunk at pos and the
 // features of its neighbours that reach into it. The features of every
-// origin chunk come from one record, computed once against the origins that
-// precede it, so a feature crossing a chunk border is the same in every chunk
-// it reaches. The structures of the chunk are placed as it decorates, since
-// their pieces keep state from chunk to chunk.
+// origin chunk come from one record, computed once against its lower-color
+// neighbours in the 4-color DAG, so a feature crossing a chunk border is the
+// same in every chunk it reaches. The structures of the chunk are placed as it
+// decorates, since their pieces keep state from chunk to chunk.
 func (f *ModernFeatures) Decorate(pos world.ChunkPos, c *chunk.Chunk, context world.GenerationContext) world.GenerationResult {
 	result := world.GenerationResult{}
 	region := newFeatureRegion(f, c, pos, &result)
-	origins := decorationOrigins(pos)
+	origins := coloredDecorationOrigins(pos)
 	// The records other chunks are computing are waited for only after this
 	// chunk computed those it took on.
 	var records [len(origins)]*originRecordEntry
@@ -320,7 +331,7 @@ func (f *ModernFeatures) Decorate(pos world.ChunkPos, c *chunk.Chunk, context wo
 			}
 			record.steps[step].apply(region)
 		}
-		f.origins.release(records[i], len(origins))
+		f.origins.release(records[i], originUsers(origin))
 		released = i + 1
 	}
 	region.release()
@@ -346,8 +357,7 @@ func (f *ModernFeatures) DecorateInOneRegion(pos world.ChunkPos, c *chunk.Chunk,
 // called before any chunk is decorated.
 func (f *ModernFeatures) Tune(workers int, parallel bool) {
 	f.parallel = parallel
-	capacity := max(originRecordCacheSize, 64*workers)
-	f.origins.capacity, f.contexts.capacity = capacity, capacity
+	f.origins.capacity = max(originRecordCacheSize, 96*workers)
 }
 
 // generationSteps returns the number of decoration steps of an origin.
@@ -376,19 +386,6 @@ func (f *ModernFeatures) decorateOrigin(region *featureRegion, origin world.Chun
 			record.steps[step].written.release()
 		}
 	}
-}
-
-// decorateContext runs every decoration step of origin in region, recording
-// the writes of its structures and features alike into one step.
-func (f *ModernFeatures) decorateContext(region *featureRegion, origin world.ChunkPos, context world.GenerationContext, record *originStep) {
-	region.SetOrigin(origin[0], origin[1])
-	possible := f.possibleBiomes(region, origin)
-	region.recording = record
-	for step := range f.generationSteps() {
-		f.placeStructures(region, origin, step, context, true)
-		f.placeFeatures(region, origin, step, possible)
-	}
-	region.recording = nil
 }
 
 // possibleBiomes returns the noise biomes Java's decoration of origin
@@ -549,12 +546,22 @@ func featureStateRID(c *chunk.Chunk, state map[string]any) (world.NativeState, b
 	return native, true
 }
 
+var simpleStringBlockCache sync.Map // raw string name -> structure.Block
+
 func featureStateBlock(value any) (structure.Block, bool) {
 	if name, ok := value.(string); ok {
+		if cached, ok := simpleStringBlockCache.Load(name); ok {
+			return cached.(structure.Block), true
+		}
+		orig := name
 		if !strings.Contains(name, ":") {
 			name = "minecraft:" + name
 		}
-		return featureBlock(world.BlockState{Name: name}), true
+		b := featureBlock(world.BlockState{Name: name})
+		if b.NativeBlock == nil {
+			simpleStringBlockCache.Store(orig, b)
+		}
+		return b, true
 	}
 	state, ok := value.(map[string]any)
 	if !ok {
@@ -565,8 +572,23 @@ func featureStateBlock(value any) (structure.Block, bool) {
 		return structure.Block{}, false
 	}
 	var properties map[string]any
-	if raw, exists := state["properties"]; exists {
-		values, ok := raw.(map[string]any)
+	rawProps, hasProps := state["properties"]
+	if !hasProps {
+		if cached, ok := simpleStringBlockCache.Load(name); ok {
+			return cached.(structure.Block), true
+		}
+		orig := name
+		if !strings.Contains(name, ":") {
+			name = "minecraft:" + name
+		}
+		b := featureBlock(world.BlockState{Name: name})
+		if b.NativeBlock == nil {
+			simpleStringBlockCache.Store(orig, b)
+		}
+		return b, true
+	}
+	if hasProps {
+		values, ok := rawProps.(map[string]any)
 		if !ok {
 			panic("overworld: malformed block-state provider")
 		}
@@ -1098,10 +1120,12 @@ func (f *ModernFeatures) applyStructurePlacement(region *featureRegion, placemen
 			region.reserveTick(tick)
 		}
 	}
-	var err error
-	placement, err = placement.AdaptItemFrameEntities()
-	if err != nil {
-		panic(err)
+	if len(placement.Entities) != 0 {
+		var err error
+		placement, err = placement.AdaptItemFrameEntities()
+		if err != nil {
+			panic(err)
+		}
 	}
 	frameBlocks := placement.Blocks[sourceBlockCount:]
 	applyTemplateProjectionBlocks(region, frameBlocks, 18)

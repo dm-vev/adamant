@@ -64,6 +64,32 @@ func carverFlagsForDefaultRID(rid uint32) uint32 {
 	return flags
 }
 
+func (f *ModernFeatures) initBiomeCarvers() {
+	f.biomeByIndexOnce.Do(func() {
+		for i := range f.biomeByIndex {
+			name := normalizeResource(vanilla.OverworldBiomeName(uint8(i)))
+			b, ok := f.biomes[name]
+			if !ok {
+				continue
+			}
+			resolved := make([]resolvedCarver, 0, len(b.carvers))
+			for _, cname := range b.carvers {
+				cfg, ok := f.carvers[cname]
+				if !ok {
+					panic("overworld: missing configured carver " + cname)
+				}
+				prob, ok := cfg.config["probability"].(float64)
+				if !ok {
+					panic("overworld: malformed carver probability " + cname)
+				}
+				resolved = append(resolved, resolvedCarver{name: cname, typeName: cfg.typeName, config: cfg.config, probability: prob})
+			}
+			b.resolvedCarvers = resolved
+			f.biomeByIndex[i] = b
+		}
+	})
+}
+
 // Carve applies each biome's configured Java carvers from the full 17x17 source-chunk neighborhood.
 func (f *ModernFeatures) Carve(pos world.ChunkPos, c *chunk.Chunk, aquifer ModernCarverAquifer) world.GenerationResult {
 	if aquifer == nil {
@@ -77,9 +103,23 @@ func (f *ModernFeatures) Carve(pos world.ChunkPos, c *chunk.Chunk, aquifer Moder
 		ready bool
 		x, z  int64
 	}
+	src, hasFastSource := f.source.(modernTerrainSource)
+	hasFastSource = hasFastSource && src.generator != nil
+	if hasFastSource {
+		f.initBiomeCarvers()
+	}
 	for dx := int32(-8); dx <= 8; dx++ {
 		for dz := int32(-8); dz <= 8; dz++ {
 			sourceX, sourceZ := int32(pos[0])+dx, int32(pos[1])+dz
+			if hasFastSource {
+				idx := src.generator.chunkBiomes.originBiome(world.ChunkPos{sourceX, sourceZ}, src.generator.noise)
+				biome := &f.biomeByIndex[idx]
+				for index := range biome.resolvedCarvers {
+					rc := &biome.resolvedCarvers[index]
+					f.applyCarverAt(c, pos, sourceX, sourceZ, index, rc.typeName, rc.config, rc.probability, minY, maxY, mask, &seedCache)
+				}
+				continue
+			}
 			biomeName := normalizeResource(f.source.NoiseBiomeAt(sourceX<<2, 0, sourceZ<<2))
 			biome, ok := f.biomes[biomeName]
 			if !ok {
@@ -90,39 +130,46 @@ func (f *ModernFeatures) Carve(pos world.ChunkPos, c *chunk.Chunk, aquifer Moder
 				if !ok {
 					panic("overworld: missing configured carver " + name)
 				}
-				var r vanilla.Random
-				seed := f.seed + int64(index)
-				if index < len(seedCache) {
-					entry := &seedCache[index]
-					if !entry.ready {
-						tmp := vanilla.NewLegacyRandom(seed)
-						entry.x, entry.z = tmp.NextLong(), tmp.NextLong()
-						entry.ready = true
-					}
-					r = vanilla.NewLegacyRandom(int64(sourceX)*entry.x ^ int64(sourceZ)*entry.z ^ seed)
-				} else {
-					r = largeFeatureRandom(seed, sourceX, sourceZ)
-				}
 				probability, ok := cfg.config["probability"].(float64)
 				if !ok {
 					panic("overworld: malformed carver probability " + name)
 				}
-				if float64(r.NextFloat()) > probability {
-					continue
-				}
-				switch cfg.typeName {
-				case "cave":
-					f.carveCave(c, pos, cfg.config, sourceX, sourceZ, &r, minY, maxY, mask)
-				case "canyon":
-					f.carveCanyon(c, pos, cfg.config, sourceX, sourceZ, &r, minY, maxY, mask)
-				default:
-					panic("overworld: unsupported configured carver " + cfg.typeName)
-				}
+				f.applyCarverAt(c, pos, sourceX, sourceZ, index, cfg.typeName, cfg.config, probability, minY, maxY, mask, &seedCache)
 			}
 		}
 	}
 	mask.apply(pos, c, aquifer, &result)
 	return result
+}
+
+func (f *ModernFeatures) applyCarverAt(c *chunk.Chunk, pos world.ChunkPos, sourceX, sourceZ int32, index int, typeName string, config map[string]any, probability float64, minY, maxY int32, mask *carvingMask, seedCache *[8]struct {
+	ready bool
+	x, z  int64
+}) {
+	var r vanilla.Random
+	seed := f.seed + int64(index)
+	if index < len(seedCache) {
+		entry := &seedCache[index]
+		if !entry.ready {
+			tmp := vanilla.NewLegacyRandom(seed)
+			entry.x, entry.z = tmp.NextLong(), tmp.NextLong()
+			entry.ready = true
+		}
+		r = vanilla.NewLegacyRandom(int64(sourceX)*entry.x ^ int64(sourceZ)*entry.z ^ seed)
+	} else {
+		r = largeFeatureRandom(seed, sourceX, sourceZ)
+	}
+	if float64(r.NextFloat()) > probability {
+		return
+	}
+	switch typeName {
+	case "cave":
+		f.carveCave(c, pos, config, sourceX, sourceZ, &r, minY, maxY, mask)
+	case "canyon":
+		f.carveCanyon(c, pos, config, sourceX, sourceZ, &r, minY, maxY, mask)
+	default:
+		panic("overworld: unsupported configured carver " + typeName)
+	}
 }
 
 type carvingMask struct {
