@@ -17,6 +17,7 @@ protocol/bedrock.netconnStatus	protocol/bedrock/netconn.StatusProvider	value
 protocol/bedrock.netherNetListener	protocol/bedrock.xboxListener	value
 protocol/bedrock.netherNetListener	protocol/bedrock/session.ConnListener	value
 protocol/bedrock/netconn.Conn	protocol/bedrock/session.Conn	*
+protocol/bedrock/netconn.Conn	protocol/bedrock/session.batchPacketWriter	*
 protocol/bedrock/netconn.Conn	protocol/bedrock/session.receiver	*
 protocol/bedrock/netconn.Conn	protocol/bedrock/session.sendBatcher	*
 protocol/bedrock/netconn.Conn	protocol/bedrock/session.sendQueue	*
