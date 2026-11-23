@@ -18,7 +18,7 @@ import (
 )
 
 // CreakingType is the Java Creaking entity type.
-var CreakingType creakingType
+var entityCreakingType creakingType
 
 type creakingType struct{}
 
@@ -32,7 +32,7 @@ func (creakingType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.E
 			state.homeDimension, state.homeDimensionSet = int32(id), true
 		}
 	}
-	return &Creaking{Ent: &Ent{tx: tx, handle: handle, data: data}}
+	return &creaking{Ent: &Ent{tx: tx, handle: handle, data: data}}
 }
 func (creakingType) EncodeEntity() string { return "minecraft:creaking" }
 func (creakingType) BBox(world.Entity) cube.BBox {
@@ -41,7 +41,7 @@ func (creakingType) BBox(world.Entity) cube.BBox {
 }
 func (creakingType) DecodeNBT(n map[string]any, data *world.EntityData) {
 	conf := creakingConfig{}
-	for _, attr := range ReadNativeMobAttributes(n) {
+	for _, attr := range readNativeMobAttributes(n) {
 		switch attr.Name {
 		case "minecraft:health":
 			conf.health, conf.healthSet = attr.Current, true
@@ -98,7 +98,7 @@ func (creakingType) DecodeNBT(n map[string]any, data *world.EntityData) {
 	if dim, ok := n["HomeDimensionId"].(int32); ok {
 		conf.homeDimension, conf.homeDimensionSet = dim, true
 	}
-	if java := ReadNativeMobJavaState(n); java != nil {
+	if java := readNativeMobJavaState(n); java != nil {
 		if home, ok := java["home_pos"].([]int32); ok && len(home) == 3 {
 			conf.home = cube.Pos{int(home[0]), int(home[1]), int(home[2])}
 			conf.bound = true
@@ -110,7 +110,7 @@ func (creakingType) DecodeNBT(n map[string]any, data *world.EntityData) {
 		data.FireDuration = 0
 	}
 	state := conf.New()
-	java := ReadNativeMobJavaState(n)
+	java := readNativeMobJavaState(n)
 	if java == nil {
 		java = n
 	}
@@ -125,11 +125,11 @@ func (creakingType) DecodeNBT(n map[string]any, data *world.EntityData) {
 }
 func (creakingType) EncodeNBT(data *world.EntityData) map[string]any {
 	b := data.Data.(*creakingState)
-	native := CloneNativeMobNBT(data.NativeNBT)
+	native := cloneNativeMobNBT(data.NativeNBT)
 	if native == nil {
 		native = make(map[string]any)
 	}
-	native["Attributes"] = EncodeNativeMobAttributes(ReadNativeMobAttributes(data.NativeNBT), []NativeMobAttribute{
+	native["Attributes"] = encodeNativeMobAttributes(readNativeMobAttributes(data.NativeNBT), []nativeMobAttr{
 		{Name: "minecraft:health", Base: 1, Current: b.health.Health(), DefaultMin: 0, DefaultMax: 1, Min: 0, Max: 1},
 		{Name: "minecraft:movement", Base: .4, Current: b.speed, DefaultMin: 0, DefaultMax: math.MaxFloat32, Min: 0, Max: math.MaxFloat32},
 	})
@@ -168,7 +168,7 @@ func (creakingType) EncodeNBT(data *world.EntityData) map[string]any {
 	if b.bound {
 		javaState["home_pos"] = []int32{int32(b.home.X()), int32(b.home.Y()), int32(b.home.Z())}
 	}
-	return MergeNativeMobJavaState(native, javaState)
+	return mergeNativeMobJavaState(native, javaState)
 }
 
 type creakingConfig struct {
@@ -199,7 +199,7 @@ type creakingState struct {
 	health           *HealthManager
 	effects          *EffectManager
 	ai               MobAI
-	br               *Brain
+	br               *brain
 	speed            float64
 	home             cube.Pos
 	bound, active    bool
@@ -216,25 +216,25 @@ type creakingState struct {
 	lastHurtByPlayerMemoryTime int
 	persistenceRequired        bool
 }
-type Creaking struct{ *Ent }
+type creaking struct{ *Ent }
 
 func NewCreaking(opts world.EntitySpawnOpts) *world.EntityHandle {
-	return opts.New(CreakingType, creakingConfig{})
+	return opts.New(entityCreakingType, creakingConfig{})
 }
-func (*Creaking) SpeciesType() world.EntityType { return CreakingType }
-func (c *Creaking) state() *creakingState       { return c.Behaviour().(*creakingState) }
-func (c *Creaking) Tick(tx *world.Tx, current int64) {
+func (*creaking) SpeciesType() world.EntityType { return entityCreakingType }
+func (c *creaking) state() *creakingState       { return c.Behaviour().(*creakingState) }
+func (c *creaking) Tick(tx *world.Tx, current int64) {
 	c.state().effects.Tick(c, tx)
 	c.Ent.Tick(tx, current)
 }
 
 func (s *creakingState) mobAI() *MobAI { return &s.ai }
-func (s *creakingState) brain() *Brain { return s.br }
+func (s *creakingState) brain() *brain { return s.br }
 
 // Tick ports Creaking.tick and aiStep: a creaking whose heart no longer
 // protects it dies, and one a player looks at freezes.
 func (s *creakingState) Tick(e *Ent, tx *world.Tx) *Movement {
-	c := &Creaking{Ent: e}
+	c := &creaking{Ent: e}
 	if s.lastHurtByPlayerMemoryTime > 0 {
 		s.lastHurtByPlayerMemoryTime--
 	} else {
@@ -361,7 +361,7 @@ func (s *creakingState) checkCanMove(m *Mob) bool {
 
 // creakingNearestPlayers returns the players of the NEAREST_PLAYERS memory.
 func creakingNearestPlayers(m *Mob) []world.Entity {
-	v, _ := m.Brain().get(memNearestPlayers)
+	v, _ := m.brain().get(memNearestPlayers)
 	handles, _ := v.([]*world.EntityHandle)
 	players := make([]world.Entity, 0, len(handles))
 	for _, h := range handles {
@@ -375,7 +375,7 @@ func creakingNearestPlayers(m *Mob) []world.Entity {
 // activate ports Creaking.activate: the creaking attacks the player that
 // looked at it.
 func (s *creakingState) activate(m *Mob, p world.Entity) {
-	m.Brain().setEntity(memAttackTarget, p)
+	m.brain().setEntity(memAttackTarget, p)
 	m.tx.EmitGameEvent(world.GameEventEntityAction, m.data.Pos, world.GameEventContext{Source: m.Self})
 	playCreakingSoundAt(m.Ent, m.tx, "mob.warning", m.data.Pos.Add(mgl64.Vec3{0, 2.295, 0}))
 	playCreakingSoundAt(m.Ent, m.tx, "stare", m.data.Pos.Add(mgl64.Vec3{0, 2.295, 0}))
@@ -385,7 +385,7 @@ func (s *creakingState) activate(m *Mob, p world.Entity) {
 
 // deactivate ports Creaking.deactivate.
 func (s *creakingState) deactivate(m *Mob) {
-	m.Brain().erase(memAttackTarget)
+	m.brain().erase(memAttackTarget)
 	m.tx.EmitGameEvent(world.GameEventEntityAction, m.data.Pos, world.GameEventContext{Source: m.Self})
 	playCreakingSound(m.Ent, m.tx, "deactivate")
 	s.setActive(m, false)
@@ -454,7 +454,7 @@ func (c creakingLookControl) tick(m *Mob) {
 }
 
 // newCreakingBrain ports CreakingAi and the brain provider of Creaking.
-func newCreakingBrain(s *creakingState) *Brain {
+func newCreakingBrain(s *creakingState) *brain {
 	br := newBrain(nearestLivingEntitySensor{}, playerSensor{})
 	swim := newSwim(.8)
 	swimExtra := swim.checkExtra
@@ -462,7 +462,7 @@ func newCreakingBrain(s *creakingState) *Brain {
 	br.addActivity(activityCore, 0, swim, newLookAtTargetSink(45, 90), newMoveToTargetSink(150, 250, nil))
 	br.addActivity(activityIdle, 10,
 		newStartAttacking(func(*Mob) bool { return s.active }, func(m *Mob) world.Entity {
-			return m.Brain().entity(m, memNearestVisibleAttackablePlayer)
+			return m.brain().entity(m, memNearestVisibleAttackablePlayer)
 		}),
 		newSetEntityLookTargetSometimes(nil, 8, uniformInt{30, 60}),
 		newRunOne(nil,
@@ -482,7 +482,7 @@ func newCreakingBrain(s *creakingState) *Brain {
 // creakingTargetReachable ports CreakingAi.isAttackTargetStillReachable: the
 // target is one of the players the creaking sees and may attack.
 func creakingTargetReachable(m *Mob, t world.Entity) bool {
-	v, ok := m.Brain().get(memNearestVisibleAttackablePlayers)
+	v, ok := m.brain().get(memNearestVisibleAttackablePlayers)
 	if !ok || !isPlayerEntity(t) {
 		return false
 	}
@@ -540,7 +540,7 @@ func (s *creakingState) stuckInPlayer(e *Ent, tx *world.Tx) bool {
 		s.stuckCounter = 0
 		return false
 	}
-	box := CreakingType.BBox(e).Translate(e.Position())
+	box := entityCreakingType.BBox(e).Translate(e.Position())
 	for _, handle := range handles {
 		player, ok := handle.Entity(tx)
 		if ok && box.Vec3Within(player.Position().Add(mgl64.Vec3{0, playerEyeHeight(player), 0})) {
@@ -558,10 +558,10 @@ func playerEyeHeight(p world.Entity) float64 {
 	return 1.62
 }
 
-func (c *Creaking) PlayerIsStuck() bool {
+func (c *creaking) PlayerIsStuck() bool {
 	return c.state().stuckInPlayer(c.Ent, c.tx)
 }
-func (c *Creaking) CreakingState() (int32, int32) {
+func (c *creaking) CreakingState() (int32, int32) {
 	state, _ := c.state().nativeState()
 	return state, int32(min(6, c.state().swayTicks))
 }
@@ -599,7 +599,7 @@ func (s *creakingState) spawnDefinition() string {
 	}
 	return "+minecraft:spawned_by_player"
 }
-func (c *Creaking) RemoveProtector(source world.DamageSource) {
+func (c *creaking) RemoveProtector(source world.DamageSource) {
 	s := c.state()
 	if s.dead || s.tearingDown {
 		return
@@ -614,11 +614,11 @@ func (c *Creaking) RemoveProtector(source world.DamageSource) {
 	c.viewAction(DeathAction{})
 	c.Ent.updateState()
 }
-func (c *Creaking) RemoveProtectorByExplosion(source world.ExplosionSource) {
+func (c *creaking) RemoveProtectorByExplosion(source world.ExplosionSource) {
 	c.RemoveProtector(ExplosionDamageSource{Source: source})
 }
 func (s *creakingState) tearDown(e *Ent, tx *world.Tx) {
-	box := CreakingType.BBox(e)
+	box := entityCreakingType.BBox(e)
 	center := box.Min().Add(box.Max()).Mul(.5).Add(e.Position())
 	xSpread := float64(float32(box.Width() * .3))
 	ySpread := float64(float32(box.Height() * .3))
@@ -649,11 +649,11 @@ func (s *creakingState) dieNow(e *Ent, tx *world.Tx) {
 	s.tearDown(e, tx)
 }
 
-func (c *Creaking) Health() float64        { return c.state().health.Health() }
-func (c *Creaking) MaxHealth() float64     { return c.state().health.MaxHealth() }
-func (c *Creaking) SetMaxHealth(v float64) { c.state().health.SetMaxHealth(v) }
-func (c *Creaking) Dead() bool             { return c.state().dead || c.Health() <= 0 }
-func (c *Creaking) Hurt(d float64, src world.DamageSource) (float64, bool) {
+func (c *creaking) Health() float64        { return c.state().health.Health() }
+func (c *creaking) MaxHealth() float64     { return c.state().health.MaxHealth() }
+func (c *creaking) SetMaxHealth(v float64) { c.state().health.SetMaxHealth(v) }
+func (c *creaking) Dead() bool             { return c.state().dead || c.Health() <= 0 }
+func (c *creaking) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	s := c.state()
 	if c.Dead() {
 		return 0, false
@@ -759,7 +759,7 @@ func (s *creakingState) responsiblePlayer(src world.DamageSource, tx *world.Tx) 
 	player, ok := tx.EntityByUUID(s.lastHurtByPlayer)
 	return player, ok && player.H().Type().EncodeEntity() == "minecraft:player"
 }
-func (c *Creaking) Heal(v float64, _ world.HealingSource) float64 {
+func (c *creaking) Heal(v float64, _ world.HealingSource) float64 {
 	if c.Dead() || v <= 0 {
 		return 0
 	}
@@ -767,41 +767,37 @@ func (c *Creaking) Heal(v float64, _ world.HealingSource) float64 {
 	c.state().health.AddHealth(v)
 	return c.Health() - old
 }
-func (c *Creaking) KnockBack(src mgl64.Vec3, force, height float64) {
+func (c *creaking) KnockBack(src mgl64.Vec3, force, height float64) {
 	if !c.state().canMove {
 		return
 	}
 	knockBack(c, src, force, height)
 }
-func (c *Creaking) AddEffect(v effect.Effect)  { c.state().effects.Add(v, c) }
-func (c *Creaking) RemoveEffect(v effect.Type) { c.state().effects.Remove(v, c) }
-func (c *Creaking) Effects() []effect.Effect   { return c.state().effects.Effects() }
-func (c *Creaking) Speed() float64             { return c.state().speed }
-func (c *Creaking) SetSpeed(v float64)         { c.state().speed = v }
-func (c *Creaking) FireImmune() bool           { return c.state().bound }
-func (c *Creaking) SetOnFire(duration time.Duration) {
+func (c *creaking) AddEffect(v effect.Effect)  { c.state().effects.Add(v, c) }
+func (c *creaking) RemoveEffect(v effect.Type) { c.state().effects.Remove(v, c) }
+func (c *creaking) Effects() []effect.Effect   { return c.state().effects.Effects() }
+func (c *creaking) Speed() float64             { return c.state().speed }
+func (c *creaking) SetSpeed(v float64)         { c.state().speed = v }
+func (c *creaking) FireImmune() bool           { return c.state().bound }
+func (c *creaking) SetOnFire(duration time.Duration) {
 	if c.state().bound {
 		c.data.FireDuration = 0
 		return
 	}
 	c.Ent.SetOnFire(duration)
 }
-func (c *Creaking) CanUsePortal() bool { return !c.state().bound }
-func (c *Creaking) TravelThroughPortal(tx *world.Tx, target world.Dimension) {
+func (c *creaking) CanUsePortal() bool { return !c.state().bound }
+func (c *creaking) TravelThroughPortal(tx *world.Tx, target world.Dimension) {
 	if !c.state().bound {
 		c.Ent.TravelThroughPortal(tx, target)
 	}
 }
-func (c *Creaking) PersistenceRequired() bool { return c.state().persistenceRequired }
+func (c *creaking) PersistenceRequired() bool { return c.state().persistenceRequired }
 
 // SetPersistenceRequired controls Java's named/persistent mob lifetime rule.
-func (c *Creaking) SetPersistenceRequired(required bool) { c.state().persistenceRequired = required }
-func (c *Creaking) viewAction(action world.EntityAction) {
-	viewers := c.tx.Viewers(c.Position())
-	for _, v := range viewers {
-		v.ViewEntityAction(c, action)
-	}
-	c.tx.ReleaseViewers(viewers)
+func (c *creaking) SetPersistenceRequired(required bool) { c.state().persistenceRequired = required }
+func (c *creaking) viewAction(action world.EntityAction) {
+	world.BroadcastEntityAction(c.tx, c, action)
 }
 
 func playCreakingSound(e *Ent, tx *world.Tx, soundType string) {
@@ -811,7 +807,7 @@ func playCreakingSoundAt(e *Ent, tx *world.Tx, soundType string, position mgl64.
 	tx.PlaySound(position, sound.Event{Name: soundType, Entity: "minecraft:creaking", Source: e.H()})
 }
 
-var _ Living = (*Creaking)(nil)
+var _ Living = (*creaking)(nil)
 var _ world.EntityType = creakingType{}
 
 func (b *creakingState) effectManager() *EffectManager { return b.effects }

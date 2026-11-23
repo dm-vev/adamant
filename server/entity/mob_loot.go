@@ -98,7 +98,7 @@ func supportKiller(tx *world.Tx, target world.Entity, src world.DamageSource) {
 // griefing is enabled and the rose can grow, and dropped as an item otherwise.
 func DropWitherRose(tx *world.Tx, pos mgl64.Vec3, src world.DamageSource) {
 	killer := mobKiller(src)
-	if killer == nil || killer.H().Type() != WitherType {
+	if killer == nil || killer.H().Type().EncodeEntity() != "minecraft:wither" {
 		return
 	}
 	if tx.World().GameRuleBool("mob_griefing") && block.PlantWitherRose(tx, cube.PosFromVec3(pos)) {

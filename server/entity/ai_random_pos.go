@@ -168,7 +168,7 @@ func evalWalkWeight(m *Mob, wt mobWalkTarget, hasWT bool, pos cube.Pos) float64 
 }
 
 // DefaultRandomPos ports DefaultRandomPos.getPos.
-func DefaultRandomPos(m *Mob, horizontal, vertical int) (mgl64.Vec3, bool) {
+func defaultRandomPos(m *Mob, horizontal, vertical int) (mgl64.Vec3, bool) {
 	restrict := mobRestricted(m, float64(horizontal))
 	var reader pathStateReader
 	reader.initFromWorld(m.tx)
@@ -187,13 +187,13 @@ func DefaultRandomPos(m *Mob, horizontal, vertical int) (mgl64.Vec3, bool) {
 }
 
 // DefaultRandomPosAway ports DefaultRandomPos.getPosAway.
-func DefaultRandomPosAway(m *Mob, horizontal, vertical int, away mgl64.Vec3) (mgl64.Vec3, bool) {
+func defaultRandomPosAway(m *Mob, horizontal, vertical int, away mgl64.Vec3) (mgl64.Vec3, bool) {
 	dir := m.data.Pos.Sub(away)
 	return defaultRandomPosInDirection(m, horizontal, vertical, dir, math.Pi/2)
 }
 
 // DefaultRandomPosTowards ports DefaultRandomPos.getPosTowards.
-func DefaultRandomPosTowards(m *Mob, horizontal, vertical int, towards mgl64.Vec3, maxRadians float64) (mgl64.Vec3, bool) {
+func defaultRandomPosTowards(m *Mob, horizontal, vertical int, towards mgl64.Vec3, maxRadians float64) (mgl64.Vec3, bool) {
 	return defaultRandomPosInDirection(m, horizontal, vertical, towards.Sub(m.data.Pos), maxRadians)
 }
 
@@ -229,7 +229,7 @@ func landPosUpOutOfSolid(m *Mob, reader *pathStateReader, pos cube.Pos) (cube.Po
 }
 
 // LandRandomPos ports LandRandomPos.getPos.
-func LandRandomPos(m *Mob, horizontal, vertical int) (mgl64.Vec3, bool) {
+func landRandomPos(m *Mob, horizontal, vertical int) (mgl64.Vec3, bool) {
 	restrict := mobRestricted(m, float64(horizontal))
 	var reader pathStateReader
 	reader.initFromWorld(m.tx)
@@ -253,7 +253,7 @@ func LandRandomPos(m *Mob, horizontal, vertical int) (mgl64.Vec3, bool) {
 
 // LandRandomPosWeighted ports LandRandomPos.getPos with the position weight
 // passed in place of the walk target value of the mob.
-func LandRandomPosWeighted(m *Mob, horizontal, vertical int, positionWeight func(cube.Pos) float64) (mgl64.Vec3, bool) {
+func landRandomPosWeighted(m *Mob, horizontal, vertical int, positionWeight func(cube.Pos) float64) (mgl64.Vec3, bool) {
 	restrict := mobRestricted(m, float64(horizontal))
 	var reader pathStateReader
 	reader.initFromWorld(m.tx)
@@ -275,7 +275,7 @@ func LandRandomPosWeighted(m *Mob, horizontal, vertical int, positionWeight func
 }
 
 // LandRandomPosAway ports LandRandomPos.getPosAway.
-func LandRandomPosAway(m *Mob, horizontal, vertical int, away mgl64.Vec3) (mgl64.Vec3, bool) {
+func landRandomPosAway(m *Mob, horizontal, vertical int, away mgl64.Vec3) (mgl64.Vec3, bool) {
 	dir := m.data.Pos.Sub(away)
 	if dir.LenSqr() == 0 {
 		r := m.Random()
@@ -285,7 +285,7 @@ func LandRandomPosAway(m *Mob, horizontal, vertical int, away mgl64.Vec3) (mgl64
 }
 
 // LandRandomPosTowards ports LandRandomPos.getPosTowards.
-func LandRandomPosTowards(m *Mob, horizontal, vertical int, towards mgl64.Vec3) (mgl64.Vec3, bool) {
+func landRandomPosTowards(m *Mob, horizontal, vertical int, towards mgl64.Vec3) (mgl64.Vec3, bool) {
 	return landRandomPosInDirection(m, 0, float64(horizontal), vertical, towards.Sub(m.data.Pos))
 }
 
@@ -318,7 +318,7 @@ func landRandomPosInDirection(m *Mob, minHorizontal, maxHorizontal float64, vert
 // HoverRandomPos ports HoverRandomPos.getPos: a position in a direction
 // within maxRadians of the one passed, hoverMin to hoverMax blocks above the
 // ground there and out of water.
-func HoverRandomPos(m *Mob, horizontal, vertical int, xDir, zDir, maxRadians float64, hoverMax, hoverMin int) (mgl64.Vec3, bool) {
+func hoverRandomPos(m *Mob, horizontal, vertical int, xDir, zDir, maxRadians float64, hoverMax, hoverMin int) (mgl64.Vec3, bool) {
 	restrict := mobRestricted(m, float64(horizontal))
 	var reader pathStateReader
 	reader.initFromWorld(m.tx)
@@ -348,7 +348,7 @@ func HoverRandomPos(m *Mob, horizontal, vertical int, xDir, zDir, maxRadians flo
 // AirAndWaterRandomPos ports AirAndWaterRandomPos.getPos: a position in a
 // direction within maxRadians of the one passed, flyingHeight blocks up on
 // average, in the air or in water.
-func AirAndWaterRandomPos(m *Mob, horizontal, vertical, flyingHeight int, xDir, zDir, maxRadians float64) (mgl64.Vec3, bool) {
+func airAndWaterRandomPos(m *Mob, horizontal, vertical, flyingHeight int, xDir, zDir, maxRadians float64) (mgl64.Vec3, bool) {
 	restrict := mobRestricted(m, float64(horizontal))
 	var reader pathStateReader
 	reader.initFromWorld(m.tx)
@@ -382,7 +382,7 @@ func airAndWaterPos(m *Mob, reader *pathStateReader, horizontal, vertical, flyin
 
 // AirRandomPosTowards ports AirRandomPos.getPosTowards: a position in the air
 // in a direction within maxRadians of the one to towards.
-func AirRandomPosTowards(m *Mob, horizontal, vertical, flyingHeight int, towards mgl64.Vec3, maxRadians float64) (mgl64.Vec3, bool) {
+func airRandomPosTowards(m *Mob, horizontal, vertical, flyingHeight int, towards mgl64.Vec3, maxRadians float64) (mgl64.Vec3, bool) {
 	dir := towards.Sub(m.data.Pos)
 	restrict := mobRestricted(m, float64(horizontal))
 	var reader pathStateReader

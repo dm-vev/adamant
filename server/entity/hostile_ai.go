@@ -34,7 +34,7 @@ func hostileSelf(e *Ent, kind string) world.Entity {
 	if w := e.living(); w != e {
 		return w
 	}
-	return hostileSpecies(&HostileMob{Ent: e}, kind)
+	return hostileSpecies(&hostileMob{Ent: e}, kind)
 }
 
 // aiTick runs the MobAI of a hostile mob.
@@ -119,19 +119,19 @@ func (b *hostileState) registerGoals(m *Mob) {
 // override of WitherSkeleton, which also targets piglins.
 func registerSkeletonGoals(m *Mob, b *hostileState) {
 	ai := m.AI
-	ai.Goals.Add(2, &RestrictSunGoal{})
-	ai.Goals.Add(3, NewFleeSunGoal(1))
-	ai.Goals.Add(3, NewAvoidEntityTypesGoal(entityTypes{"minecraft:wolf"}, 6, 1, 1.2))
-	ai.Goals.Add(5, NewWaterAvoidingRandomStrollGoal(1))
-	ai.Goals.Add(6, NewLookAtPlayerGoal(8))
-	ai.Goals.Add(6, NewRandomLookAroundGoal())
+	ai.Goals.Add(2, &restrictSunGoal{})
+	ai.Goals.Add(3, newFleeSunGoal(1))
+	ai.Goals.Add(3, newAvoidEntityTypesGoal(entityTypes{"minecraft:wolf"}, 6, 1, 1.2))
+	ai.Goals.Add(5, newWaterAvoidingRandomStrollGoal(1))
+	ai.Goals.Add(6, newLookAtPlayerGoal(8))
+	ai.Goals.Add(6, newRandomLookAroundGoal())
 	if b.kind == "minecraft:wither_skeleton" {
-		ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:piglin", "minecraft:piglin_brute"}, true))
+		ai.Targets.Add(3, newNearestAttackableTypesGoal(entityTypes{"minecraft:piglin", "minecraft:piglin_brute"}, true))
 	}
-	ai.Targets.Add(1, NewHurtByTargetGoal())
-	ai.Targets.Add(2, NewNearestAttackableTargetGoal(nil, true))
-	ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true))
-	turtles := NewNearestAttackableTypesGoal(entityTypes{"minecraft:turtle"}, true)
+	ai.Targets.Add(1, newHurtByTargetGoal())
+	ai.Targets.Add(2, newNearestAttackableTargetGoal(nil, true))
+	ai.Targets.Add(3, newNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true))
+	turtles := newNearestAttackableTypesGoal(entityTypes{"minecraft:turtle"}, true)
 	turtles.Selector = func(m *Mob, target world.Entity) bool {
 		baby, ok := target.(interface{ Baby() bool })
 		return ok && baby.Baby() && !pathWater(m.tx, cube.PosFromVec3(target.Position()))
@@ -158,9 +158,9 @@ func (b *hostileState) reassessWeaponGoal(m *Mob) {
 		if m.tx.World().Difficulty() == world.DifficultyHard {
 			interval = hard
 		}
-		b.weaponGoal = NewRangedBowAttackGoal(1, interval, 15)
+		b.weaponGoal = newRangedBowAttackGoal(1, interval, 15)
 	} else {
-		b.weaponGoal = NewMeleeAttackGoal(1.2, false)
+		b.weaponGoal = newMeleeAttackGoal(1.2, false)
 	}
 	ai.Goals.Add(4, b.weaponGoal)
 }
@@ -225,28 +225,28 @@ func (b *hostileState) performRangedAttack(m *Mob, target world.Entity, power fl
 // registerZombieGoals ports Zombie.registerGoals and addBehaviourGoals.
 func registerZombieGoals(m *Mob, b *hostileState) {
 	ai := m.AI
-	ai.Goals.Add(8, NewLookAtPlayerGoal(8))
-	ai.Goals.Add(8, NewRandomLookAroundGoal())
-	attack := NewMeleeAttackGoal(1, false)
+	ai.Goals.Add(8, newLookAtPlayerGoal(8))
+	ai.Goals.Add(8, newRandomLookAroundGoal())
+	attack := newMeleeAttackGoal(1, false)
 	raiseArmTicks := 0
-	attack.OnTick = func(m *Mob, g *MeleeAttackGoal) {
+	attack.OnTick = func(m *Mob, g *meleeAttackGoal) {
 		raiseArmTicks++
 		m.SetAggressive(raiseArmTicks >= 5 && g.TicksUntilNextAttack() < g.AttackInterval()/2)
 	}
 	ai.Goals.Add(2, newSpearUseGoal(1, 1, 10, 2))
-	ai.Goals.Add(3, &zombieAttackGoal{MeleeAttackGoal: attack, raiseArmTicks: &raiseArmTicks})
-	ai.Goals.Add(7, NewWaterAvoidingRandomStrollGoal(1))
+	ai.Goals.Add(3, &zombieAttackGoal{meleeAttackGoal: attack, raiseArmTicks: &raiseArmTicks})
+	ai.Goals.Add(7, newWaterAvoidingRandomStrollGoal(1))
 	if b.canBreakDoors {
 		ai.nav.SetCanOpenDoors(true)
-		ai.Goals.Add(1, NewBreakDoorGoal(func(d world.Difficulty) bool { return d == world.DifficultyHard }))
+		ai.Goals.Add(1, newBreakDoorGoal(func(d world.Difficulty) bool { return d == world.DifficultyHard }))
 	}
-	hurt := NewHurtByTargetGoal()
+	hurt := newHurtByTargetGoal()
 	hurt.AlertOthers, hurt.AlertIgnore = true, entityIs("minecraft:zombified_piglin")
 	ai.Targets.Add(1, hurt)
-	ai.Targets.Add(2, NewNearestAttackableTargetGoal(nil, true))
-	ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:villager", "minecraft:wandering_trader"}, false))
-	ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true))
-	turtles := NewNearestAttackableTypesGoal(entityTypes{"minecraft:turtle"}, true)
+	ai.Targets.Add(2, newNearestAttackableTargetGoal(nil, true))
+	ai.Targets.Add(3, newNearestAttackableTypesGoal(entityTypes{"minecraft:villager", "minecraft:wandering_trader"}, false))
+	ai.Targets.Add(3, newNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true))
+	turtles := newNearestAttackableTypesGoal(entityTypes{"minecraft:turtle"}, true)
 	turtles.Selector = func(m *Mob, target world.Entity) bool {
 		baby, ok := target.(interface{ Baby() bool })
 		return ok && baby.Baby() && !pathWater(m.tx, cube.PosFromVec3(target.Position()))
@@ -257,17 +257,17 @@ func registerZombieGoals(m *Mob, b *hostileState) {
 // zombieAttackGoal is Java's ZombieAttackGoal: a melee attack that lowers
 // the arms of the zombie when it stops.
 type zombieAttackGoal struct {
-	*MeleeAttackGoal
+	*meleeAttackGoal
 	raiseArmTicks *int
 }
 
 func (g *zombieAttackGoal) Start(m *Mob) {
-	g.MeleeAttackGoal.Start(m)
+	g.meleeAttackGoal.Start(m)
 	*g.raiseArmTicks = 0
 }
 
 func (g *zombieAttackGoal) Stop(m *Mob) {
-	g.MeleeAttackGoal.Stop(m)
+	g.meleeAttackGoal.Stop(m)
 	m.SetAggressive(false)
 }
 
@@ -313,7 +313,7 @@ func (b *hostileState) doHurtTarget(m *Mob, target world.Entity) bool {
 			}
 		}
 		if l.Dead() {
-			(&HostileMob{Ent: m.Ent}).convertVillager(m.tx, target)
+			(&hostileMob{Ent: m.Ent}).convertVillager(m.tx, target)
 		}
 		if b.kind == "minecraft:husk" && b.main.Empty() && dealt > 0 {
 			ticks := 140 * int(difficulty)
@@ -327,7 +327,7 @@ func (b *hostileState) doHurtTarget(m *Mob, target world.Entity) bool {
 
 // BreakDoorGoal makes a mob break the wooden door in its way, ported from
 // Java's BreakDoorGoal and DoorInteractGoal.
-type BreakDoorGoal struct {
+type breakDoorGoal struct {
 	goalFlags
 	validDifficulty func(world.Difficulty) bool
 
@@ -346,8 +346,8 @@ type doorInteract struct {
 
 // NewBreakDoorGoal returns a BreakDoorGoal for the difficulties valid
 // returns true for.
-func NewBreakDoorGoal(valid func(world.Difficulty) bool) *BreakDoorGoal {
-	return &BreakDoorGoal{validDifficulty: valid, lastBreakProgress: -1}
+func newBreakDoorGoal(valid func(world.Difficulty) bool) *breakDoorGoal {
+	return &breakDoorGoal{validDifficulty: valid, lastBreakProgress: -1}
 }
 
 const doorBreakTime = 240
@@ -445,19 +445,19 @@ func (d *doorInteract) tick(m *Mob) {
 	}
 }
 
-func (g *BreakDoorGoal) CanUse(m *Mob) bool {
+func (g *breakDoorGoal) CanUse(m *Mob) bool {
 	if !g.door.find(m) || mobGriefingDisabled(m.tx) {
 		return false
 	}
 	return g.validDifficulty(m.tx.World().Difficulty()) && !g.door.open(m)
 }
 
-func (g *BreakDoorGoal) CanContinueToUse(m *Mob) bool {
+func (g *breakDoorGoal) CanContinueToUse(m *Mob) bool {
 	return !g.door.passed && g.breakTime <= doorBreakTime && !g.door.open(m) &&
 		g.door.pos.Vec3Centre().Sub(m.data.Pos).LenSqr() < 4 && g.validDifficulty(m.tx.World().Difficulty())
 }
 
-func (g *BreakDoorGoal) Start(m *Mob) {
+func (g *breakDoorGoal) Start(m *Mob) {
 	g.door.start(m)
 	g.breakTime = 0
 	viewers := m.tx.Viewers(g.door.pos.Vec3Centre())
@@ -467,7 +467,7 @@ func (g *BreakDoorGoal) Start(m *Mob) {
 	m.tx.ReleaseViewers(viewers)
 }
 
-func (g *BreakDoorGoal) Stop(m *Mob) {
+func (g *breakDoorGoal) Stop(m *Mob) {
 	viewers := m.tx.Viewers(g.door.pos.Vec3Centre())
 	for _, v := range viewers {
 		v.ViewBlockAction(g.door.pos, block.StopCrackAction{})
@@ -476,9 +476,9 @@ func (g *BreakDoorGoal) Stop(m *Mob) {
 	g.lastBreakProgress = -1
 }
 
-func (g *BreakDoorGoal) RequiresUpdateEveryTick() bool { return true }
+func (g *breakDoorGoal) RequiresUpdateEveryTick() bool { return true }
 
-func (g *BreakDoorGoal) Tick(m *Mob) {
+func (g *breakDoorGoal) Tick(m *Mob) {
 	g.door.tick(m)
 	if m.Random().NextInt(20) == 0 {
 		m.tx.PlaySound(g.door.pos.Vec3Centre(), sound.Custom{Name: "entity.zombie.attack_wooden_door", Volume: 1, Pitch: 1})

@@ -80,16 +80,16 @@ func (m *Mooshroom) Speed() float64 { return m.behaviour().speed }
 func (m *Mooshroom) SetSpeed(v float64) { m.behaviour().speed = v }
 
 // AddEffect adds an effect to the sniffer.
-func (s *Sniffer) AddEffect(e effect.Effect) { s.behaviour().effects.Add(e, s) }
+func (s *sniffer) AddEffect(e effect.Effect) { s.behaviour().effects.Add(e, s) }
 
 // RemoveEffect removes an effect from the sniffer.
-func (s *Sniffer) RemoveEffect(t effect.Type) { s.behaviour().effects.Remove(t, s) }
+func (s *sniffer) RemoveEffect(t effect.Type) { s.behaviour().effects.Remove(t, s) }
 
 // Effects returns the sniffer's active effects.
-func (s *Sniffer) Effects() []effect.Effect { return s.behaviour().effects.Effects() }
+func (s *sniffer) Effects() []effect.Effect { return s.behaviour().effects.Effects() }
 
 // Speed returns the sniffer's movement speed.
-func (s *Sniffer) Speed() float64 { return s.behaviour().speed }
+func (s *sniffer) Speed() float64 { return s.behaviour().speed }
 
 // SetSpeed changes the sniffer's movement speed.
-func (s *Sniffer) SetSpeed(v float64) { s.behaviour().speed = v }
+func (s *sniffer) SetSpeed(v float64) { s.behaviour().speed = v }

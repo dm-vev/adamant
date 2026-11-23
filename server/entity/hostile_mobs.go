@@ -28,7 +28,7 @@ func (t hostileMobType) Open(tx *world.Tx, h *world.EntityHandle, d *world.Entit
 	if d.Data == nil {
 		hostileConfig{kind: t.id}.Apply(d)
 	}
-	m := &HostileMob{Ent: &Ent{tx: tx, handle: h, data: d}}
+	m := &hostileMob{Ent: &Ent{tx: tx, handle: h, data: d}}
 	if s := d.Data.(*hostileState); h != nil && !s.randomSeeded {
 		s.random, s.randomSeeded = openRandom(tx, h), true
 	}
@@ -36,16 +36,16 @@ func (t hostileMobType) Open(tx *world.Tx, h *world.EntityHandle, d *world.Entit
 }
 
 // hostileSpecies wraps a hostile mob in the type of its species.
-func hostileSpecies(m *HostileMob, kind string) world.Entity {
+func hostileSpecies(m *hostileMob, kind string) world.Entity {
 	switch kind {
 	case "minecraft:zombie":
-		return &Zombie{m}
+		return &zombie{m}
 	case "minecraft:zombie_villager":
 		return &ZombieVillager{m}
 	case "minecraft:husk":
 		return &Husk{m}
 	case "minecraft:skeleton":
-		return &Skeleton{m}
+		return &skeleton{m}
 	case "minecraft:parched":
 		return &Parched{m}
 	case "minecraft:wither_skeleton":
@@ -55,15 +55,15 @@ func hostileSpecies(m *HostileMob, kind string) world.Entity {
 	case "minecraft:bogged":
 		return &Bogged{m}
 	case "minecraft:evoker":
-		return &Evoker{m}
+		return &evoker{m}
 	case "minecraft:vindicator":
 		return &Vindicator{m}
 	case "minecraft:pillager":
 		return &Pillager{m}
 	case "minecraft:vex":
-		return &Vex{m}
+		return &vex{m}
 	case "minecraft:ravager":
-		return &Ravager{m}
+		return &ravager{m}
 	}
 	return m
 }
@@ -76,7 +76,7 @@ func (t hostileMobType) BBox(e world.Entity) cube.BBox {
 }
 func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	c := hostileConfig{kind: t.id}
-	for _, attribute := range ReadNativeMobAttributes(n) {
+	for _, attribute := range readNativeMobAttributes(n) {
 		switch attribute.Name {
 		case "minecraft:health":
 			c.health, c.healthSet = attribute.Current, true
@@ -92,7 +92,7 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 		}
 	}
 	c.baby, c.canBreakDoors, c.canPickupLoot = nbtconv.Bool(n, "IsBaby"), nbtconv.Bool(n, "CanBreakDoors"), nbtconv.Bool(n, "CanPickUpLoot")
-	if java := ReadNativeMobJavaState(n); java != nil {
+	if java := readNativeMobJavaState(n); java != nil {
 		c.conversionTime = int(nbtconv.Int32(java, "InWaterTime"))
 		if _, ok := java["DrownedConversionTime"]; ok {
 			if n := nbtconv.Int32(java, "DrownedConversionTime"); n != -1 {
@@ -121,11 +121,11 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 			c.patrolTarget, c.hasPatrolTarget = cube.Pos{int(target[0]), int(target[1]), int(target[2])}, true
 		}
 		if data, ok := java["SpawnData"].(map[string]any); ok {
-			c.spawnData = CloneNativeMobNBT(data)
+			c.spawnData = cloneNativeMobNBT(data)
 		}
 	}
 	c.cureTicks = int(nbtconv.Int32(n, "ConversionTime"))
-	if java := ReadNativeMobJavaState(n); java != nil {
+	if java := readNativeMobJavaState(n); java != nil {
 		c.cureStarter = nbtconv.String(java, "ConversionPlayer")
 	}
 	if source, ok := n["equipment"].(map[string]any); ok {
@@ -135,7 +135,7 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 			}
 		}
 	}
-	equipment := ReadNativeMobEquipment(n)
+	equipment := readNativeMobEquipment(n)
 	if _, native := n["Mainhand"]; native {
 		c.main = item.Stack{}
 		if len(equipment.Mainhand) > 0 {
@@ -168,10 +168,10 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	}
 	c.dropChances = readDropChances(n)
 	c.attrs = decodeJavaAttributes(n["attributes"])
-	if java := ReadNativeMobJavaState(n); java != nil && c.attrs == nil {
+	if java := readNativeMobJavaState(n); java != nil && c.attrs == nil {
 		c.attrs = decodeJavaAttributes(java["attributes"])
 	}
-	if java := ReadNativeMobJavaState(n); java != nil && c.dropChances == nil {
+	if java := readNativeMobJavaState(n); java != nil && c.dropChances == nil {
 		c.dropChances = readDropChances(java)
 	}
 	if c.raidLeader && !c.head.Empty() {
@@ -179,8 +179,8 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	}
 	if t.id == "minecraft:zombie_villager" {
 		var villagerData world.EntityData
-		VillagerType.DecodeNBT(n, &villagerData)
-		if villager, ok := villagerData.Data.(*VillagerBehaviour); ok {
+		entityVillagerType.DecodeNBT(n, &villagerData)
+		if villager, ok := villagerData.Data.(*villagerBehaviour); ok {
 			c.profession, c.villagerType, c.villagerLevel, c.villagerXP, c.villagerAge = villager.profession, villager.villagerType, villager.level, villager.xp, villager.age
 			c.offers = append([]MerchantOffer(nil), villager.offers...)
 		}
@@ -190,15 +190,15 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 func (hostileMobType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*hostileState)
 	t := hostileTypeFor(b.kind)
-	attrs := []NativeMobAttribute{
+	attrs := []nativeMobAttr{
 		{Name: "minecraft:health", Base: t.health, Current: b.health.Health(), DefaultMin: 0, DefaultMax: t.health, Min: 0, Max: t.health},
 		{Name: "minecraft:movement", Base: t.speed, Current: b.speed, DefaultMin: 0, DefaultMax: t.speed, Min: 0, Max: t.speed},
 		{Name: "minecraft:attack_damage", Base: t.attack, Current: t.attack, DefaultMin: 0, DefaultMax: t.attack, Min: 0, Max: t.attack},
 	}
-	equipment := ReadNativeMobEquipment(d.NativeNBT)
-	equipment.Mainhand = []NativeMobItem{nativeMobItemFromStack(b.main)}
-	equipment.Offhand = []NativeMobItem{nativeMobItemFromStack(b.off)}
-	armor := make([]NativeMobItem, 4)
+	equipment := readNativeMobEquipment(d.NativeNBT)
+	equipment.Mainhand = []nativeMobItem{nativeMobItemFromStack(b.main)}
+	equipment.Offhand = []nativeMobItem{nativeMobItemFromStack(b.off)}
+	armor := make([]nativeMobItem, 4)
 	copy(armor, equipment.Armor)
 	for i := range armor {
 		if stack := *b.equipment(slotHead - i); stack.Empty() {
@@ -208,13 +208,13 @@ func (hostileMobType) EncodeNBT(d *world.EntityData) map[string]any {
 		}
 	}
 	equipment.Armor = armor
-	native := CloneNativeMobNBT(d.NativeNBT)
+	native := cloneNativeMobNBT(d.NativeNBT)
 	if native == nil {
 		native = make(map[string]any)
 	}
-	native["Attributes"] = EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), attrs)
+	native["Attributes"] = encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), attrs)
 	native["IsBaby"], native["CanBreakDoors"], native["CanPickUpLoot"] = byte(boolByte(b.baby)), byte(boolByte(b.canBreakDoors)), byte(boolByte(b.canPickupLoot))
-	for key, value := range EncodeNativeMobEquipment(equipment) {
+	for key, value := range encodeNativeMobEquipment(equipment) {
 		native[key] = value
 	}
 	javaState := map[string]any{"InWaterTime": int32(b.conversionTime), "RaidID": b.raidID, "RaidWave": int32(b.raidWave), "RaidLeader": b.raidLeader, "RaidBannerDrop": b.headDropGuaranteed,
@@ -238,7 +238,7 @@ func (hostileMobType) EncodeNBT(d *world.EntityData) map[string]any {
 		javaState["patrol_target"] = []int32{int32(b.patrolTarget[0]), int32(b.patrolTarget[1]), int32(b.patrolTarget[2])}
 	}
 	if b.spawnData != nil {
-		javaState["SpawnData"] = CloneNativeMobNBT(b.spawnData)
+		javaState["SpawnData"] = cloneNativeMobNBT(b.spawnData)
 	}
 	switch b.kind {
 	case "minecraft:vindicator":
@@ -257,7 +257,7 @@ func (hostileMobType) EncodeNBT(d *world.EntityData) map[string]any {
 			javaState["bound_pos"] = []int32{int32(b.vexBound[0]), int32(b.vexBound[1]), int32(b.vexBound[2])}
 		}
 	}
-	native = MergeNativeMobJavaState(native, javaState)
+	native = mergeNativeMobJavaState(native, javaState)
 	if b.kind == "minecraft:zombie_villager" {
 		native["ConversionTime"] = int32(b.cureTicks)
 	}
@@ -321,7 +321,7 @@ func (c hostileConfig) Apply(d *world.EntityData) {
 		health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: gravity, Drag: .02, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(0),
 		speed: speed, attack: t.attack, kind: c.kind, baby: c.baby, canBreakDoors: c.canBreakDoors, canPickupLoot: c.canPickupLoot,
 		conversionTime: c.conversionTime, drownedConversionTime: c.drownedConversionTime, drownedConverting: c.drownedConverting, cureTicks: c.cureTicks, cureStarter: c.cureStarter, main: c.main, off: c.off, feet: c.feet, legs: c.legs, chest: c.chest, head: c.head, dropChances: maps.Clone(c.dropChances), attrs: c.attrs, profession: c.profession, villagerType: c.villagerType,
-		raidID: c.raidID, raidWave: c.raidWave, raidLeader: c.raidLeader, headDropGuaranteed: c.headDropGuaranteed, spawnData: CloneNativeMobNBT(c.spawnData),
+		raidID: c.raidID, raidWave: c.raidWave, raidLeader: c.raidLeader, headDropGuaranteed: c.headDropGuaranteed, spawnData: cloneNativeMobNBT(c.spawnData),
 		raiderState:  raiderState{patrolLeader: c.patrolLeader, patrolling: c.patrolling, patrolTarget: c.patrolTarget, hasPatrolTarget: c.hasPatrolTarget},
 		freezingTime: c.freezingTime, strayConversionTime: c.strayConversionTime, strayConverting: c.strayConverting,
 		johnny: c.johnny, spellTicks: c.spellTicks, vexLimitedLife: c.vexLimitedLife, vexLifeTicks: c.vexLifeTicks, vexBound: c.vexBound, vexHasBound: c.vexHasBound,
@@ -330,49 +330,49 @@ func (c hostileConfig) Apply(d *world.EntityData) {
 }
 
 var (
-	ZombieType         = hostileMobType{id: "minecraft:zombie", width: .6, height: 1.95, health: 20, speed: .23, attack: 3}
-	ZombieVillagerType = hostileMobType{id: "minecraft:zombie_villager", width: .6, height: 1.95, health: 20, speed: .23, attack: 3}
-	HuskType           = hostileMobType{id: "minecraft:husk", width: .6, height: 1.95, health: 20, speed: .23, attack: 3}
-	SkeletonType       = hostileMobType{id: "minecraft:skeleton", width: .6, height: 1.99, health: 20, speed: .25, attack: 2, ranged: true}
-	WitherSkeletonType = hostileMobType{id: "minecraft:wither_skeleton", width: .7, height: 2.4, health: 20, speed: .25, attack: 4}
-	StrayType          = hostileMobType{id: "minecraft:stray", width: .6, height: 1.99, health: 20, speed: .25, attack: 2, ranged: true}
-	ParchedType        = hostileMobType{id: "minecraft:parched", width: .6, height: 1.99, health: 16, speed: .25, attack: 2, ranged: true}
-	BoggedType         = hostileMobType{id: "minecraft:bogged", width: .6, height: 1.99, health: 16, speed: .25, attack: 2, ranged: true}
-	EvokerType         = hostileMobType{id: "minecraft:evoker", width: .6, height: 1.95, health: 24, speed: .5, attack: 3}
-	VindicatorType     = hostileMobType{id: "minecraft:vindicator", width: .6, height: 1.95, health: 24, speed: .35, attack: 5}
-	PillagerType       = hostileMobType{id: "minecraft:pillager", width: .6, height: 1.95, health: 24, speed: .35, attack: 5, ranged: true}
-	VexType            = hostileMobType{id: "minecraft:vex", width: .4, height: .8, health: 14, speed: .35, attack: 4}
-	RavagerType        = hostileMobType{id: "minecraft:ravager", width: 1.95, height: 2.2, health: 100, speed: .3, attack: 12}
+	zombieType         = hostileMobType{id: "minecraft:zombie", width: .6, height: 1.95, health: 20, speed: .23, attack: 3}
+	zombieVillagerType = hostileMobType{id: "minecraft:zombie_villager", width: .6, height: 1.95, health: 20, speed: .23, attack: 3}
+	huskType           = hostileMobType{id: "minecraft:husk", width: .6, height: 1.95, health: 20, speed: .23, attack: 3}
+	skeletonType       = hostileMobType{id: "minecraft:skeleton", width: .6, height: 1.99, health: 20, speed: .25, attack: 2, ranged: true}
+	witherSkeletonType = hostileMobType{id: "minecraft:wither_skeleton", width: .7, height: 2.4, health: 20, speed: .25, attack: 4}
+	strayType          = hostileMobType{id: "minecraft:stray", width: .6, height: 1.99, health: 20, speed: .25, attack: 2, ranged: true}
+	parchedType        = hostileMobType{id: "minecraft:parched", width: .6, height: 1.99, health: 16, speed: .25, attack: 2, ranged: true}
+	boggedType         = hostileMobType{id: "minecraft:bogged", width: .6, height: 1.99, health: 16, speed: .25, attack: 2, ranged: true}
+	evokerType         = hostileMobType{id: "minecraft:evoker", width: .6, height: 1.95, health: 24, speed: .5, attack: 3}
+	vindicatorType     = hostileMobType{id: "minecraft:vindicator", width: .6, height: 1.95, health: 24, speed: .35, attack: 5}
+	pillagerType       = hostileMobType{id: "minecraft:pillager", width: .6, height: 1.95, health: 24, speed: .35, attack: 5, ranged: true}
+	vexType            = hostileMobType{id: "minecraft:vex", width: .4, height: .8, health: 14, speed: .35, attack: 4}
+	ravagerType        = hostileMobType{id: "minecraft:ravager", width: 1.95, height: 2.2, health: 100, speed: .3, attack: 12}
 )
 
 func hostileTypeFor(id string) hostileMobType {
 	switch id {
 	case "minecraft:zombie":
-		return ZombieType
+		return zombieType
 	case "minecraft:zombie_villager":
-		return ZombieVillagerType
+		return zombieVillagerType
 	case "minecraft:husk":
-		return HuskType
+		return huskType
 	case "minecraft:skeleton":
-		return SkeletonType
+		return skeletonType
 	case "minecraft:parched":
-		return ParchedType
+		return parchedType
 	case "minecraft:wither_skeleton":
-		return WitherSkeletonType
+		return witherSkeletonType
 	case "minecraft:stray":
-		return StrayType
+		return strayType
 	case "minecraft:bogged":
-		return BoggedType
+		return boggedType
 	case "minecraft:evoker":
-		return EvokerType
+		return evokerType
 	case "minecraft:vindicator":
-		return VindicatorType
+		return vindicatorType
 	case "minecraft:pillager":
-		return PillagerType
+		return pillagerType
 	case "minecraft:vex":
-		return VexType
+		return vexType
 	case "minecraft:ravager":
-		return RavagerType
+		return ravagerType
 	}
 	return hostileMobType{}
 }
@@ -427,59 +427,59 @@ type hostileState struct {
 	vexMove                                  vexMoveControl
 	ravagerAttack, ravagerStun, ravagerRoar  int
 }
-type HostileMob struct{ *Ent }
-type Zombie struct{ *HostileMob }
-type ZombieVillager struct{ *HostileMob }
-type Skeleton struct{ *HostileMob }
-type WitherSkeleton struct{ *HostileMob }
-type Stray struct{ *HostileMob }
-type Bogged struct{ *HostileMob }
-type Evoker struct{ *HostileMob }
-type Vindicator struct{ *HostileMob }
-type Pillager struct{ *HostileMob }
-type Vex struct{ *HostileMob }
-type Parched struct{ *HostileMob }
-type Husk struct{ *HostileMob }
-type Ravager struct{ *HostileMob }
+type hostileMob struct{ *Ent }
+type zombie struct{ *hostileMob }
+type ZombieVillager struct{ *hostileMob }
+type skeleton struct{ *hostileMob }
+type WitherSkeleton struct{ *hostileMob }
+type Stray struct{ *hostileMob }
+type Bogged struct{ *hostileMob }
+type evoker struct{ *hostileMob }
+type Vindicator struct{ *hostileMob }
+type Pillager struct{ *hostileMob }
+type vex struct{ *hostileMob }
+type Parched struct{ *hostileMob }
+type Husk struct{ *hostileMob }
+type ravager struct{ *hostileMob }
 
 func NewZombie(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(ZombieType, hostileConfig{kind: ZombieType.id})
+	return o.New(zombieType, hostileConfig{kind: zombieType.id})
 }
 func NewZombieVillager(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(ZombieVillagerType, hostileConfig{kind: ZombieVillagerType.id})
+	return o.New(zombieVillagerType, hostileConfig{kind: zombieVillagerType.id})
 }
 func NewSkeleton(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(SkeletonType, hostileConfig{kind: SkeletonType.id})
+	return o.New(skeletonType, hostileConfig{kind: skeletonType.id})
 }
 func NewWitherSkeleton(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(WitherSkeletonType, hostileConfig{kind: WitherSkeletonType.id})
+	return o.New(witherSkeletonType, hostileConfig{kind: witherSkeletonType.id})
 }
 func NewHusk(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(HuskType, hostileConfig{kind: HuskType.id})
+	return o.New(huskType, hostileConfig{kind: huskType.id})
 }
 func NewParched(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(ParchedType, hostileConfig{kind: ParchedType.id})
+	return o.New(parchedType, hostileConfig{kind: parchedType.id})
 }
 func NewStray(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(StrayType, hostileConfig{kind: StrayType.id})
+	return o.New(strayType, hostileConfig{kind: strayType.id})
 }
 func NewBogged(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(BoggedType, hostileConfig{kind: BoggedType.id})
+	return o.New(boggedType, hostileConfig{kind: boggedType.id})
 }
 func NewEvoker(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(EvokerType, hostileConfig{kind: EvokerType.id})
+	return o.New(evokerType, hostileConfig{kind: evokerType.id})
 }
 func NewVindicator(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(VindicatorType, hostileConfig{kind: VindicatorType.id})
+	return o.New(vindicatorType, hostileConfig{kind: vindicatorType.id})
 }
 func NewPillager(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(PillagerType, hostileConfig{kind: PillagerType.id})
+	return o.New(pillagerType, hostileConfig{kind: pillagerType.id})
 }
 func NewVex(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(VexType, hostileConfig{kind: VexType.id})
+	return o.New(vexType, hostileConfig{kind: vexType.id})
 }
 func NewRavager(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(RavagerType, hostileConfig{kind: RavagerType.id})
+	return o.New(ravagerType, hostileConfig{kind: ravagerType.id})
 }
 
 type hostileNBTConfig struct {
@@ -489,18 +489,18 @@ type hostileNBTConfig struct {
 
 func (c hostileNBTConfig) Apply(data *world.EntityData) {
 	hostileTypeFor(c.id).DecodeNBT(c.data, data)
-	data.Data.(*hostileState).spawnData = CloneNativeMobNBT(c.data)
+	data.Data.(*hostileState).spawnData = cloneNativeMobNBT(c.data)
 }
 
 func hostileConfigFromNBT(id string, spawnData map[string]any) world.EntityConfig {
 	if id == "" || hostileTypeFor(id).id != id {
 		return nil
 	}
-	return hostileNBTConfig{id: id, data: CloneNativeMobNBT(spawnData)}
+	return hostileNBTConfig{id: id, data: cloneNativeMobNBT(spawnData)}
 }
 
 // NewHostileWithNBT creates a hostile mob with the selected Java entity spawn-data compound.
-func NewHostileWithNBT(opts world.EntitySpawnOpts, id string, spawnData map[string]any) *world.EntityHandle {
+func newHostileWithNBT(opts world.EntitySpawnOpts, id string, spawnData map[string]any) *world.EntityHandle {
 	conf := hostileConfigFromNBT(id, spawnData)
 	if conf == nil {
 		return nil
@@ -508,41 +508,41 @@ func NewHostileWithNBT(opts world.EntitySpawnOpts, id string, spawnData map[stri
 	return opts.New(hostileTypeFor(id), conf)
 }
 
-func (m *HostileMob) state() *hostileState { return m.Behaviour().(*hostileState) }
+func (m *hostileMob) state() *hostileState { return m.Behaviour().(*hostileState) }
 
 // UsingItem reports if the mob draws its bow.
-func (m *HostileMob) UsingItem() bool {
+func (m *hostileMob) UsingItem() bool {
 	return m.state().drawingBow || !m.state().ai.useItem.Empty()
 }
-func (m *HostileMob) SpeciesType() world.EntityType { return hostileTypeFor(m.state().kind) }
+func (m *hostileMob) SpeciesType() world.EntityType { return hostileTypeFor(m.state().kind) }
 
 // Aggressive reports if the mob attacks, as Mob.isAggressive.
-func (m *HostileMob) Aggressive() bool { return m.state().ai.aggressive }
+func (m *hostileMob) Aggressive() bool { return m.state().ai.aggressive }
 
-func (m *HostileMob) RaidID() int64      { return m.state().raidID }
-func (m *HostileMob) RaidWave() int      { return m.state().raidWave }
-func (m *HostileMob) IsRaidLeader() bool { return m.state().raidLeader }
-func (m *HostileMob) CloseIn(tx *world.Tx) error {
+func (m *hostileMob) RaidID() int64      { return m.state().raidID }
+func (m *hostileMob) RaidWave() int      { return m.state().raidWave }
+func (m *hostileMob) IsRaidLeader() bool { return m.state().raidLeader }
+func (m *hostileMob) CloseIn(tx *world.Tx) error {
 	tx.Raids().RaiderDied(m)
 	return m.Ent.CloseIn(tx)
 }
-func (m *HostileMob) HeldItems() (item.Stack, item.Stack) {
+func (m *hostileMob) HeldItems() (item.Stack, item.Stack) {
 	return m.state().main, m.state().off
 }
 
 // SetHeldItems changes what the mob holds and shows its viewers.
-func (m *HostileMob) SetHeldItems(main, off item.Stack) {
+func (m *hostileMob) SetHeldItems(main, off item.Stack) {
 	b := m.state()
 	b.main, b.off = main, off
 	if e, ok := m.handle.Entity(m.tx); ok {
 		viewEquipment(m.tx, e)
 	}
 }
-func (m *HostileMob) EquipmentArmour() (item.Stack, item.Stack, item.Stack, item.Stack) {
+func (m *hostileMob) EquipmentArmour() (item.Stack, item.Stack, item.Stack, item.Stack) {
 	b := m.state()
 	return b.head, b.chest, b.legs, b.feet
 }
-func (m *HostileMob) AcceptItem(from world.Entity, tx *world.Tx, ctx *item.UseContext) bool {
+func (m *hostileMob) AcceptItem(from world.Entity, tx *world.Tx, ctx *item.UseContext) bool {
 	b := m.state()
 	if b.kind != "minecraft:zombie_villager" || b.cureTicks > 0 || !m.hasEffect(effect.Weakness) {
 		return false
@@ -569,14 +569,14 @@ func (m *HostileMob) AcceptItem(from world.Entity, tx *world.Tx, ctx *item.UseCo
 	m.updateState()
 	return true
 }
-func (m *HostileMob) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) bool {
+func (m *hostileMob) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) bool {
 	return m.AcceptItem(u, tx, ctx)
 }
 
 // tickCure ports ZombieVillager.tick while it converts: the cure goes
 // faster near beds and iron bars, and turns the zombie villager into the
 // villager it was.
-func (m *HostileMob) tickCure(tx *world.Tx) bool {
+func (m *hostileMob) tickCure(tx *world.Tx) bool {
 	b := m.state()
 	if b.kind != "minecraft:zombie_villager" || b.cureTicks <= 0 || m.Dead() {
 		return false
@@ -590,7 +590,7 @@ func (m *HostileMob) tickCure(tx *world.Tx) bool {
 
 // cureProgress ports ZombieVillager.getConversionProgress: now and then each
 // of up to 14 blocks near that speed curing up speeds it up.
-func (m *HostileMob) cureProgress(tx *world.Tx) int {
+func (m *hostileMob) cureProgress(tx *world.Tx) int {
 	b, amount := m.state(), 1
 	if b.random.NextFloat() >= .01 {
 		return amount
@@ -614,7 +614,7 @@ func (m *HostileMob) cureProgress(tx *world.Tx) int {
 // finishCure ports ZombieVillager.finishConversion: the villager keeps the
 // data, trades and experience of the zombie villager, drops only the items
 // it picked up, and the player who cured it gains its favour.
-func (m *HostileMob) finishCure(tx *world.Tx) {
+func (m *hostileMob) finishCure(tx *world.Tx) {
 	b := m.state()
 	for slot := range equipmentSlots {
 		if stack := *b.equipment(slot); !stack.Empty() && b.dropChance(slot) > 1 {
@@ -622,9 +622,9 @@ func (m *HostileMob) finishCure(tx *world.Tx) {
 		}
 		*b.equipment(slot) = item.Stack{}
 	}
-	config := VillagerBehaviourConfig{XP: b.villagerXP, Level: b.villagerLevel, Age: b.villagerAge, Profession: b.profession, Type: b.villagerType, Offers: append([]MerchantOffer(nil), b.offers...)}
+	config := villagerBehaviourConfig{XP: b.villagerXP, Level: b.villagerLevel, Age: b.villagerAge, Profession: b.profession, Type: b.villagerType, Offers: append([]MerchantOffer(nil), b.offers...)}
 	opts := world.EntitySpawnOpts{Position: m.Position(), Rotation: m.Rotation(), SpawnReason: "conversion"}
-	converted := convertMob(tx, m, opts.New(VillagerType, config), conversion{})
+	converted := convertMob(tx, m, opts.New(entityVillagerType, config), conversion{})
 	villager, ok := converted.(*Villager)
 	if !ok {
 		return
@@ -638,7 +638,7 @@ func (m *HostileMob) finishCure(tx *world.Tx) {
 	tx.PlaySound(m.Position(), sound.Custom{Name: "entity.zombie_villager.converted", Volume: 1, Pitch: 1})
 }
 
-func (m *HostileMob) Tick(tx *world.Tx, n int64) {
+func (m *hostileMob) Tick(tx *world.Tx, n int64) {
 	b := m.state()
 	b.effects.Tick(m, tx)
 	if b.ridingLinkPending {
@@ -707,11 +707,11 @@ func (b *hostileState) joinRaid(e *Ent, tx *world.Tx) {
 	}
 	b.raidID, b.raidWave, b.raidLeader = 0, 0, false
 }
-func (m *HostileMob) Health() float64        { return m.state().health.Health() }
-func (m *HostileMob) MaxHealth() float64     { return m.state().health.MaxHealth() }
-func (m *HostileMob) SetMaxHealth(v float64) { m.state().health.SetMaxHealth(v) }
-func (m *HostileMob) Dead() bool             { return m.state().dead || m.Health() <= 0 }
-func (m *HostileMob) Hurt(d float64, s world.DamageSource) (float64, bool) {
+func (m *hostileMob) Health() float64        { return m.state().health.Health() }
+func (m *hostileMob) MaxHealth() float64     { return m.state().health.MaxHealth() }
+func (m *hostileMob) SetMaxHealth(v float64) { m.state().health.SetMaxHealth(v) }
+func (m *hostileMob) Dead() bool             { return m.state().dead || m.Health() <= 0 }
+func (m *hostileMob) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	if m.Dead() || d <= 0 || (s.Fire() && (m.hasEffect(effect.FireResistance) || m.state().kind == "minecraft:wither_skeleton")) {
 		return 0, false
 	}
@@ -752,7 +752,7 @@ func hostileBaseArmour(kind string) float64 {
 	return 0
 }
 
-func (m *HostileMob) Heal(h float64, _ world.HealingSource) float64 {
+func (m *hostileMob) Heal(h float64, _ world.HealingSource) float64 {
 	if h <= 0 || m.Dead() {
 		return 0
 	}
@@ -760,7 +760,7 @@ func (m *HostileMob) Heal(h float64, _ world.HealingSource) float64 {
 	m.state().health.AddHealth(h)
 	return m.Health() - old
 }
-func (m *HostileMob) KnockBack(src mgl64.Vec3, f, h float64) {
+func (m *hostileMob) KnockBack(src mgl64.Vec3, f, h float64) {
 	b := m.state()
 	base := 0.
 	if b.kind == "minecraft:ravager" {
@@ -768,7 +768,7 @@ func (m *HostileMob) KnockBack(src mgl64.Vec3, f, h float64) {
 	}
 	knockBackResisted(m, src, f, h, b.attrs.get("minecraft:knockback_resistance", base).value(0, 1))
 }
-func (m *HostileMob) AddEffect(e effect.Effect) {
+func (m *hostileMob) AddEffect(e effect.Effect) {
 	b := m.state()
 	if (e.Type() == effect.Poison || e.Type() == effect.FatalPoison) && hostileUndead(b.kind) {
 		return
@@ -785,31 +785,27 @@ func hostileUndead(kind string) bool {
 	}
 	return false
 }
-func (m *HostileMob) RemoveEffect(t effect.Type)   { m.state().effects.Remove(t, m) }
-func (m *HostileMob) Effects() []effect.Effect     { return m.state().effects.Effects() }
-func (m *HostileMob) Speed() float64               { return m.state().speed }
-func (m *HostileMob) SetSpeed(v float64)           { m.state().speed = v }
-func (m *HostileMob) hasEffect(t effect.Type) bool { _, ok := m.state().effects.Effect(t); return ok }
-func (m *HostileMob) viewAction(a world.EntityAction) {
-	v := m.tx.Viewers(m.Position())
-	for _, x := range v {
-		x.ViewEntityAction(m, a)
-	}
-	m.tx.ReleaseViewers(v)
+func (m *hostileMob) RemoveEffect(t effect.Type)   { m.state().effects.Remove(t, m) }
+func (m *hostileMob) Effects() []effect.Effect     { return m.state().effects.Effects() }
+func (m *hostileMob) Speed() float64               { return m.state().speed }
+func (m *hostileMob) SetSpeed(v float64)           { m.state().speed = v }
+func (m *hostileMob) hasEffect(t effect.Type) bool { _, ok := m.state().effects.Effect(t); return ok }
+func (m *hostileMob) viewAction(a world.EntityAction) {
+	world.BroadcastEntityAction(m.tx, m, a)
 }
-func (m *HostileMob) dropLoot(src world.DamageSource) {
+func (m *hostileMob) dropLoot(src world.DamageSource) {
 	dropAllDeathLoot(m.tx, m, src)
 }
 
 // dropCustomDeathLoot ports Mob.dropCustomDeathLoot for the equipment of
 // the hostile mob.
-func (m *HostileMob) dropCustomDeathLoot(killedByPlayer bool, looting int) {
+func (m *hostileMob) dropCustomDeathLoot(killedByPlayer bool, looting int) {
 	dropEquipmentOnDeath(m.tx, m, m.state(), killedByPlayer, looting)
 }
 
 // experienceEquipment counts the worn items that may drop, which
 // Mob.getBaseExperienceReward rewards.
-func (m *HostileMob) experienceEquipment() int {
+func (m *hostileMob) experienceEquipment() int {
 	b, n := m.state(), 0
 	for slot := range equipmentSlots {
 		if !b.equipment(slot).Empty() && b.dropChance(slot) <= 1 {
@@ -821,14 +817,14 @@ func (m *HostileMob) experienceEquipment() int {
 
 // VillagerData returns the profession and biome type a zombie villager keeps
 // from the villager it was.
-func (m *HostileMob) VillagerData() (profession, villagerType string) {
+func (m *hostileMob) VillagerData() (profession, villagerType string) {
 	b := m.state()
 	return b.profession, b.villagerType
 }
 
 // IsCaptain ports Raider.isCaptain: a raid or patrol leader wearing the
 // ominous banner.
-func (m *HostileMob) IsCaptain() bool {
+func (m *hostileMob) IsCaptain() bool {
 	b := m.state()
 	if !b.raidLeader && !b.patrolLeader || b.head.Empty() {
 		return false
@@ -860,14 +856,14 @@ func (b *hostileState) tickStrayConversion(e *Ent, tx *world.Tx) bool {
 	}
 	// Mob.convertTo does not finalize the spawn of the mob it makes.
 	opts := world.EntitySpawnOpts{Position: e.Position(), Rotation: e.Rotation(), SpawnReason: "conversion", SpawnFinalized: true}
-	convertMob(tx, hostileSelf(e, b.kind), opts.New(StrayType, hostileConfig{kind: StrayType.id}), conversion{keepEquipment: true, preserveCanPickUpLoot: true})
+	convertMob(tx, hostileSelf(e, b.kind), opts.New(strayType, hostileConfig{kind: strayType.id}), conversion{keepEquipment: true, preserveCanPickUpLoot: true})
 	tx.PlaySound(e.Position(), sound.Event{Name: "convert_to_stray"})
 	return true
 }
 
 // Shaking reports whether the mob shakes while it converts: a skeleton to a
 // stray, a zombie to a drowned, a zombie villager being cured.
-func (m *HostileMob) Shaking() bool {
+func (m *hostileMob) Shaking() bool {
 	b := m.state()
 	return b.strayConverting || b.drownedConverting || b.kind == "minecraft:zombie_villager" && b.cureTicks > 0
 }
@@ -903,11 +899,11 @@ func (b *hostileState) tickDrowning(e *Ent, tx *world.Tx) bool {
 	opts := world.EntitySpawnOpts{Position: e.Position(), Rotation: e.Rotation(), SpawnReason: "conversion", SpawnFinalized: true}
 	c := conversion{keepEquipment: true, preserveCanPickUpLoot: true}
 	if b.kind == "minecraft:husk" {
-		convertMob(tx, self, opts.New(ZombieType, hostileConfig{kind: ZombieType.id, baby: b.baby}), c)
+		convertMob(tx, self, opts.New(zombieType, hostileConfig{kind: zombieType.id, baby: b.baby}), c)
 		tx.PlaySound(e.Position(), sound.Event{Name: "mob.husk.convert_to_zombie"})
 		return true
 	}
-	convertMob(tx, self, opts.New(DrownedType, oceanConfig{kind: oceanDrowned, baby: b.baby}), c)
+	convertMob(tx, self, opts.New(entityDrownedType, oceanConfig{kind: oceanDrowned, baby: b.baby}), c)
 	tx.PlaySound(e.Position(), sound.Event{Name: "convert_to_drowned"})
 	return true
 }
@@ -948,7 +944,7 @@ func sunBurnTick(e *Ent, tx *world.Tx) bool {
 	}
 	return tx.SkyLight(eye) >= 15
 }
-func (m *HostileMob) convertVillager(tx *world.Tx, target world.Entity) {
+func (m *hostileMob) convertVillager(tx *world.Tx, target world.Entity) {
 	if target.H().Type().EncodeEntity() != "minecraft:villager" {
 		return
 	}
@@ -968,8 +964,8 @@ func (m *HostileMob) convertVillager(tx *world.Tx, target world.Entity) {
 	// zombie villager as a conversion that is no baby of its own accord.
 	opts := world.EntitySpawnOpts{Position: target.Position(), Rotation: target.Rotation(), SpawnReason: "conversion",
 		SpawnGroup: &world.EntitySpawnGroup{Data: &zombieSpawnGroupData{canSpawnJockey: true}}}
-	config := hostileConfig{kind: ZombieVillagerType.id, baby: v.age < 0, profession: v.profession, villagerType: v.villagerType, villagerLevel: v.level, villagerXP: v.xp, villagerAge: v.age, offers: append([]MerchantOffer(nil), v.offers...)}
-	convertMob(tx, target, opts.New(ZombieVillagerType, config), conversion{keepEquipment: true, preserveCanPickUpLoot: true})
+	config := hostileConfig{kind: zombieVillagerType.id, baby: v.age < 0, profession: v.profession, villagerType: v.villagerType, villagerLevel: v.level, villagerXP: v.xp, villagerAge: v.age, offers: append([]MerchantOffer(nil), v.offers...)}
+	convertMob(tx, target, opts.New(zombieVillagerType, config), conversion{keepEquipment: true, preserveCanPickUpLoot: true})
 }
 
 type zombieSpawnGroupData struct {
@@ -1059,7 +1055,7 @@ func raidDamageAttacker(src world.DamageSource) world.Entity {
 	return nil
 }
 
-func (m *HostileMob) FinalizeSpawn(reason string, r *vanilla.Random) {
+func (m *hostileMob) FinalizeSpawn(reason string, r *vanilla.Random) {
 	if r == nil {
 		return
 	}
@@ -1068,15 +1064,39 @@ func (m *HostileMob) FinalizeSpawn(reason string, r *vanilla.Random) {
 	if m.tx != nil {
 		difficulty = m.tx.LocalDifficulty(cube.PosFromVec3(m.Position()))
 	}
-	special, hard := difficulty.SpecialMultiplier(), difficulty.Base == world.DifficultyHard
+	special := difficulty.SpecialMultiplier()
 	// Mob.finalizeSpawn: a random bonus to the follow range.
 	b.attrs.get("minecraft:follow_range", 0).setModifier("minecraft:random_spawn_bonus", .11485*(r.NextDouble()-r.NextDouble()), "add_multiplied_base")
 	// Whether it is left-handed, which a hostile mob does not keep.
 	r.NextFloat()
+	if !m.finalizeSpawnKind(reason, difficulty, r, b) {
+		return
+	}
+	// PatrollingMonster.finalizeSpawn: outside patrols, events and
+	// structures, 6% of raiders that can lead become patrol leaders; patrol
+	// spawns patrol.
+	if hostileRaidMob(b.kind) && b.kind != "minecraft:ravager" && reason != "patrol" && reason != "event" && reason != "structure" && r.NextFloat() < .06 {
+		b.patrolLeader = true
+	}
+	if reason == "patrol" {
+		b.patrolling = true
+	}
+	if b.kind == "minecraft:vindicator" {
+		// Vindicator.finalizeSpawn equips it after PatrollingMonster's.
+		populateDefaultEnchantments(b, r, special)
+	}
+	if b.raidLeader || b.patrolLeader {
+		b.head = ominousBannerStack()
+		b.headDropGuaranteed = true
+	}
+}
+
+func (m *hostileMob) finalizeSpawnKind(reason string, difficulty world.LocalDifficulty, r *vanilla.Random, b *hostileState) bool {
+	special, hard := difficulty.SpecialMultiplier(), difficulty.Base == world.DifficultyHard
 	switch b.kind {
 	case "minecraft:zombie", "minecraft:zombie_villager", "minecraft:husk":
 		if m.tx == nil {
-			return
+			return false
 		}
 		baby, doors, pickup, jockey := finalizeZombieSpawn(reason, difficulty, r, m.H().SpawnGroup(), b, func() {
 			// Zombie.populateDefaultEquipmentSlots: armour, then now and
@@ -1144,23 +1164,7 @@ func (m *HostileMob) FinalizeSpawn(reason string, r *vanilla.Random) {
 		b.setDropChance(slotMainhand, 0)
 		populateDefaultEnchantments(b, r, special)
 	}
-	// PatrollingMonster.finalizeSpawn: outside patrols, events and
-	// structures, 6% of raiders that can lead become patrol leaders; patrol
-	// spawns patrol.
-	if hostileRaidMob(b.kind) && b.kind != "minecraft:ravager" && reason != "patrol" && reason != "event" && reason != "structure" && r.NextFloat() < .06 {
-		b.patrolLeader = true
-	}
-	if reason == "patrol" {
-		b.patrolling = true
-	}
-	if b.kind == "minecraft:vindicator" {
-		// Vindicator.finalizeSpawn equips it after PatrollingMonster's.
-		populateDefaultEnchantments(b, r, special)
-	}
-	if b.raidLeader || b.patrolLeader {
-		b.head = ominousBannerStack()
-		b.headDropGuaranteed = true
-	}
+	return true
 }
 
 // rideChickenJockey makes a baby zombie a chicken jockey as
@@ -1188,7 +1192,7 @@ func rideChickenJockey(tx *world.Tx, rider world.Entity, jockey chickenJockey) {
 	mobStartRiding(tx, rider, chicken, false)
 }
 
-func (m *HostileMob) finalizeHuskCamel(reason string, r *vanilla.Random) {
+func (m *hostileMob) finalizeHuskCamel(reason string, r *vanilla.Random) {
 	group := m.H().SpawnGroup()
 	if group == nil {
 		return
@@ -1204,7 +1208,7 @@ func (m *HostileMob) finalizeHuskCamel(reason string, r *vanilla.Random) {
 		return
 	}
 	pos := m.Position()
-	if !spawnNoCollision(m.tx, CamelHuskType.BBox(nil).Translate(pos)) {
+	if !spawnNoCollision(m.tx, camelHuskType.BBox(nil).Translate(pos)) {
 		return
 	}
 	data.triedToSpawnCamelHusk = true
@@ -1246,7 +1250,7 @@ func ominousBannerStack() item.Stack {
 }
 
 var _ world.EntityType = hostileMobType{}
-var _ Living = (*HostileMob)(nil)
+var _ Living = (*hostileMob)(nil)
 
 func (b *hostileState) canPickUpLoot() bool { return b.canPickupLoot }
 
@@ -1258,7 +1262,7 @@ func (b *hostileState) effectManager() *EffectManager { return b.effects }
 // a small chance to call reinforcements, a knockback resistance and follow
 // range bonus, and now and then as a leader with more health, a greater
 // chance of reinforcements and the strength to break doors.
-func (b *hostileState) handleZombieAttributes(m *HostileMob, special float32, r *vanilla.Random) {
+func (b *hostileState) handleZombieAttributes(m *hostileMob, special float32, r *vanilla.Random) {
 	b.attrs.get("minecraft:spawn_reinforcements", 0).Base = r.NextDouble() * float64(float32(.1))
 	b.attrs.get("minecraft:knockback_resistance", 0).setModifier("minecraft:random_spawn_bonus", r.NextDouble()*float64(float32(.05)), "add_value")
 	if bonus := r.NextDouble() * 1.5 * float64(special); bonus > 1 {
@@ -1284,7 +1288,7 @@ func zombieKind(kind string) bool {
 // a zombie fighting a target may call another zombie of its kind to a spot
 // seven to forty blocks away out of sight of players, each call lowering
 // the chance of the next for both.
-func (m *HostileMob) callReinforcements(src world.DamageSource) {
+func (m *hostileMob) callReinforcements(src world.DamageSource) {
 	b := m.state()
 	tx := m.tx
 	mob, ok := mobOf(m)

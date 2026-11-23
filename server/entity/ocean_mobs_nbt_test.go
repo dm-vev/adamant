@@ -32,8 +32,8 @@ func TestDrownedJavaSpawnEquipmentAttributesRoundTrip(t *testing.T) {
 		},
 	}
 	var data world.EntityData
-	data.NativeNBT = CloneNativeMobNBT(source)
-	DrownedType.DecodeNBT(source, &data)
+	data.NativeNBT = cloneNativeMobNBT(source)
+	entityDrownedType.DecodeNBT(source, &data)
 	state := data.Data.(*oceanBehaviour)
 	if state.health.MaxHealth() != 32 || state.health.Health() != 6 || state.speed != .31 || state.followRange != 48 || state.knockbackResistance != .4 {
 		t.Fatalf("spawn health/attributes decoded incorrectly: max=%v health=%v speed=%v follow=%v kb=%v", state.health.MaxHealth(), state.health.Health(), state.speed, state.followRange, state.knockbackResistance)
@@ -41,13 +41,13 @@ func TestDrownedJavaSpawnEquipmentAttributesRoundTrip(t *testing.T) {
 	if !state.leftHanded || state.mainHand.Empty() || state.head.Empty() {
 		t.Fatalf("spawn equipment/handedness missing: %#v", state)
 	}
-	encoded := DrownedType.EncodeNBT(&data)
+	encoded := entityDrownedType.EncodeNBT(&data)
 	if encoded["LeftHanded"] != byte(1) || encoded["drop_chances"].(map[string]any)["offhand"] != float32(2) || encoded["drop_chances"].(map[string]any)["head"] != float32(0) {
 		t.Fatalf("mob state lost on encode: %#v", encoded)
 	}
 	var restarted world.EntityData
-	restarted.NativeNBT = CloneNativeMobNBT(encoded)
-	DrownedType.DecodeNBT(encoded, &restarted)
+	restarted.NativeNBT = cloneNativeMobNBT(encoded)
+	entityDrownedType.DecodeNBT(encoded, &restarted)
 	again := restarted.Data.(*oceanBehaviour)
 	if again.health.MaxHealth() != 32 || again.health.Health() != 6 || again.speed != .31 || again.followRange != 48 || again.knockbackResistance != .4 || again.mainHand.Empty() || again.head.Empty() {
 		t.Fatalf("round-tripped mob state changed: %#v", again)
@@ -71,13 +71,13 @@ func TestZombieNautilusSourceDefaultsAndVariant(t *testing.T) {
 		},
 	}
 	var data world.EntityData
-	data.NativeNBT = CloneNativeMobNBT(source)
-	ZombieNautilusType.DecodeNBT(source, &data)
-	mob := ZombieNautilusType.Open(nil, nil, &data).(*ZombieNautilus)
+	data.NativeNBT = cloneNativeMobNBT(source)
+	entityZombieNautilusType.DecodeNBT(source, &data)
+	mob := entityZombieNautilusType.Open(nil, nil, &data).(*ZombieNautilus)
 	if mob.Health() != 9 || mob.MaxHealth() != 15 || mob.Speed() != 1.1 || mob.Variant() != "warm" {
 		t.Fatalf("Source Zombie Nautilus defaults/state: health=%v max=%v speed=%v variant=%q", mob.Health(), mob.MaxHealth(), mob.Speed(), mob.Variant())
 	}
-	if got := ZombieNautilusType.EncodeNBT(&data)["variant"]; got != "minecraft:warm" {
+	if got := entityZombieNautilusType.EncodeNBT(&data)["variant"]; got != "minecraft:warm" {
 		t.Fatalf("Source variant namespace not retained: %#v", got)
 	}
 }
@@ -89,20 +89,20 @@ func TestDrownedBabyTransientMovementModifierSurvivesReloadOnce(t *testing.T) {
 		"attributes": []any{map[string]any{"id": "minecraft:movement_speed", "base": float64(.23000000417232513)}},
 	}
 	var data world.EntityData
-	data.NativeNBT = CloneNativeMobNBT(source)
-	DrownedType.DecodeNBT(source, &data)
-	mob := DrownedType.Open(nil, nil, &data).(*Drowned)
+	data.NativeNBT = cloneNativeMobNBT(source)
+	entityDrownedType.DecodeNBT(source, &data)
+	mob := entityDrownedType.Open(nil, nil, &data).(*Drowned)
 	if got := mob.Speed(); got != .23000000417232513*1.5 {
 		t.Fatalf("baby runtime speed=%v, want Source transient modifier", got)
 	}
-	encoded := DrownedType.EncodeNBT(&data)
+	encoded := entityDrownedType.EncodeNBT(&data)
 	if encoded["attributes"].([]any)[0].(map[string]any)["base"] != float64(.23000000417232513) {
 		t.Fatalf("transient modifier was written into Source base attribute: %#v", encoded["attributes"])
 	}
 	var restarted world.EntityData
-	restarted.NativeNBT = CloneNativeMobNBT(encoded)
-	DrownedType.DecodeNBT(encoded, &restarted)
-	again := DrownedType.Open(nil, nil, &restarted).(*Drowned)
+	restarted.NativeNBT = cloneNativeMobNBT(encoded)
+	entityDrownedType.DecodeNBT(encoded, &restarted)
+	again := entityDrownedType.Open(nil, nil, &restarted).(*Drowned)
 	if again.Speed() != mob.Speed() {
 		t.Fatalf("baby speed changed or multiplied twice after reload: before=%v after=%v", mob.Speed(), again.Speed())
 	}

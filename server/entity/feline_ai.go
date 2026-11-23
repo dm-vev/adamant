@@ -12,34 +12,34 @@ import (
 
 // This file ports the goals of Java's Cat and Ocelot.
 
-func (b *CatBehaviour) tamableState() *tamable { return &b.tamable }
+func (b *catBehaviour) tamableState() *tamable { return &b.tamable }
 
 // wantsToAttack ports TamableAnimal.wantsToAttack, which cats do not
 // override.
-func (b *CatBehaviour) wantsToAttack(*Mob, world.Entity, world.Entity) bool { return true }
+func (b *catBehaviour) wantsToAttack(*Mob, world.Entity, world.Entity) bool { return true }
 
 // canAttackEntity ports TamableAnimal.canAttack: a pet never attacks its
 // owner.
-func (b *CatBehaviour) canAttackEntity(_ *Mob, target world.Entity) bool {
+func (b *catBehaviour) canAttackEntity(_ *Mob, target world.Entity) bool {
 	return !b.ownedBy(target)
 }
 
 // alliedTo ports TamableAnimal.considersEntityAsAlly.
-func (b *CatBehaviour) alliedTo(_ *Mob, target world.Entity) bool { return b.ownedBy(target) }
+func (b *catBehaviour) alliedTo(_ *Mob, target world.Entity) bool { return b.ownedBy(target) }
 
-func isRabbit(e world.Entity) bool { return e.H().Type() == RabbitType }
+func isRabbit(e world.Entity) bool { return e.H().Type() == entityRabbitType }
 
-func isTurtle(e world.Entity) bool { return e.H().Type() == TurtleType }
+func isTurtle(e world.Entity) bool { return e.H().Type() == turtleType }
 
 // registerGoals ports Cat.registerGoals and the CatAvoidEntityGoal
 // Cat.reassessTameGoals gives stray cats.
-func (b *CatBehaviour) registerGoals(m *Mob) {
+func (b *catBehaviour) registerGoals(m *Mob) {
 	ai := m.AI
-	tempt := &catTemptGoal{TemptGoal: NewTemptGoal(.6, (&Cat{Ent: m.Ent}).breedingFood, true), cat: b}
+	tempt := &catTemptGoal{temptGoal: newTemptGoal(.6, (&Cat{Ent: m.Ent}).breedingFood, true), cat: b}
 	tempt.Scares = func(*Mob) bool { return tempt.selected == nil || tempt.selected != tempt.player }
 	b.tempt = tempt
-	b.panic = NewPanicGoal(1.5)
-	ai.Goals.Add(1, NewFloatGoal(m))
+	b.panic = newPanicGoal(1.5)
+	ai.Goals.Add(1, newFloatGoal(m))
 	ai.Goals.Add(1, tamableAnimalPanicGoal{b.panic})
 	ai.Goals.Add(2, newSitWhenOrderedToGoal())
 	ai.Goals.Add(3, &catRelaxOnOwnerGoal{cat: b})
@@ -49,12 +49,12 @@ func (b *CatBehaviour) registerGoals(m *Mob) {
 	ai.Goals.Add(7, &catSitOnBlockGoal{goalFlags: goalFlags{GoalMove | GoalJump}, cat: b})
 	ai.Goals.Add(8, newLeapAtTargetGoal(.3))
 	ai.Goals.Add(9, newOcelotAttackGoal())
-	ai.Goals.Add(10, NewBreedGoal(.8))
-	stroll := NewWaterAvoidingRandomStrollGoal(.8)
+	ai.Goals.Add(10, newBreedGoal(.8))
+	stroll := newWaterAvoidingRandomStrollGoal(.8)
 	stroll.Probability = 1.0000001e-5
 	ai.Goals.Add(11, stroll)
-	ai.Goals.Add(12, NewLookAtPlayerGoal(10))
-	ai.Goals.Add(4, felineAvoidPlayersGoal{NewAvoidEntityTypesGoal(playerTypes, 16, .8, 1.33), func() bool { return !b.tamed }})
+	ai.Goals.Add(12, newLookAtPlayerGoal(10))
+	ai.Goals.Add(4, felineAvoidPlayersGoal{newAvoidEntityTypesGoal(playerTypes, 16, .8, 1.33), func() bool { return !b.tamed }})
 	ai.Targets.Add(1, newNonTameRandomTargetGoal(isRabbit, false, nil))
 	ai.Targets.Add(1, newNonTameRandomTargetGoal(isTurtle, false, turtleBabyOnLand))
 }
@@ -63,21 +63,21 @@ func (b *CatBehaviour) registerGoals(m *Mob) {
 // Ocelot.reassessTrustingGoals gives ocelots that do not trust players.
 func (b *ocelotBehaviour) registerGoals(m *Mob) {
 	ai := m.AI
-	tempt := NewTemptGoal(.6, (&Ocelot{Ent: m.Ent}).breedingFood, true)
+	tempt := newTemptGoal(.6, (&Ocelot{Ent: m.Ent}).breedingFood, true)
 	tempt.Scares = func(*Mob) bool { return !b.trusting }
 	b.tempt = tempt
-	ai.Goals.Add(1, NewFloatGoal(m))
+	ai.Goals.Add(1, newFloatGoal(m))
 	ai.Goals.Add(3, tempt)
 	ai.Goals.Add(7, newLeapAtTargetGoal(.3))
 	ai.Goals.Add(8, newOcelotAttackGoal())
-	ai.Goals.Add(9, NewBreedGoal(.8))
-	stroll := NewWaterAvoidingRandomStrollGoal(.8)
+	ai.Goals.Add(9, newBreedGoal(.8))
+	stroll := newWaterAvoidingRandomStrollGoal(.8)
 	stroll.Probability = 1.0000001e-5
 	ai.Goals.Add(10, stroll)
-	ai.Goals.Add(11, NewLookAtPlayerGoal(10))
-	ai.Goals.Add(4, felineAvoidPlayersGoal{NewAvoidEntityTypesGoal(playerTypes, 16, .8, 1.33), func() bool { return !b.trusting }})
-	ai.Targets.Add(1, NewNearestAttackableTargetGoal(func(e world.Entity) bool { return e.H().Type() == ChickenType }, false))
-	turtles := NewNearestAttackableTypesGoal(entityTypes{"minecraft:turtle"}, false)
+	ai.Goals.Add(11, newLookAtPlayerGoal(10))
+	ai.Goals.Add(4, felineAvoidPlayersGoal{newAvoidEntityTypesGoal(playerTypes, 16, .8, 1.33), func() bool { return !b.trusting }})
+	ai.Targets.Add(1, newNearestAttackableTargetGoal(func(e world.Entity) bool { return e.H().Type() == entityChickenType }, false))
+	turtles := newNearestAttackableTypesGoal(entityTypes{"minecraft:turtle"}, false)
 	turtles.Selector = turtleBabyOnLand
 	ai.Targets.Add(1, turtles)
 }
@@ -111,7 +111,7 @@ func felineHurtTarget(m *Mob, target world.Entity) bool {
 	return true
 }
 
-func (b *CatBehaviour) doHurtTarget(m *Mob, target world.Entity) bool {
+func (b *catBehaviour) doHurtTarget(m *Mob, target world.Entity) bool {
 	return felineHurtTarget(m, target)
 }
 
@@ -119,35 +119,35 @@ func (b *ocelotBehaviour) doHurtTarget(m *Mob, target world.Entity) bool {
 	return felineHurtTarget(m, target)
 }
 
-func (b *CatBehaviour) customServerAiStep(m *Mob) { b.crouching, b.sprinting = felinePose(m) }
+func (b *catBehaviour) customServerAiStep(m *Mob) { b.crouching, b.sprinting = felinePose(m) }
 
 func (b *ocelotBehaviour) customServerAiStep(m *Mob) { b.crouching, b.sprinting = felinePose(m) }
 
 // felineAvoidPlayersGoal ports CatAvoidEntityGoal and OcelotAvoidEntityGoal:
 // a stray cat or an ocelot that does not trust players flees from them.
 type felineAvoidPlayersGoal struct {
-	*AvoidEntityGoal
+	*avoidEntityGoal
 	wild func() bool
 }
 
-func (g felineAvoidPlayersGoal) CanUse(m *Mob) bool { return g.wild() && g.AvoidEntityGoal.CanUse(m) }
+func (g felineAvoidPlayersGoal) CanUse(m *Mob) bool { return g.wild() && g.avoidEntityGoal.CanUse(m) }
 
 func (g felineAvoidPlayersGoal) CanContinueToUse(m *Mob) bool {
-	return g.wild() && g.AvoidEntityGoal.CanContinueToUse(m)
+	return g.wild() && g.avoidEntityGoal.CanContinueToUse(m)
 }
 
 // catTemptGoal ports Cat.CatTemptGoal: a stray cat follows a player holding
 // fish, now and then settling on one it no longer flees from when it moves.
 type catTemptGoal struct {
-	*TemptGoal
-	cat      *CatBehaviour
+	*temptGoal
+	cat      *catBehaviour
 	selected *world.EntityHandle
 }
 
-func (g *catTemptGoal) CanUse(m *Mob) bool { return g.TemptGoal.CanUse(m) && !g.cat.tamed }
+func (g *catTemptGoal) CanUse(m *Mob) bool { return g.temptGoal.CanUse(m) && !g.cat.tamed }
 
 func (g *catTemptGoal) Tick(m *Mob) {
-	g.TemptGoal.Tick(m)
+	g.temptGoal.Tick(m)
 	r := m.Random()
 	if g.selected == nil && r.NextInt(int32(adjustedTickDelay(g, 600))) == 0 {
 		g.selected = g.player
@@ -221,7 +221,7 @@ func (g *ocelotAttackGoal) Tick(m *Mob) {
 type catLieOnBlockGoal struct {
 	goalFlags
 	moveToBlock
-	cat *CatBehaviour
+	cat *catBehaviour
 }
 
 func (g *catLieOnBlockGoal) valid(m *Mob, pos cube.Pos) bool {
@@ -258,7 +258,7 @@ func (g *catLieOnBlockGoal) Tick(m *Mob) {
 type catSitOnBlockGoal struct {
 	goalFlags
 	moveToBlock
-	cat *CatBehaviour
+	cat *catBehaviour
 }
 
 func (g *catSitOnBlockGoal) valid(m *Mob, pos cube.Pos) bool {
@@ -307,7 +307,7 @@ func (g *catSitOnBlockGoal) Tick(m *Mob) {
 // cat_morning_gift loot table when its owner wakes up in the morning.
 type catRelaxOnOwnerGoal struct {
 	goalFlags
-	cat        *CatBehaviour
+	cat        *catBehaviour
 	owner      *world.EntityHandle
 	goalPos    cube.Pos
 	hasGoal    bool

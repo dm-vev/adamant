@@ -34,7 +34,7 @@ type minecartLootLoadConfig struct{ data map[string]any }
 
 func (conf minecartLootLoadConfig) Apply(data *world.EntityData) {
 	data.NativeNBT = conf.data
-	world.DecodeEntityNBT(ChestMinecartType, conf.data, data)
+	world.DecodeEntityNBT(entityChestMinecartType, conf.data, data)
 }
 
 func minecartLootFixtures(t *testing.T) []minecartLootFixture {
@@ -62,7 +62,7 @@ func minecartLootStackSlot(slot int, stack item.Stack) minecartLootSlot {
 	return minecartLootSlot{slot, name, stack.Count(), enchantments}
 }
 
-func minecartLootInventorySlots(cart *MinecartContainer) []minecartLootSlot {
+func minecartLootInventorySlots(cart *minecartContainer) []minecartLootSlot {
 	var slots []minecartLootSlot
 	for slot, stack := range cart.Inventory().Slots() {
 		if !stack.Empty() {
@@ -72,7 +72,7 @@ func minecartLootInventorySlots(cart *MinecartContainer) []minecartLootSlot {
 	return slots
 }
 
-func spawnPendingMinecartLoot(t *testing.T, tx *world.Tx, fixture minecartLootFixture) *MinecartContainer {
+func spawnPendingMinecartLoot(t *testing.T, tx *world.Tx, fixture minecartLootFixture) *minecartContainer {
 	t.Helper()
 	seed, err := strconv.ParseInt(fixture.Seed, 10, 64)
 	if err != nil {
@@ -84,13 +84,13 @@ func spawnPendingMinecartLoot(t *testing.T, tx *world.Tx, fixture minecartLootFi
 		selected = biome.SulfurCaves{}
 	}
 	tx.SetBiome(cube.PosFromVec3(position), selected)
-	handle := world.EntitySpawnOpts{Position: position}.New(ChestMinecartType, minecartLootLoadConfig{map[string]any{"LootTable": "minecraft:chests/abandoned_mineshaft", "LootTableSeed": seed}})
+	handle := world.EntitySpawnOpts{Position: position}.New(entityChestMinecartType, minecartLootLoadConfig{map[string]any{"LootTable": "minecraft:chests/abandoned_mineshaft", "LootTableSeed": seed}})
 	tx.AddEntity(handle)
 	opened, ok := handle.Entity(tx)
 	if !ok {
 		t.Fatal("pending minecart handle unavailable")
 	}
-	return opened.(*MinecartContainer)
+	return opened.(*minecartContainer)
 }
 
 func runMinecartLootTransaction(t *testing.T, w *world.World, fn func(*world.Tx)) {
@@ -113,7 +113,7 @@ func TestMinecartLootInventoryMatchesJava263(t *testing.T) {
 				if got := minecartLootInventorySlots(cart); !reflect.DeepEqual(got, fixture.Slots) {
 					t.Fatalf("materialized slots = %+v, Java %+v", got, fixture.Slots)
 				}
-				encoded := ChestMinecartType.EncodeNBT(cart.Ent.data)
+				encoded := entityChestMinecartType.EncodeNBT(cart.Ent.data)
 				if encoded["LootTable"] != nil || encoded["LootTableSeed"] != nil {
 					t.Fatalf("consumed loot retained pending fields: %v", encoded)
 				}
@@ -157,11 +157,11 @@ func TestMinecartPendingAndConsumedLootSurviveMCDBRestart(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	find := func(tx *world.Tx) *MinecartContainer {
+	find := func(tx *world.Tx) *minecartContainer {
 		t.Helper()
 		tx.Block(cube.PosFromVec3(mgl64.Vec3(fixture.Origin)))
 		for e := range tx.Entities() {
-			if cart, ok := e.(*MinecartContainer); ok {
+			if cart, ok := e.(*minecartContainer); ok {
 				return cart
 			}
 		}
@@ -175,7 +175,7 @@ func TestMinecartPendingAndConsumedLootSurviveMCDBRestart(t *testing.T) {
 	w = open()
 	runMinecartLootTransaction(t, w, func(tx *world.Tx) {
 		cart := find(tx)
-		encoded := ChestMinecartType.EncodeNBT(cart.Ent.data)
+		encoded := entityChestMinecartType.EncodeNBT(cart.Ent.data)
 		// BDS saves the table by its path.
 		if encoded["LootTable"] != "loot_tables/chests/abandoned_mineshaft.json" || fmt.Sprint(encoded["LootTableSeed"]) != fixture.Seed {
 			t.Fatalf("pending loot lost on restart: %v", encoded)
@@ -196,7 +196,7 @@ func TestMinecartPendingAndConsumedLootSurviveMCDBRestart(t *testing.T) {
 		if got, want := minecartLootInventorySlots(cart), fixture.Slots[1:]; !reflect.DeepEqual(got, want) {
 			t.Fatalf("consumed/depleted restart slots = %+v, want %+v", got, want)
 		}
-		if encoded := ChestMinecartType.EncodeNBT(cart.Ent.data); encoded["LootTable"] != nil || encoded["LootTableSeed"] != nil {
+		if encoded := entityChestMinecartType.EncodeNBT(cart.Ent.data); encoded["LootTable"] != nil || encoded["LootTableSeed"] != nil {
 			t.Fatalf("consumed saved actor restored stale pending fields: %v", encoded)
 		}
 	})
@@ -232,7 +232,7 @@ func TestPendingMinecartLootMaterializesOnceWhenDestroyed(t *testing.T) {
 			if e.H().Type() == ItemType {
 				stack := e.(*Ent).Behaviour().(*ItemBehaviour).Item()
 				actual[key(minecartLootStackSlot(0, stack))] += stack.Count()
-			} else if e.H().Type() == ChestMinecartType {
+			} else if e.H().Type() == entityChestMinecartType {
 				t.Fatal("destroyed minecart remained in world")
 			}
 		}

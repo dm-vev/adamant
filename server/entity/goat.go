@@ -14,16 +14,16 @@ import (
 )
 
 // NewGoat creates a normal adult goat.
-func NewGoat(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(GoatType, GoatConfig{}) }
+func NewGoat(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(entityGoatType, goatConfig{}) }
 
 // GoatType is the registered Java goat type.
-var GoatType goatType
+var entityGoatType goatType
 
 type goatType struct{}
 
 func (goatType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
-		GoatConfig{}.Apply(d)
+		goatConfig{}.Apply(d)
 	}
 	return &Goat{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
@@ -43,11 +43,11 @@ func (goatType) BBox(e world.Entity) cube.BBox {
 	return cube.Box(-w, 0, -w, w, h, w)
 }
 func (goatType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	s := ReadNativeMobJavaState(m)
+	s := readNativeMobJavaState(m)
 	if s == nil {
 		s = m
 	}
-	c := GoatConfig{Age: int(nbtconv.Int32(s, "Age")), Screaming: nbtconv.Bool(s, "IsScreamingGoat"), LeftHorn: true, RightHorn: true}
+	c := goatConfig{Age: int(nbtconv.Int32(s, "Age")), Screaming: nbtconv.Bool(s, "IsScreamingGoat"), LeftHorn: true, RightHorn: true}
 	if _, ok := s["HasLeftHorn"]; ok {
 		c.LeftHorn = nbtconv.Bool(s, "HasLeftHorn")
 	}
@@ -59,24 +59,24 @@ func (goatType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	}
 	c.hornsSet = true
 	d.Data = c.New()
-	d.Data.(*GoatBehaviour).breeding.decodeNBT(s)
+	d.Data.(*goatBehaviour).breeding.decodeNBT(s)
 }
 func (goatType) EncodeNBT(d *world.EntityData) map[string]any {
-	b := d.Data.(*GoatBehaviour)
-	a := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
-	return MergeNativeMobJavaState(map[string]any{"Attributes": a}, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "IsScreamingGoat": byte(boolByte(b.screaming)), "HasLeftHorn": byte(boolByte(b.leftHorn)), "HasRightHorn": byte(boolByte(b.rightHorn))})))
+	b := d.Data.(*goatBehaviour)
+	a := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
+	return mergeNativeMobJavaState(map[string]any{"Attributes": a}, mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "IsScreamingGoat": byte(boolByte(b.screaming)), "HasLeftHorn": byte(boolByte(b.leftHorn)), "HasRightHorn": byte(boolByte(b.rightHorn))})))
 }
 
 // GoatConfig configures source goat state.
-type GoatConfig struct {
+type goatConfig struct {
 	Health, MaxHealth              float64
 	Age                            int
 	Screaming, LeftHorn, RightHorn bool
 	hornsSet                       bool
 }
 
-func (c GoatConfig) Apply(d *world.EntityData) { d.Data = c.New() }
-func (c GoatConfig) New() *GoatBehaviour {
+func (c goatConfig) Apply(d *world.EntityData) { d.Data = c.New() }
+func (c goatConfig) New() *goatBehaviour {
 	if c.MaxHealth <= 0 {
 		c.MaxHealth = 10
 	}
@@ -86,7 +86,7 @@ func (c GoatConfig) New() *GoatBehaviour {
 	if !c.hornsSet && !c.LeftHorn && !c.RightHorn {
 		c.LeftHorn, c.RightHorn = true, true
 	}
-	b := &GoatBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, screaming: c.Screaming, leftHorn: c.LeftHorn, rightHorn: c.RightHorn, speed: .2, effects: NewEffectManager()}
+	b := &goatBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, screaming: c.Screaming, leftHorn: c.LeftHorn, rightHorn: c.RightHorn, speed: .2, effects: NewEffectManager()}
 	b.br = newGoatBrain(b)
 	return b
 }
@@ -94,10 +94,10 @@ func (c GoatConfig) New() *GoatBehaviour {
 // Goat is a mountain animal that leaps between ledges and rams what stands
 // in its way.
 type Goat struct{ *Ent }
-type GoatBehaviour struct {
+type goatBehaviour struct {
 	effects                              *EffectManager
 	ai                                   MobAI
-	br                                   *Brain
+	br                                   *brain
 	health, maxHealth                    float64
 	age                                  int
 	screaming, leftHorn, rightHorn, dead bool
@@ -111,16 +111,16 @@ type GoatBehaviour struct {
 	memoriesInit bool
 }
 
-func (g *Goat) behaviour() *GoatBehaviour { return g.Behaviour().(*GoatBehaviour) }
+func (g *Goat) behaviour() *goatBehaviour { return g.Behaviour().(*goatBehaviour) }
 func (g *Goat) Tick(tx *world.Tx, t int64) {
 	g.behaviour().effects.Tick(g, tx)
 	g.Ent.Tick(tx, t)
 }
 
-func (b *GoatBehaviour) mobAI() *MobAI   { return &b.ai }
-func (b *GoatBehaviour) brain() *Brain   { return b.br }
-func (b *GoatBehaviour) panicking() bool { return b.br.has(memIsPanicking) }
-func (b *GoatBehaviour) attackDamage() float64 {
+func (b *goatBehaviour) mobAI() *MobAI   { return &b.ai }
+func (b *goatBehaviour) brain() *brain   { return b.br }
+func (b *goatBehaviour) panicking() bool { return b.br.has(memIsPanicking) }
+func (b *goatBehaviour) attackDamage() float64 {
 	// Goat.ageBoundaryReached: kids butt for a point, adults for two.
 	if b.age < 0 {
 		return 1
@@ -130,7 +130,7 @@ func (b *GoatBehaviour) attackDamage() float64 {
 
 // Tick runs a tick of the goat: its ageing and love, and its MobAI with its
 // brain.
-func (b *GoatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (b *goatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	g := &Goat{Ent: e}
 	if !b.memoriesInit {
 		// GoatAi.initMemories.
@@ -160,12 +160,12 @@ func (b *GoatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 }
 
 // customServerAiStep ports Goat.customServerAiStep.
-func (b *GoatBehaviour) customServerAiStep(m *Mob) {
+func (b *goatBehaviour) customServerAiStep(m *Mob) {
 	b.br.tick(m)
 	b.br.setActiveToFirstValid(activityRam, activityLongJump, activityIdle)
 }
 
-func (b *GoatBehaviour) setLongJumping(m *Mob, v bool) {
+func (b *goatBehaviour) setLongJumping(m *Mob, v bool) {
 	if b.longJumping != v {
 		b.longJumping = v
 		m.updateState()
@@ -174,14 +174,14 @@ func (b *GoatBehaviour) setLongJumping(m *Mob, v bool) {
 
 // setLoweringHead shows viewers the goat lowering its head to ram, as
 // entity events 58 and 59.
-func (b *GoatBehaviour) setLoweringHead(m *Mob, v bool) {
+func (b *goatBehaviour) setLoweringHead(m *Mob, v bool) {
 	if b.loweringHead != v {
 		b.loweringHead = v
 		m.updateState()
 	}
 }
 
-func (b *GoatBehaviour) sound(normal, screamer string) string {
+func (b *goatBehaviour) sound(normal, screamer string) string {
 	if b.screaming {
 		return screamer
 	}
@@ -191,7 +191,7 @@ func (b *GoatBehaviour) sound(normal, screamer string) string {
 // goatRamTargetable ports GoatAi.RAM_TARGET_CONDITIONS: a goat rams anything
 // it may attack but other goats, and armour stands only with mob griefing.
 func goatRamTargetable(m *Mob, e world.Entity) bool {
-	if e.H().Type() == GoatType {
+	if e.H().Type() == entityGoatType {
 		return false
 	}
 	if e.H().Type().EncodeEntity() == "minecraft:armor_stand" && mobGriefingDisabled(m.tx) {
@@ -202,7 +202,7 @@ func goatRamTargetable(m *Mob, e world.Entity) bool {
 }
 
 // newGoatBrain ports GoatAi and the brain provider of Goat.
-func newGoatBrain(g *GoatBehaviour) *Brain {
+func newGoatBrain(g *goatBehaviour) *brain {
 	b := newBrain(nearestLivingEntitySensor{}, playerSensor{}, nearestItemSensor{wants: func(*Mob, item.Stack) bool { return false }},
 		adultSensor{}, hurtBySensor{}, temptingSensor{items: animalTemptation})
 	jumps, rams, screamerRams := uniformInt{600, 1200}, uniformInt{600, 6000}, uniformInt{100, 300}
@@ -223,7 +223,7 @@ func newGoatBrain(g *GoatBehaviour) *Brain {
 	)
 	b.addActivityWith(activityIdle, []prioritizedBehavior{
 		{0, newSetEntityLookTargetSometimes(isPlayerType, 6, uniformInt{30, 60})},
-		{0, newAnimalMakeLove(GoatType, 1, 2)},
+		{0, newAnimalMakeLove(entityGoatType, 1, 2)},
 		{1, newFollowTemptation(constSpeed(1.25), nil, false)},
 		{2, newBabyFollowAdult(uniformInt{5, 16}, constSpeed(1.25), memNearestVisibleAdult, false)},
 		{3, newRunOne(nil,
@@ -253,7 +253,7 @@ type ramCandidate struct {
 // nearest thing it may ram, walks to a spot four to seven blocks from it in
 // a straight line, lowers its head there for a second and then charges at
 // it. If it finds no such spot, it waits a while before it tries again.
-func newPrepareRamNearestTarget(g *GoatBehaviour, cooldownOnFail func() int, minDist, maxDist int, walkSpeed float64, prepareTime int64) *behavior {
+func newPrepareRamNearestTarget(g *goatBehaviour, cooldownOnFail func() int, minDist, maxDist int, walkSpeed float64, prepareTime int64) *behavior {
 	var (
 		reachedAt *int64
 		candidate *ramCandidate
@@ -324,9 +324,9 @@ func newPrepareRamNearestTarget(g *GoatBehaviour, cooldownOnFail func() int, min
 			}
 		},
 		stop: func(m *Mob, _ int64) {
-			if !m.Brain().has(memRamTarget) {
+			if !m.brain().has(memRamTarget) {
 				g.setLoweringHead(m, false)
-				m.Brain().set(memRamCooldownTicks, cooldownOnFail())
+				m.brain().set(memRamCooldownTicks, cooldownOnFail())
 			}
 		},
 		canStillUse: func(m *Mob, _ int64) bool { return targetOf(m) != nil },
@@ -335,7 +335,7 @@ func newPrepareRamNearestTarget(g *GoatBehaviour, cooldownOnFail func() int, min
 			if target == nil {
 				return
 			}
-			b := m.Brain()
+			b := m.brain()
 			b.set(memWalkTarget, walkTarget{target: newBlockPosTracker(candidate.start), speed: walkSpeed})
 			b.set(memLookTarget, newEntityTracker(target, true))
 			if cube.PosFromVec3(target.Position()) != candidate.targetPos {
@@ -367,28 +367,28 @@ func newPrepareRamNearestTarget(g *GoatBehaviour, cooldownOnFail func() int, min
 // newGoatRamTarget ports RamTarget: a goat charges at three times its speed
 // to where it aimed, butting the first thing it runs into far away, or
 // snapping off a horn on stone, ores and the like.
-func newGoatRamTarget(g *GoatBehaviour, between func() uniformInt) *behavior {
+func newGoatRamTarget(g *goatBehaviour, between func() uniformInt) *behavior {
 	var dir mgl64.Vec3
 	finish := func(m *Mob) {
 		g.setLoweringHead(m, false)
-		m.Brain().set(memRamCooldownTicks, between().sample(m))
-		m.Brain().erase(memRamTarget)
+		m.brain().set(memRamCooldownTicks, between().sample(m))
+		m.brain().erase(memRamTarget)
 	}
 	return &behavior{
 		entry:       []memoryCondition{{memRamCooldownTicks, memAbsent}, {memRamTarget, memPresent}},
 		minDuration: 200, maxDuration: 200,
-		checkExtra:  func(m *Mob) bool { return m.Brain().has(memRamTarget) },
-		canStillUse: func(m *Mob, _ int64) bool { return m.Brain().has(memRamTarget) },
+		checkExtra:  func(m *Mob) bool { return m.brain().has(memRamTarget) },
+		canStillUse: func(m *Mob, _ int64) bool { return m.brain().has(memRamTarget) },
 		start: func(m *Mob, _ int64) {
 			at := m.BlockPos()
-			v, _ := m.Brain().get(memRamTarget)
+			v, _ := m.brain().get(memRamTarget)
 			target := v.(mgl64.Vec3)
 			dir = mgl64.Vec3{float64(at[0]) - target[0], 0, float64(at[2]) - target[2]}
 			if dir.LenSqr() > 0 {
 				dir = dir.Normalize()
 			}
 			// WalkTarget(Vec3) walks to the centre of the block of the spot.
-			m.Brain().set(memWalkTarget, walkTarget{target: newBlockPosTracker(cube.PosFromVec3(target)), speed: 3})
+			m.brain().set(memWalkTarget, walkTarget{target: newBlockPosTracker(cube.PosFromVec3(target)), speed: 3})
 		},
 		tick: func(m *Mob, _ int64) {
 			var hit world.Entity
@@ -431,7 +431,7 @@ func newGoatRamTarget(g *GoatBehaviour, between func() uniformInt) *behavior {
 				}
 				finish(m)
 			default:
-				b := m.Brain()
+				b := m.brain()
 				wv, wok := b.get(memWalkTarget)
 				rv, rok := b.get(memRamTarget)
 				if !wok || !rok || wv.(walkTarget).target.currentPosition(m.tx).Sub(rv.(mgl64.Vec3)).LenSqr() < .25*.25 {
@@ -547,11 +547,7 @@ func (g *Goat) KnockBack(src mgl64.Vec3, f, h float64) {
 	knockBack(g, src, f, h)
 }
 func (g *Goat) viewAction(a world.EntityAction) {
-	vs := g.tx.Viewers(g.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(g, a)
-	}
-	g.tx.ReleaseViewers(vs)
+	world.BroadcastEntityAction(g.tx, g, a)
 }
 func (g *Goat) Screaming() bool     { return g.behaviour().screaming }
 func (g *Goat) Horns() (bool, bool) { b := g.behaviour(); return b.leftHorn, b.rightHorn }
@@ -595,7 +591,7 @@ func (g *Goat) breedingFood(stack item.Stack) bool { return itemNamed(stack, "mi
 func (g *Goat) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
 	r := randomOf(g.tx, g)
 	screaming := randomParent(r, g, partner.(*Goat)).behaviour().screaming || r.NextDouble() < 0.02
-	return babyAt(g).New(GoatType, GoatConfig{Age: babyStartAge, Screaming: screaming})
+	return babyAt(g).New(entityGoatType, goatConfig{Age: babyStartAge, Screaming: screaming})
 }
 
 var _ Interactable = (*Goat)(nil)
@@ -634,8 +630,8 @@ func uuidHashCode(id [16]byte) int32 {
 }
 
 // walkTargetValue ports Animal.getWalkTargetValue.
-func (b *GoatBehaviour) walkTargetValue(m *Mob, pos cube.Pos) float64 {
+func (b *goatBehaviour) walkTargetValue(m *Mob, pos cube.Pos) float64 {
 	return animalWalkTargetValue(m, pos)
 }
 
-func (b *GoatBehaviour) effectManager() *EffectManager { return b.effects }
+func (b *goatBehaviour) effectManager() *EffectManager { return b.effects }

@@ -102,7 +102,7 @@ func (ai *MobAI) updateControlFlags(m *Mob) {
 // the viewers of the vehicle, which those spawning together with their
 // vehicle do not need, as they are shown riding it.
 func mobStartRiding(tx *world.Tx, rider, vehicle world.Entity, announce bool) bool {
-	if rider.H().Type() == (PiglinType{}) && mobBaby(rider) && vehicle.H().Type() == HoglinType {
+	if rider.H().Type() == (piglinType{}) && mobBaby(rider) && vehicle.H().Type() == hoglinType {
 		// Piglin.startRiding: baby piglins stack up to three high on a hoglin.
 		vehicle = topPassenger(tx, vehicle, 3)
 	}
@@ -199,7 +199,7 @@ func passengerAttachment(vehicle world.Entity) mgl64.Vec3 {
 // newMount ports the Mount behaviour: a mob with a ride target walks up to
 // it and gets on once within a block.
 func newMount(speed float64) *oneShot {
-	return newOneShot([]memoryCondition{{memLookTarget, memRegistered}, {memWalkTarget, memAbsent}, {memRideTarget, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memLookTarget, memRegistered}, {memWalkTarget, memAbsent}, {memRideTarget, memPresent}}, func(m *Mob, b *brain, _ int64) bool {
 		if m.data.Riding != nil {
 			return false
 		}
@@ -221,7 +221,7 @@ func newMount(speed float64) *oneShot {
 // or gives up getting on, a vehicle that is gone, more than maxDist away or
 // for which stop returns true.
 func newDismountOrSkipMounting(maxDist float64, stop func(m *Mob, vehicle world.Entity) bool) *oneShot {
-	return newOneShot([]memoryCondition{{memRideTarget, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memRideTarget, memRegistered}}, func(m *Mob, b *brain, _ int64) bool {
 		var vehicle world.Entity
 		if m.data.Riding != nil {
 			vehicle, _ = m.data.Riding.Entity(m.tx)
@@ -245,7 +245,7 @@ func newDismountOrSkipMounting(maxDist float64, stop func(m *Mob, vehicle world.
 // triggers, shuffled by weight, that triggers.
 func newTriggerOneShuffled(triggers ...weightedBehavior) *oneShot {
 	g := newRunOne(nil, triggers...)
-	return newOneShot(nil, func(m *Mob, _ *Brain, time int64) bool {
+	return newOneShot(nil, func(m *Mob, _ *brain, time int64) bool {
 		g.tryStart(m, time)
 		started := false
 		for _, c := range g.children {
@@ -261,6 +261,6 @@ func newTriggerOneShuffled(triggers ...weightedBehavior) *oneShot {
 
 // StartRiding makes a mob start riding a vehicle, as Entity.startRiding:
 // a mob rider steers a mob it rides.
-func StartRiding(tx *world.Tx, rider, vehicle world.Entity) bool {
+func startRiding(tx *world.Tx, rider, vehicle world.Entity) bool {
 	return mobStartRiding(tx, rider, vehicle, true)
 }

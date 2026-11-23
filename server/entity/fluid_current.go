@@ -76,18 +76,20 @@ func measureFluidsRange(tx blockReader, entityY, shrunkMinY float64, minX, minY,
 				default:
 					continue
 				}
-				top := float64(y) + liquidHeightInfo(tx, reg, pos, kind, depth, falling)
+				top := float64(y) + liquidHeightInfoWithRID(tx, reg, pos, rid, kind, depth, falling)
 				if top < shrunkMinY {
 					continue
 				}
 				*height = math.Max(top-entityY, *height)
 				if current {
-					flow := fluidFlowInfo(tx, reg, pos, kind, depth, falling)
+					flow := fluidFlowInfoWithRID(tx, reg, pos, rid, kind, depth, falling)
 					cur.height = math.Max(*height, cur.height)
-					if cur.height < .4 {
-						flow = flow.Mul(cur.height)
+					if flow != (mgl64.Vec3{}) {
+						if cur.height < .4 {
+							flow = flow.Mul(cur.height)
+						}
+						cur.sum = cur.sum.Add(flow)
 					}
-					cur.sum = cur.sum.Add(flow)
 					cur.count++
 				}
 			}
@@ -127,7 +129,14 @@ func (c fluidCurrent) apply(vel mgl64.Vec3, scale float64) mgl64.Vec3 {
 
 // liquidHeightInfo ports FlowingFluid.getHeight using precomputed liquid metadata.
 func liquidHeightInfo(tx blockReader, reg world.BlockRegistry, pos cube.Pos, kind, depth uint8, falling bool) float64 {
-	if arid, ok := tx.LiquidRID(pos.Side(cube.FaceUp)); ok {
+	return liquidHeightInfoWithRID(tx, reg, pos, 0, kind, depth, falling)
+}
+
+func liquidHeightInfoWithRID(tx blockReader, reg world.BlockRegistry, pos cube.Pos, rid uint32, kind, depth uint8, falling bool) float64 {
+	if arid, ok := tx.LiquidRID(cube.Pos{pos[0], pos[1] + 1, pos[2]}); ok {
+		if rid != 0 && arid == rid {
+			return 1
+		}
 		if akind, _, _ := reg.LiquidInfo(arid); akind == kind {
 			return 1
 		}
@@ -136,6 +145,16 @@ func liquidHeightInfo(tx blockReader, reg world.BlockRegistry, pos cube.Pos, kin
 		return 8.0 / 9
 	}
 	return float64(depth) / 9
+}
+
+var horizontalFlowDirs = [4]struct {
+	face   cube.Face
+	dx, dz int
+}{
+	{cube.FaceNorth, 0, -1},
+	{cube.FaceEast, 1, 0},
+	{cube.FaceSouth, 0, 1},
+	{cube.FaceWest, -1, 0},
 }
 
 // fluidFlow ports FlowingFluid.getFlow: the direction the liquid l at pos
@@ -148,20 +167,31 @@ func fluidFlow(tx blockReader, pos cube.Pos, l world.Liquid) mgl64.Vec3 {
 }
 
 func fluidFlowInfo(tx blockReader, reg world.BlockRegistry, pos cube.Pos, kind, depth uint8, falling bool) mgl64.Vec3 {
+	return fluidFlowInfoWithRID(tx, reg, pos, 0, kind, depth, falling)
+}
+
+func fluidFlowInfoWithRID(tx blockReader, reg world.BlockRegistry, pos cube.Pos, rid uint32, kind, depth uint8, falling bool) mgl64.Vec3 {
+	stillSource := depth == 8 && !falling
 	own := liquidOwnHeightInfo(depth, falling)
 	var flowX, flowZ float64
-	for _, face := range cube.HorizontalFaces() {
-		side := pos.Side(face)
+	for _, dir := range horizontalFlowDirs {
+		side := cube.Pos{pos[0] + dir.dx, pos[1], pos[2] + dir.dz}
 		var height, distance float32
 		if nrid, ok := tx.LiquidRID(side); ok {
+			if stillSource && rid != 0 && nrid == rid {
+				continue
+			}
 			nkind, ndepth, nfalling := reg.LiquidInfo(nrid)
 			if nkind != kind {
+				continue
+			}
+			if stillSource && ndepth == 8 && !nfalling {
 				continue
 			}
 			height = liquidOwnHeightInfo(ndepth, nfalling)
 		}
 		if height == 0 {
-			if brid, ok := tx.LiquidRID(side.Side(cube.FaceDown)); ok {
+			if brid, ok := tx.LiquidRID(cube.Pos{side[0], side[1] - 1, side[2]}); ok {
 				bkind, bdepth, bfalling := reg.LiquidInfo(brid)
 				if bkind == kind {
 					if bh := liquidOwnHeightInfo(bdepth, bfalling); bh > 0 && !blockInTag(tx.Block(side), "minecraft:blocks_fluid_flow") {
@@ -173,16 +203,18 @@ func fluidFlowInfo(tx blockReader, reg world.BlockRegistry, pos cube.Pos, kind, 
 			distance = own - height
 		}
 		if distance != 0 {
-			step := cube.Pos{}.Side(face)
-			flowX += float64(step[0]) * float64(distance)
-			flowZ += float64(step[2]) * float64(distance)
+			flowX += float64(dir.dx) * float64(distance)
+			flowZ += float64(dir.dz) * float64(distance)
 		}
+	}
+	if !falling && flowX == 0 && flowZ == 0 {
+		return mgl64.Vec3{}
 	}
 	flow := mgl64.Vec3{flowX, 0, flowZ}
 	if falling {
-		for _, face := range cube.HorizontalFaces() {
-			side := pos.Side(face)
-			if liquidSolidFaceInfo(tx, reg, side, face, kind) || liquidSolidFaceInfo(tx, reg, side.Side(cube.FaceUp), face, kind) {
+		for _, dir := range horizontalFlowDirs {
+			side := cube.Pos{pos[0] + dir.dx, pos[1], pos[2] + dir.dz}
+			if liquidSolidFaceInfo(tx, reg, side, dir.face, kind) || liquidSolidFaceInfo(tx, reg, cube.Pos{side[0], side[1] + 1, side[2]}, dir.face, kind) {
 				flow = javaNormalize(flow).Add(mgl64.Vec3{0, -6, 0})
 				break
 			}

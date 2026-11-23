@@ -34,7 +34,7 @@ func newFirework(opts world.EntitySpawnOpts, firework item.Firework, owner world
 	return opts.New(FireworkType, conf)
 }
 
-var fireworkConf = FireworkBehaviourConfig{}
+var fireworkConf = fireworkBehaviourConfig{}
 
 // FireworkType is a world.EntityType implementation for Firework.
 var FireworkType fireworkType
@@ -63,5 +63,5 @@ func (fireworkType) DecodeNBT(m map[string]any, data *world.EntityData) {
 }
 
 func (fireworkType) EncodeNBT(data *world.EntityData) map[string]any {
-	return map[string]any{"Item": item.WriteNBT(item.NewStack(data.Data.(*FireworkBehaviour).Firework(), 1))}
+	return map[string]any{"Item": item.WriteNBT(item.NewStack(data.Data.(*fireworkBehaviour).Firework(), 1))}
 }

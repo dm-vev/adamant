@@ -9,37 +9,37 @@ import (
 
 // This file ports the goals of Java's Wolf.
 
-func (b *WolfBehaviour) tamableState() *tamable { return &b.tamable }
+func (b *wolfBehaviour) tamableState() *tamable { return &b.tamable }
 
 // registerGoals ports Wolf.registerGoals.
-func (b *WolfBehaviour) registerGoals(m *Mob) {
+func (b *wolfBehaviour) registerGoals(m *Mob) {
 	ai := m.AI
 	ai.SetPathfindingMalus(PathPowderSnow, -1)
 	ai.SetPathfindingMalus(PathOnTopOfPowderSnow, -1)
 	// TamableAnimalPanicGoal panics from #panic_environmental_causes only.
-	b.panic = NewPanicGoal(1.5)
+	b.panic = newPanicGoal(1.5)
 	b.panic.Causes = panicEnvironmentalCause
-	ai.Goals.Add(1, NewFloatGoal(m))
+	ai.Goals.Add(1, newFloatGoal(m))
 	ai.Goals.Add(1, tamableAnimalPanicGoal{b.panic})
 	ai.Goals.Add(2, newSitWhenOrderedToGoal())
-	llamas := NewAvoidEntityGoal(func(e world.Entity) bool {
-		return e.H().Type() == LlamaType || e.H().Type() == TraderLlamaType
+	llamas := newAvoidEntityGoal(func(e world.Entity) bool {
+		return e.H().Type() == llamaType || e.H().Type() == traderLlamaType
 	}, 24, 1.5, 1.5)
 	ai.Goals.Add(3, wolfAvoidLlamaGoal{llamas, b})
 	ai.Goals.Add(4, newLeapAtTargetGoal(.4))
-	ai.Goals.Add(5, NewMeleeAttackGoal(1, true))
+	ai.Goals.Add(5, newMeleeAttackGoal(1, true))
 	ai.Goals.Add(6, newFollowOwnerGoal(1, 10, 2))
-	ai.Goals.Add(7, NewBreedGoal(1))
-	ai.Goals.Add(8, NewWaterAvoidingRandomStrollGoal(1))
+	ai.Goals.Add(7, newBreedGoal(1))
+	ai.Goals.Add(8, newWaterAvoidingRandomStrollGoal(1))
 	ai.Goals.Add(9, &begGoal{goalFlags: goalFlags{GoalLook}, wolf: b})
-	ai.Goals.Add(10, NewLookAtPlayerGoal(8))
-	ai.Goals.Add(10, NewRandomLookAroundGoal())
+	ai.Goals.Add(10, newLookAtPlayerGoal(8))
+	ai.Goals.Add(10, newRandomLookAroundGoal())
 	ai.Targets.Add(1, newOwnerHurtByTargetGoal())
 	ai.Targets.Add(2, newOwnerHurtTargetGoal())
-	hurt := NewHurtByTargetGoal()
+	hurt := newHurtByTargetGoal()
 	hurt.AlertOthers = true
 	ai.Targets.Add(3, hurt)
-	angry := NewNearestAttackableTargetGoal(nil, true)
+	angry := newNearestAttackableTargetGoal(nil, true)
 	angry.Selector = func(m *Mob, target world.Entity) bool { return b.angryAt(m, target) }
 	ai.Targets.Add(4, angry)
 	// Wolf.PREY_SELECTOR: sheep, rabbits and foxes.
@@ -50,8 +50,8 @@ func (b *WolfBehaviour) registerGoals(m *Mob) {
 		}
 		return false
 	}, false, nil))
-	ai.Targets.Add(6, newNonTameRandomTargetGoal(func(e world.Entity) bool { return e.H().Type() == TurtleType }, false, turtleBabyOnLand))
-	ai.Targets.Add(7, NewNearestAttackableTypesGoal(abstractSkeletonTypes, false))
+	ai.Targets.Add(6, newNonTameRandomTargetGoal(func(e world.Entity) bool { return e.H().Type() == turtleType }, false, turtleBabyOnLand))
+	ai.Targets.Add(7, newNearestAttackableTypesGoal(abstractSkeletonTypes, false))
 	ai.Targets.Add(8, &resetUniversalAngerTargetGoal{lastHurtByPlayer: -1, alertSameType: true})
 }
 
@@ -68,7 +68,7 @@ func turtleBabyOnLand(m *Mob, e world.Entity) bool {
 // customServerAiStep runs what Wolf.aiStep does after the AI: a wet wolf
 // on the ground that does not walk anywhere shakes itself dry, and its
 // anger runs out.
-func (b *WolfBehaviour) customServerAiStep(m *Mob) {
+func (b *wolfBehaviour) customServerAiStep(m *Mob) {
 	if b.wet && !b.shaking && m.AI.nav.IsDone() && m.OnGround() {
 		b.shaking, b.shakeAnim = true, 0
 		(&Wolf{Ent: m.Ent}).viewAction(WolfShakeAction{})
@@ -79,7 +79,7 @@ func (b *WolfBehaviour) customServerAiStep(m *Mob) {
 // updateShownState shows viewers the flags of the wolf once a tick when
 // they changed, as SynchedEntityData sends what changed at the end of a
 // tick.
-func (b *WolfBehaviour) updateShownState(w *Wolf) {
+func (b *wolfBehaviour) updateShownState(w *Wolf) {
 	shown := wolfShownState{angry: b.angry(), sitting: b.inSittingPose, interested: b.interested}
 	if shown != b.shown {
 		b.shown = shown
@@ -92,7 +92,7 @@ type wolfShownState struct{ angry, sitting, interested bool }
 
 // tickWetness ports the part of Wolf.tick that wets a wolf in water or
 // rain and dries it when it shakes for two seconds.
-func (b *WolfBehaviour) tickWetness(m *Mob) {
+func (b *wolfBehaviour) tickWetness(m *Mob) {
 	top := m.data.Pos.Add(mgl64.Vec3{0, m.BBox().Height()})
 	if m.InWater() || m.tx.RainingAt(m.BlockPos()) || m.tx.RainingAt(cube.PosFromVec3(top)) {
 		b.wet = true
@@ -115,7 +115,7 @@ func (b *WolfBehaviour) tickWetness(m *Mob) {
 }
 
 // doHurtTarget ports Mob.doHurtTarget for wolves, which bite for 4 damage.
-func (b *WolfBehaviour) doHurtTarget(m *Mob, target world.Entity) bool {
+func (b *wolfBehaviour) doHurtTarget(m *Mob, target world.Entity) bool {
 	l, ok := target.(Living)
 	if !ok {
 		return false
@@ -129,19 +129,19 @@ func (b *WolfBehaviour) doHurtTarget(m *Mob, target world.Entity) bool {
 
 // canAttackEntity ports TamableAnimal.canAttack: a pet never attacks its
 // owner.
-func (b *WolfBehaviour) canAttackEntity(_ *Mob, target world.Entity) bool {
+func (b *wolfBehaviour) canAttackEntity(_ *Mob, target world.Entity) bool {
 	return !b.ownedBy(target)
 }
 
 // alliedTo ports TamableAnimal.considersEntityAsAlly: a tamed wolf is
 // allied to its owner.
-func (b *WolfBehaviour) alliedTo(_ *Mob, target world.Entity) bool {
+func (b *wolfBehaviour) alliedTo(_ *Mob, target world.Entity) bool {
 	return b.ownedBy(target)
 }
 
 // wantsToAttack ports Wolf.wantsToAttack: a wolf leaves creepers, ghasts,
 // armour stands, tamed horses and the pets of its owner alone.
-func (b *WolfBehaviour) wantsToAttack(_ *Mob, target, owner world.Entity) bool {
+func (b *wolfBehaviour) wantsToAttack(_ *Mob, target, owner world.Entity) bool {
 	switch target.H().Type().EncodeEntity() {
 	case "minecraft:creeper", "minecraft:ghast", "minecraft:armor_stand":
 		return false
@@ -162,12 +162,12 @@ func (b *WolfBehaviour) wantsToAttack(_ *Mob, target, owner world.Entity) bool {
 // wolfAvoidLlamaGoal ports Wolf.WolfAvoidEntityGoal: an untamed wolf flees
 // from a llama the stronger the llama is, forgetting its target.
 type wolfAvoidLlamaGoal struct {
-	*AvoidEntityGoal
-	wolf *WolfBehaviour
+	*avoidEntityGoal
+	wolf *wolfBehaviour
 }
 
 func (g wolfAvoidLlamaGoal) CanUse(m *Mob) bool {
-	if !g.AvoidEntityGoal.CanUse(m) || g.wolf.tamed {
+	if !g.avoidEntityGoal.CanUse(m) || g.wolf.tamed {
 		return false
 	}
 	e, ok := g.toAvoid.Entity(m.tx)
@@ -180,12 +180,12 @@ func (g wolfAvoidLlamaGoal) CanUse(m *Mob) bool {
 
 func (g wolfAvoidLlamaGoal) Start(m *Mob) {
 	m.SetTarget(nil)
-	g.AvoidEntityGoal.Start(m)
+	g.avoidEntityGoal.Start(m)
 }
 
 func (g wolfAvoidLlamaGoal) Tick(m *Mob) {
 	m.SetTarget(nil)
-	g.AvoidEntityGoal.Tick(m)
+	g.avoidEntityGoal.Tick(m)
 }
 
 // leapAtTargetGoal ports LeapAtTargetGoal: a mob on the ground two to four
@@ -232,7 +232,7 @@ func (g *leapAtTargetGoal) Start(m *Mob) {
 // blocks holding a bone or wolf food.
 type begGoal struct {
 	goalFlags
-	wolf     *WolfBehaviour
+	wolf     *wolfBehaviour
 	player   *world.EntityHandle
 	lookTime int
 }

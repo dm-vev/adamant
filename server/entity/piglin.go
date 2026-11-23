@@ -14,7 +14,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type PiglinType struct{}
+type piglinType struct{}
 
 // piglinState is the state of Java's AbstractPiglin, of a Piglin or of a
 // PiglinBrute.
@@ -22,7 +22,7 @@ type piglinState struct {
 	health  *HealthManager
 	effects *EffectManager
 	ai      MobAI
-	br      *Brain
+	br      *brain
 	brute   bool
 
 	baby, cannotHunt, immune, dead bool
@@ -54,14 +54,14 @@ type piglinConfig struct {
 	inventory                      []item.Stack
 }
 
-func (PiglinType) EncodeEntity() string { return "minecraft:piglin" }
-func (PiglinType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
+func (piglinType) EncodeEntity() string { return "minecraft:piglin" }
+func (piglinType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
 		(piglinConfig{}).Apply(d)
 	}
 	return &Piglin{&Ent{tx: tx, handle: h, data: d}}
 }
-func (PiglinType) BBox(e world.Entity) cube.BBox {
+func (piglinType) BBox(e world.Entity) cube.BBox {
 	if p, ok := e.(*Piglin); ok && p.p().baby {
 		return cube.Box(-.245, 0, -.245, .245, .98, .245)
 	}
@@ -93,12 +93,12 @@ func (c piglinConfig) Apply(d *world.EntityData) {
 	}
 	d.Data = s
 }
-func (PiglinType) DecodeNBT(n map[string]any, d *world.EntityData) {
-	j := ReadNativeMobJavaState(n)
+func (piglinType) DecodeNBT(n map[string]any, d *world.EntityData) {
+	j := readNativeMobJavaState(n)
 	if j == nil {
 		j = n
 	}
-	eq := ReadNativeMobEquipment(n)
+	eq := readNativeMobEquipment(n)
 	c := piglinConfig{baby: nbtconv.Bool(j, "IsBaby"), cannotHunt: nbtconv.Bool(j, "CannotHunt"), immune: nbtconv.Bool(j, "IsImmuneToZombification"), conversion: int(nbtconv.Int32(j, "TimeInOverworld")),
 		main: piglinStackFromNative(eq.Mainhand), off: piglinStackFromNative(eq.Offhand)}
 	c.angryAt, _ = uuid.Parse(nbtconv.String(j, "AngerTarget"))
@@ -123,12 +123,12 @@ func (PiglinType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	}
 	c.Apply(d)
 }
-func piglinNativeStack(s item.Stack, previous NativeMobItem) NativeMobItem {
+func piglinNativeStack(s item.Stack, previous nativeMobItem) nativeMobItem {
 	current := nativeMobItemFromStack(s)
-	current.Raw = MergeNativeMobNBT(previous.Raw, current.Raw)
+	current.Raw = mergeNativeMobNBT(previous.Raw, current.Raw)
 	return current
 }
-func piglinStackFromNative(items []NativeMobItem) item.Stack {
+func piglinStackFromNative(items []nativeMobItem) item.Stack {
 	for _, v := range items {
 		if v.Name != "" && v.Count > 0 {
 			return item.ReadNBT(v.Raw)
@@ -139,35 +139,35 @@ func piglinStackFromNative(items []NativeMobItem) item.Stack {
 func encodePiglinNBT(d *world.EntityData) map[string]any {
 	s := d.Data.(*piglinState)
 	maxHealth := s.health.MaxHealth()
-	native := map[string]any{"Attributes": EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: maxHealth, Current: s.health.Health(), DefaultMin: 0, DefaultMax: maxHealth, Min: 0, Max: maxHealth}})}
-	equipment := ReadNativeMobEquipment(d.NativeNBT)
-	var prev, prevOff NativeMobItem
+	native := map[string]any{"Attributes": encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: maxHealth, Current: s.health.Health(), DefaultMin: 0, DefaultMax: maxHealth, Min: 0, Max: maxHealth}})}
+	equipment := readNativeMobEquipment(d.NativeNBT)
+	var prev, prevOff nativeMobItem
 	if len(equipment.Mainhand) > 0 {
 		prev = equipment.Mainhand[0]
 	}
 	if len(equipment.Offhand) > 0 {
 		prevOff = equipment.Offhand[0]
 	}
-	equipment.Mainhand = []NativeMobItem{piglinNativeStack(s.main, prev)}
-	equipment.Offhand = []NativeMobItem{piglinNativeStack(s.off, prevOff)}
+	equipment.Mainhand = []nativeMobItem{piglinNativeStack(s.main, prev)}
+	equipment.Offhand = []nativeMobItem{piglinNativeStack(s.off, prevOff)}
 	if len(equipment.Armor) < len(s.armor) {
-		armor := make([]NativeMobItem, len(s.armor))
+		armor := make([]nativeMobItem, len(s.armor))
 		copy(armor, equipment.Armor)
 		equipment.Armor = armor
 	}
 	for i, stack := range s.armor {
 		equipment.Armor[i] = piglinNativeStack(stack, equipment.Armor[i])
 	}
-	for k, v := range EncodeNativeMobEquipment(equipment) {
+	for k, v := range encodeNativeMobEquipment(equipment) {
 		native[k] = v
 	}
-	out := MergeNativeMobNBT(d.NativeNBT, native)
-	j := ReadNativeMobJavaState(d.NativeNBT)
+	out := mergeNativeMobNBT(d.NativeNBT, native)
+	j := readNativeMobJavaState(d.NativeNBT)
 	if j == nil {
 		j = make(map[string]any)
 	}
 	sourceEquipment, _ := j["equipment"].(map[string]any)
-	sourceEquipment = CloneNativeMobNBT(sourceEquipment)
+	sourceEquipment = cloneNativeMobNBT(sourceEquipment)
 	if sourceEquipment == nil {
 		sourceEquipment = make(map[string]any)
 	}
@@ -209,7 +209,7 @@ func encodePiglinNBT(d *world.EntityData) map[string]any {
 		p := v.(globalPos)
 		j["Brain"] = map[string]any{"memories": map[string]any{"minecraft:home": map[string]any{"value": map[string]any{"dimension": dimensionName(p.dim), "pos": []int32{int32(p.pos[0]), int32(p.pos[1]), int32(p.pos[2])}}}}}
 	}
-	return MergeNativeMobJavaState(out, j)
+	return mergeNativeMobJavaState(out, j)
 }
 
 // dimensionName returns the Java identifier of a dimension.
@@ -234,18 +234,14 @@ func dimensionByName(name string) world.Dimension {
 	return world.Overworld
 }
 
-func (PiglinType) EncodeNBT(d *world.EntityData) map[string]any { return encodePiglinNBT(d) }
+func (piglinType) EncodeNBT(d *world.EntityData) map[string]any { return encodePiglinNBT(d) }
 func NewPiglin(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(PiglinType{}, piglinConfig{})
+	return o.New(piglinType{}, piglinConfig{})
 }
 func (p *Piglin) p() *piglinState               { return p.Behaviour().(*piglinState) }
-func (p *Piglin) SpeciesType() world.EntityType { return PiglinType{} }
+func (p *Piglin) SpeciesType() world.EntityType { return piglinType{} }
 func (p *Piglin) viewAction(a world.EntityAction) {
-	vs := p.tx.Viewers(p.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(p, a)
-	}
-	p.tx.ReleaseViewers(vs)
+	world.BroadcastEntityAction(p.tx, p, a)
 }
 func (p *Piglin) Tick(tx *world.Tx, n int64) { p.p().effects.Tick(p, tx); p.Ent.Tick(tx, n) }
 func (p *Piglin) Health() float64            { return p.p().health.Health() }
@@ -437,7 +433,7 @@ func (s *piglinState) finishConversion(m *Mob) {
 	}
 	opts := world.EntitySpawnOpts{Position: m.data.Pos, Rotation: m.data.Rot, SpawnReason: "conversion"}
 	opts.SpawnFinalized = true
-	z := convertMob(m.tx, m.Self, opts.New(ZombifiedPiglinType{}, zombifiedPiglinConfig{baby: s.baby}), conversion{keepEquipment: true, preserveCanPickUpLoot: true})
+	z := convertMob(m.tx, m.Self, opts.New(zombifiedPiglinType{}, zombifiedPiglinConfig{baby: s.baby}), conversion{keepEquipment: true, preserveCanPickUpLoot: true})
 	z.(*ZombifiedPiglin).AddEffect(effect.New(effect.Nausea, 1, 10*time.Second))
 	s.dead = true
 }
@@ -455,7 +451,7 @@ func (s *piglinState) makeSound(m *Mob, name string) {
 // piglinEyeHeight is the height of the eyes of an adult piglin.
 const piglinEyeHeight = 1.79
 
-var _ world.EntityType = PiglinType{}
+var _ world.EntityType = piglinType{}
 var _ Living = (*Piglin)(nil)
 var _ Interactable = (*Piglin)(nil)
 

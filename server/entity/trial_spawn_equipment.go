@@ -26,8 +26,8 @@ func applyTrialEquipment(opts world.EntitySpawnOpts, native map[string]any, id s
 	random := vanilla.NewLegacyRandom(seed)
 	stacks, err := loot.Generate(table, seed, loot.Context{Random: &random, Origin: opts.Position, Entity: id})
 	if err != nil { return fmt.Errorf("generate trial equipment from %q: %w", table, err) }
-	gear := ReadNativeMobEquipment(native)
-	if gear.Armor == nil { gear.Armor = make([]NativeMobItem, 4) }
+	gear := readNativeMobEquipment(native)
+	if gear.Armor == nil { gear.Armor = make([]nativeMobItem, 4) }
 	used := map[int]bool{}
 	for _, stack := range stacks {
 		if stack.Empty() { continue }
@@ -40,12 +40,12 @@ func applyTrialEquipment(opts world.EntitySpawnOpts, native map[string]any, id s
 		case slot >= 0 && slot < 4:
 			gear.Armor[slot] = entry
 		case slot == 4:
-			gear.Mainhand = []NativeMobItem{entry}
+			gear.Mainhand = []nativeMobItem{entry}
 		case slot == 5:
-			gear.Offhand = []NativeMobItem{entry}
+			gear.Offhand = []nativeMobItem{entry}
 		}
 	}
-	for key, value := range EncodeNativeMobEquipment(gear) { native[key] = value }
+	for key, value := range encodeNativeMobEquipment(gear) { native[key] = value }
 	return nil
 }
 
@@ -83,9 +83,9 @@ func trialEquipmentSlot(it world.Item) int {
 	}
 }
 
-func nativeMobEquipmentItem(stack item.Stack) (NativeMobItem, error) {
+func nativeMobEquipmentItem(stack item.Stack) (nativeMobItem, error) {
 	raw := item.WriteNBT(stack)
 	name, ok := raw["Name"].(string)
-	if !ok || name == "" { return NativeMobItem{}, fmt.Errorf("trial equipment item has no native Bedrock name") }
-	return NativeMobItem{Name: name, Count: nativeNBTByte(raw["Count"]), Damage: int32(nbtconv.Int32(raw, "Damage")), WasPickedUp: 0, Raw: raw}, nil
+	if !ok || name == "" { return nativeMobItem{}, fmt.Errorf("trial equipment item has no native Bedrock name") }
+	return nativeMobItem{Name: name, Count: nativeNBTByte(raw["Count"]), Damage: int32(nbtconv.Int32(raw, "Damage")), WasPickedUp: 0, Raw: raw}, nil
 }

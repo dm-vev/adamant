@@ -28,14 +28,14 @@ func TestMinecartMovesOnStraightRails(t *testing.T) {
 			<-w.Exec(func(tx *world.Tx) {
 				pos := cube.Pos{0, 1, 0}
 				placeMinecartRailLine(tx, pos, test.dir, block.Rail{Direction: test.dir})
-				handle := world.EntitySpawnOpts{Position: pos.Vec3Middle(), Velocity: test.vel}.New(MinecartType, minecartConf)
+				handle := world.EntitySpawnOpts{Position: pos.Vec3Middle(), Velocity: test.vel}.New(entityMinecartType, minecartConf)
 				tx.AddEntity(handle)
 				entity, _ := handle.Entity(tx)
-				cart := entity.(*Minecart)
+				cart := entity.(*minecart)
 				before := cart.Position()
 
 				for range 8 {
-					cart.Behaviour().(*MinecartBehaviour).Tick(cart.Ent, tx).Send()
+					cart.Behaviour().(*minecartBehaviour).Tick(cart.Ent, tx).Send()
 				}
 				if got := cart.Position()[test.axis]; got <= before[test.axis]+0.5 {
 					t.Fatalf("position on axis %d = %v, want > %v", test.axis, got, before[test.axis]+0.5)
@@ -54,12 +54,12 @@ func TestMinecartAcceleratesOnPoweredRail(t *testing.T) {
 		pos := cube.Pos{0, 1, 0}
 		placeMinecartRailLine(tx, pos, block.RailEastWest, block.PoweredRail{Direction: block.RailEastWest, Powered: true})
 		tx.SetBlock(pos.Side(cube.FaceDown), block.RedstoneBlock{}, nil)
-		handle := world.EntitySpawnOpts{Position: pos.Vec3Middle(), Velocity: mgl64.Vec3{0.1, 0, 0}}.New(MinecartType, minecartConf)
+		handle := world.EntitySpawnOpts{Position: pos.Vec3Middle(), Velocity: mgl64.Vec3{0.1, 0, 0}}.New(entityMinecartType, minecartConf)
 		tx.AddEntity(handle)
 		entity, _ := handle.Entity(tx)
-		cart := entity.(*Minecart)
+		cart := entity.(*minecart)
 
-		cart.Behaviour().(*MinecartBehaviour).Tick(cart.Ent, tx).Send()
+		cart.Behaviour().(*minecartBehaviour).Tick(cart.Ent, tx).Send()
 		if got := cart.Velocity()[0]; got <= 0.1 {
 			t.Fatalf("powered velocity = %v, want > 0.1", got)
 		}
@@ -74,13 +74,13 @@ func TestRiderInputStartsMinecart(t *testing.T) {
 	<-w.Exec(func(tx *world.Tx) {
 		pos := cube.Pos{0, 1, 0}
 		placeMinecartRailLine(tx, pos, block.RailNorthSouth, block.Rail{Direction: block.RailNorthSouth})
-		cartHandle := world.EntitySpawnOpts{Position: pos.Vec3Middle()}.New(MinecartType, minecartConf)
+		cartHandle := world.EntitySpawnOpts{Position: pos.Vec3Middle()}.New(entityMinecartType, minecartConf)
 		riderHandle := NewCow(world.EntitySpawnOpts{Position: pos.Vec3Middle()})
 		tx.AddEntity(cartHandle)
 		tx.AddEntity(riderHandle)
 		entity, _ := cartHandle.Entity(tx)
-		cart := entity.(*Minecart)
-		behaviour := cart.Behaviour().(*MinecartBehaviour)
+		cart := entity.(*minecart)
+		behaviour := cart.Behaviour().(*minecartBehaviour)
 		behaviour.passenger = riderHandle
 		behaviour.SetVehicleInput(0, 1)
 		before := cart.Position()[2]
@@ -100,7 +100,7 @@ func TestMinecartPassengerSeatHeight(t *testing.T) {
 	defer w.Close()
 
 	pos := mgl64.Vec3{0, 4, 0}
-	cartHandle := world.EntitySpawnOpts{Position: pos}.New(MinecartType, minecartConf)
+	cartHandle := world.EntitySpawnOpts{Position: pos}.New(entityMinecartType, minecartConf)
 	passengerHandle := world.EntitySpawnOpts{Position: pos}.New(seatTestRiderType{}, seatTestRiderConfig{})
 	<-w.Exec(func(tx *world.Tx) {
 		tx.AddEntity(cartHandle)
@@ -108,12 +108,12 @@ func TestMinecartPassengerSeatHeight(t *testing.T) {
 		cartEntity, _ := cartHandle.Entity(tx)
 		passenger, _ := passengerHandle.Entity(tx)
 		rider := passenger.(*seatTestRider)
-		cart := cartEntity.(*Minecart)
-		behaviour := cart.Behaviour().(*MinecartBehaviour)
+		cart := cartEntity.(*minecart)
+		behaviour := cart.Behaviour().(*minecartBehaviour)
 		behaviour.passenger = passengerHandle
 		behaviour.updatePassenger(cart.Ent, tx)
 
-		rim := cart.Position()[1] + MinecartType.BBox(cart).Max()[1]
+		rim := cart.Position()[1] + entityMinecartType.BBox(cart).Max()[1]
 		eyeY := passenger.Position()[1] + rider.EyeHeight()
 		if passenger.Position()[1] <= rim || eyeY <= rim {
 			t.Fatalf("passenger base/eye = %v/%v, want above minecart rim %v", passenger.Position()[1], eyeY, rim)
@@ -156,12 +156,12 @@ func TestRiddenMinecartReachesMaxSpeedOnPoweredRails(t *testing.T) {
 		w.AdvanceTick()
 	}
 	<-w.Exec(func(tx *world.Tx) {
-		cart = world.EntitySpawnOpts{Position: mgl64.Vec3{2.5, 1, 0.5}, Velocity: mgl64.Vec3{0.05}}.New(MinecartType, minecartConf)
+		cart = world.EntitySpawnOpts{Position: mgl64.Vec3{2.5, 1, 0.5}, Velocity: mgl64.Vec3{0.05}}.New(entityMinecartType, minecartConf)
 		tx.AddEntity(cart)
 		rider := NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{2.5, 1, 0.5}})
 		tx.AddEntity(rider)
 		e, _ := cart.Entity(tx)
-		e.(*Minecart).Behaviour().(*MinecartBehaviour).passenger = rider
+		e.(*minecart).Behaviour().(*minecartBehaviour).passenger = rider
 	})
 	var before, after float64
 	for i := range 30 {
@@ -217,12 +217,12 @@ func TestMinecartFollowsSlope(t *testing.T) {
 					}
 					tx.SetBlock(cube.Pos{x, railY(x), 0}, block.Rail{Direction: dir}, nil)
 				}
-				cart = world.EntitySpawnOpts{Position: test.start, Velocity: test.vel}.New(MinecartType, minecartConf)
+				cart = world.EntitySpawnOpts{Position: test.start, Velocity: test.vel}.New(entityMinecartType, minecartConf)
 				tx.AddEntity(cart)
 				rider := NewCow(world.EntitySpawnOpts{Position: test.start})
 				tx.AddEntity(rider)
 				e, _ := cart.Entity(tx)
-				e.(*Minecart).Behaviour().(*MinecartBehaviour).passenger = rider
+				e.(*minecart).Behaviour().(*minecartBehaviour).passenger = rider
 			})
 			var y float64
 			for i := range 60 {

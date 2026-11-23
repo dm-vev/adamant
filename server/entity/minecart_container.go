@@ -16,8 +16,8 @@ import (
 )
 
 // MinecartContainerBehaviourConfig configures a container minecart.
-type MinecartContainerBehaviourConfig struct {
-	Minecart MinecartBehaviourConfig
+type minecartContainerBehaviourConfig struct {
+	Minecart minecartBehaviourConfig
 	Size     int
 	// Kind is the kind of container the minecart is:
 	// ContainerMinecartHopper for a hopper minecart, ContainerMinecartChest,
@@ -26,15 +26,15 @@ type MinecartContainerBehaviourConfig struct {
 }
 
 // Apply applies the configuration to the entity data.
-func (conf MinecartContainerBehaviourConfig) Apply(data *world.EntityData) {
+func (conf minecartContainerBehaviourConfig) Apply(data *world.EntityData) {
 	data.Data = conf.New()
 }
 
 // New creates a new container minecart behaviour.
-func (conf MinecartContainerBehaviourConfig) New() *MinecartContainerBehaviour {
+func (conf minecartContainerBehaviourConfig) New() *minecartContainerBehaviour {
 	base := conf.Minecart.New()
-	b := &MinecartContainerBehaviour{
-		MinecartBehaviour: base,
+	b := &minecartContainerBehaviour{
+		minecartBehaviour: base,
 		kind:              conf.Kind,
 		containerSize:     int32(conf.Size),
 		viewerMu:          new(sync.RWMutex),
@@ -51,8 +51,8 @@ func (conf MinecartContainerBehaviourConfig) New() *MinecartContainerBehaviour {
 }
 
 // MinecartContainerBehaviour implements the behaviour for minecart containers.
-type MinecartContainerBehaviour struct {
-	*MinecartBehaviour
+type minecartContainerBehaviour struct {
+	*minecartBehaviour
 
 	inv *inventory.Inventory
 
@@ -66,14 +66,14 @@ type MinecartContainerBehaviour struct {
 }
 
 // Base returns the base minecart behaviour.
-func (b *MinecartContainerBehaviour) Base() *MinecartBehaviour {
-	return b.MinecartBehaviour
+func (b *minecartContainerBehaviour) Base() *minecartBehaviour {
+	return b.minecartBehaviour
 }
 
 // ContainerKind returns the kind of container the minecart is:
 // ContainerMinecartHopper for the kind of a hopper minecart,
 // ContainerMinecartChest otherwise.
-func (b *MinecartContainerBehaviour) ContainerKind() ContainerKind {
+func (b *minecartContainerBehaviour) ContainerKind() ContainerKind {
 	if b.kind == ContainerMinecartHopper {
 		return ContainerMinecartHopper
 	}
@@ -81,51 +81,51 @@ func (b *MinecartContainerBehaviour) ContainerKind() ContainerKind {
 }
 
 // ContainerSize returns the container size for metadata.
-func (b *MinecartContainerBehaviour) ContainerSize() int32 {
+func (b *minecartContainerBehaviour) ContainerSize() int32 {
 	return b.containerSize
 }
 
 // ContainerStrengthModifier returns the strength modifier for metadata.
-func (b *MinecartContainerBehaviour) ContainerStrengthModifier() int32 {
+func (b *minecartContainerBehaviour) ContainerStrengthModifier() int32 {
 	return 0
 }
 
 // Inventory returns the inventory of the minecart.
-func (b *MinecartContainerBehaviour) Inventory() *inventory.Inventory {
+func (b *minecartContainerBehaviour) Inventory() *inventory.Inventory {
 	return b.inv
 }
 
 // AddViewer adds a viewer to the minecart container.
-func (b *MinecartContainerBehaviour) AddViewer(v block.ContainerViewer) {
+func (b *minecartContainerBehaviour) AddViewer(v block.ContainerViewer) {
 	b.viewerMu.Lock()
 	defer b.viewerMu.Unlock()
 	b.viewers[v] = struct{}{}
 }
 
 // RemoveViewer removes a viewer from the minecart container.
-func (b *MinecartContainerBehaviour) RemoveViewer(v block.ContainerViewer) {
+func (b *minecartContainerBehaviour) RemoveViewer(v block.ContainerViewer) {
 	b.viewerMu.Lock()
 	defer b.viewerMu.Unlock()
 	delete(b.viewers, v)
 }
 
 // MinecartContainer is a minecart with a container inventory.
-type MinecartContainer struct {
-	*Minecart
+type minecartContainer struct {
+	*minecart
 }
 
-func (m *MinecartContainer) container() *MinecartContainerBehaviour {
+func (m *minecartContainer) container() *minecartContainerBehaviour {
 	switch b := m.Behaviour().(type) {
-	case *MinecartContainerBehaviour:
+	case *minecartContainerBehaviour:
 		return b
-	case *HopperMinecartBehaviour:
-		return b.MinecartContainerBehaviour
+	case *hopperMinecartBehaviour:
+		return b.minecartContainerBehaviour
 	}
 	return nil
 }
 
 // Interact opens the container inventory.
-func (m *MinecartContainer) Interact(tx *world.Tx, user item.User, _ *item.UseContext) bool {
+func (m *minecartContainer) Interact(tx *world.Tx, user item.User, _ *item.UseContext) bool {
 	b := m.container()
 	if b == nil {
 		return false
@@ -147,7 +147,7 @@ func (m *MinecartContainer) Interact(tx *world.Tx, user item.User, _ *item.UseCo
 }
 
 // Inventory returns the minecart inventory, resolving pending loot on access.
-func (m *MinecartContainer) Inventory() *inventory.Inventory {
+func (m *minecartContainer) Inventory() *inventory.Inventory {
 	b := m.container()
 	if b == nil {
 		return nil
@@ -156,7 +156,7 @@ func (m *MinecartContainer) Inventory() *inventory.Inventory {
 	return b.inv
 }
 
-func (m *MinecartContainer) generateLoot(tx *world.Tx, user item.User) {
+func (m *minecartContainer) generateLoot(tx *world.Tx, user item.User) {
 	b := m.container()
 	if b == nil || b.lootTable == "" {
 		return
@@ -248,7 +248,7 @@ func shuffleMinecartLoot[T any](items []T, random *vanilla.Random) {
 }
 
 // Destroy destroys the minecart and drops its contents.
-func (m *MinecartContainer) Destroy(tx *world.Tx, src world.DamageSource, causer world.Entity) bool {
+func (m *minecartContainer) Destroy(tx *world.Tx, src world.DamageSource, causer world.Entity) bool {
 	b := m.container()
 	if b == nil {
 		_ = m.CloseIn(tx)
@@ -284,31 +284,31 @@ func (m *MinecartContainer) Destroy(tx *world.Tx, src world.DamageSource, causer
 }
 
 // Links returns the active links for the minecart.
-func (m *MinecartContainer) Links() []Link {
-	return m.Minecart.Links()
+func (m *minecartContainer) Links() []Link {
+	return m.minecart.Links()
 }
 
 // AddViewer adds a container viewer to the minecart inventory.
-func (m *MinecartContainer) AddViewer(v block.ContainerViewer) {
+func (m *minecartContainer) AddViewer(v block.ContainerViewer) {
 	if b := m.container(); b != nil {
 		b.AddViewer(v)
 	}
 }
 
 // RemoveViewer removes a container viewer from the minecart inventory.
-func (m *MinecartContainer) RemoveViewer(v block.ContainerViewer) {
+func (m *minecartContainer) RemoveViewer(v block.ContainerViewer) {
 	if b := m.container(); b != nil {
 		b.RemoveViewer(v)
 	}
 }
 
 // ChestMinecartType is a world.EntityType implementation for chest minecarts.
-var ChestMinecartType chestMinecartType
+var entityChestMinecartType chestMinecartType
 
 type chestMinecartType struct{}
 
 func (chestMinecartType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.EntityData) world.Entity {
-	return &MinecartContainer{Minecart: &Minecart{Ent: &Ent{tx: tx, handle: handle, data: data}}}
+	return &minecartContainer{minecart: &minecart{Ent: &Ent{tx: tx, handle: handle, data: data}}}
 }
 
 func (chestMinecartType) EncodeEntity() string { return "minecraft:chest_minecart" }
@@ -319,7 +319,7 @@ func (chestMinecartType) NetworkOffset() float64        { return minecartNetwork
 func (chestMinecartType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf := chestMinecartConf
 	beh := conf.New()
-	readMinecartDisplayNBT(beh.MinecartBehaviour, m)
+	readMinecartDisplayNBT(beh.minecartBehaviour, m)
 	beh.lootTable = loot.JavaTableKey(nbtconv.String(m, "LootTable"))
 	beh.lootSeed = nbtconv.Int64(m, "LootTableSeed")
 	if beh.lootTable == "" {
@@ -331,7 +331,7 @@ func (chestMinecartType) DecodeNBT(m map[string]any, data *world.EntityData) {
 }
 
 func (chestMinecartType) EncodeNBT(data *world.EntityData) map[string]any {
-	b := data.Data.(*MinecartContainerBehaviour)
+	b := data.Data.(*minecartContainerBehaviour)
 	m := make(map[string]any)
 	if b.lootTable != "" {
 		m["LootTable"] = loot.BedrockTablePath(b.lootTable)
@@ -343,12 +343,12 @@ func (chestMinecartType) EncodeNBT(data *world.EntityData) map[string]any {
 	} else {
 		m["Items"] = []map[string]any{}
 	}
-	writeMinecartDisplayNBT(b.MinecartBehaviour, m)
+	writeMinecartDisplayNBT(b.minecartBehaviour, m)
 	return m
 }
 
-var chestMinecartConf = MinecartContainerBehaviourConfig{
-	Minecart: MinecartBehaviourConfig{
+var chestMinecartConf = minecartContainerBehaviourConfig{
+	Minecart: minecartBehaviourConfig{
 		DisplayBlock:  block.Chest{},
 		DisplayOffset: minecartDisplayOffset,
 		Rideable:      false,
@@ -358,12 +358,12 @@ var chestMinecartConf = MinecartContainerBehaviourConfig{
 }
 
 // HopperMinecartType is a world.EntityType implementation for hopper minecarts.
-var HopperMinecartType hopperMinecartType
+var entityHopperMinecartType hopperMinecartType
 
 type hopperMinecartType struct{}
 
 func (hopperMinecartType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.EntityData) world.Entity {
-	return &MinecartContainer{Minecart: &Minecart{Ent: &Ent{tx: tx, handle: handle, data: data}}}
+	return &minecartContainer{minecart: &minecart{Ent: &Ent{tx: tx, handle: handle, data: data}}}
 }
 
 func (hopperMinecartType) EncodeEntity() string { return "minecraft:hopper_minecart" }
@@ -373,7 +373,7 @@ func (hopperMinecartType) NetworkOffset() float64        { return minecartNetwor
 
 func (hopperMinecartType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	beh := hopperMinecartConf.New()
-	readMinecartDisplayNBT(beh.MinecartBehaviour, m)
+	readMinecartDisplayNBT(beh.minecartBehaviour, m)
 	nbtconv.InvFromNBT(beh.inv, nbtconv.Slice(m, "Items"), m)
 	beh.transferCooldown = readNBTInt(m["TransferCooldown"])
 	if enabled, ok := m["Enabled"]; ok {
@@ -383,38 +383,38 @@ func (hopperMinecartType) DecodeNBT(m map[string]any, data *world.EntityData) {
 }
 
 func (hopperMinecartType) EncodeNBT(data *world.EntityData) map[string]any {
-	b := data.Data.(*HopperMinecartBehaviour)
+	b := data.Data.(*hopperMinecartBehaviour)
 	items := nbtconv.InvToNBT(b.inv)
 	if items == nil {
 		items = []map[string]any{}
 	}
 	m := map[string]any{"Items": items, "TransferCooldown": b.transferCooldown, "Enabled": b.enabled}
-	writeMinecartDisplayNBT(b.MinecartBehaviour, m)
+	writeMinecartDisplayNBT(b.minecartBehaviour, m)
 	return m
 }
 
 type hopperMinecartBehaviourConfig struct {
-	MinecartContainerBehaviourConfig
+	minecartContainerBehaviourConfig
 }
 
 func (conf hopperMinecartBehaviourConfig) Apply(data *world.EntityData) {
 	data.Data = conf.New()
 }
 
-func (conf hopperMinecartBehaviourConfig) New() *HopperMinecartBehaviour {
-	return &HopperMinecartBehaviour{MinecartContainerBehaviour: conf.MinecartContainerBehaviourConfig.New(), enabled: true}
+func (conf hopperMinecartBehaviourConfig) New() *hopperMinecartBehaviour {
+	return &hopperMinecartBehaviour{minecartContainerBehaviour: conf.minecartContainerBehaviourConfig.New(), enabled: true}
 }
 
 // HopperMinecartBehaviour adds item transfer behaviour to a container minecart.
-type HopperMinecartBehaviour struct {
-	*MinecartContainerBehaviour
+type hopperMinecartBehaviour struct {
+	*minecartContainerBehaviour
 	transferCooldown int32
 	enabled          bool
 }
 
 // Tick moves the minecart and transfers items when its cooldown permits.
-func (b *HopperMinecartBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	movement := b.MinecartBehaviour.Tick(e, tx)
+func (b *hopperMinecartBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+	movement := b.minecartBehaviour.Tick(e, tx)
 	if b.transferCooldown > 0 {
 		b.transferCooldown--
 		return movement
@@ -431,9 +431,9 @@ func (b *HopperMinecartBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	return movement
 }
 
-func (b *HopperMinecartBehaviour) Activate(_ *Ent, _ *world.Tx, powered bool) { b.enabled = !powered }
+func (b *hopperMinecartBehaviour) Activate(_ *Ent, _ *world.Tx, powered bool) { b.enabled = !powered }
 
-func (b *HopperMinecartBehaviour) pull(pos cube.Pos, tx *world.Tx) bool {
+func (b *hopperMinecartBehaviour) pull(pos cube.Pos, tx *world.Tx) bool {
 	source, ok := tx.Block(pos).(block.Container)
 	if !ok {
 		return false
@@ -453,7 +453,7 @@ func (b *HopperMinecartBehaviour) pull(pos cube.Pos, tx *world.Tx) bool {
 	return false
 }
 
-func (b *HopperMinecartBehaviour) collectItem(e *Ent, tx *world.Tx) bool {
+func (b *hopperMinecartBehaviour) collectItem(e *Ent, tx *world.Tx) bool {
 	box := e.H().Type().BBox(e).Translate(e.Position()).GrowVec3(mgl64.Vec3{0.25, 0.25, 0.25})
 	for candidate := range tx.EntitiesWithin(box) {
 		itemEntity, ok := candidate.(*Ent)
@@ -476,8 +476,8 @@ func (b *HopperMinecartBehaviour) collectItem(e *Ent, tx *world.Tx) bool {
 	return false
 }
 
-var hopperMinecartConf = hopperMinecartBehaviourConfig{MinecartContainerBehaviourConfig{
-	Minecart: MinecartBehaviourConfig{
+var hopperMinecartConf = hopperMinecartBehaviourConfig{minecartContainerBehaviourConfig{
+	Minecart: minecartBehaviourConfig{
 		DisplayBlock:  block.Hopper{Facing: cube.FaceDown},
 		DisplayOffset: minecartDisplayOffset,
 		Rideable:      false,

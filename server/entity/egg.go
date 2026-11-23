@@ -20,7 +20,7 @@ func NewEgg(opts world.EntitySpawnOpts, owner world.Entity) *world.EntityHandle 
 func NewEggVariant(opts world.EntitySpawnOpts, owner world.Entity, variant int) *world.EntityHandle {
 	var ownerHandle *world.EntityHandle
 	if owner != nil { ownerHandle = owner.H() }
-	return opts.New(EggType, eggBehaviourConfig{owner:ownerHandle,variant:max(0,min(variant,2))})
+	return opts.New(entityEggType, eggBehaviourConfig{owner:ownerHandle,variant:max(0,min(variant,2))})
 }
 
 type eggBehaviourConfig struct { owner *world.EntityHandle; variant int }
@@ -39,7 +39,7 @@ func (b *eggBehaviour) ClimateVariant() string {
 }
 
 // EggType is the world.EntityType for thrown eggs.
-var EggType eggType
+var entityEggType eggType
 type eggType struct{}
 func (t eggType) Open(tx *world.Tx,handle *world.EntityHandle,data *world.EntityData)world.Entity{
 	if data.Data==nil{eggBehaviourConfig{}.Apply(data)}

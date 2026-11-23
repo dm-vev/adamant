@@ -99,8 +99,8 @@ func convertCommon(tx *world.Tx, from, to world.Entity, c conversion) {
 	}
 	if fm, ok := brainMobOf(from); ok {
 		if tm, ok := brainMobOf(to); ok {
-			if v, ok := fm.Brain().get(memAngryAt); ok && tm.Brain().check(memAngryAt, memRegistered) {
-				tm.Brain().set(memAngryAt, v)
+			if v, ok := fm.brain().get(memAngryAt); ok && tm.brain().check(memAngryAt, memRegistered) {
+				tm.brain().set(memAngryAt, v)
 			}
 		}
 	}

@@ -25,17 +25,17 @@ func speciesSelf(e *Ent, k speciesKind) world.Entity {
 	m := &speciesMob{Ent: e, kind: k}
 	switch k {
 	case spiderSpecies:
-		return &Spider{m}
+		return &spider{m}
 	case caveSpiderSpecies:
-		return &CaveSpider{m}
+		return &caveSpider{m}
 	case creeperSpecies:
-		return &Creeper{m}
+		return &creeper{m}
 	case endermanSpecies:
 		return &Enderman{m}
 	case silverfishSpecies:
-		return &Silverfish{m}
+		return &silverfish{m}
 	case endermiteSpecies:
-		return &Endermite{m}
+		return &endermite{m}
 	}
 	return &Slime{m}
 }
@@ -174,59 +174,59 @@ func (s *speciesState) registerGoals(m *Mob) {
 	ai := m.AI
 	switch s.kind {
 	case creeperSpecies:
-		ai.Goals.Add(1, NewFloatGoal(m))
+		ai.Goals.Add(1, newFloatGoal(m))
 		ai.Goals.Add(2, &swellGoal{goalFlags: goalFlags{GoalMove}})
-		ai.Goals.Add(3, NewAvoidEntityTypesGoal(entityTypes{"minecraft:ocelot"}, 6, 1, 1.2))
-		ai.Goals.Add(3, NewAvoidEntityTypesGoal(entityTypes{"minecraft:cat"}, 6, 1, 1.2))
-		ai.Goals.Add(4, NewMeleeAttackGoal(1, false))
-		ai.Goals.Add(5, NewWaterAvoidingRandomStrollGoal(.8))
-		ai.Goals.Add(6, NewLookAtPlayerGoal(8))
-		ai.Goals.Add(6, NewRandomLookAroundGoal())
-		ai.Targets.Add(1, NewNearestAttackableTargetGoal(nil, true))
-		ai.Targets.Add(2, NewHurtByTargetGoal())
+		ai.Goals.Add(3, newAvoidEntityTypesGoal(entityTypes{"minecraft:ocelot"}, 6, 1, 1.2))
+		ai.Goals.Add(3, newAvoidEntityTypesGoal(entityTypes{"minecraft:cat"}, 6, 1, 1.2))
+		ai.Goals.Add(4, newMeleeAttackGoal(1, false))
+		ai.Goals.Add(5, newWaterAvoidingRandomStrollGoal(.8))
+		ai.Goals.Add(6, newLookAtPlayerGoal(8))
+		ai.Goals.Add(6, newRandomLookAroundGoal())
+		ai.Targets.Add(1, newNearestAttackableTargetGoal(nil, true))
+		ai.Targets.Add(2, newHurtByTargetGoal())
 	case endermanSpecies:
 		s.registerEndermanGoals(m)
 	case slimeSpecies:
 		registerCubeGoals(m, s)
 	case spiderSpecies, caveSpiderSpecies:
 		ai.nav.wallClimber = true
-		ai.Goals.Add(1, NewFloatGoal(m))
-		armadillos := NewAvoidEntityTypesGoal(entityTypes{"minecraft:armadillo"}, 6, 1, 1.2)
+		ai.Goals.Add(1, newFloatGoal(m))
+		armadillos := newAvoidEntityTypesGoal(entityTypes{"minecraft:armadillo"}, 6, 1, 1.2)
 		armadillos.Predicate = func(e world.Entity) bool {
 			scared, ok := e.(interface{ Scared() bool })
 			return !ok || !scared.Scared()
 		}
 		ai.Goals.Add(2, armadillos)
-		ai.Goals.Add(3, &LeapAtTargetGoal{goalFlags: goalFlags{GoalJump | GoalMove}, YD: .4})
-		ai.Goals.Add(4, &spiderAttackGoal{NewMeleeAttackGoal(1, true)})
-		ai.Goals.Add(5, NewWaterAvoidingRandomStrollGoal(.8))
-		ai.Goals.Add(6, NewLookAtPlayerGoal(8))
-		ai.Goals.Add(6, NewRandomLookAroundGoal())
-		ai.Targets.Add(1, NewHurtByTargetGoal())
-		ai.Targets.Add(2, &spiderTargetGoal{NewNearestAttackableTargetGoal(nil, true)})
-		ai.Targets.Add(3, &spiderTargetGoal{NewNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true)})
+		ai.Goals.Add(3, &speciesLeapAtTargetGoal{goalFlags: goalFlags{GoalJump | GoalMove}, YD: .4})
+		ai.Goals.Add(4, &spiderAttackGoal{newMeleeAttackGoal(1, true)})
+		ai.Goals.Add(5, newWaterAvoidingRandomStrollGoal(.8))
+		ai.Goals.Add(6, newLookAtPlayerGoal(8))
+		ai.Goals.Add(6, newRandomLookAroundGoal())
+		ai.Targets.Add(1, newHurtByTargetGoal())
+		ai.Targets.Add(2, &spiderTargetGoal{newNearestAttackableTargetGoal(nil, true)})
+		ai.Targets.Add(3, &spiderTargetGoal{newNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true)})
 	case silverfishSpecies:
 		if s.friends == nil {
 			s.friends = &silverfishWakeUpFriendsGoal{}
 		}
-		ai.Goals.Add(1, NewFloatGoal(m))
+		ai.Goals.Add(1, newFloatGoal(m))
 		ai.Goals.Add(3, s.friends)
-		ai.Goals.Add(4, NewMeleeAttackGoal(1, false))
+		ai.Goals.Add(4, newMeleeAttackGoal(1, false))
 		ai.Goals.Add(5, newSilverfishMergeWithStoneGoal())
-		hurt := NewHurtByTargetGoal()
+		hurt := newHurtByTargetGoal()
 		hurt.AlertOthers = true
 		ai.Targets.Add(1, hurt)
-		ai.Targets.Add(2, NewNearestAttackableTargetGoal(nil, true))
+		ai.Targets.Add(2, newNearestAttackableTargetGoal(nil, true))
 	case endermiteSpecies:
-		ai.Goals.Add(1, NewFloatGoal(m))
-		ai.Goals.Add(2, NewMeleeAttackGoal(1, false))
-		ai.Goals.Add(3, NewWaterAvoidingRandomStrollGoal(1))
-		ai.Goals.Add(7, NewLookAtPlayerGoal(8))
-		ai.Goals.Add(8, NewRandomLookAroundGoal())
-		hurt := NewHurtByTargetGoal()
+		ai.Goals.Add(1, newFloatGoal(m))
+		ai.Goals.Add(2, newMeleeAttackGoal(1, false))
+		ai.Goals.Add(3, newWaterAvoidingRandomStrollGoal(1))
+		ai.Goals.Add(7, newLookAtPlayerGoal(8))
+		ai.Goals.Add(8, newRandomLookAroundGoal())
+		hurt := newHurtByTargetGoal()
 		hurt.AlertOthers = true
 		ai.Targets.Add(1, hurt)
-		ai.Targets.Add(2, NewNearestAttackableTargetGoal(nil, true))
+		ai.Targets.Add(2, newNearestAttackableTargetGoal(nil, true))
 	}
 }
 
@@ -309,13 +309,13 @@ func (g *swellGoal) Tick(m *Mob) {
 
 // LeapAtTargetGoal makes a mob leap at its target, ported from Java's
 // LeapAtTargetGoal.
-type LeapAtTargetGoal struct {
+type speciesLeapAtTargetGoal struct {
 	goalFlags
 	YD     float64
 	target *world.EntityHandle
 }
 
-func (g *LeapAtTargetGoal) CanUse(m *Mob) bool {
+func (g *speciesLeapAtTargetGoal) CanUse(m *Mob) bool {
 	if isVehicle(m.Self) {
 		return false
 	}
@@ -334,9 +334,9 @@ func (g *LeapAtTargetGoal) CanUse(m *Mob) bool {
 	return true
 }
 
-func (g *LeapAtTargetGoal) CanContinueToUse(m *Mob) bool { return !m.OnGround() }
+func (g *speciesLeapAtTargetGoal) CanContinueToUse(m *Mob) bool { return !m.OnGround() }
 
-func (g *LeapAtTargetGoal) Start(m *Mob) {
+func (g *speciesLeapAtTargetGoal) Start(m *Mob) {
 	target, ok := g.target.Entity(m.tx)
 	if !ok {
 		return
@@ -352,10 +352,10 @@ func (g *LeapAtTargetGoal) Start(m *Mob) {
 
 // spiderAttackGoal is Java's Spider.SpiderAttackGoal: a melee attack a
 // spider gives up in the light.
-type spiderAttackGoal struct{ *MeleeAttackGoal }
+type spiderAttackGoal struct{ *meleeAttackGoal }
 
 func (g *spiderAttackGoal) CanUse(m *Mob) bool {
-	return g.MeleeAttackGoal.CanUse(m) && !isVehicle(m.Self)
+	return g.meleeAttackGoal.CanUse(m) && !isVehicle(m.Self)
 }
 
 func (g *spiderAttackGoal) CanContinueToUse(m *Mob) bool {
@@ -363,15 +363,15 @@ func (g *spiderAttackGoal) CanContinueToUse(m *Mob) bool {
 		m.SetTarget(nil)
 		return false
 	}
-	return g.MeleeAttackGoal.CanContinueToUse(m)
+	return g.meleeAttackGoal.CanContinueToUse(m)
 }
 
 // spiderTargetGoal is Java's Spider.SpiderTargetGoal: spiders only pick
 // targets in the dark.
-type spiderTargetGoal struct{ *NearestAttackableTargetGoal }
+type spiderTargetGoal struct{ *nearestAttackableTargetGoal }
 
 func (g *spiderTargetGoal) CanUse(m *Mob) bool {
-	return lightLevelDependentMagicValue(m) < .5 && g.NearestAttackableTargetGoal.CanUse(m)
+	return lightLevelDependentMagicValue(m) < .5 && g.nearestAttackableTargetGoal.CanUse(m)
 }
 
 // infestedHost returns the infested block a silverfish turns a block into,
@@ -470,15 +470,15 @@ func breakBlockReleasingSilverfish(tx *world.Tx, pos cube.Pos) {
 // silverfishMergeWithStoneGoal makes an idle silverfish hide in stone,
 // ported from Java's Silverfish.SilverfishMergeWithStoneGoal.
 type silverfishMergeWithStoneGoal struct {
-	*RandomStrollGoal
+	*randomStrollGoal
 	dir     cube.Face
 	doMerge bool
 }
 
 func newSilverfishMergeWithStoneGoal() *silverfishMergeWithStoneGoal {
-	g := NewRandomStrollGoal(1)
+	g := newRandomStrollGoal(1)
 	g.Interval = 10
-	return &silverfishMergeWithStoneGoal{RandomStrollGoal: g}
+	return &silverfishMergeWithStoneGoal{randomStrollGoal: g}
 }
 
 func (g *silverfishMergeWithStoneGoal) mergePos(m *Mob) cube.Pos {
@@ -498,16 +498,16 @@ func (g *silverfishMergeWithStoneGoal) CanUse(m *Mob) bool {
 		}
 	}
 	g.doMerge = false
-	return g.RandomStrollGoal.CanUse(m)
+	return g.randomStrollGoal.CanUse(m)
 }
 
 func (g *silverfishMergeWithStoneGoal) CanContinueToUse(m *Mob) bool {
-	return !g.doMerge && g.RandomStrollGoal.CanContinueToUse(m)
+	return !g.doMerge && g.randomStrollGoal.CanContinueToUse(m)
 }
 
 func (g *silverfishMergeWithStoneGoal) Start(m *Mob) {
 	if !g.doMerge {
-		g.RandomStrollGoal.Start(m)
+		g.randomStrollGoal.Start(m)
 		return
 	}
 	pos := g.mergePos(m)

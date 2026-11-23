@@ -78,17 +78,17 @@ func (a *sulfurCubeArchetype) knockbackResistance() float64 {
 func (a *sulfurCubeArchetype) hitSound() string  { return "entity.sulfur_cube." + a.name + ".hit" }
 func (a *sulfurCubeArchetype) pushSound() string { return "entity.sulfur_cube." + a.name + ".push" }
 
-func (b *SulfurCubeBehaviour) mobAI() *MobAI   { return &b.ai }
-func (b *SulfurCubeBehaviour) cube() *cubeAI   { return &b.cubeAI }
-func (b *SulfurCubeBehaviour) cubeSize() int   { return b.size }
-func (b *SulfurCubeBehaviour) cubeMagma() bool { return false }
+func (b *sulfurCubeBehaviour) mobAI() *MobAI   { return &b.ai }
+func (b *sulfurCubeBehaviour) cube() *cubeAI   { return &b.cubeAI }
+func (b *sulfurCubeBehaviour) cubeSize() int   { return b.size }
+func (b *sulfurCubeBehaviour) cubeMagma() bool { return false }
 
 // cubeDealsDamage ports SulfurCube.canDealDamage: sulfur cubes never attack.
-func (b *SulfurCubeBehaviour) cubeDealsDamage() bool { return false }
+func (b *sulfurCubeBehaviour) cubeDealsDamage() bool { return false }
 
 // cubeSoundName returns the sound of a sulfur cube for the cube sound named,
 // as SulfurCube.getJumpSound and getSquishSound pick them.
-func (b *SulfurCubeBehaviour) cubeSoundName(name string) string {
+func (b *sulfurCubeBehaviour) cubeSoundName(name string) string {
 	if b.size <= 1 {
 		return "entity.small_sulfur_cube." + name
 	}
@@ -100,7 +100,7 @@ func (b *SulfurCubeBehaviour) cubeSoundName(name string) string {
 
 // Tick runs a tick of a sulfur cube: SulfurCube.tickFuse and
 // primeWhenOnPoweredPosition, its growing up and its MobAI.
-func (b *SulfurCubeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (b *sulfurCubeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	s := &SulfurCube{Ent: e}
 	if b.fuse > 0 {
 		b.fuse--
@@ -179,11 +179,11 @@ func (b *SulfurCubeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 // registerGoals ports AbstractCubeMob.registerGoals with the goals
 // SulfurCube adds: it follows players holding what it likes and turns to
 // items nearby it can swallow.
-func (b *SulfurCubeBehaviour) registerGoals(m *Mob) {
+func (b *sulfurCubeBehaviour) registerGoals(m *Mob) {
 	m.AI.Goals.Add(1, &cubeFloatGoal{goalFlags{GoalJump | GoalMove}})
 	m.AI.Goals.Add(4, &cubeRandomDirectionGoal{goalFlags: goalFlags{GoalLook}})
 	m.AI.Goals.Add(5, &cubeKeepOnJumpingGoal{goalFlags{GoalJump | GoalMove}})
-	b.tempt = NewTemptGoal(1, func(st item.Stack) bool {
+	b.tempt = newTemptGoal(1, func(st item.Stack) bool {
 		if b.age < 0 {
 			return sulfurCubeFood(st)
 		}
@@ -203,7 +203,7 @@ func (b *SulfurCubeBehaviour) registerGoals(m *Mob) {
 
 // customServerAiStep ports SulfurCube.customServerAiStep and Mob.aiStep
 // picking up loot: an adult cube without a block swallows one it touches.
-func (b *SulfurCubeBehaviour) customServerAiStep(m *Mob) {
+func (b *sulfurCubeBehaviour) customServerAiStep(m *Mob) {
 	if b.pickupTimer > 0 {
 		b.pickupTimer--
 	}
@@ -231,20 +231,20 @@ func (b *SulfurCubeBehaviour) customServerAiStep(m *Mob) {
 
 // omnidirectionalAirMover ports SulfurCube.omnidirectionalAirMover: a cube
 // holding a block slows down as much up and down as sideways.
-func (b *SulfurCubeBehaviour) omnidirectionalAirMover() bool { return !b.bodyItem.Empty() }
+func (b *sulfurCubeBehaviour) omnidirectionalAirMover() bool { return !b.bodyItem.Empty() }
 
 // jumpFromGround ports AbstractCubeMob.jumpFromGround: the cube jumps at
 // its jump power whatever it moved up at.
-func (b *SulfurCubeBehaviour) jumpFromGround(m *Mob) bool {
+func (b *sulfurCubeBehaviour) jumpFromGround(m *Mob) bool {
 	m.data.Vel[1] = m.AI.jumpPower(m)
 	return true
 }
 
-func (b *SulfurCubeBehaviour) jumpInLiquid(*Mob, bool) bool { return false }
+func (b *sulfurCubeBehaviour) jumpInLiquid(*Mob, bool) bool { return false }
 
 // travel ports SulfurCube.travelInFluid: a cube holding a buoyant block
 // bobs up to the surface of water and lava.
-func (b *SulfurCubeBehaviour) travel(m *Mob, input mgl64.Vec3) bool {
+func (b *sulfurCubeBehaviour) travel(m *Mob, input mgl64.Vec3) bool {
 	if !m.AI.travelsInFluid(m) || b.bodyItem.Empty() || b.archetype == nil || !b.archetype.buoyant {
 		return false
 	}
@@ -263,7 +263,7 @@ func (b *SulfurCubeBehaviour) travel(m *Mob, input mgl64.Vec3) bool {
 // touch ports SulfurCube.playerTouch and doPush: players walking into a cube
 // holding a block push it along, faster the faster they go, and a hot cube
 // burns what it touches.
-func (b *SulfurCubeBehaviour) touch(m *Mob) {
+func (b *sulfurCubeBehaviour) touch(m *Mob) {
 	box := m.BBox()
 	held := !b.bodyItem.Empty()
 	for p := range m.tx.Players() {
@@ -295,7 +295,7 @@ func (b *SulfurCubeBehaviour) touch(m *Mob) {
 
 // playerPush ports SulfurCube.playerPush: a player beside the cube pushes it
 // away from them at up to half a block a tick.
-func (b *SulfurCubeBehaviour) playerPush(m *Mob, p world.Entity) {
+func (b *sulfurCubeBehaviour) playerPush(m *Mob, p world.Entity) {
 	toCube := m.data.Pos.Sub(p.Position())
 	feet, bottom := p.Position()[1], m.data.Pos[1]
 	top := bottom + m.BBox().Height()
@@ -340,7 +340,7 @@ func (b *SulfurCubeBehaviour) playerPush(m *Mob, p world.Entity) {
 // sulfurCubeLookControl ports SulfurCube.SulfurCubeLookControl: a cube
 // holding a block turns square to the nearest side instead of looking
 // about.
-type sulfurCubeLookControl struct{ cube *SulfurCubeBehaviour }
+type sulfurCubeLookControl struct{ cube *sulfurCubeBehaviour }
 
 func (c sulfurCubeLookControl) tick(m *Mob) {
 	if c.cube.bodyItem.Empty() {
@@ -355,7 +355,7 @@ func (c sulfurCubeLookControl) tick(m *Mob) {
 
 // sulfurCubeMoveControl ports SulfurCube.SulfurCubeMobMoveControl: a cube
 // holding a block does not hop.
-type sulfurCubeMoveControl struct{ cube *SulfurCubeBehaviour }
+type sulfurCubeMoveControl struct{ cube *sulfurCubeBehaviour }
 
 func (c sulfurCubeMoveControl) tick(m *Mob) {
 	if c.cube.bodyItem.Empty() {
@@ -381,7 +381,7 @@ func wrapDegrees90(a float64) float64 {
 // swallow and hops at it.
 type sulfurCubeSearchForItemsGoal struct {
 	goalFlags
-	cube   *SulfurCubeBehaviour
+	cube   *sulfurCubeBehaviour
 	target *world.EntityHandle
 }
 

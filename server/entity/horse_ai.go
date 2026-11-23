@@ -14,15 +14,15 @@ import (
 
 // horseRearing reports whether the species can rear, which
 // AbstractHorse.canPerformRearing denies llamas and camels.
-func (b *MountBehaviour) horseRearing() bool {
+func (b *mountBehaviour) horseRearing() bool {
 	return !b.llama() && !b.camel()
 }
 
-func (b *MountBehaviour) llama() bool { return b.kind == mountLlama || b.kind == mountTraderLlama }
-func (b *MountBehaviour) camel() bool { return b.kind == mountCamel || b.kind == mountCamelHusk }
+func (b *mountBehaviour) llama() bool { return b.kind == mountLlama || b.kind == mountTraderLlama }
+func (b *mountBehaviour) camel() bool { return b.kind == mountCamel || b.kind == mountCamelHusk }
 
 // maxTemper is AbstractHorse.getMaxTemper, lower for llamas.
-func (b *MountBehaviour) maxTemper() int {
+func (b *mountBehaviour) maxTemper() int {
 	if b.llama() {
 		return 30
 	}
@@ -31,7 +31,7 @@ func (b *MountBehaviour) maxTemper() int {
 
 // mobControlled ports isMobControlled: zombie horses and camel husks ridden
 // by a mob let it steer.
-func (b *MountBehaviour) mobControlled() bool {
+func (b *mountBehaviour) mobControlled() bool {
 	if (b.kind != mountZombieHorse && b.kind != mountCamelHusk) || b.passengers[0] == nil {
 		return false
 	}
@@ -40,7 +40,7 @@ func (b *MountBehaviour) mobControlled() bool {
 
 // controlled reports whether a player steers the mount: a saddled mount
 // carrying a player first.
-func (b *MountBehaviour) controlled() bool {
+func (b *mountBehaviour) controlled() bool {
 	return b.saddled && b.riddenByPlayer()
 }
 
@@ -48,7 +48,7 @@ func (b *MountBehaviour) controlled() bool {
 // rearing of a horse ends after a second, and a mount heals now and then
 // and, unless it is a llama, lowers its head now and then to eat the grass
 // block it stands on for 50 ticks.
-func (b *MountBehaviour) tickHorse(m *Mount, tx *world.Tx) {
+func (b *mountBehaviour) tickHorse(m *Mount, tx *world.Tx) {
 	if b.standCounter > 0 {
 		if b.standCounter--; b.standCounter == 0 {
 			m.updateState()
@@ -79,11 +79,11 @@ func (b *MountBehaviour) tickHorse(m *Mount, tx *world.Tx) {
 }
 
 // vehicle reports whether anything rides the mount.
-func (b *MountBehaviour) vehicle() bool { return b.passengers[0] != nil || b.passengers[1] != nil }
+func (b *mountBehaviour) vehicle() bool { return b.passengers[0] != nil || b.passengers[1] != nil }
 
 // standIfPossible ports AbstractHorse.standIfPossible: the horse rears up for
 // a second, stopping eating.
-func (b *MountBehaviour) standIfPossible(m *Mount) {
+func (b *mountBehaviour) standIfPossible(m *Mount) {
 	if !b.horseRearing() {
 		return
 	}
@@ -92,7 +92,7 @@ func (b *MountBehaviour) standIfPossible(m *Mount) {
 }
 
 // makeMad ports AbstractHorse.makeMad: the horse rears up and neighs angrily.
-func (b *MountBehaviour) makeMad(m *Mount) {
+func (b *mountBehaviour) makeMad(m *Mount) {
 	if b.standCounter > 0 {
 		return
 	}
@@ -101,21 +101,21 @@ func (b *MountBehaviour) makeMad(m *Mount) {
 }
 
 // tameWithName ports AbstractHorse.tameWithName.
-func (b *MountBehaviour) tameWithName(m *Mount, owner uuid.UUID) {
+func (b *mountBehaviour) tameWithName(m *Mount, owner uuid.UUID) {
 	b.owner, b.tamed = owner.String(), true
 	m.viewAction(TameAction{Succeeded: true})
 	m.updateState()
 }
 
 // modifyTemper ports AbstractHorse.modifyTemper.
-func (b *MountBehaviour) modifyTemper(amount int) {
+func (b *mountBehaviour) modifyTemper(amount int) {
 	b.temper = max(0, min(b.temper+amount, b.maxTemper()))
 }
 
 // handleEating ports AbstractHorse.handleEating, Llama.handleEating and
 // Camel.handleEating: food heals the mount, lets a foal grow up faster and
 // calms an untamed one, and golden food or hay puts a tamed adult in love.
-func (b *MountBehaviour) handleEating(m *Mount, user item.User, stack item.Stack) bool {
+func (b *mountBehaviour) handleEating(m *Mount, user item.User, stack item.Stack) bool {
 	name, _ := stack.Item().EncodeItem()
 	if b.camel() {
 		return b.camelEating(m, user)
@@ -172,7 +172,7 @@ func (b *MountBehaviour) handleEating(m *Mount, user item.User, stack item.Stack
 }
 
 // camelEating ports Camel.handleEating for its food.
-func (b *MountBehaviour) camelEating(m *Mount, user item.User) bool {
+func (b *mountBehaviour) camelEating(m *Mount, user item.User) bool {
 	healed := m.Health() < m.MaxHealth()
 	if healed {
 		m.Heal(2, FoodHealingSource{})
@@ -194,18 +194,18 @@ func (b *MountBehaviour) camelEating(m *Mount, user item.User) bool {
 
 // canAgeUp ports AgeableMob.canAgeUp: a baby that is not age locked, unless
 // it is a skeleton or zombie horse.
-func (b *MountBehaviour) canAgeUp() bool {
+func (b *mountBehaviour) canAgeUp() bool {
 	return b.ageTicks < 0 && !b.breeding.ageLocked && b.kind != mountSkeletonHorse && b.kind != mountZombieHorse
 }
 
 // canFallInLove ports Animal.canFallInLove, which zombie horses and camel
 // husks deny.
-func (b *MountBehaviour) canFallInLove() bool {
+func (b *mountBehaviour) canFallInLove() bool {
 	return b.breeding.inLove <= 0 && b.kind != mountZombieHorse && b.kind != mountCamelHusk && b.kind != mountSkeletonHorse
 }
 
 // setInLove ports Animal.setInLove.
-func (b *MountBehaviour) setInLove(m *Mount, user item.User) {
+func (b *mountBehaviour) setInLove(m *Mount, user item.User) {
 	b.breeding.inLove = loveDuration
 	if p, ok := user.(interface{ UUID() uuid.UUID }); ok {
 		b.breeding.loveCause = p.UUID()
@@ -216,7 +216,7 @@ func (b *MountBehaviour) setInLove(m *Mount, user item.User) {
 
 // canParent ports AbstractHorse.canParent: a tamed adult at full health
 // that nothing rides and that is in love.
-func (b *MountBehaviour) canParent(m *Mount) bool {
+func (b *mountBehaviour) canParent(m *Mount) bool {
 	return !b.vehicle() && b.tamed && b.ageTicks >= 0 && m.Health() >= m.MaxHealth() && b.breeding.InLove()
 }
 
@@ -339,7 +339,7 @@ func offspringAttribute(rng *vanilla.Random, a, b float64, r [2]float64) float64
 
 // randomizeHorse ports finalizeSpawn and randomizeAttributes of the horse
 // species with the random of the spawn.
-func (b *MountBehaviour) randomizeHorse(m *Mount, random *vanilla.Random) {
+func (b *mountBehaviour) randomizeHorse(m *Mount, random *vanilla.Random) {
 	group := m.H().SpawnGroup()
 	data, grouped := mountSpawnGroup{}, false
 	if group != nil {

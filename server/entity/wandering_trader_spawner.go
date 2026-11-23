@@ -105,7 +105,7 @@ func spawnWanderingTrader(tx *world.Tx, random *vanilla.Random) bool {
 		return false
 	}
 	handle := NewWanderingTrader(world.EntitySpawnOpts{Position: pos.Vec3Middle(), SpawnReason: "event"})
-	e, ok := tx.AddEntity(handle).(*WanderingTrader)
+	e, ok := tx.AddEntity(handle).(*wanderingTrader)
 	if !ok {
 		return false
 	}
@@ -119,7 +119,7 @@ func spawnWanderingTrader(tx *world.Tx, random *vanilla.Random) bool {
 }
 
 // spawnTraderLlama ports WanderingTraderSpawner.tryToSpawnLlamaFor.
-func spawnTraderLlama(tx *world.Tx, random *vanilla.Random, trader *WanderingTrader) {
+func spawnTraderLlama(tx *world.Tx, random *vanilla.Random, trader *wanderingTrader) {
 	pos, ok := traderSpawnPosition(tx, random, cube.PosFromVec3(trader.Position()), 4)
 	if !ok {
 		return

@@ -195,7 +195,7 @@ func holdsKineticWeapon(m *Mob) bool {
 
 // LandRandomPosAwayRange ports LandRandomPos.getPosAway with a range of
 // distances.
-func LandRandomPosAwayRange(m *Mob, minHorizontal, maxHorizontal float64, vertical int, away mgl64.Vec3) (mgl64.Vec3, bool) {
+func landRandomPosAwayRange(m *Mob, minHorizontal, maxHorizontal float64, vertical int, away mgl64.Vec3) (mgl64.Vec3, bool) {
 	dir := m.data.Pos.Sub(away)
 	if dir.Len() == 0 {
 		r := m.Random()
@@ -272,7 +272,7 @@ func (g *spearUseGoal) Tick(m *Mob) {
 		if g.engageTime--; g.engageTime == 0 {
 			m.StopUsingItem()
 			d := math.Sqrt(dist)
-			if p, ok := LandRandomPosAwayRange(m, math.Max(0, 9+mount-d), math.Max(1, 11+mount-d), 7, target.Position()); ok {
+			if p, ok := landRandomPosAwayRange(m, math.Max(0, 9+mount-d), math.Max(1, 11+mount-d), 7, target.Position()); ok {
 				g.awayPos = &p
 			} else {
 				g.awayPos = nil
@@ -300,7 +300,7 @@ func (g *spearUseGoal) Tick(m *Mob) {
 	m.AI.nav.MoveToEntity(m, target, g.charging)
 	if dist < g.rangeSqr || m.AI.nav.IsDone() {
 		d := math.Sqrt(dist)
-		if p, ok := LandRandomPosAwayRange(m, 6+mount-d, 7+mount-d, 7, target.Position()); ok {
+		if p, ok := landRandomPosAwayRange(m, 6+mount-d, 7+mount-d, 7, target.Position()); ok {
 			g.awayPos = &p
 		}
 	}
@@ -318,7 +318,7 @@ const (
 // spearAbleToAttack reports if a mob with a brain has an attack target and
 // a kinetic weapon.
 func spearAbleToAttack(m *Mob) bool {
-	return m.Brain().has(memAttackTarget) && holdsKineticWeapon(m)
+	return m.brain().has(memAttackTarget) && holdsKineticWeapon(m)
 }
 
 // newSpearApproach ports SpearApproach: a mob with a spear walks to within
@@ -329,24 +329,24 @@ func newSpearApproach(speed, approach float64) *behavior {
 		noTimeout:  true,
 		checkExtra: func(m *Mob) bool { return spearAbleToAttack(m) && !m.UsingItem() },
 		canStillUse: func(m *Mob, _ int64) bool {
-			target := m.Brain().entity(m, memAttackTarget)
+			target := m.brain().entity(m, memAttackTarget)
 			return spearAbleToAttack(m) && target != nil && m.DistanceToSqr(target) > approach*approach
 		},
 		start: func(m *Mob, _ int64) {
 			m.SetAggressive(true)
-			m.Brain().set(memSpearStatus, spearApproach)
+			m.brain().set(memSpearStatus, spearApproach)
 		},
 		tick: func(m *Mob, _ int64) {
-			target := m.Brain().entity(m, memAttackTarget)
+			target := m.brain().entity(m, memAttackTarget)
 			if target == nil {
 				return
 			}
-			m.Brain().set(memLookTarget, newEntityTracker(target, true))
+			m.brain().set(memLookTarget, newEntityTracker(target, true))
 			m.AI.nav.MoveToEntity(m, target, speed)
 		},
 		stop: func(m *Mob, _ int64) {
 			m.AI.nav.Stop()
-			m.Brain().set(memSpearStatus, spearCharging)
+			m.brain().set(memSpearStatus, spearCharging)
 		},
 	}
 }
@@ -359,21 +359,21 @@ func newSpearAttack(charging, repositioning, inRange float64) *behavior {
 		entry:     []memoryCondition{{memSpearStatus, memPresent}},
 		noTimeout: true,
 		checkExtra: func(m *Mob) bool {
-			v, _ := m.Brain().get(memSpearStatus)
+			v, _ := m.brain().get(memSpearStatus)
 			return v == spearCharging && spearAbleToAttack(m) && !m.UsingItem()
 		},
 		canStillUse: func(m *Mob, _ int64) bool {
-			t, _ := m.Brain().int(memSpearEngageTime)
+			t, _ := m.brain().int(memSpearEngageTime)
 			return t > 0 && spearAbleToAttack(m)
 		},
 		start: func(m *Mob, _ int64) {
 			m.SetAggressive(true)
-			m.Brain().set(memSpearEngageTime, kineticUseDuration(m.mainHand()))
-			m.Brain().erase(memSpearChargePosition)
+			m.brain().set(memSpearEngageTime, kineticUseDuration(m.mainHand()))
+			m.brain().erase(memSpearChargePosition)
 			m.StartUsingItem()
 		},
 		tick: func(m *Mob, _ int64) {
-			b := m.Brain()
+			b := m.brain()
 			target := b.entity(m, memAttackTarget)
 			if target == nil {
 				return
@@ -397,7 +397,7 @@ func newSpearAttack(charging, repositioning, inRange float64) *behavior {
 			m.AI.nav.MoveToEntity(m, target, charging)
 			if dist < inRange*inRange || m.AI.nav.IsDone() {
 				d := math.Sqrt(dist)
-				if p, ok := LandRandomPosAwayRange(m, 6+mount-d, 7+mount-d, 7, target.Position()); ok {
+				if p, ok := landRandomPosAwayRange(m, 6+mount-d, 7+mount-d, 7, target.Position()); ok {
 					b.set(memSpearChargePosition, p)
 				} else {
 					b.erase(memSpearChargePosition)
@@ -407,7 +407,7 @@ func newSpearAttack(charging, repositioning, inRange float64) *behavior {
 		stop: func(m *Mob, _ int64) {
 			m.AI.nav.Stop()
 			m.StopUsingItem()
-			b := m.Brain()
+			b := m.brain()
 			b.erase(memSpearChargePosition)
 			b.erase(memSpearEngageTime)
 			b.set(memSpearStatus, spearRetreat)
@@ -422,7 +422,7 @@ func newSpearRetreat(speed float64) *behavior {
 		entry:       []memoryCondition{{memSpearStatus, memPresent}},
 		minDuration: 100, maxDuration: 100,
 		checkExtra: func(m *Mob) bool {
-			b := m.Brain()
+			b := m.brain()
 			if !spearAbleToAttack(m) || m.UsingItem() {
 				return false
 			}
@@ -438,7 +438,7 @@ func newSpearRetreat(speed float64) *behavior {
 				mount = 2
 			}
 			d := math.Sqrt(m.DistanceToSqr(target))
-			p, ok := LandRandomPosAwayRange(m, math.Max(0, 9+mount-d), math.Max(1, 11+mount-d), 7, target.Position())
+			p, ok := landRandomPosAwayRange(m, math.Max(0, 9+mount-d), math.Max(1, 11+mount-d), 7, target.Position())
 			if !ok {
 				return false
 			}
@@ -446,7 +446,7 @@ func newSpearRetreat(speed float64) *behavior {
 			return true
 		},
 		canStillUse: func(m *Mob, _ int64) bool {
-			b := m.Brain()
+			b := m.brain()
 			t, ok := b.int(memSpearFleeingTime)
 			if !ok {
 				t = 100
@@ -455,10 +455,10 @@ func newSpearRetreat(speed float64) *behavior {
 		},
 		start: func(m *Mob, _ int64) {
 			m.SetAggressive(true)
-			m.Brain().set(memSpearFleeingTime, 0)
+			m.brain().set(memSpearFleeingTime, 0)
 		},
 		tick: func(m *Mob, _ int64) {
-			b := m.Brain()
+			b := m.brain()
 			target := b.entity(m, memAttackTarget)
 			if target == nil {
 				return
@@ -475,7 +475,7 @@ func newSpearRetreat(speed float64) *behavior {
 			m.AI.nav.Stop()
 			m.SetAggressive(false)
 			m.StopUsingItem()
-			b := m.Brain()
+			b := m.brain()
 			b.erase(memSpearFleeingTime)
 			b.erase(memSpearFleeingPosition)
 			b.erase(memSpearStatus)

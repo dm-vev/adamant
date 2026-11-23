@@ -29,10 +29,10 @@ const (
 var spellColours = [...][3]float64{{0, 0, 0}, {.7, .7, .8}, {.4, .3, .35}, {.7, .5, .2}}
 
 // Casting reports if the evoker casts a spell.
-func (m *HostileMob) Casting() bool { return m.state().spell != spellNone }
+func (m *hostileMob) Casting() bool { return m.state().spell != spellNone }
 
 // SpellColour returns the colour of the spell the evoker casts.
-func (m *HostileMob) SpellColour() [3]float64 { return spellColours[m.state().spell] }
+func (m *hostileMob) SpellColour() [3]float64 { return spellColours[m.state().spell] }
 
 func (b *hostileState) setSpell(m *Mob, spell illagerSpell) {
 	if b.spell != spell {
@@ -45,28 +45,28 @@ func (b *hostileState) setSpell(m *Mob, spell illagerSpell) {
 func registerEvokerGoals(m *Mob, b *hostileState) {
 	ai := m.AI
 	registerRaiderGoals(m)
-	ai.Goals.Add(0, NewFloatGoal(m))
+	ai.Goals.Add(0, newFloatGoal(m))
 	ai.Goals.Add(1, &evokerCastingSpellGoal{goalFlags{GoalMove | GoalLook}})
-	ai.Goals.Add(2, NewAvoidEntityTypesGoal(playerTypes, 8, .6, 1))
-	ai.Goals.Add(3, NewAvoidEntityTypesGoal(entityTypes{"minecraft:creaking"}, 8, .6, 1))
+	ai.Goals.Add(2, newAvoidEntityTypesGoal(playerTypes, 8, .6, 1))
+	ai.Goals.Add(3, newAvoidEntityTypesGoal(entityTypes{"minecraft:creaking"}, 8, .6, 1))
 	ai.Goals.Add(4, &evokerSummonSpellGoal{spellUseGoal{castWarmup: 20, castingTime: 100, castingInterval: 340, prepareSound: "entity.evoker.prepare_summon", spell: spellSummonVex}})
 	ai.Goals.Add(5, &spellUseGoal{castWarmup: 20, castingTime: 40, castingInterval: 100, prepareSound: "entity.evoker.prepare_attack", spell: spellFangs, perform: evokerFangsSpell})
 	ai.Goals.Add(6, &evokerWololoSpellGoal{spellUseGoal{castWarmup: 40, castingTime: 60, castingInterval: 140, prepareSound: "entity.evoker.prepare_wololo", spell: spellWololo}})
-	ai.Goals.Add(8, NewRandomStrollGoal(.6))
-	lookPlayer := NewLookAtPlayerGoal(3)
+	ai.Goals.Add(8, newRandomStrollGoal(.6))
+	lookPlayer := newLookAtPlayerGoal(3)
 	lookPlayer.Probability = 1
 	ai.Goals.Add(9, lookPlayer)
-	lookMob := NewLookAtPlayerGoal(8)
+	lookMob := newLookAtPlayerGoal(8)
 	lookMob.IsType = isMobEntity
 	ai.Goals.Add(10, lookMob)
 	ai.Targets.Add(1, raiderHurtByTarget())
-	players := NewNearestAttackableTargetGoal(nil, true)
+	players := newNearestAttackableTargetGoal(nil, true)
 	players.unseenMemoryTicks = 300
 	ai.Targets.Add(2, players)
-	villagers := NewNearestAttackableTypesGoal(villagerTypes, false)
+	villagers := newNearestAttackableTypesGoal(villagerTypes, false)
 	villagers.unseenMemoryTicks = 300
 	ai.Targets.Add(3, villagers)
-	ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, false))
+	ai.Targets.Add(3, newNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, false))
 }
 
 // evokerCastingSpellGoal ports Evoker.EvokerCastingSpellGoal: an evoker
@@ -194,7 +194,7 @@ func (g *evokerSummonSpellGoal) CanUse(m *Mob) bool {
 	}
 	vexes := 0
 	for e := range m.tx.EntitiesWithin(m.BBox().Grow(16)) {
-		if e.H().Type() == VexType && entityAlive(e) && m.DistanceToSqr(e) <= 256 {
+		if e.H().Type() == vexType && entityAlive(e) && m.DistanceToSqr(e) <= 256 {
 			vexes++
 		}
 	}
@@ -215,11 +215,11 @@ func evokerSummonVexes(m *Mob) {
 	for range 3 {
 		pos := m.BlockPos().Add(cube.Pos{-2 + int(r.NextInt(5)), 1, -2 + int(r.NextInt(5))})
 		h := NewVex(world.EntitySpawnOpts{Position: pos.Vec3Middle(), SpawnReason: "mob_summoned"})
-		vex, ok := m.tx.AddEntity(h).(*Vex)
+		vx, ok := m.tx.AddEntity(h).(*vex)
 		if !ok {
 			continue
 		}
-		s := vex.state()
+		s := vx.state()
 		s.vexOwner = m.H()
 		s.vexBound, s.vexHasBound = pos, true
 		s.vexLimitedLife, s.vexLifeTicks = true, 20*(30+int(r.NextInt(90)))
@@ -275,18 +275,18 @@ func (g *evokerWololoSpellGoal) Tick(m *Mob) {
 func registerVexGoals(m *Mob, b *hostileState) {
 	ai := m.AI
 	ai.moveOverride = &b.vexMove
-	ai.Goals.Add(0, NewFloatGoal(m))
+	ai.Goals.Add(0, newFloatGoal(m))
 	ai.Goals.Add(4, &vexChargeAttackGoal{goalFlags{GoalMove}})
 	ai.Goals.Add(8, &vexRandomMoveGoal{goalFlags{GoalMove}})
-	lookPlayer := NewLookAtPlayerGoal(3)
+	lookPlayer := newLookAtPlayerGoal(3)
 	lookPlayer.Probability = 1
 	ai.Goals.Add(9, lookPlayer)
-	lookMob := NewLookAtPlayerGoal(8)
+	lookMob := newLookAtPlayerGoal(8)
 	lookMob.IsType = isMobEntity
 	ai.Goals.Add(10, lookMob)
 	ai.Targets.Add(1, raiderHurtByTarget())
 	ai.Targets.Add(2, &vexCopyOwnerTargetGoal{targetGoal: newTargetGoal(false, false)})
-	ai.Targets.Add(3, NewNearestAttackableTargetGoal(nil, true))
+	ai.Targets.Add(3, newNearestAttackableTargetGoal(nil, true))
 }
 
 // tickVexLife ports the limited life of Vex.tick: once its life runs out, a
@@ -305,16 +305,16 @@ func (b *hostileState) tickVexLife(m *Mob) {
 
 // Charging reports if the vex charges at its target or the pillager loads
 // its crossbow.
-func (m *HostileMob) Charging() bool {
+func (m *hostileMob) Charging() bool {
 	s := m.state()
 	return s.vexCharging || s.chargingCrossbow
 }
 
 // CrossbowCharged reports if the pillager holds its crossbow loaded.
-func (m *HostileMob) CrossbowCharged() bool { return m.state().crossbowCharged }
+func (m *hostileMob) CrossbowCharged() bool { return m.state().crossbowCharged }
 
 // Celebrating reports if the raider celebrates a won raid.
-func (m *HostileMob) Celebrating() bool { return m.state().celebrating }
+func (m *hostileMob) Celebrating() bool { return m.state().celebrating }
 
 func (b *hostileState) setVexCharging(m *Mob, charging bool) {
 	if b.vexCharging != charging {
@@ -472,19 +472,19 @@ func registerRavagerGoals(m *Mob, b *hostileState) {
 	ai := m.AI
 	registerRaiderGoals(m)
 	ai.SetPathfindingMalus(PathLeaves, 0)
-	ai.Goals.Add(0, NewFloatGoal(m))
-	ai.Goals.Add(4, NewMeleeAttackGoal(1, true))
-	ai.Goals.Add(5, NewWaterAvoidingRandomStrollGoal(.4))
-	ai.Goals.Add(6, NewLookAtPlayerGoal(6))
-	lookMob := NewLookAtPlayerGoal(8)
+	ai.Goals.Add(0, newFloatGoal(m))
+	ai.Goals.Add(4, newMeleeAttackGoal(1, true))
+	ai.Goals.Add(5, newWaterAvoidingRandomStrollGoal(.4))
+	ai.Goals.Add(6, newLookAtPlayerGoal(6))
+	lookMob := newLookAtPlayerGoal(8)
 	lookMob.IsType = isMobEntity
 	ai.Goals.Add(10, lookMob)
 	ai.Targets.Add(2, raiderHurtByTarget())
-	ai.Targets.Add(3, NewNearestAttackableTargetGoal(nil, true))
-	villagers := NewNearestAttackableTypesGoal(villagerTypes, true)
+	ai.Targets.Add(3, newNearestAttackableTargetGoal(nil, true))
+	villagers := newNearestAttackableTypesGoal(villagerTypes, true)
 	villagers.Selector = func(_ *Mob, target world.Entity) bool { return !mobIsBaby(target) }
 	ai.Targets.Add(4, villagers)
-	ai.Targets.Add(4, NewNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true))
+	ai.Targets.Add(4, newNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true))
 }
 
 // immobile ports Ravager.isImmobile: a ravager stands still while it bites,
@@ -500,10 +500,10 @@ func (b *hostileState) blind() bool {
 }
 
 // Stunned reports if the ravager is stunned.
-func (m *HostileMob) Stunned() bool { return m.state().ravagerStun > 0 }
+func (m *hostileMob) Stunned() bool { return m.state().ravagerStun > 0 }
 
 // Roaring reports if the ravager roars.
-func (m *HostileMob) Roaring() bool { return m.state().ravagerRoar > 0 }
+func (m *hostileMob) Roaring() bool { return m.state().ravagerRoar > 0 }
 
 // tickRavager ports what Ravager.aiStep does after the AI: a ravager speeds
 // up when hunting, tramples leaves it runs into, and counts down its bite,
@@ -566,7 +566,7 @@ func (b *hostileState) tickRavager(m *Mob) {
 func (b *hostileState) ravagerRoarAttack(m *Mob) {
 	for e := range m.tx.EntitiesWithin(m.BBox().Grow(4)) {
 		l, ok := e.(Living)
-		if !ok || e.H().Type() == RavagerType || !entityAlive(e) || (mobGriefingDisabled(m.tx) && e.H().Type().EncodeEntity() == "minecraft:armor_stand") {
+		if !ok || e.H().Type() == ravagerType || !entityAlive(e) || (mobGriefingDisabled(m.tx) && e.H().Type().EncodeEntity() == "minecraft:armor_stand") {
 			continue
 		}
 		if !hostileIllager(e.H().Type().EncodeEntity()) {

@@ -6,7 +6,7 @@ import (
 
 // poseTime ports Camel.getPoseTime: the game ticks since the camel last sat
 // down or stood up.
-func (b *MountBehaviour) poseTime(tx *world.Tx) int64 {
+func (b *mountBehaviour) poseTime(tx *world.Tx) int64 {
 	last := b.lastPoseTick
 	if last < 0 {
 		last = -last
@@ -23,13 +23,13 @@ func (b *MountBehaviour) poseTime(tx *world.Tx) int64 {
 
 // refuseToMove ports Camel.refuseToMove: a camel does not move while it sits
 // or sits down or stands up.
-func (b *MountBehaviour) refuseToMove(tx *world.Tx) bool {
+func (b *mountBehaviour) refuseToMove(tx *world.Tx) bool {
 	return b.camel() && (b.sitting || b.inPoseTransition(tx))
 }
 
 // inPoseTransition ports Camel.isInPoseTransition: sitting down takes 40
 // ticks and standing up 52.
-func (b *MountBehaviour) inPoseTransition(tx *world.Tx) bool {
+func (b *mountBehaviour) inPoseTransition(tx *world.Tx) bool {
 	transition := int64(52)
 	if b.sitting {
 		transition = 40
@@ -38,7 +38,7 @@ func (b *MountBehaviour) inPoseTransition(tx *world.Tx) bool {
 }
 
 // sitDown ports Camel.sitDown.
-func (b *MountBehaviour) sitDown(m *Mount) {
+func (b *mountBehaviour) sitDown(m *Mount) {
 	if b.sitting {
 		return
 	}
@@ -48,7 +48,7 @@ func (b *MountBehaviour) sitDown(m *Mount) {
 }
 
 // standUp ports Camel.standUp: the camel takes 52 ticks to stand up.
-func (b *MountBehaviour) standUp(m *Mount) {
+func (b *mountBehaviour) standUp(m *Mount) {
 	if !b.sitting {
 		return
 	}
@@ -58,7 +58,7 @@ func (b *MountBehaviour) standUp(m *Mount) {
 }
 
 // standUpInstantly ports Camel.standUpInstantly.
-func (b *MountBehaviour) standUpInstantly(m *Mount) {
+func (b *mountBehaviour) standUpInstantly(m *Mount) {
 	wasSitting := b.sitting
 	b.sitting, b.lastPoseTick = false, max(0, m.tx.CurrentTick()-52-1)
 	m.tx.EmitGameEvent(world.GameEventEntityAction, m.Position(), world.GameEventContext{Source: m})
@@ -67,10 +67,10 @@ func (b *MountBehaviour) standUpInstantly(m *Mount) {
 	}
 }
 
-func (b *MountBehaviour) brain() *Brain { return b.br }
+func (b *mountBehaviour) brain() *brain { return b.br }
 
 // customServerAiStep ports Camel.customServerAiStep and CamelAi.updateActivity.
-func (b *MountBehaviour) customServerAiStep(m *Mob) {
+func (b *mountBehaviour) customServerAiStep(m *Mob) {
 	if b.br == nil {
 		return
 	}
@@ -79,7 +79,7 @@ func (b *MountBehaviour) customServerAiStep(m *Mob) {
 }
 
 // newCamelBrain ports CamelAi and the brain provider of Camel.
-func newCamelBrain(b *MountBehaviour) *Brain {
+func newCamelBrain(b *mountBehaviour) *brain {
 	br := newBrain(nearestLivingEntitySensor{}, hurtBySensor{}, temptingSensor{items: animalTemptation}, adultSensor{})
 	moves := func(m *Mob) bool { return !b.refuseToMove(m.tx) }
 	br.addActivity(activityCore, 0,
@@ -115,7 +115,7 @@ func newCamelBrain(b *MountBehaviour) *Brain {
 
 // newCamelPanic ports CamelAi.CamelPanic: an AnimalPanic at four times the
 // speed that stands the camel up at once, unless a mob rides it.
-func newCamelPanic(b *MountBehaviour) *behavior {
+func newCamelPanic(b *mountBehaviour) *behavior {
 	p := newAnimalPanic(4, nil, nil, func(m *Mob) { b.standUpInstantly(&Mount{Ent: m.Ent}) })
 	check := p.checkExtra
 	p.checkExtra = func(m *Mob) bool { return check(m) && !b.mobControlled() }
@@ -125,7 +125,7 @@ func newCamelPanic(b *MountBehaviour) *behavior {
 // newCamelRandomSitting ports CamelAi.RandomSitting: a camel on the ground
 // that kept its pose for a while sits down or stands up, unless it is in
 // water, on a lead or ridden.
-func newCamelRandomSitting(b *MountBehaviour, minimalPoseSeconds int) *behavior {
+func newCamelRandomSitting(b *mountBehaviour, minimalPoseSeconds int) *behavior {
 	return &behavior{
 		checkExtra: func(m *Mob) bool {
 			return !m.InWater() && b.poseTime(m.tx) >= int64(minimalPoseSeconds*20) && m.Ent.HolderLeashID() == 0 && m.OnGround() &&
@@ -135,7 +135,7 @@ func newCamelRandomSitting(b *MountBehaviour, minimalPoseSeconds int) *behavior 
 			mount := &Mount{Ent: m.Ent}
 			if b.sitting {
 				b.standUp(mount)
-			} else if !m.Brain().has(memIsPanicking) {
+			} else if !m.brain().has(memIsPanicking) {
 				b.sitDown(mount)
 			}
 		},
@@ -144,7 +144,7 @@ func newCamelRandomSitting(b *MountBehaviour, minimalPoseSeconds int) *behavior 
 
 // camelLookControl ports Camel.CamelLookControl: a camel someone steers
 // does not look about.
-type camelLookControl struct{ mount *MountBehaviour }
+type camelLookControl struct{ mount *mountBehaviour }
 
 func (c camelLookControl) tick(m *Mob) {
 	if c.mount.playerController(m.tx) == nil && !c.mount.mobControlled() {

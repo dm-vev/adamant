@@ -34,13 +34,13 @@ func (b *parrotBehaviour) registerGoals(m *Mob) {
 	ai.SetPathfindingMalus(PathFireInNeighbour, -1)
 	ai.SetPathfindingMalus(PathFire, -1)
 	ai.SetPathfindingMalus(PathCocoa, -1)
-	b.panic = NewPanicGoal(1.25)
+	b.panic = newPanicGoal(1.25)
 	ai.Goals.Add(0, tamableAnimalPanicGoal{b.panic})
-	ai.Goals.Add(0, NewFloatGoal(m))
-	ai.Goals.Add(1, NewLookAtPlayerGoal(8))
+	ai.Goals.Add(0, newFloatGoal(m))
+	ai.Goals.Add(1, newLookAtPlayerGoal(8))
 	ai.Goals.Add(2, newSitWhenOrderedToGoal())
 	ai.Goals.Add(2, newFollowOwnerGoal(1, 5, 1))
-	wander := NewRandomStrollGoal(1)
+	wander := newRandomStrollGoal(1)
 	wander.Position = b.wanderPosition
 	ai.Goals.Add(2, wander)
 	ai.Goals.Add(3, &landOnOwnersShoulderGoal{parrot: b})
@@ -127,7 +127,7 @@ var parrotImitations = map[string]string{
 func (b *parrotBehaviour) wanderPosition(m *Mob) (mgl64.Vec3, bool) {
 	pos, ok := mgl64.Vec3{}, false
 	if m.InWater() {
-		pos, ok = LandRandomPos(m, 15, 15)
+		pos, ok = landRandomPos(m, 15, 15)
 	}
 	// WaterAvoidingRandomStrollGoal.probability.
 	if m.Random().NextFloat() >= .001 {
@@ -172,10 +172,10 @@ func parrotTreePos(m *Mob) (mgl64.Vec3, bool) {
 // a spot ahead of the mob hovering over the ground, or else in the air.
 func waterAvoidingRandomFlyingPos(m *Mob) (mgl64.Vec3, bool) {
 	dir := m.data.Rot.Vec3()
-	if pos, ok := HoverRandomPos(m, 8, 7, dir[0], dir[2], math.Pi/2, 3, 1); ok {
+	if pos, ok := hoverRandomPos(m, 8, 7, dir[0], dir[2], math.Pi/2, 3, 1); ok {
 		return pos, true
 	}
-	return AirAndWaterRandomPos(m, 8, 4, -2, dir[0], dir[2], math.Pi/2)
+	return airAndWaterRandomPos(m, 8, 4, -2, dir[0], dir[2], math.Pi/2)
 }
 
 // shoulderCarrier is implemented by players a parrot may sit on, as
@@ -222,8 +222,8 @@ func (g *landOnOwnersShoulderGoal) Tick(m *Mob) {
 		return
 	}
 	// ShoulderRidingEntity.setEntityOnShoulder.
-	data := ParrotType.EncodeNBT(m.data)
-	data["id"] = ParrotType.EncodeEntity()
+	data := entityParrotType.EncodeNBT(m.data)
+	data["id"] = entityParrotType.EncodeEntity()
 	if owner.SetEntityOnShoulder(data) {
 		g.sittingOnShoulder = true
 		_ = m.Ent.CloseIn(m.tx)

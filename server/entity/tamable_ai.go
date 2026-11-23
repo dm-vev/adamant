@@ -130,7 +130,7 @@ func boxCollidesWithBlocks(tx *world.Tx, box cube.BBox) bool {
 
 // tamableAnimalPanicGoal ports TamableAnimal.TamableAnimalPanicGoal: a
 // panicking pet far from its owner teleports to it.
-type tamableAnimalPanicGoal struct{ *PanicGoal }
+type tamableAnimalPanicGoal struct{ *panicGoal }
 
 func (g tamableAnimalPanicGoal) Tick(m *Mob) {
 	t := tamableOf(m)
@@ -360,16 +360,16 @@ func (g *ownerHurtTargetGoal) Stop(m *Mob) { g.stop(m) }
 // nonTameRandomTargetGoal ports NonTameRandomTargetGoal: an untamed animal
 // now and then hunts the nearest prey and keeps after it while the
 // targeting conditions hold.
-type nonTameRandomTargetGoal struct{ *NearestAttackableTargetGoal }
+type nonTameRandomTargetGoal struct{ *nearestAttackableTargetGoal }
 
 func newNonTameRandomTargetGoal(isType func(world.Entity) bool, mustSee bool, selector func(*Mob, world.Entity) bool) nonTameRandomTargetGoal {
-	g := NewNearestAttackableTargetGoal(isType, mustSee)
+	g := newNearestAttackableTargetGoal(isType, mustSee)
 	g.Selector = selector
 	return nonTameRandomTargetGoal{g}
 }
 
 func (g nonTameRandomTargetGoal) CanUse(m *Mob) bool {
-	return !tamableOf(m).tamed && g.NearestAttackableTargetGoal.CanUse(m)
+	return !tamableOf(m).tamed && g.nearestAttackableTargetGoal.CanUse(m)
 }
 
 func (g nonTameRandomTargetGoal) CanContinueToUse(m *Mob) bool {

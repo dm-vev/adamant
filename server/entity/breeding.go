@@ -295,12 +295,7 @@ func (b *breeding) decodeNBT(m map[string]any) {
 }
 
 func viewBreederAction(a breeder, action world.EntityAction) {
-	tx := a.currentTx()
-	viewers := tx.Viewers(a.Position())
-	for _, v := range viewers {
-		v.ViewEntityAction(a, action)
-	}
-	tx.ReleaseViewers(viewers)
+	world.BroadcastEntityAction(a.currentTx(), a, action)
 }
 
 func viewBreederState(a breeder) {

@@ -20,7 +20,7 @@ var tropicalFishPatterns = [...]int32{0, 0x100, 0x200, 0x300, 0x400, 0x500, 1, 0
 // AcceptItem ports Animal.mobInteract and Axolotl.usePlayerItem for
 // axolotls: a bucket of tropical fish feeds them and leaves a water bucket.
 // Tadpoles eat as Tadpole.mobInteract.
-func (b *AquaticMobBehaviour) AcceptItem(e *Ent, from world.Entity, _ *world.Tx, ctx *item.UseContext) bool {
+func (b *aquaticMobBehaviour) AcceptItem(e *Ent, from world.Entity, _ *world.Tx, ctx *item.UseContext) bool {
 	user, ok := from.(item.User)
 	if ctx == nil || !ok {
 		return false
@@ -32,7 +32,7 @@ func (b *AquaticMobBehaviour) AcceptItem(e *Ent, from world.Entity, _ *world.Tx,
 	if b.id != "minecraft:axolotl" {
 		return false
 	}
-	a := &Axolotl{&AquaticMob{Ent: e}}
+	a := &Axolotl{&aquaticMob{Ent: e}}
 	held, _ := user.HeldItems()
 	if !feedBreeder(a, user, ctx) {
 		return false
@@ -65,14 +65,14 @@ func (a *Axolotl) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHand
 	if b.random.NextInt(1200) == 0 {
 		variant = 4
 	}
-	return babyAt(a).New(AxolotlType, AquaticMobConfig{ID: "minecraft:axolotl", MaxHealth: 14, Variant: variant, Age: babyStartAge})
+	return babyAt(a).New(axolotlType, aquaticMobConfig{ID: "minecraft:axolotl", MaxHealth: 14, Variant: variant, Age: babyStartAge})
 }
 
 // aquaticSchoolGroupData is AbstractSchoolingFish.SchoolSpawnGroupData: the
 // first fish spawned with a group leads the others.
 type aquaticSchoolGroupData struct {
 	leader      *world.EntityHandle
-	leaderState *AquaticMobBehaviour
+	leaderState *aquaticMobBehaviour
 }
 type tropicalFishSchoolGroupData struct {
 	school  *aquaticSchoolGroupData
@@ -85,7 +85,7 @@ type axolotlSpawnGroupData struct {
 
 // finalizeSchoolSpawn ports AbstractSchoolingFish.finalizeSpawn: the first
 // fish of a spawn group leads it, and the others follow it.
-func (b *AquaticMobBehaviour) finalizeSchoolSpawn(e *AquaticMob) *aquaticSchoolGroupData {
+func (b *aquaticMobBehaviour) finalizeSchoolSpawn(e *aquaticMob) *aquaticSchoolGroupData {
 	group := e.H().SpawnGroup()
 	if group == nil {
 		return nil
@@ -145,8 +145,8 @@ func (a *Axolotl) FinalizeSpawn(reason string, random *vanilla.Random) {
 	data.size++
 }
 
-func (c *Cod) FinalizeSpawn(_ string, _ *vanilla.Random) {
-	c.behaviour().finalizeSchoolSpawn(c.AquaticMob)
+func (c *cod) FinalizeSpawn(_ string, _ *vanilla.Random) {
+	c.behaviour().finalizeSchoolSpawn(c.aquaticMob)
 }
 
 // FinalizeSpawn chooses Salmon's weighted size variant.
@@ -163,7 +163,7 @@ func (s *Salmon) FinalizeSpawn(_ string, random *vanilla.Random) {
 	default:
 		s.behaviour().variant = 2
 	}
-	s.behaviour().finalizeSchoolSpawn(s.AquaticMob)
+	s.behaviour().finalizeSchoolSpawn(s.aquaticMob)
 }
 
 // FinalizeSpawn preserves Tropical Fish's spawn-cohort variant and schooling leader.
@@ -171,7 +171,7 @@ func (f *TropicalFish) FinalizeSpawn(reason string, random *vanilla.Random) {
 	if reason == "bucket" || random == nil {
 		return
 	}
-	school := f.behaviour().finalizeSchoolSpawn(f.AquaticMob)
+	school := f.behaviour().finalizeSchoolSpawn(f.aquaticMob)
 	group := f.H().SpawnGroup()
 	if group != nil {
 		if data, ok := group.Data.(*tropicalFishSchoolGroupData); ok {

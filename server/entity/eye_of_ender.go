@@ -18,7 +18,7 @@ func NewEyeOfEnder(tx *world.Tx, opts world.EntitySpawnOpts, target mgl64.Vec3) 
 	if horizontal := math.Hypot(delta[0], delta[2]); horizontal > 12 {
 		target = opts.Position.Add(mgl64.Vec3{delta[0] / horizontal * 12, 8, delta[2] / horizontal * 12})
 	}
-	return opts.New(EyeOfEnderType, eyeOfEnderConfig{target: target, survive: randInt(tx.RegionRandom(), 5) > 0})
+	return opts.New(entityEyeOfEnderType, eyeOfEnderConfig{target: target, survive: randInt(tx.RegionRandom(), 5) > 0})
 }
 
 type eyeOfEnderConfig struct {
@@ -86,10 +86,10 @@ func eyeOfEnderMovement(old, pos, target mgl64.Vec3) mgl64.Vec3 {
 }
 
 // EyeOfEnder is the thrown eye of ender signal entity.
-type EyeOfEnder struct{ *Ent }
+type eyeOfEnder struct{ *Ent }
 
 // Tick moves the eye and resolves its end of life.
-func (e *EyeOfEnder) Tick(tx *world.Tx, _ int64) {
+func (e *eyeOfEnder) Tick(tx *world.Tx, _ int64) {
 	e.bindTx(tx)
 	if m := e.Behaviour().Tick(e.Ent, tx); m != nil {
 		m.Send()
@@ -97,7 +97,7 @@ func (e *EyeOfEnder) Tick(tx *world.Tx, _ int64) {
 }
 
 // EyeOfEnderType is the entity type for the travelling eye signal.
-var EyeOfEnderType eyeOfEnderType
+var entityEyeOfEnderType eyeOfEnderType
 
 type eyeOfEnderType struct{}
 
@@ -107,7 +107,7 @@ func (eyeOfEnderType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityD
 		// was moving, and shatters.
 		d.Data = &eyeOfEnderBehaviour{}
 	}
-	return &EyeOfEnder{Ent: &Ent{tx: tx, handle: h, data: d}}
+	return &eyeOfEnder{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
 func (eyeOfEnderType) EncodeEntity() string { return "minecraft:eye_of_ender_signal" }
 func (eyeOfEnderType) BBox(world.Entity) cube.BBox {

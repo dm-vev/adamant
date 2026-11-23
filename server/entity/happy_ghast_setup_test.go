@@ -18,7 +18,7 @@ func TestGhastlingsTakeAdultControlsWhenGrown(t *testing.T) {
 	t.Cleanup(func() { _ = w.Close() })
 	var h *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
-		h = tx.AddEntity(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 70, .5}}.New(HappyGhastType, happyGhastConfig{age: -3})).H()
+		h = tx.AddEntity(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 70, .5}}.New(entityHappyGhastType, happyGhastConfig{age: -3})).H()
 	})
 	w.AdvanceTick()
 	<-w.Exec(func(tx *world.Tx) {

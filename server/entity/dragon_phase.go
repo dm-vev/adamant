@@ -65,9 +65,9 @@ type dragonPhases struct {
 }
 
 // dragonSitting ports DragonPhaseInstance.isSitting.
-func dragonSitting(p DragonPhase) bool {
+func dragonSitting(p dragonPhase) bool {
 	switch p {
-	case DragonSittingScanning, DragonSittingAttacking, DragonSittingFlaming, DragonHovering:
+	case dragonSittingScanning, dragonSittingAttacking, dragonSittingFlaming, dragonHovering:
 		return true
 	}
 	return false
@@ -75,7 +75,7 @@ func dragonSitting(p DragonPhase) bool {
 
 // setPhase ports EnderDragonPhaseManager.setPhase: the old phase ends and the
 // new one begins, unless the dragon is in it already.
-func (b *EnderDragonBehaviour) setPhase(tx *world.Tx, p DragonPhase) {
+func (b *enderDragonBehaviour) setPhase(tx *world.Tx, p dragonPhase) {
 	if b.phaseSet && b.phase == p {
 		return
 	}
@@ -85,36 +85,36 @@ func (b *EnderDragonBehaviour) setPhase(tx *world.Tx, p DragonPhase) {
 	b.phase, b.phaseSet = p, true
 	ph := &b.ph
 	switch p {
-	case DragonHoldingPattern:
+	case dragonHoldingPattern:
 		ph.holdPath, ph.holdTarget = dragonPath{}, dragonTarget{}
-	case DragonStrafePlayer:
+	case dragonStrafePlayer:
 		ph.strafeCharge, ph.strafeTarget, ph.strafePath, ph.strafeAttack = 0, dragonTarget{}, dragonPath{}, nil
-	case DragonLandingApproach:
+	case dragonLandingApproach:
 		ph.approachPath, ph.approachTarget = dragonPath{}, dragonTarget{}
-	case DragonLanding:
+	case dragonLanding:
 		ph.landingTarget = dragonTarget{}
-	case DragonTakeoff:
+	case dragonTakeoff:
 		ph.takeoffFirst, ph.takeoffPath, ph.takeoffTarget = true, dragonPath{}, dragonTarget{}
-	case DragonSittingScanning:
+	case dragonSittingScanning:
 		ph.scanTime = 0
-	case DragonSittingAttacking:
+	case dragonSittingAttacking:
 		ph.attackTicks = 0
-	case DragonSittingFlaming:
+	case dragonSittingFlaming:
 		ph.flameTicks = 0
 		ph.flameCount++
-	case DragonChargingPlayer:
+	case dragonChargingPlayer:
 		ph.chargeTarget, ph.chargeSince = dragonTarget{}, 0
-	case DragonDying:
+	case dragonDying:
 		ph.dyingTarget, ph.dyingTime = dragonTarget{}, 0
-	case DragonHovering:
+	case dragonHovering:
 		ph.hoverTarget = dragonTarget{}
 	}
 }
 
 // endPhase ports DragonPhaseInstance.end: only the flaming phase puts out its
 // flame.
-func (b *EnderDragonBehaviour) endPhase(tx *world.Tx) {
-	if b.phase != DragonSittingFlaming || b.ph.flame == nil {
+func (b *enderDragonBehaviour) endPhase(tx *world.Tx) {
+	if b.phase != dragonSittingFlaming || b.ph.flame == nil {
 		return
 	}
 	if tx != nil {
@@ -126,79 +126,79 @@ func (b *EnderDragonBehaviour) endPhase(tx *world.Tx) {
 }
 
 // flyTarget ports DragonPhaseInstance.getFlyTargetLocation.
-func (b *EnderDragonBehaviour) flyTarget() dragonTarget {
+func (b *enderDragonBehaviour) flyTarget() dragonTarget {
 	ph := &b.ph
 	switch b.phase {
-	case DragonHoldingPattern:
+	case dragonHoldingPattern:
 		return ph.holdTarget
-	case DragonStrafePlayer:
+	case dragonStrafePlayer:
 		return ph.strafeTarget
-	case DragonLandingApproach:
+	case dragonLandingApproach:
 		return ph.approachTarget
-	case DragonLanding:
+	case dragonLanding:
 		return ph.landingTarget
-	case DragonTakeoff:
+	case dragonTakeoff:
 		return ph.takeoffTarget
-	case DragonChargingPlayer:
+	case dragonChargingPlayer:
 		return ph.chargeTarget
-	case DragonDying:
+	case dragonDying:
 		return ph.dyingTarget
-	case DragonHovering:
+	case dragonHovering:
 		return ph.hoverTarget
 	}
 	return dragonTarget{}
 }
 
 // flySpeed ports DragonPhaseInstance.getFlySpeed.
-func (b *EnderDragonBehaviour) flySpeed() float32 {
+func (b *enderDragonBehaviour) flySpeed() float32 {
 	switch b.phase {
-	case DragonLanding:
+	case dragonLanding:
 		return 1.5
-	case DragonChargingPlayer, DragonDying:
+	case dragonChargingPlayer, dragonDying:
 		return 3
-	case DragonHovering:
+	case dragonHovering:
 		return 1
 	}
 	return .6
 }
 
 // turnSpeed ports DragonPhaseInstance.getTurnSpeed.
-func (b *EnderDragonBehaviour) turnSpeed(vel mgl64.Vec3) float32 {
+func (b *enderDragonBehaviour) turnSpeed(vel mgl64.Vec3) float32 {
 	rotSpeed := float32(math.Hypot(vel[0], vel[2])) + 1
 	dist := min(rotSpeed, 40)
-	if b.phase == DragonLanding {
+	if b.phase == dragonLanding {
 		return dist / rotSpeed
 	}
 	return .7 / dist / rotSpeed
 }
 
 // tickPhase ports DragonPhaseInstance.doServerTick.
-func (b *EnderDragonBehaviour) tickPhase(e *Ent, tx *world.Tx) {
+func (b *enderDragonBehaviour) tickPhase(e *Ent, tx *world.Tx) {
 	switch b.phase {
-	case DragonHoldingPattern:
+	case dragonHoldingPattern:
 		b.tickHoldingPattern(e, tx)
-	case DragonStrafePlayer:
+	case dragonStrafePlayer:
 		b.tickStrafe(e, tx)
-	case DragonLandingApproach:
+	case dragonLandingApproach:
 		b.tickLandingApproach(e, tx)
-	case DragonLanding:
+	case dragonLanding:
 		b.tickLanding(e, tx)
-	case DragonTakeoff:
+	case dragonTakeoff:
 		b.tickTakeoff(e, tx)
-	case DragonSittingScanning:
+	case dragonSittingScanning:
 		b.tickSittingScanning(e, tx)
-	case DragonSittingAttacking:
+	case dragonSittingAttacking:
 		b.ph.attackTicks++
 		if b.ph.attackTicks-1 >= 40 {
-			b.setPhase(tx, DragonSittingFlaming)
+			b.setPhase(tx, dragonSittingFlaming)
 		}
-	case DragonSittingFlaming:
+	case dragonSittingFlaming:
 		b.tickSittingFlaming(e, tx)
-	case DragonChargingPlayer:
+	case dragonChargingPlayer:
 		b.tickCharge(e, tx)
-	case DragonDying:
+	case dragonDying:
 		b.tickDying(e, tx)
-	case DragonHovering:
+	case dragonHovering:
 		if !b.ph.hoverTarget.set {
 			b.ph.hoverTarget = dragonTarget{e.Position(), true}
 		}
@@ -207,7 +207,7 @@ func (b *EnderDragonBehaviour) tickPhase(e *Ent, tx *world.Tx) {
 
 // podium returns the top of the End podium, as getHeightmapPos of the fight
 // origin.
-func (b *EnderDragonBehaviour) podium(tx *world.Tx, noLeaves bool) cube.Pos {
+func (b *enderDragonBehaviour) podium(tx *world.Tx, noLeaves bool) cube.Pos {
 	return cube.Pos{b.origin[0], tx.JavaMotionBlockingHeight(b.origin[0], b.origin[2], noLeaves), b.origin[2]}
 }
 
@@ -230,7 +230,7 @@ func navigate(r *vanilla.Random, path *dragonPath, target *dragonTarget) {
 
 // circleNode ports the ring a flying phase circles on: one node on, or six
 // across now and then, and only on the inner rings once no crystal is left.
-func (b *EnderDragonBehaviour) circleNode(r *vanilla.Random, current int, clockwise *bool, allowOuter bool) int {
+func (b *enderDragonBehaviour) circleNode(r *vanilla.Random, current int, clockwise *bool, allowOuter bool) int {
 	target := current
 	if randInt(r, 8) == 0 {
 		*clockwise = !*clockwise
@@ -255,13 +255,13 @@ func (b *EnderDragonBehaviour) circleNode(r *vanilla.Random, current int, clockw
 }
 
 // tickHoldingPattern ports DragonHoldingPatternPhase.doServerTick.
-func (b *EnderDragonBehaviour) tickHoldingPattern(e *Ent, tx *world.Tx) {
+func (b *enderDragonBehaviour) tickHoldingPattern(e *Ent, tx *world.Tx) {
 	if dist := b.ph.holdTarget.distanceSqr(e.Position()); dist < 100 || dist > 22500 {
 		b.holdingPatternTarget(e, tx)
 	}
 }
 
-func (b *EnderDragonBehaviour) holdingPatternTarget(e *Ent, tx *world.Tx) {
+func (b *enderDragonBehaviour) holdingPatternTarget(e *Ent, tx *world.Tx) {
 	ph := &b.ph
 	if ph.holdPath.finished() {
 		egg := b.podium(tx, true)
@@ -270,7 +270,7 @@ func (b *EnderDragonBehaviour) holdingPatternTarget(e *Ent, tx *world.Tx) {
 			crystals = b.fight.AliveCrystals()
 		}
 		if randInt(tx.RegionRandom(), crystals+3) == 0 {
-			b.setPhase(tx, DragonLandingApproach)
+			b.setPhase(tx, dragonLandingApproach)
 			return
 		}
 		player := dragonNearestPlayer(tx, e, egg.Vec3(), 0, false, nil)
@@ -295,14 +295,14 @@ func (b *EnderDragonBehaviour) holdingPatternTarget(e *Ent, tx *world.Tx) {
 }
 
 // strafePlayer ports DragonHoldingPatternPhase.strafePlayer.
-func (b *EnderDragonBehaviour) strafePlayer(e *Ent, tx *world.Tx, player world.Entity) {
-	b.setPhase(tx, DragonStrafePlayer)
+func (b *enderDragonBehaviour) strafePlayer(e *Ent, tx *world.Tx, player world.Entity) {
+	b.setPhase(tx, dragonStrafePlayer)
 	b.setStrafeTarget(e, tx, player)
 }
 
 // setStrafeTarget ports DragonStrafePlayerPhase.setTarget: a path to the
 // node nearest the target, ending above it.
-func (b *EnderDragonBehaviour) setStrafeTarget(e *Ent, tx *world.Tx, target world.Entity) {
+func (b *enderDragonBehaviour) setStrafeTarget(e *Ent, tx *world.Tx, target world.Entity) {
 	ph := &b.ph
 	ph.strafeAttack = target.H()
 	current := b.closestNode(tx, e)
@@ -321,14 +321,14 @@ func (b *EnderDragonBehaviour) setStrafeTarget(e *Ent, tx *world.Tx, target worl
 
 // tickStrafe ports DragonStrafePlayerPhase.doServerTick: the dragon flies at
 // its target and shoots a fireball once it has faced it for five ticks.
-func (b *EnderDragonBehaviour) tickStrafe(e *Ent, tx *world.Tx) {
+func (b *enderDragonBehaviour) tickStrafe(e *Ent, tx *world.Tx) {
 	ph := &b.ph
 	var attack world.Entity
 	if ph.strafeAttack != nil {
 		attack, _ = ph.strafeAttack.Entity(tx)
 	}
 	if attack == nil {
-		b.setPhase(tx, DragonHoldingPattern)
+		b.setPhase(tx, dragonHoldingPattern)
 		return
 	}
 	pos, tp := e.Position(), attack.Position()
@@ -372,7 +372,7 @@ func (b *EnderDragonBehaviour) tickStrafe(e *Ent, tx *world.Tx) {
 	if ph.strafePath.valid {
 		ph.strafePath.finish()
 	}
-	b.setPhase(tx, DragonHoldingPattern)
+	b.setPhase(tx, dragonHoldingPattern)
 }
 
 // dragonViewVector ports Entity.calculateViewVector.
@@ -385,10 +385,10 @@ func dragonViewVector(xRot, yRot float32) mgl64.Vec3 {
 }
 
 // headLookVector ports EnderDragon.getHeadLookVector.
-func (b *EnderDragonBehaviour) headLookVector(e *Ent, tx *world.Tx) mgl64.Vec3 {
+func (b *enderDragonBehaviour) headLookVector(e *Ent, tx *world.Tx) mgl64.Vec3 {
 	yaw := float32(e.Rotation().Yaw())
 	switch {
-	case b.phase == DragonLanding || b.phase == DragonTakeoff:
+	case b.phase == dragonLanding || b.phase == dragonTakeoff:
 		egg := b.podium(tx, true)
 		dist := max(float32(math.Sqrt(distToCenterSqr(egg, e.Position())))/4, 1)
 		yOffset := 6 / dist
@@ -400,7 +400,7 @@ func (b *EnderDragonBehaviour) headLookVector(e *Ent, tx *world.Tx) mgl64.Vec3 {
 }
 
 // tickLandingApproach ports DragonLandingApproachPhase.doServerTick.
-func (b *EnderDragonBehaviour) tickLandingApproach(e *Ent, tx *world.Tx) {
+func (b *enderDragonBehaviour) tickLandingApproach(e *Ent, tx *world.Tx) {
 	ph := &b.ph
 	if dist := ph.approachTarget.distanceSqr(e.Position()); dist >= 100 && dist <= 22500 {
 		return
@@ -422,12 +422,12 @@ func (b *EnderDragonBehaviour) tickLandingApproach(e *Ent, tx *world.Tx) {
 	}
 	navigate(tx.RegionRandom(), &ph.approachPath, &ph.approachTarget)
 	if ph.approachPath.finished() {
-		b.setPhase(tx, DragonLanding)
+		b.setPhase(tx, dragonLanding)
 	}
 }
 
 // tickLanding ports DragonLandingPhase.doServerTick.
-func (b *EnderDragonBehaviour) tickLanding(e *Ent, tx *world.Tx) {
+func (b *enderDragonBehaviour) tickLanding(e *Ent, tx *world.Tx) {
 	ph := &b.ph
 	if !ph.landingTarget.set {
 		egg := b.podium(tx, true)
@@ -435,17 +435,17 @@ func (b *EnderDragonBehaviour) tickLanding(e *Ent, tx *world.Tx) {
 	}
 	if ph.landingTarget.distanceSqr(e.Position()) < 1 {
 		ph.flameCount = 0
-		b.setPhase(tx, DragonSittingScanning)
+		b.setPhase(tx, dragonSittingScanning)
 	}
 }
 
 // tickTakeoff ports DragonTakeoffPhase.doServerTick.
-func (b *EnderDragonBehaviour) tickTakeoff(e *Ent, tx *world.Tx) {
+func (b *enderDragonBehaviour) tickTakeoff(e *Ent, tx *world.Tx) {
 	ph := &b.ph
 	if !ph.takeoffFirst && ph.takeoffPath.valid {
 		egg := b.podium(tx, true)
 		if distToCenterSqr(egg, e.Position()) >= 100 {
-			b.setPhase(tx, DragonHoldingPattern)
+			b.setPhase(tx, dragonHoldingPattern)
 		}
 		return
 	}
@@ -473,7 +473,7 @@ func (b *EnderDragonBehaviour) tickTakeoff(e *Ent, tx *world.Tx) {
 // tickSittingScanning ports DragonSittingScanningPhase.doServerTick: the
 // dragon turns to the nearest player close by, roars at it after 25 ticks,
 // and takes off after 100 without one, charging at one within 150 blocks.
-func (b *EnderDragonBehaviour) tickSittingScanning(e *Ent, tx *world.Tx) {
+func (b *enderDragonBehaviour) tickSittingScanning(e *Ent, tx *world.Tx) {
 	ph := &b.ph
 	ph.scanTime++
 	pos := e.Position()
@@ -482,7 +482,7 @@ func (b *EnderDragonBehaviour) tickSittingScanning(e *Ent, tx *world.Tx) {
 	})
 	if target != nil {
 		if ph.scanTime > 25 {
-			b.setPhase(tx, DragonSittingAttacking)
+			b.setPhase(tx, dragonSittingAttacking)
 			return
 		}
 		tp := target.Position()
@@ -509,9 +509,9 @@ func (b *EnderDragonBehaviour) tickSittingScanning(e *Ent, tx *world.Tx) {
 	}
 	if ph.scanTime >= 100 {
 		target = dragonNearestPlayer(tx, e, pos, 150, true, nil)
-		b.setPhase(tx, DragonTakeoff)
+		b.setPhase(tx, dragonTakeoff)
 		if target != nil {
-			b.setPhase(tx, DragonChargingPlayer)
+			b.setPhase(tx, dragonChargingPlayer)
 			b.ph.chargeTarget = dragonTarget{target.Position(), true}
 		}
 	}
@@ -519,14 +519,14 @@ func (b *EnderDragonBehaviour) tickSittingScanning(e *Ent, tx *world.Tx) {
 
 // tickSittingFlaming ports DragonSittingFlamingPhase.doServerTick: ten
 // ticks in, the dragon breathes a cloud of dragon's breath before its head.
-func (b *EnderDragonBehaviour) tickSittingFlaming(e *Ent, tx *world.Tx) {
+func (b *enderDragonBehaviour) tickSittingFlaming(e *Ent, tx *world.Tx) {
 	ph := &b.ph
 	ph.flameTicks++
 	if ph.flameTicks >= 200 {
 		if ph.flameCount >= 4 {
-			b.setPhase(tx, DragonTakeoff)
+			b.setPhase(tx, dragonTakeoff)
 		} else {
-			b.setPhase(tx, DragonSittingScanning)
+			b.setPhase(tx, dragonSittingScanning)
 		}
 		return
 	}
@@ -552,15 +552,15 @@ func (b *EnderDragonBehaviour) tickSittingFlaming(e *Ent, tx *world.Tx) {
 }
 
 // tickCharge ports DragonChargePlayerPhase.doServerTick.
-func (b *EnderDragonBehaviour) tickCharge(e *Ent, tx *world.Tx) {
+func (b *enderDragonBehaviour) tickCharge(e *Ent, tx *world.Tx) {
 	ph := &b.ph
 	switch {
 	case !ph.chargeTarget.set:
-		b.setPhase(tx, DragonHoldingPattern)
+		b.setPhase(tx, dragonHoldingPattern)
 	case ph.chargeSince > 0:
 		ph.chargeSince++
 		if ph.chargeSince-1 >= 10 {
-			b.setPhase(tx, DragonHoldingPattern)
+			b.setPhase(tx, dragonHoldingPattern)
 		}
 	default:
 		if dist := ph.chargeTarget.distanceSqr(e.Position()); dist < 100 || dist > 22500 {
@@ -571,7 +571,7 @@ func (b *EnderDragonBehaviour) tickCharge(e *Ent, tx *world.Tx) {
 
 // tickDying ports DragonDeathPhase.doServerTick: the dragon flies to the
 // podium and dies once it is there.
-func (b *EnderDragonBehaviour) tickDying(e *Ent, tx *world.Tx) {
+func (b *enderDragonBehaviour) tickDying(e *Ent, tx *world.Tx) {
 	ph := &b.ph
 	ph.dyingTime++
 	if !ph.dyingTarget.set {
@@ -587,8 +587,8 @@ func (b *EnderDragonBehaviour) tickDying(e *Ent, tx *world.Tx) {
 
 // crystalDestroyed ports DragonPhaseInstance.onCrystalDestroyed: only a
 // circling dragon turns on the player.
-func (b *EnderDragonBehaviour) crystalDestroyed(e *Ent, tx *world.Tx, player world.Entity) {
-	if b.phase == DragonHoldingPattern && player != nil && canBeSeenAsEnemy(player) {
+func (b *enderDragonBehaviour) crystalDestroyed(e *Ent, tx *world.Tx, player world.Entity) {
+	if b.phase == dragonHoldingPattern && player != nil && canBeSeenAsEnemy(player) {
 		b.strafePlayer(e, tx, player)
 	}
 }

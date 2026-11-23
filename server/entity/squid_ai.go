@@ -68,13 +68,13 @@ func oceanWildlifeEntity(e *Ent) world.Entity {
 	base := &oceanWildlife{Ent: e}
 	switch base.b().id {
 	case "minecraft:squid":
-		return &Squid{base}
+		return &squid{base}
 	case "minecraft:glow_squid":
-		return &GlowSquid{base}
+		return &glowSquid{base}
 	case "minecraft:turtle":
 		return &Turtle{base}
 	}
-	return &Dolphin{base}
+	return &dolphin{base}
 }
 
 // registerSquidGoals ports Squid.registerGoals.

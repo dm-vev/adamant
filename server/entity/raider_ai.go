@@ -65,8 +65,8 @@ func (b *hostileState) alliedTo(m *Mob, other world.Entity) bool {
 		return true
 	}
 	if b.kind == "minecraft:evoker" {
-		if vex, ok := other.(*Vex); ok {
-			if owner := vex.state().vexOwner; owner != nil && owner == m.H() {
+		if vx, ok := other.(*vex); ok {
+			if owner := vx.state().vexOwner; owner != nil && owner == m.H() {
 				return true
 			}
 		}
@@ -120,8 +120,8 @@ func registerRaiderGoals(m *Mob) {
 
 // raiderHurtByTarget returns Java's HurtByTargetGoal(this, Raider.class)
 // that alerts others: raiders ignore damage from other raiders.
-func raiderHurtByTarget() *HurtByTargetGoal {
-	g := NewHurtByTargetGoal()
+func raiderHurtByTarget() *hurtByTargetGoal {
+	g := newHurtByTargetGoal()
 	g.IgnoreDamageFrom = isRaiderEntity
 	g.AlertOthers = true
 	return g
@@ -236,7 +236,7 @@ func (g *pathfindToRaidGoal) Tick(m *Mob) {
 	}
 	if m.AI.nav.IsDone() {
 		center := raid.Center()
-		if pos, ok := DefaultRandomPosTowards(m, 15, 4, mgl64.Vec3{float64(center[0]) + .5, float64(center[1]), float64(center[2]) + .5}, math.Pi/2); ok {
+		if pos, ok := defaultRandomPosTowards(m, 15, 4, mgl64.Vec3{float64(center[0]) + .5, float64(center[1]), float64(center[2]) + .5}, math.Pi/2); ok {
 			m.AI.nav.MoveToPos(m, pos[0], pos[1], pos[2], 1)
 		}
 	}
@@ -309,9 +309,9 @@ func (g *raiderMoveThroughVillageGoal) Tick(m *Mob) {
 		return
 	}
 	poi := mgl64.Vec3{float64(g.poi[0]) + .5, float64(g.poi[1]), float64(g.poi[2]) + .5}
-	pos, ok := DefaultRandomPosTowards(m, 16, 7, poi, math.Pi/10)
+	pos, ok := defaultRandomPosTowards(m, 16, 7, poi, math.Pi/10)
 	if !ok {
-		pos, ok = DefaultRandomPosTowards(m, 8, 7, poi, math.Pi/2)
+		pos, ok = defaultRandomPosTowards(m, 8, 7, poi, math.Pi/2)
 	}
 	if !ok {
 		g.stuck = true
@@ -449,21 +449,21 @@ func (b *hostileState) holdingCrossbow() bool {
 func registerPillagerGoals(m *Mob, b *hostileState) {
 	ai := m.AI
 	registerRaiderGoals(m)
-	ai.Goals.Add(0, NewFloatGoal(m))
-	ai.Goals.Add(1, NewAvoidEntityTypesGoal(entityTypes{"minecraft:creaking"}, 8, 1, 1.2))
+	ai.Goals.Add(0, newFloatGoal(m))
+	ai.Goals.Add(1, newAvoidEntityTypesGoal(entityTypes{"minecraft:creaking"}, 8, 1, 1.2))
 	ai.Goals.Add(2, &holdGroundAttackGoal{goalFlags: goalFlags{GoalMove | GoalLook}, hostileRadiusSqr: 100})
 	ai.Goals.Add(3, &rangedCrossbowAttackGoal{goalFlags: goalFlags{GoalMove | GoalLook}, speedModifier: 1, attackRadiusSqr: 64})
-	ai.Goals.Add(8, NewRandomStrollGoal(.6))
-	lookPlayer := NewLookAtPlayerGoal(15)
+	ai.Goals.Add(8, newRandomStrollGoal(.6))
+	lookPlayer := newLookAtPlayerGoal(15)
 	lookPlayer.Probability = 1
 	ai.Goals.Add(9, lookPlayer)
-	lookMob := NewLookAtPlayerGoal(15)
+	lookMob := newLookAtPlayerGoal(15)
 	lookMob.IsType = isMobEntity
 	ai.Goals.Add(10, lookMob)
 	ai.Targets.Add(1, raiderHurtByTarget())
-	ai.Targets.Add(2, NewNearestAttackableTargetGoal(nil, true))
-	ai.Targets.Add(3, NewNearestAttackableTypesGoal(villagerTypes, false))
-	ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true))
+	ai.Targets.Add(2, newNearestAttackableTargetGoal(nil, true))
+	ai.Targets.Add(3, newNearestAttackableTypesGoal(villagerTypes, false))
+	ai.Targets.Add(3, newNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true))
 }
 
 // isMobEntity reports if an entity is a mob, as Java's Mob class: a living
@@ -631,61 +631,61 @@ func (b *hostileState) performCrossbowAttack(m *Mob, target world.Entity) {
 func registerVindicatorGoals(m *Mob, b *hostileState) {
 	ai := m.AI
 	registerRaiderGoals(m)
-	ai.Goals.Add(0, NewFloatGoal(m))
-	ai.Goals.Add(1, NewAvoidEntityTypesGoal(entityTypes{"minecraft:creaking"}, 8, 1, 1.2))
-	breakDoor := NewBreakDoorGoal(func(d world.Difficulty) bool {
+	ai.Goals.Add(0, newFloatGoal(m))
+	ai.Goals.Add(1, newAvoidEntityTypesGoal(entityTypes{"minecraft:creaking"}, 8, 1, 1.2))
+	breakDoor := newBreakDoorGoal(func(d world.Difficulty) bool {
 		return d == world.DifficultyNormal || d == world.DifficultyHard
 	})
-	ai.Goals.Add(2, &vindicatorBreakDoorGoal{BreakDoorGoal: breakDoor})
+	ai.Goals.Add(2, &vindicatorBreakDoorGoal{breakDoorGoal: breakDoor})
 	ai.Goals.Add(3, &openDoorGoal{raidOnly: true})
 	ai.Goals.Add(4, &holdGroundAttackGoal{goalFlags: goalFlags{GoalMove | GoalLook}, hostileRadiusSqr: 100})
-	ai.Goals.Add(5, NewMeleeAttackGoal(1, false))
+	ai.Goals.Add(5, newMeleeAttackGoal(1, false))
 	ai.Targets.Add(1, raiderHurtByTarget())
-	ai.Targets.Add(2, NewNearestAttackableTargetGoal(nil, true))
-	ai.Targets.Add(3, NewNearestAttackableTypesGoal(villagerTypes, true))
-	ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true))
-	johnny := NewNearestAttackableTargetGoal(func(e world.Entity) bool { _, ok := e.(Living); return ok }, true)
+	ai.Targets.Add(2, newNearestAttackableTargetGoal(nil, true))
+	ai.Targets.Add(3, newNearestAttackableTypesGoal(villagerTypes, true))
+	ai.Targets.Add(3, newNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true))
+	johnny := newNearestAttackableTargetGoal(func(e world.Entity) bool { _, ok := e.(Living); return ok }, true)
 	johnny.RandomInterval = 0
 	johnny.mustReach = true
-	ai.Targets.Add(4, &vindicatorJohnnyAttackGoal{NearestAttackableTargetGoal: johnny})
-	ai.Goals.Add(8, NewRandomStrollGoal(.6))
-	lookPlayer := NewLookAtPlayerGoal(3)
+	ai.Targets.Add(4, &vindicatorJohnnyAttackGoal{nearestAttackableTargetGoal: johnny})
+	ai.Goals.Add(8, newRandomStrollGoal(.6))
+	lookPlayer := newLookAtPlayerGoal(3)
 	lookPlayer.Probability = 1
 	ai.Goals.Add(9, lookPlayer)
-	lookMob := NewLookAtPlayerGoal(8)
+	lookMob := newLookAtPlayerGoal(8)
 	lookMob.IsType = isMobEntity
 	ai.Goals.Add(10, lookMob)
 }
 
 // vindicatorBreakDoorGoal ports Vindicator.VindicatorBreakDoorGoal: in raids
 // vindicators break wooden doors on normal and hard.
-type vindicatorBreakDoorGoal struct{ *BreakDoorGoal }
+type vindicatorBreakDoorGoal struct{ *breakDoorGoal }
 
 func (g *vindicatorBreakDoorGoal) Flags() GoalFlag { return GoalMove }
 
 func (g *vindicatorBreakDoorGoal) CanUse(m *Mob) bool {
-	return raiderOf(m).activeRaid(m) != nil && m.Random().NextInt(int32(reducedTickDelay(10))) == 0 && g.BreakDoorGoal.CanUse(m)
+	return raiderOf(m).activeRaid(m) != nil && m.Random().NextInt(int32(reducedTickDelay(10))) == 0 && g.breakDoorGoal.CanUse(m)
 }
 
 func (g *vindicatorBreakDoorGoal) CanContinueToUse(m *Mob) bool {
-	return raiderOf(m).activeRaid(m) != nil && g.BreakDoorGoal.CanContinueToUse(m)
+	return raiderOf(m).activeRaid(m) != nil && g.breakDoorGoal.CanContinueToUse(m)
 }
 
 func (g *vindicatorBreakDoorGoal) Start(m *Mob) {
-	g.BreakDoorGoal.Start(m)
+	g.breakDoorGoal.Start(m)
 	m.AI.noActionTime = 0
 }
 
 // vindicatorJohnnyAttackGoal ports Vindicator.VindicatorJohnnyAttackGoal: a
 // vindicator named Johnny attacks every living thing.
-type vindicatorJohnnyAttackGoal struct{ *NearestAttackableTargetGoal }
+type vindicatorJohnnyAttackGoal struct{ *nearestAttackableTargetGoal }
 
 func (g *vindicatorJohnnyAttackGoal) CanUse(m *Mob) bool {
-	return hostileOf(m).isJohnny(m) && g.NearestAttackableTargetGoal.CanUse(m)
+	return hostileOf(m).isJohnny(m) && g.nearestAttackableTargetGoal.CanUse(m)
 }
 
 func (g *vindicatorJohnnyAttackGoal) Start(m *Mob) {
-	g.NearestAttackableTargetGoal.Start(m)
+	g.nearestAttackableTargetGoal.Start(m)
 	m.AI.noActionTime = 0
 }
 

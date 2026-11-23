@@ -20,10 +20,10 @@ import (
 
 // NewWolf creates a worldless wolf handle.
 func NewWolf(opts world.EntitySpawnOpts, conf WolfBehaviourConfig) *world.EntityHandle {
-	return opts.New(WolfType, conf)
+	return opts.New(entityWolfType, conf)
 }
 
-var WolfType wolfType
+var entityWolfType wolfType
 
 type wolfType struct{}
 
@@ -37,7 +37,7 @@ func (wolfType) EncodeEntity() string        { return "minecraft:wolf" }
 func (wolfType) BBox(world.Entity) cube.BBox { return cube.Box(-0.4, 0, -0.4, 0.4, 0.85, 0.4) }
 func (wolfType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	c := WolfBehaviourConfig{}
-	javaState := ReadNativeMobJavaState(m)
+	javaState := readNativeMobJavaState(m)
 	source := m
 	if javaState != nil {
 		source = javaState
@@ -57,7 +57,7 @@ func (wolfType) DecodeNBT(m map[string]any, data *world.EntityData) {
 		c.Tamed = nbtconv.Bool(m, "IsTamed")
 	}
 	c.Sitting = nbtconv.Bool(source, "Sitting") || nbtconv.Bool(m, "Sitting")
-	c.Angry = nbtconv.Bool(source, "Angry") || NativeMobAngry(m)
+	c.Angry = nbtconv.Bool(source, "Angry") || nativeMobAngry(m)
 	c.AgeTicks = int(nbtconv.Int32(source, "Age"))
 	if owner := javaUUIDString(source["Owner"]); owner != "" {
 		c.OwnerUUID, c.Tamed = owner, true
@@ -73,7 +73,7 @@ func (wolfType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	}
 	if variant, ok := source["variant"].(string); ok {
 		c.Variant = wolfVariant(variant)
-	} else if variant, ok := NativeMobVariant(m); ok {
+	} else if variant, ok := nativeMobVariant(m); ok {
 		c.Variant, _ = wolfVariantFromBedrock(variant)
 	}
 	if variant, ok := source["sound_variant"].(string); ok {
@@ -103,7 +103,7 @@ func (wolfType) DecodeNBT(m map[string]any, data *world.EntityData) {
 				}
 			}
 		}
-	} else if equipment := ReadNativeMobEquipment(m); len(equipment.Armor) > 4 && equipment.Armor[4].Name != "" {
+	} else if equipment := readNativeMobEquipment(m); len(equipment.Armor) > 4 && equipment.Armor[4].Name != "" {
 		armor := equipment.Armor[4]
 		if stack, ok := nativeWolfArmorStack(armor); ok {
 			if value, ok := stack.Item().(item.WolfArmor); ok {
@@ -112,13 +112,13 @@ func (wolfType) DecodeNBT(m map[string]any, data *world.EntityData) {
 			}
 		}
 	}
-	data.Data = c.New()
-	data.Data.(*WolfBehaviour).breeding.decodeNBT(source)
+	data.Data = c.newBehaviour()
+	data.Data.(*wolfBehaviour).breeding.decodeNBT(source)
 }
 func (wolfType) EncodeNBT(data *world.EntityData) map[string]any {
-	b := data.Data.(*WolfBehaviour)
+	b := data.Data.(*wolfBehaviour)
 	maxHealth := b.health.MaxHealth()
-	attributes := EncodeNativeMobAttributes(ReadNativeMobAttributes(data.NativeNBT), []NativeMobAttribute{{
+	attributes := encodeNativeMobAttributes(readNativeMobAttributes(data.NativeNBT), []nativeMobAttr{{
 		Name: "minecraft:health", Base: maxHealth, Current: b.health.Health(),
 		DefaultMin: 0, DefaultMax: maxHealth, Min: 0, Max: maxHealth,
 	}})
@@ -127,40 +127,40 @@ func (wolfType) EncodeNBT(data *world.EntityData) map[string]any {
 		"IsTamed":    boolByte(b.tamed),
 		"Sitting":    boolByte(b.orderedToSit),
 	}
-	native = SetNativeMobVariant(native, bedrockWolfVariants[b.variant])
-	native = SetNativeMobAngry(native, b.angry())
-	ownerID, ok := NativeMobOwnerID(data.NativeNBT)
+	native = setNativeMobVariant(native, bedrockWolfVariants[b.variant])
+	native = setNativeMobAngry(native, b.angry())
+	ownerID, ok := nativeMobOwnerID(data.NativeNBT)
 	if !ok {
 		ownerID = -1
 	}
-	native = SetNativeMobOwnerID(native, ownerID)
+	native = setNativeMobOwnerID(native, ownerID)
 
-	equipment := ReadNativeMobEquipment(data.NativeNBT)
+	equipment := readNativeMobEquipment(data.NativeNBT)
 	if equipment.Armor == nil {
-		equipment.Armor = make([]NativeMobItem, 5)
+		equipment.Armor = make([]nativeMobItem, 5)
 	}
 	for len(equipment.Armor) < 5 {
-		equipment.Armor = append(equipment.Armor, NativeMobItem{})
+		equipment.Armor = append(equipment.Armor, nativeMobItem{})
 	}
-	equipment.Armor[4] = NativeMobItem{Raw: equipment.Armor[4].Raw}
+	equipment.Armor[4] = nativeMobItem{Raw: equipment.Armor[4].Raw}
 	if !b.bodyArmor.Empty() {
 		raw := item.WriteNBT(b.bodyArmor)
 		name, _ := raw["Name"].(string)
 		count, _ := raw["Count"].(byte)
 		damage, _ := nativeNBTInt(raw["Damage"])
-		equipment.Armor[4] = NativeMobItem{
+		equipment.Armor[4] = nativeMobItem{
 			Name: name, Count: count, Damage: int32(damage), Raw: raw,
 		}
 	}
 	if equipment.Mainhand == nil {
-		equipment.Mainhand = []NativeMobItem{{}}
+		equipment.Mainhand = []nativeMobItem{{}}
 	}
 	if equipment.Offhand == nil {
-		equipment.Offhand = []NativeMobItem{{}}
+		equipment.Offhand = []nativeMobItem{{}}
 	}
-	native = MergeNativeMobNBT(native, EncodeNativeMobEquipment(equipment))
+	native = mergeNativeMobNBT(native, encodeNativeMobEquipment(equipment))
 
-	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(data.NativeNBT), b.breeding.encodeNBT(map[string]any{
+	javaState := mergeNativeMobNBT(readNativeMobJavaState(data.NativeNBT), b.breeding.encodeNBT(map[string]any{
 		"Tame": boolByte(b.tamed), "Sitting": boolByte(b.orderedToSit), "Age": int32(b.ageTicks),
 		"CollarColor": b.collarColor, "Angry": boolByte(b.angry()),
 		"variant":       "minecraft:" + wolfVariantNames[b.variant],
@@ -180,10 +180,10 @@ func (wolfType) EncodeNBT(data *world.EntityData) map[string]any {
 	} else {
 		delete(javaState, "equipment")
 	}
-	return MergeNativeMobJavaState(native, javaState)
+	return mergeNativeMobJavaState(native, javaState)
 }
 
-func nativeWolfArmorStack(armor NativeMobItem) (item.Stack, bool) {
+func nativeWolfArmorStack(armor nativeMobItem) (item.Stack, bool) {
 	if armor.Name != "minecraft:wolf_armor" || armor.Count == 0 {
 		return item.Stack{}, false
 	}
@@ -299,8 +299,8 @@ type WolfBehaviourConfig struct {
 	healthSet, collarSet           bool
 }
 
-func (c WolfBehaviourConfig) Apply(data *world.EntityData) { data.Data = c.New() }
-func (c WolfBehaviourConfig) New() *WolfBehaviour {
+func (c WolfBehaviourConfig) Apply(data *world.EntityData) { data.Data = c.newBehaviour() }
+func (c WolfBehaviourConfig) newBehaviour() *wolfBehaviour {
 	maxHealth := c.MaxHealth
 	if maxHealth <= 0 {
 		if c.Tamed {
@@ -330,7 +330,7 @@ func (c WolfBehaviourConfig) New() *WolfBehaviour {
 	default:
 		soundVariant = "classic"
 	}
-	b := &WolfBehaviour{
+	b := &wolfBehaviour{
 		health: NewHealthManager(health, maxHealth), effects: NewEffectManager(),
 		speed:       0.3,
 		tamable:     tamable{tamed: c.Tamed, ownerUUID: c.OwnerUUID, orderedToSit: c.Sitting, inSittingPose: c.Sitting},
@@ -344,7 +344,7 @@ func (c WolfBehaviourConfig) New() *WolfBehaviour {
 	return b
 }
 
-type WolfBehaviour struct {
+type wolfBehaviour struct {
 	health               *HealthManager
 	effects              *EffectManager
 	speed                float64
@@ -367,12 +367,12 @@ type WolfBehaviour struct {
 // Wolf is a tameable passive wolf with owner and body armour state.
 type Wolf struct{ *Ent }
 
-func (w *Wolf) behaviour() *WolfBehaviour { return w.Behaviour().(*WolfBehaviour) }
+func (w *Wolf) behaviour() *wolfBehaviour { return w.Behaviour().(*wolfBehaviour) }
 func (w *Wolf) Tick(tx *world.Tx, current int64) {
 	w.behaviour().effects.Tick(w, tx)
 	w.Ent.Tick(tx, current)
 }
-func (b *WolfBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (b *wolfBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	w := &Wolf{Ent: e}
 	ai := &b.ai
 	ai.MovementSpeed, ai.EyeHeight, ai.MaxHeadPitch = b.speed, .68, 40
@@ -553,7 +553,7 @@ func (w *Wolf) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle 
 		collar := mixedDyeColour(r, item.Colours()[b.collarColor%16], item.Colours()[p.collarColor%16])
 		conf.Tamed, conf.OwnerUUID, conf.CollarColor, conf.collarSet = true, b.ownerUUID, collar.Uint8(), true
 	}
-	return babyAt(w).New(WolfType, conf)
+	return babyAt(w).New(entityWolfType, conf)
 }
 
 // wolfFoodNutrition returns the nutrition of items in #wolf_food: meat, fish
@@ -641,11 +641,7 @@ func (w *Wolf) EquipBodyArmor(tx *world.Tx, user world.Entity, armor world.Item)
 	return true
 }
 func (w *Wolf) viewAction(a world.EntityAction) {
-	vs := w.tx.Viewers(w.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(w, a)
-	}
-	w.tx.ReleaseViewers(vs)
+	world.BroadcastEntityAction(w.tx, w, a)
 }
 func (w *Wolf) die(src world.DamageSource) {
 	b := w.behaviour()
@@ -710,7 +706,7 @@ func wolfVariantIn(biome string) uint8 {
 
 type wolfPackSpawnGroup struct{ variant uint8 }
 
-func (b *WolfBehaviour) effectManager() *EffectManager { return b.effects }
+func (b *wolfBehaviour) effectManager() *EffectManager { return b.effects }
 
 func (w *Wolf) forgive(id string) { b := w.behaviour(); b.forgiveAnger(&b.ai, id) }
 

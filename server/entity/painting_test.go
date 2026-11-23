@@ -26,7 +26,7 @@ func TestPaintingChoosesLargestFittingCanvas(t *testing.T) {
 		// A 2x2 wall: Java offsets even canvases left (west when facing north) and up.
 		wall(tx, -1, 0, 64, 65)
 		for range 20 {
-			h := CreatePainting(tx, cube.Pos{0, 64, -1}, cube.North)
+			h := createPainting(tx, cube.Pos{0, 64, -1}, cube.North)
 			if h == nil {
 				t.Fatal("no canvas fits a 2x2 wall")
 			}
@@ -37,7 +37,7 @@ func TestPaintingChoosesLargestFittingCanvas(t *testing.T) {
 			_ = p.CloseIn(tx)
 		}
 		// Anchored at the right edge, a 2-wide canvas would overhang open air.
-		if h := CreatePainting(tx, cube.Pos{-1, 64, -1}, cube.North); h != nil {
+		if h := createPainting(tx, cube.Pos{-1, 64, -1}, cube.North); h != nil {
 			p := tx.AddEntity(h).(*Painting)
 			if got := p.Motive(); got.Width*got.Height > 2 || got.Width > 1 {
 				t.Fatalf("canvas %+v overhangs the wall edge", got)
@@ -53,14 +53,14 @@ func TestPaintingRejectsOverlapAndBlockedSpace(t *testing.T) {
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {
 		wall(tx, 0, 0, 64, 64)
-		if CreatePainting(tx, cube.Pos{0, 64, 0}, cube.North) != nil {
+		if createPainting(tx, cube.Pos{0, 64, 0}, cube.North) != nil {
 			t.Fatal("painting placed inside a solid block")
 		}
-		tx.AddEntity(NewPainting(world.EntitySpawnOpts{}, cube.Pos{0, 64, -1}, cube.North, PaintingMotives[0]))
-		if CreatePainting(tx, cube.Pos{0, 64, -1}, cube.North) != nil {
+		tx.AddEntity(NewPainting(world.EntitySpawnOpts{}, cube.Pos{0, 64, -1}, cube.North, paintingMotives[0]))
+		if createPainting(tx, cube.Pos{0, 64, -1}, cube.North) != nil {
 			t.Fatal("painting placed over an existing painting")
 		}
-		if CreatePainting(tx, cube.Pos{1, 64, -1}, cube.North) != nil {
+		if createPainting(tx, cube.Pos{1, 64, -1}, cube.North) != nil {
 			t.Fatal("painting placed without a wall behind it")
 		}
 	})
@@ -80,7 +80,7 @@ func TestPaintingDropsAfterSupportCheckAndOnAttack(t *testing.T) {
 	}
 	<-w.Exec(func(tx *world.Tx) {
 		wall(tx, 0, 0, 64, 64)
-		p := tx.AddEntity(NewPainting(world.EntitySpawnOpts{}, cube.Pos{0, 64, -1}, cube.North, PaintingMotives[0])).(*Painting)
+		p := tx.AddEntity(NewPainting(world.EntitySpawnOpts{}, cube.Pos{0, 64, -1}, cube.North, paintingMotives[0])).(*Painting)
 		tx.SetBlock(cube.Pos{0, 64, 0}, nil, nil)
 		for tick := int64(1); tick < 100; tick++ {
 			p.Tick(tx, tick)
@@ -94,7 +94,7 @@ func TestPaintingDropsAfterSupportCheckAndOnAttack(t *testing.T) {
 		}
 
 		tx.SetBlock(cube.Pos{0, 64, 0}, block.Stone{}, nil)
-		p = tx.AddEntity(NewPainting(world.EntitySpawnOpts{}, cube.Pos{0, 64, -1}, cube.North, PaintingMotives[0])).(*Painting)
+		p = tx.AddEntity(NewPainting(world.EntitySpawnOpts{}, cube.Pos{0, 64, -1}, cube.North, paintingMotives[0])).(*Painting)
 		p.Attack(nil, tx)
 		if countItems(tx) != 2 {
 			t.Fatalf("attacked painting dropped %d items in total, want 2", countItems(tx))
@@ -106,12 +106,12 @@ func TestPaintingNBTRecoversBlockFromCentredPosition(t *testing.T) {
 	t.Parallel()
 	for _, facing := range []cube.Direction{cube.North, cube.South, cube.West, cube.East} {
 		for _, name := range []string{"Kebab", "Pool", "Wanderer", "Match", "Skeleton", "backyard"} {
-			m, _ := PaintingMotiveByName(name)
+			m, _ := paintingMotiveByName(name)
 			pos := cube.Pos{3, 70, -5}
 			centre := paintingBox(pos, facing, m)
-			saved := PaintingType.EncodeNBT(&world.EntityData{Data: &paintingBehaviour{motive: m, facing: facing, pos: pos}})
+			saved := entityPaintingType.EncodeNBT(&world.EntityData{Data: &paintingBehaviour{motive: m, facing: facing, pos: pos}})
 			loaded := &world.EntityData{Pos: centre.Min().Add(centre.Max()).Mul(0.5)}
-			PaintingType.DecodeNBT(saved, loaded)
+			entityPaintingType.DecodeNBT(saved, loaded)
 			b := loaded.Data.(*paintingBehaviour)
 			if b.motive != m || b.facing != facing || b.pos != pos {
 				t.Errorf("%s facing %v: loaded %+v, want motive %v pos %v", name, facing, *b, m, pos)

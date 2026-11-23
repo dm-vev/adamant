@@ -11,7 +11,7 @@ func TestWolfNBTPreservesTamableAndArmorState(t *testing.T) {
 	t.Parallel()
 	const ownerUUID = "123e4567-e89b-12d3-a456-426614174000"
 	data := &world.EntityData{}
-	WolfType.DecodeNBT(map[string]any{
+	entityWolfType.DecodeNBT(map[string]any{
 		"Health": float32(40), "MaxHealth": float32(40),
 		"Owner": javaUUIDIntArray(ownerUUID), "CollarColor": int32(14), "variant": "minecraft:rusty",
 		"sound_variant": "minecraft:puglin", "Sitting": byte(1), "Age": int32(-1200),
@@ -20,8 +20,8 @@ func TestWolfNBTPreservesTamableAndArmorState(t *testing.T) {
 			"components": map[string]any{"minecraft:damage": int32(7)},
 		}},
 	}, data)
-	nbt := WolfType.EncodeNBT(data)
-	javaState := ReadNativeMobJavaState(nbt)
+	nbt := entityWolfType.EncodeNBT(data)
+	javaState := readNativeMobJavaState(nbt)
 	if javaState["Tame"] != byte(1) || javaUUIDString(javaState["Owner"]) != ownerUUID || javaState["variant"] != "minecraft:rusty" || javaState["sound_variant"] != "minecraft:puglin" || javaState["CollarColor"] != byte(14) || javaState["Sitting"] != byte(1) || javaState["Age"] != int32(-1200) {
 		t.Fatalf("wolf Java state did not persist: %#v", javaState)
 	}
@@ -29,7 +29,7 @@ func TestWolfNBTPreservesTamableAndArmorState(t *testing.T) {
 		t.Fatalf("native wolf state did not persist: %#v", nbt)
 	}
 	// Bedrock numbers rusty wolves 4.
-	variant, ok := NativeMobVariant(nbt)
+	variant, ok := nativeMobVariant(nbt)
 	if !ok || variant != 4 {
 		t.Fatalf("native wolf variant = %d, want 4", variant)
 	}
@@ -57,8 +57,8 @@ func TestWolfNBTPreservesTamableAndArmorState(t *testing.T) {
 	if !ok || components["minecraft:damage"] != int32(7) {
 		t.Fatalf("wolf Java armor durability did not persist: %#v", body["components"])
 	}
-	if _, ok := data.Data.(*WolfBehaviour).bodyArmor.Item().(item.WolfArmor); !ok {
-		t.Fatalf("restored armor item = %T", data.Data.(*WolfBehaviour).bodyArmor.Item())
+	if _, ok := data.Data.(*wolfBehaviour).bodyArmor.Item().(item.WolfArmor); !ok {
+		t.Fatalf("restored armor item = %T", data.Data.(*wolfBehaviour).bodyArmor.Item())
 	}
 }
 func TestNewFromJavaNBTRejectsUnknownWolfEquipment(t *testing.T) {

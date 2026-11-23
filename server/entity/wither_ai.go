@@ -17,7 +17,7 @@ func (s *witherState) mobAI() *MobAI { return &s.ai }
 // Tick runs a tick of the wither: its death, the steering of WitherBoss.aiStep
 // towards the target of its middle head and its MobAI.
 func (s *witherState) Tick(e *Ent, tx *world.Tx) *Movement {
-	w := &Wither{Ent: e}
+	w := &wither{Ent: e}
 	if s.dead {
 		s.death++
 		if s.death >= 220 {
@@ -65,16 +65,16 @@ func (s *witherState) registerGoals(m *Mob) {
 	ai.nav.SetCanOpenDoors(false)
 	ai.moveOverride = &flyingMoveControl{maxTurn: 10}
 	ai.Goals.Add(0, &witherDoNothingGoal{goalFlags: goalFlags{GoalMove | GoalJump | GoalLook}, wither: s})
-	ai.Goals.Add(2, NewRangedAttackGoal(1, 40, 20, func(m *Mob, target world.Entity, _ float64) {
+	ai.Goals.Add(2, newRangedAttackGoal(1, 40, 20, func(m *Mob, target world.Entity, _ float64) {
 		s.performRangedAttackAt(m, 0, target)
 	}))
-	stroll := NewRandomStrollGoal(1)
+	stroll := newRandomStrollGoal(1)
 	stroll.Position = waterAvoidingRandomFlyingPos
 	ai.Goals.Add(5, stroll)
-	ai.Goals.Add(6, NewLookAtPlayerGoal(8))
-	ai.Goals.Add(7, NewRandomLookAroundGoal())
-	ai.Targets.Add(1, NewHurtByTargetGoal())
-	targets := NewNearestAttackableTargetGoal(witherTargetable, false)
+	ai.Goals.Add(6, newLookAtPlayerGoal(8))
+	ai.Goals.Add(7, newRandomLookAroundGoal())
+	ai.Targets.Add(1, newHurtByTargetGoal())
+	targets := newNearestAttackableTargetGoal(witherTargetable, false)
 	ai.Targets.Add(2, targets)
 }
 
@@ -102,7 +102,7 @@ func witherFriend(e world.Entity) bool {
 // spots on normal and hard difficulty, it breaks the blocks around it a
 // second after it is hurt, and it heals a point a second.
 func (s *witherState) customServerAiStep(m *Mob) {
-	w := m.Self.(*Wither)
+	w := m.Self.(*wither)
 	tx := m.tx
 	// WitherBoss.checkDespawn keeps the wither ever active.
 	m.AI.noActionTime = 0
@@ -276,7 +276,7 @@ func (g *witherDoNothingGoal) CanUse(*Mob) bool { return g.wither.invulnerable >
 // witherExplosionSource is the wither blowing up at its eyes when it is
 // summoned.
 type witherExplosionSource struct {
-	*Wither
+	*wither
 	eye mgl64.Vec3
 }
 
@@ -284,11 +284,11 @@ func (w witherExplosionSource) Position() mgl64.Vec3 { return w.eye }
 
 // Powered reports if the wither is below half health, when arrows bounce off
 // its armour.
-func (w *Wither) Powered() bool { return w.Health() <= w.MaxHealth()/2 }
+func (w *wither) Powered() bool { return w.Health() <= w.MaxHealth()/2 }
 
 // InvulnerableTicks returns the ticks left of the summoning of the wither.
-func (w *Wither) InvulnerableTicks() int { return w.state().invulnerable }
+func (w *wither) InvulnerableTicks() int { return w.state().invulnerable }
 
 // HeadTargets returns the targets of the middle and side heads of the
 // wither, nil for heads without one.
-func (w *Wither) HeadTargets() [3]*world.EntityHandle { return w.state().heads }
+func (w *wither) HeadTargets() [3]*world.EntityHandle { return w.state().heads }

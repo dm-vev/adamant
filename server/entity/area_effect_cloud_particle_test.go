@@ -18,12 +18,12 @@ func TestAreaEffectCloudParticleNBTRoundTrip(t *testing.T) {
 		{CloudParticleDragonBreath, int32(47)},
 		{CloudParticle(68), int32(68)},
 	} {
-		m := AreaEffectCloudType.EncodeNBT(&world.EntityData{Data: AreaEffectCloudBehaviourConfig{Particle: c.particle}.New()})
+		m := entityAreaEffectCloudType.EncodeNBT(&world.EntityData{Data: AreaEffectCloudBehaviourConfig{Particle: c.particle}.New()})
 		if got := m["ParticleId"]; got != c.stored {
 			t.Errorf("particle %d: stored ParticleId %#v, want %#v", c.particle, got, c.stored)
 		}
 		decoded := new(world.EntityData)
-		AreaEffectCloudType.DecodeNBT(m, decoded)
+		entityAreaEffectCloudType.DecodeNBT(m, decoded)
 		if got := decoded.Data.(*AreaEffectCloudBehaviour).Particle(); got != c.particle {
 			t.Errorf("particle %d: decoded particle %d", c.particle, got)
 		}

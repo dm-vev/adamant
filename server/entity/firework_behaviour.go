@@ -11,7 +11,7 @@ import (
 )
 
 // FireworkBehaviourConfig holds optional parameters for a FireworkBehaviour.
-type FireworkBehaviourConfig struct {
+type fireworkBehaviourConfig struct {
 	Firework item.Firework
 	Owner    *world.EntityHandle
 	// ExistenceDuration is the duration that an entity with this behaviour
@@ -29,15 +29,15 @@ type FireworkBehaviourConfig struct {
 	Attached bool
 }
 
-func (conf FireworkBehaviourConfig) Apply(data *world.EntityData) {
+func (conf fireworkBehaviourConfig) Apply(data *world.EntityData) {
 	data.Data = conf.New()
 }
 
 // New creates a FireworkBehaviour for an fw and owner using the optional
 // parameters in conf.
-func (conf FireworkBehaviourConfig) New() *FireworkBehaviour {
-	b := &FireworkBehaviour{conf: conf}
-	b.passive = PassiveBehaviourConfig{
+func (conf fireworkBehaviourConfig) New() *fireworkBehaviour {
+	b := &fireworkBehaviour{conf: conf}
+	b.passive = passiveBehaviourConfig{
 		ExistenceDuration: conf.ExistenceDuration,
 		Expire:            b.explode,
 		Tick:              b.tick,
@@ -46,40 +46,40 @@ func (conf FireworkBehaviourConfig) New() *FireworkBehaviour {
 }
 
 // FireworkBehaviour implements Behaviour for a firework entity.
-type FireworkBehaviour struct {
-	conf    FireworkBehaviourConfig
-	passive *PassiveBehaviour
+type fireworkBehaviour struct {
+	conf    fireworkBehaviourConfig
+	passive *passiveBehaviour
 }
 
 // PortalTravelComputer returns the interdimensional travel state for the behaviour.
-func (f *FireworkBehaviour) PortalTravelComputer() *PortalTravelComputer {
+func (f *fireworkBehaviour) PortalTravelComputer() *PortalTravelComputer {
 	return f.passive.PortalTravelComputer()
 }
 
 // Firework returns the underlying item.Firework of the FireworkBehaviour.
-func (f *FireworkBehaviour) Firework() item.Firework {
+func (f *fireworkBehaviour) Firework() item.Firework {
 	return f.conf.Firework
 }
 
 // Attached specifies if the firework is attached to its owner.
-func (f *FireworkBehaviour) Attached() bool {
+func (f *fireworkBehaviour) Attached() bool {
 	return f.conf.Attached
 }
 
 // Owner returns the world.Entity that launched the firework.
-func (f *FireworkBehaviour) Owner() *world.EntityHandle {
+func (f *fireworkBehaviour) Owner() *world.EntityHandle {
 	return f.conf.Owner
 }
 
 // Tick moves the firework and makes it explode when it reaches its maximum
 // duration.
-func (f *FireworkBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (f *fireworkBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	return f.passive.Tick(e, tx)
 }
 
 // tick ticks the entity, updating its velocity either with a constant factor
 // or based on the owner's position and velocity if attached.
-func (f *FireworkBehaviour) tick(e *Ent, tx *world.Tx) {
+func (f *fireworkBehaviour) tick(e *Ent, tx *world.Tx) {
 	owner, ok := f.conf.Owner.Entity(tx)
 	if f.conf.Attached && ok {
 		// The client will propel itself to match the firework's velocity since
@@ -94,17 +94,11 @@ func (f *FireworkBehaviour) tick(e *Ent, tx *world.Tx) {
 
 // explode causes an explosion at the position of the firework, spawning
 // particles and damaging nearby entities.
-func (f *FireworkBehaviour) explode(e *Ent, tx *world.Tx) {
+func (f *fireworkBehaviour) explode(e *Ent, tx *world.Tx) {
 	owner, _ := f.conf.Owner.Entity(tx)
 	pos, explosions := e.Position(), f.conf.Firework.Explosions
 
-	viewers := tx.Viewers(pos)
-	// Firework bursts can happen en masse; leveraging the pooled viewer slice keeps the celebratory moment from
-	// generating avoidable garbage.
-	for _, v := range viewers {
-		v.ViewEntityAction(e, FireworkExplosionAction{})
-	}
-	tx.ReleaseViewers(viewers)
+	world.BroadcastEntityAction(tx, e, FireworkExplosionAction{})
 	for _, explosion := range explosions {
 		if explosion.Shape == item.FireworkShapeHugeSphere() {
 			tx.PlaySound(pos, sound.FireworkHugeBlast{})

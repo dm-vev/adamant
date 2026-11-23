@@ -20,8 +20,8 @@ func TestWaterSplashHurtsExtinguishesAndRehydrates(t *testing.T) {
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {
 		at := mgl64.Vec3{0.5, 100, 0.5}
-		near := tx.AddEntity(NewBlaze(world.EntitySpawnOpts{Position: at.Add(mgl64.Vec3{1, 0, 0})})).(*Blaze)
-		far := tx.AddEntity(NewBlaze(world.EntitySpawnOpts{Position: at.Add(mgl64.Vec3{4.5, 0, 0})})).(*Blaze)
+		near := tx.AddEntity(NewBlaze(world.EntitySpawnOpts{Position: at.Add(mgl64.Vec3{1, 0, 0})})).(*blaze)
+		far := tx.AddEntity(NewBlaze(world.EntitySpawnOpts{Position: at.Add(mgl64.Vec3{4.5, 0, 0})})).(*blaze)
 		zombie := tx.AddEntity(NewZombie(world.EntitySpawnOpts{Position: at.Add(mgl64.Vec3{0, 0, 1})}))
 		axolotl := tx.AddEntity(NewAxolotl(world.EntitySpawnOpts{Position: at.Add(mgl64.Vec3{-2, 0, 0})})).(*Axolotl)
 		axolotl.behaviour().airTicks = 5000
@@ -128,7 +128,7 @@ func TestLingeringCloudFollowsJava(t *testing.T) {
 			t.Fatal("dragon's breath outlived 600 ticks after its wait")
 		}
 
-		creeper := tx.AddEntity(NewCreeper(world.EntitySpawnOpts{Position: mgl64.Vec3{20.5, 100, 0.5}})).(*Creeper)
+		creeper := tx.AddEntity(NewCreeper(world.EntitySpawnOpts{Position: mgl64.Vec3{20.5, 100, 0.5}})).(*creeper)
 		creeper.AddEffect(effect.New(effect.Speed, 1, 30*time.Second))
 		creeper.s().ignited = true
 		for i := 0; i < 40 && !creeper.H().Closed(); i++ {
@@ -136,7 +136,7 @@ func TestLingeringCloudFollowsJava(t *testing.T) {
 		}
 		var clouds int
 		for e := range tx.Entities() {
-			if e.H().Type() == AreaEffectCloudType {
+			if e.H().Type() == entityAreaEffectCloudType {
 				clouds++
 				if b := e.(*Ent).Behaviour().(*AreaEffectCloudBehaviour); b.Radius() != 2.5 || len(b.Effects()) != 1 {
 					t.Fatalf("creeper cloud radius %v with %v", b.Radius(), b.Effects())
@@ -151,7 +151,7 @@ func TestLingeringCloudFollowsJava(t *testing.T) {
 		water := tx.AddEntity(NewLingeringPotion(world.EntitySpawnOpts{Position: mgl64.Vec3{30.5, 100, 0.5}}, potion.Water(), thrower)).(*Ent)
 		potionSplash(0.25, potion.Water(), true)(water, tx, nil)
 		for e := range tx.Entities() {
-			if e.H().Type() == AreaEffectCloudType && e.Position()[0] == 30.5 {
+			if e.H().Type() == entityAreaEffectCloudType && e.Position()[0] == 30.5 {
 				t.Fatal("lingering water left a cloud")
 			}
 		}

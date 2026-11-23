@@ -19,8 +19,8 @@ const axolotlMaxAir = 6000
 
 // tickAxolotl runs a tick of an axolotl: its air out of water, its ageing
 // and love, and its MobAI with its brain.
-func (b *AquaticMobBehaviour) tickAxolotl(e *Ent, tx *world.Tx) *Movement {
-	a := &Axolotl{&AquaticMob{Ent: e}}
+func (b *aquaticMobBehaviour) tickAxolotl(e *Ent, tx *world.Tx) *Movement {
+	a := &Axolotl{&aquaticMob{Ent: e}}
 	ai := &b.ai
 	// Axolotl.createAttributes and getMaxHeadXRot and getMaxHeadYRot.
 	ai.MovementSpeed, ai.StepHeight = b.speed, 1
@@ -48,7 +48,7 @@ func (b *AquaticMobBehaviour) tickAxolotl(e *Ent, tx *world.Tx) *Movement {
 
 // registerAxolotl ports the navigation and controls of the constructor of
 // Axolotl.
-func (b *AquaticMobBehaviour) registerAxolotl(m *Mob) {
+func (b *aquaticMobBehaviour) registerAxolotl(m *Mob) {
 	m.AI.nav.SetAmphibious(true)
 	m.AI.SetPathfindingMalus(PathWater, 0)
 	m.AI.moveOverride = axolotlMoveControl{b: b, smooth: smoothSwimmingMoveControl{maxTurnX: 85, maxTurnY: 10, inWater: float64(float32(.1)), outsideWater: float64(float32(.5))}}
@@ -58,7 +58,7 @@ func (b *AquaticMobBehaviour) registerAxolotl(m *Mob) {
 // axolotlMoveControl ports Axolotl.AxolotlMoveControl: an axolotl playing
 // dead does not move.
 type axolotlMoveControl struct {
-	b      *AquaticMobBehaviour
+	b      *aquaticMobBehaviour
 	smooth smoothSwimmingMoveControl
 }
 
@@ -71,7 +71,7 @@ func (c axolotlMoveControl) tick(m *Mob) {
 // axolotlLookControl ports Axolotl.AxolotlLookControl: an axolotl playing
 // dead does not look about.
 type axolotlLookControl struct {
-	b      *AquaticMobBehaviour
+	b      *aquaticMobBehaviour
 	smooth smoothSwimmingLookControl
 }
 
@@ -96,7 +96,7 @@ func axolotlTravel(m *Mob, input mgl64.Vec3) bool {
 // axolotlServerAiStep ports Axolotl.customServerAiStep and
 // AxolotlAi.updateActivity: a brain that stops fighting gives the axolotl
 // two minutes before it hunts again.
-func (b *AquaticMobBehaviour) axolotlServerAiStep(m *Mob) {
+func (b *aquaticMobBehaviour) axolotlServerAiStep(m *Mob) {
 	br := b.br
 	br.tick(m)
 	old, _ := br.activeNonCore()
@@ -126,7 +126,7 @@ func axolotlSpeed(inWater float64) func(m *Mob) float64 {
 }
 
 // newAxolotlBrain ports AxolotlAi and the brain provider of Axolotl.
-func newAxolotlBrain() *Brain {
+func newAxolotlBrain() *brain {
 	b := newBrain(nearestLivingEntitySensor{}, adultSensor{}, hurtBySensor{}, axolotlAttackablesSensor{}, temptingSensor{items: animalTemptation})
 	b.addActivity(activityCore, 0,
 		newLookAtTargetSink(45, 90),
@@ -136,7 +136,7 @@ func newAxolotlBrain() *Brain {
 	)
 	b.addActivityWith(activityIdle, []prioritizedBehavior{
 		{0, newSetEntityLookTargetSometimes(isPlayerType, 6, uniformInt{30, 60})},
-		{1, newAnimalMakeLove(AxolotlType, .2, 2)},
+		{1, newAnimalMakeLove(axolotlType, .2, 2)},
 		{2, newRunOne(nil,
 			weightedBehavior{newFollowTemptation(axolotlSpeed(.5), nil, false), 1},
 			weightedBehavior{newBabyFollowAdult(uniformInt{5, 16}, axolotlSpeed(.6), memNearestVisibleAdult, false), 1},
@@ -145,7 +145,7 @@ func newAxolotlBrain() *Brain {
 			if isBreeding(m) {
 				return nil
 			}
-			return m.Brain().entity(m, memNearestAttackable)
+			return m.brain().entity(m, memNearestAttackable)
 		})},
 		{3, newTryFindLiquid(6, .15)},
 		{4, &gateBehavior{entry: []memoryCondition{{memWalkTarget, memAbsent}}, children: []weightedBehavior{
@@ -173,7 +173,7 @@ func newAxolotlBrain() *Brain {
 // axolotl walks to what it looks at only if that is in water as much as it
 // is.
 func axolotlWalkToLookTarget(m *Mob) bool {
-	v, ok := m.Brain().get(memLookTarget)
+	v, ok := m.brain().get(memLookTarget)
 	if !ok {
 		return false
 	}
@@ -187,9 +187,9 @@ func newPlayDead() *behavior {
 		entry:       []memoryCondition{{memPlayDeadTicks, memPresent}, {memHurtByEntity, memPresent}},
 		minDuration: 200, maxDuration: 200,
 		checkExtra:  func(m *Mob) bool { return m.InWater() },
-		canStillUse: func(m *Mob, _ int64) bool { return m.InWater() && m.Brain().has(memPlayDeadTicks) },
+		canStillUse: func(m *Mob, _ int64) bool { return m.InWater() && m.brain().has(memPlayDeadTicks) },
 		start: func(m *Mob, _ int64) {
-			b := m.Brain()
+			b := m.brain()
 			b.erase(memWalkTarget)
 			b.erase(memLookTarget)
 			m.Self.(interface{ AddEffect(effect.Effect) }).AddEffect(effect.New(effect.Regeneration, 1, 10*time.Second))
@@ -200,7 +200,7 @@ func newPlayDead() *behavior {
 // newValidatePlayDead ports ValidatePlayDead: the time an axolotl plays dead
 // counts down, after which it forgets what hurt it.
 func newValidatePlayDead() *oneShot {
-	return newOneShot([]memoryCondition{{memPlayDeadTicks, memPresent}, {memHurtByEntity, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memPlayDeadTicks, memPresent}, {memHurtByEntity, memRegistered}}, func(m *Mob, b *brain, _ int64) bool {
 		ticks, _ := b.int(memPlayDeadTicks)
 		if ticks <= 0 {
 			b.erase(memPlayDeadTicks)
@@ -223,7 +223,7 @@ func (axolotlAttackablesSensor) requires() []memoryType {
 	return []memoryType{memNearestAttackable, memNearestVisibleLivingEntities, memHasHuntingCooldown}
 }
 
-func (axolotlAttackablesSensor) doTick(m *Mob, b *Brain) {
+func (axolotlAttackablesSensor) doTick(m *Mob, b *brain) {
 	var nearest world.Entity
 	if v := visibleLiving(m); v != nil {
 		nearest = v.findClosest(m, func(e world.Entity) bool {
@@ -280,7 +280,7 @@ func axolotlApplySupportingEffects(player world.Entity) {
 
 // doHurtTarget ports Mob.doHurtTarget for axolotls, which bite for their
 // attack damage of 2.
-func (b *AquaticMobBehaviour) doHurtTarget(m *Mob, target world.Entity) bool {
+func (b *aquaticMobBehaviour) doHurtTarget(m *Mob, target world.Entity) bool {
 	if b.id != "minecraft:axolotl" {
 		return false
 	}

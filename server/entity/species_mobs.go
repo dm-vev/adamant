@@ -24,13 +24,13 @@ type silverfishType struct{}
 type endermiteType struct{}
 type slimeType struct{}
 
-var SpiderType spiderType
-var CaveSpiderType caveSpiderType
-var CreeperType creeperType
-var EndermanType endermanType
-var SilverfishType silverfishType
-var EndermiteType endermiteType
-var SlimeType slimeType
+var entitySpiderType spiderType
+var entityCaveSpiderType caveSpiderType
+var entityCreeperType creeperType
+var entityEndermanType endermanType
+var entitySilverfishType silverfishType
+var entityEndermiteType endermiteType
+var entitySlimeType slimeType
 
 type speciesKind uint8
 
@@ -80,12 +80,12 @@ type speciesState struct {
 	creepy, staredAt                 bool
 	targetChangeTime, lastStareSound int
 }
-type Spider struct{ *speciesMob }
-type CaveSpider struct{ *speciesMob }
-type Creeper struct{ *speciesMob }
+type spider struct{ *speciesMob }
+type caveSpider struct{ *speciesMob }
+type creeper struct{ *speciesMob }
 type Enderman struct{ *speciesMob }
-type Silverfish struct{ *speciesMob }
-type Endermite struct{ *speciesMob }
+type silverfish struct{ *speciesMob }
+type endermite struct{ *speciesMob }
 type Slime struct{ *speciesMob }
 type speciesMob struct {
 	*Ent
@@ -131,17 +131,17 @@ func openSpecies(tx *world.Tx, h *world.EntityHandle, d *world.EntityData, k spe
 	m := &speciesMob{Ent: &Ent{tx: tx, handle: h, data: d}, kind: k}
 	switch k {
 	case spiderSpecies:
-		return &Spider{m}
+		return &spider{m}
 	case caveSpiderSpecies:
-		return &CaveSpider{m}
+		return &caveSpider{m}
 	case creeperSpecies:
-		return &Creeper{m}
+		return &creeper{m}
 	case endermanSpecies:
 		return &Enderman{m}
 	case silverfishSpecies:
-		return &Silverfish{m}
+		return &silverfish{m}
 	case endermiteSpecies:
-		return &Endermite{m}
+		return &endermite{m}
 	default:
 		return &Slime{m}
 	}
@@ -163,24 +163,24 @@ func (slimeType) BBox(e world.Entity) cube.BBox {
 func speciesType(k speciesKind) world.EntityType {
 	switch k {
 	case spiderSpecies:
-		return SpiderType
+		return entitySpiderType
 	case caveSpiderSpecies:
-		return CaveSpiderType
+		return entityCaveSpiderType
 	case creeperSpecies:
-		return CreeperType
+		return entityCreeperType
 	case endermanSpecies:
-		return EndermanType
+		return entityEndermanType
 	case silverfishSpecies:
-		return SilverfishType
+		return entitySilverfishType
 	case endermiteSpecies:
-		return EndermiteType
+		return entityEndermiteType
 	default:
-		return SlimeType
+		return entitySlimeType
 	}
 }
 func decodeSpecies(k speciesKind, n map[string]any, d *world.EntityData) {
 	c := speciesConfig{kind: k, size: 2, fuse: int(nbtconv.Int32(n, "Fuse")), swell: int(nbtconv.Int32(n, "Swell")), charged: nbtconv.Bool(n, "powered"), ignited: nbtconv.Bool(n, "ignited")}
-	for _, a := range ReadNativeMobAttributes(n) {
+	for _, a := range readNativeMobAttributes(n) {
 		if a.Name == "minecraft:health" {
 			c.health = a.Current
 		}
@@ -190,7 +190,7 @@ func decodeSpecies(k speciesKind, n map[string]any, d *world.EntityData) {
 			c.health = float64(nbtconv.Float32(n, "Health"))
 		}
 	}
-	if j := ReadNativeMobJavaState(n); j != nil {
+	if j := readNativeMobJavaState(n); j != nil {
 		c.fuse = int(nbtconv.Int32(j, "Fuse"))
 		c.swell = int(nbtconv.Int32(j, "Swell"))
 		c.attackCooldown = int(nbtconv.Int32(j, "AttackCooldown"))
@@ -249,8 +249,8 @@ func encodeSpecies(k speciesKind, d *world.EntityData) map[string]any {
 		speed = .2 + .1*float64(s.size)
 		att = float64(s.size)
 	}
-	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: health, Current: s.health.Health(), DefaultMin: 0, DefaultMax: health, Min: 0, Max: health}, {Name: "minecraft:movement", Base: speed, Current: s.speed, DefaultMin: 0, DefaultMax: 4, Min: 0, Max: 4}, {Name: "minecraft:attack_damage", Base: att, Current: att, DefaultMin: 0, DefaultMax: 2048, Min: 0, Max: 2048}, {Name: "minecraft:follow_range", Base: 16, Current: 16, DefaultMin: 0, DefaultMax: 2048, Min: 0, Max: 2048}})
-	m := CloneNativeMobNBT(d.NativeNBT)
+	attrs := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: health, Current: s.health.Health(), DefaultMin: 0, DefaultMax: health, Min: 0, Max: health}, {Name: "minecraft:movement", Base: speed, Current: s.speed, DefaultMin: 0, DefaultMax: 4, Min: 0, Max: 4}, {Name: "minecraft:attack_damage", Base: att, Current: att, DefaultMin: 0, DefaultMax: 2048, Min: 0, Max: 2048}, {Name: "minecraft:follow_range", Base: 16, Current: 16, DefaultMin: 0, DefaultMax: 2048, Min: 0, Max: 2048}})
+	m := cloneNativeMobNBT(d.NativeNBT)
 	if m == nil {
 		m = map[string]any{}
 	}
@@ -265,7 +265,7 @@ func encodeSpecies(k speciesKind, d *world.EntityData) map[string]any {
 	if k == slimeSpecies {
 		m["Size"] = int32(s.size - 1)
 	}
-	return MergeNativeMobJavaState(m, j)
+	return mergeNativeMobJavaState(m, j)
 }
 func (spiderType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	decodeSpecies(spiderSpecies, n, d)
@@ -340,35 +340,35 @@ func (c speciesConfig) Apply(d *world.EntityData) {
 	if size < 1 {
 		size = 1
 	}
-	d.NativeNBT = CloneNativeMobNBT(c.native)
+	d.NativeNBT = cloneNativeMobNBT(c.native)
 	d.Data = &speciesState{kind: c.kind, health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(0), speed: speed, attack: attack, fuse: fuse, swell: c.swell, cooldown: c.attackCooldown, size: size, charged: c.charged, ignited: c.ignited, climbing: c.climbing, loaded: c.loaded, carried: c.carried, neutralAnger: neutralAnger{angerTicks: c.angerTicks, angerTarget: c.angerTarget}, lastStareSound: math.MinInt32}
 }
 func NewSpider(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(SpiderType, speciesConfig{kind: spiderSpecies, size: 1})
+	return o.New(entitySpiderType, speciesConfig{kind: spiderSpecies, size: 1})
 }
 func NewCaveSpider(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(CaveSpiderType, speciesConfig{kind: caveSpiderSpecies, size: 1})
+	return o.New(entityCaveSpiderType, speciesConfig{kind: caveSpiderSpecies, size: 1})
 }
 func NewCreeper(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(CreeperType, speciesConfig{kind: creeperSpecies, size: 1})
+	return o.New(entityCreeperType, speciesConfig{kind: creeperSpecies, size: 1})
 }
 func NewEnderman(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(EndermanType, speciesConfig{kind: endermanSpecies, size: 1})
+	return o.New(entityEndermanType, speciesConfig{kind: endermanSpecies, size: 1})
 }
 func NewSilverfish(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(SilverfishType, speciesConfig{kind: silverfishSpecies, size: 1})
+	return o.New(entitySilverfishType, speciesConfig{kind: silverfishSpecies, size: 1})
 }
 func NewEndermite(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(EndermiteType, speciesConfig{kind: endermiteSpecies, size: 1})
+	return o.New(entityEndermiteType, speciesConfig{kind: endermiteSpecies, size: 1})
 }
 func NewSlime(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(SlimeType, speciesConfig{kind: slimeSpecies, size: 2})
+	return o.New(entitySlimeType, speciesConfig{kind: slimeSpecies, size: 2})
 }
 
 // NewSlimeWithSize returns a slime of a size: 1, 2 or 4 when it spawns
 // naturally.
 func NewSlimeWithSize(o world.EntitySpawnOpts, size int) *world.EntityHandle {
-	return o.New(SlimeType, speciesConfig{kind: slimeSpecies, size: size})
+	return o.New(entitySlimeType, speciesConfig{kind: slimeSpecies, size: size})
 }
 func (m *speciesMob) s() *speciesState { return m.Behaviour().(*speciesState) }
 
@@ -385,11 +385,7 @@ func (m *speciesMob) kill()                                 { s := m.s(); s.dead
 // CubeSize returns the Java Slime.getSize used by the cube_mob loot predicate.
 func (m *speciesMob) CubeSize() int { return m.s().size }
 func (m *speciesMob) view(a world.EntityAction) {
-	v := m.tx.Viewers(m.Position())
-	for _, x := range v {
-		x.ViewEntityAction(m, a)
-	}
-	m.tx.ReleaseViewers(v)
+	world.BroadcastEntityAction(m.tx, m, a)
 }
 func (m *speciesMob) Health() float64        { return m.s().health.Health() }
 func (m *speciesMob) MaxHealth() float64     { return m.s().health.MaxHealth() }

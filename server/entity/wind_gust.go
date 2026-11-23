@@ -33,7 +33,7 @@ func windGust(tx *world.Tx, source *world.EntityHandle, center mgl64.Vec3, radiu
 			continue
 		}
 		origin := EyePosition(e)
-		if _, tnt := e.(*TNT); tnt {
+		if e.H().Type().EncodeEntity() == "minecraft:tnt" {
 			origin = e.Position()
 		}
 		direction := javaNormalize(origin.Sub(center))
@@ -52,10 +52,8 @@ func windGust(tx *world.Tx, source *world.EntityHandle, center mgl64.Vec3, radiu
 
 // gustIgnores ports the overrides of Entity.ignoreExplosion for a gust.
 func gustIgnores(e world.Entity, blocklike bool) bool {
-	switch e.H().Type() {
-	case ItemType:
-		return !blocklike
-	case ArmourStandType:
+	switch e.H().Type().EncodeEntity() {
+	case "minecraft:item", "minecraft:armor_stand":
 		return !blocklike
 	}
 	if i, ok := e.(explosionIgnorer); ok {

@@ -17,17 +17,17 @@ import (
 
 // NewSheep creates a sheep with Java's default white, adult state.
 func NewSheep(opts world.EntitySpawnOpts) *world.EntityHandle {
-	return opts.New(SheepType, SheepConfig{})
+	return opts.New(entitySheepType, sheepConfig{})
 }
 
 // SheepType is the registered Java sheep actor.
-var SheepType sheepType
+var entitySheepType sheepType
 
 type sheepType struct{}
 
 func (sheepType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
-		SheepConfig{}.Apply(d)
+		sheepConfig{}.Apply(d)
 	}
 	return &Sheep{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
@@ -39,11 +39,11 @@ func (sheepType) BBox(e world.Entity) cube.BBox {
 	return cube.Box(-.45, 0, -.45, .45, 1.3, .45)
 }
 func (sheepType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	s := ReadNativeMobJavaState(m)
+	s := readNativeMobJavaState(m)
 	if s == nil {
 		s = m
 	}
-	c := SheepConfig{WoolColor: sheepNBTColor(s["Color"]), Sheared: nbtconv.Bool(s, "Sheared"), AgeTicks: int(nbtconv.Int32(s, "Age"))}
+	c := sheepConfig{WoolColor: sheepNBTColor(s["Color"]), Sheared: nbtconv.Bool(s, "Sheared"), AgeTicks: int(nbtconv.Int32(s, "Age"))}
 	if a, ok := nativeMobAttribute(m, "minecraft:health"); ok {
 		c.Health, c.MaxHealth = a.Current, a.Base
 	}
@@ -54,36 +54,36 @@ func (sheepType) DecodeNBT(m map[string]any, d *world.EntityData) {
 		c.MaxHealth = float64(nbtconv.Float32(map[string]any{"h": h}, "h"))
 	}
 	d.Data = c.New()
-	d.Data.(*SheepBehaviour).breeding.decodeNBT(s)
+	d.Data.(*sheepBehaviour).breeding.decodeNBT(s)
 }
 func (sheepType) EncodeNBT(d *world.EntityData) map[string]any {
-	b := d.Data.(*SheepBehaviour)
-	attr := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
-	native := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attr})
-	return MergeNativeMobJavaState(native, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.ageTicks), "Color": byte(b.color), "Sheared": byte(boolByte(b.sheared))})))
+	b := d.Data.(*sheepBehaviour)
+	attr := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
+	native := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attr})
+	return mergeNativeMobJavaState(native, mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.ageTicks), "Color": byte(b.color), "Sheared": byte(boolByte(b.sheared))})))
 }
 
 // SheepConfig configures a sheep's saved source state.
-type SheepConfig struct {
+type sheepConfig struct {
 	Health, MaxHealth   float64
 	AgeTicks, WoolColor int
 	Sheared             bool
 }
 
-func (c SheepConfig) Apply(d *world.EntityData) { d.Data = c.New() }
-func (c SheepConfig) New() *SheepBehaviour {
+func (c sheepConfig) Apply(d *world.EntityData) { d.Data = c.New() }
+func (c sheepConfig) New() *sheepBehaviour {
 	if c.MaxHealth <= 0 {
 		c.MaxHealth = 8
 	}
 	if c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	return &SheepBehaviour{health: c.Health, maxHealth: c.MaxHealth, ageTicks: c.AgeTicks, color: max(0, min(c.WoolColor, 15)), sheared: c.Sheared, speed: .23, effects: NewEffectManager()}
+	return &sheepBehaviour{health: c.Health, maxHealth: c.MaxHealth, ageTicks: c.AgeTicks, color: max(0, min(c.WoolColor, 15)), sheared: c.Sheared, speed: .23, effects: NewEffectManager()}
 }
 
 // Sheep is a concrete Java sheep, including wool and grazing state.
 type Sheep struct{ *Ent }
-type SheepBehaviour struct {
+type sheepBehaviour struct {
 	effects           *EffectManager
 	health, maxHealth float64
 	ageTicks, color   int
@@ -93,13 +93,13 @@ type SheepBehaviour struct {
 	animalAI
 }
 
-func (s *SheepBehaviour) Baby() bool        { return s.ageTicks < 0 }
-func (s *Sheep) behaviour() *SheepBehaviour { return s.Behaviour().(*SheepBehaviour) }
+func (s *sheepBehaviour) Baby() bool        { return s.ageTicks < 0 }
+func (s *Sheep) behaviour() *sheepBehaviour { return s.Behaviour().(*sheepBehaviour) }
 func (s *Sheep) Tick(tx *world.Tx, current int64) {
 	s.behaviour().effects.Tick(s, tx)
 	s.Ent.Tick(tx, current)
 }
-func (b *SheepBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (b *sheepBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	sheep, ok := e.living().(*Sheep)
 	if !ok {
 		sheep = &Sheep{Ent: e}
@@ -109,13 +109,13 @@ func (b *SheepBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		return animalTick(e, tx, sheep, &b.animalAI, nil)
 	}
 	return animalTick(e, tx, sheep, &b.animalAI, func(m *Mob) {
-		registerAnimalGoals(m, &b.animalAI, animalSpec{panic: 1.25, breed: 1, tempt: 1.1, tempting: sheep.breedingFood, parent: 1.1, stroll: 1}, NewEatBlockGoal(b.ate))
+		registerAnimalGoals(m, &b.animalAI, animalSpec{panic: 1.25, breed: 1, tempt: 1.1, tempting: sheep.breedingFood, parent: 1.1, stroll: 1}, newEatBlockGoal(b.ate))
 	})
 }
 
 // ate ports Sheep.ate: grazing regrows the wool of a sheep and lets a lamb
 // grow up faster.
-func (b *SheepBehaviour) ate(m *Mob) {
+func (b *sheepBehaviour) ate(m *Mob) {
 	sheep := m.Self.(*Sheep)
 	m.tx.EmitGameEvent(world.GameEventEat, m.data.Pos, world.GameEventContext{Source: sheep})
 	if b.sheared {
@@ -181,11 +181,7 @@ func (s *Sheep) KnockBack(src mgl64.Vec3, force, height float64) {
 	knockBack(s, src, force, height)
 }
 func (s *Sheep) viewAction(a world.EntityAction) {
-	vs := s.tx.Viewers(s.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(s, a)
-	}
-	s.tx.ReleaseViewers(vs)
+	world.BroadcastEntityAction(s.tx, s, a)
 }
 
 // WoolColor reports the inherited fleece dye index (white is zero).
@@ -254,7 +250,7 @@ func (s *Sheep) breedingFood(stack item.Stack) bool { return itemNamed(stack, "m
 // either parent if they craft into none.
 func (s *Sheep) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
 	colour := mixedDyeColour(randomOf(s.tx, s), item.Colours()[s.behaviour().color], item.Colours()[partner.(*Sheep).behaviour().color])
-	return babyAt(s).New(SheepType, SheepConfig{AgeTicks: babyStartAge, WoolColor: sheepColor(colour.String())})
+	return babyAt(s).New(entitySheepType, sheepConfig{AgeTicks: babyStartAge, WoolColor: sheepColor(colour.String())})
 }
 
 var _ Interactable = (*Sheep)(nil)
@@ -317,4 +313,4 @@ func sheepNBTColor(v any) int {
 	}
 }
 
-func (b *SheepBehaviour) effectManager() *EffectManager { return b.effects }
+func (b *sheepBehaviour) effectManager() *EffectManager { return b.effects }

@@ -7,7 +7,7 @@ import (
 )
 
 // LeashKnotType is the Bedrock leash-knot actor type.
-var LeashKnotType world.EntityType = leashKnotType{}
+var entityLeashKnotType world.EntityType = leashKnotType{}
 
 type leashKnotType struct{}
 type leashKnotConfig struct{ Pos cube.Pos }
@@ -22,7 +22,7 @@ func (leashKnotType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityDa
 	if d.Data == nil {
 		leashKnotConfig{}.Apply(d)
 	}
-	return &LeashKnot{Ent: &Ent{tx: tx, handle: h, data: d}}
+	return &leashKnot{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
 func (leashKnotType) DecodeNBT(nbt map[string]any, d *world.EntityData) {
 	pos := cube.Pos{}
@@ -43,7 +43,7 @@ func (leashKnotType) EncodeNBT(d *world.EntityData) map[string]any {
 }
 
 // LeashKnot represents a lead attachment point on a fence.
-type LeashKnot struct{ *Ent }
+type leashKnot struct{ *Ent }
 
 // NewLeashKnot creates a knot at the supplied fence position.
 func NewLeashKnot(opts world.EntitySpawnOpts, pos cube.Pos) *world.EntityHandle {
@@ -51,14 +51,14 @@ func NewLeashKnot(opts world.EntitySpawnOpts, pos cube.Pos) *world.EntityHandle 
 	opts.Position[0] += .5
 	opts.Position[1] += .375
 	opts.Position[2] += .5
-	return opts.New(LeashKnotType, leashKnotConfig{Pos: pos})
+	return opts.New(entityLeashKnotType, leashKnotConfig{Pos: pos})
 }
 
 // fencePos returns the position of the fence the knot is on.
-func (k *LeashKnot) fencePos() cube.Pos { return k.Behaviour().(leashKnotBehaviour).pos }
+func (k *leashKnot) fencePos() cube.Pos { return k.Behaviour().(leashKnotBehaviour).pos }
 
 // Tick removes the knot when its supporting fence is gone.
-func (k *LeashKnot) Tick(tx *world.Tx, current int64) { k.Ent.Tick(tx, current) }
+func (k *leashKnot) Tick(tx *world.Tx, current int64) { k.Ent.Tick(tx, current) }
 func (b leashKnotBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if _, ok := tx.Block(b.pos).(interface{ IsFence() }); !ok {
 		if _, ok = tx.Block(b.pos).(block.WoodFence); !ok {
@@ -82,7 +82,7 @@ func releaseKnotLeashes(knot *Ent, tx *world.Tx) {
 }
 
 // TransferLeashes attaches the knot's mobs to the interacting entity.
-func (k *LeashKnot) TransferLeashes(holder world.Entity, tx *world.Tx) bool {
+func (k *leashKnot) TransferLeashes(holder world.Entity, tx *world.Tx) bool {
 	if holder == nil || holder.H() == nil {
 		return false
 	}

@@ -35,7 +35,7 @@ const (
 // MountConfig configures a horse, donkey, mule, skeleton or zombie horse,
 // llama, trader llama, camel or camel husk. Zero attributes take the
 // species' defaults.
-type MountConfig struct {
+type mountConfig struct {
 	Kind                        uint8
 	Tamed, Saddled, Chested     bool
 	SkeletonTrap                bool
@@ -62,8 +62,8 @@ func mountAttributes(kind mountKind) (health, speed, jump float64) {
 	}
 }
 
-func (c MountConfig) Apply(d *world.EntityData) { d.Data = c.New() }
-func (c MountConfig) New() *MountBehaviour {
+func (c mountConfig) Apply(d *world.EntityData) { d.Data = c.New() }
+func (c mountConfig) New() *mountBehaviour {
 	kind := mountKind(c.Kind)
 	health, speed, jump := mountAttributes(kind)
 	if c.MaxHealth <= 0 {
@@ -78,7 +78,7 @@ func (c MountConfig) New() *MountBehaviour {
 	if c.JumpStrength <= 0 {
 		c.JumpStrength = jump
 	}
-	b := &MountBehaviour{kind: kind, tamed: c.Tamed || kind == mountCamel || kind == mountCamelHusk, saddled: c.Saddled, chested: c.Chested, trap: c.SkeletonTrap, strength: max(1, min(c.Strength, 5)), variant: c.Variant, ageTicks: c.AgeTicks,
+	b := &mountBehaviour{kind: kind, tamed: c.Tamed || kind == mountCamel || kind == mountCamelHusk, saddled: c.Saddled, chested: c.Chested, trap: c.SkeletonTrap, strength: max(1, min(c.Strength, 5)), variant: c.Variant, ageTicks: c.AgeTicks,
 		jumpStrength: c.JumpStrength, movementSpeed: c.Speed, health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager()}
 	if b.camel() {
 		b.br = newCamelBrain(b)
@@ -86,7 +86,7 @@ func (c MountConfig) New() *MountBehaviour {
 	return b
 }
 
-type MountBehaviour struct {
+type mountBehaviour struct {
 	kind                             mountKind
 	tamed, saddled, chested, sitting bool
 	strength, variant, ageTicks      int
@@ -110,7 +110,7 @@ type MountBehaviour struct {
 	breeding                         breeding
 	animalAI
 	// br is the brain of camels.
-	br *Brain
+	br *brain
 	// temper, owner and bred are AbstractHorse's Temper, Owner and Bred.
 	temper int
 	owner  string
@@ -121,7 +121,7 @@ type MountBehaviour struct {
 	eatingCounter, standCounter int
 }
 
-func (b *MountBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (b *mountBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	m := &Mount{Ent: e}
 	if b.passengers[0] == nil || (b.camel() && b.passengers[1] == nil) {
 		b.restorePassengers(e, tx)
@@ -166,7 +166,7 @@ func (b *MountBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	b.updatePassengers(e, tx)
 	return mv
 }
-func (b *MountBehaviour) updatePassengers(e *Ent, tx *world.Tx) {
+func (b *mountBehaviour) updatePassengers(e *Ent, tx *world.Tx) {
 	for i, h := range b.passengers {
 		if h == nil {
 			continue
@@ -200,7 +200,7 @@ func (b *MountBehaviour) updatePassengers(e *Ent, tx *world.Tx) {
 		}
 	}
 }
-func (b *MountBehaviour) restorePassengers(e *Ent, tx *world.Tx) {
+func (b *mountBehaviour) restorePassengers(e *Ent, tx *world.Tx) {
 	// Entity.Riding is persisted on the passenger; rebuilding local seat links
 	// from that authoritative relationship restores the mount after reload.
 	box := cube.Box(-2, 0, -2, 2, 3, 2).Translate(e.Position())
@@ -218,14 +218,14 @@ func (b *MountBehaviour) restorePassengers(e *Ent, tx *world.Tx) {
 }
 
 // leashedTrader returns the wandering trader whose lead holds the mob.
-func leashedTrader(e *Ent, tx *world.Tx) (*WanderingTrader, bool) {
+func leashedTrader(e *Ent, tx *world.Tx) (*wanderingTrader, bool) {
 	id := e.HolderLeashID()
 	if id == 0 {
 		return nil, false
 	}
 	for candidate := range tx.Entities() {
 		if candidate.H().UniqueID() == id {
-			trader, ok := candidate.(*WanderingTrader)
+			trader, ok := candidate.(*wanderingTrader)
 			return trader, ok
 		}
 	}
@@ -235,7 +235,7 @@ func leashedTrader(e *Ent, tx *world.Tx) (*WanderingTrader, bool) {
 // traderLlamaDespawn ports TraderLlama.maybeDespawn: an untamed, unnamed
 // trader llama that no player rides and that is free or on its trader's
 // lead leaves together with its trader, or 47999 ticks after it lost it.
-func (b *MountBehaviour) traderLlamaDespawn(e *Ent, tx *world.Tx) bool {
+func (b *mountBehaviour) traderLlamaDespawn(e *Ent, tx *world.Tx) bool {
 	trader, leashedToTrader := leashedTrader(e, tx)
 	if b.tamed || e.data.Name != "" || e.HolderLeashID() != 0 && !leashedToTrader || b.riddenByPlayer() {
 		return false
@@ -256,11 +256,11 @@ func (b *MountBehaviour) traderLlamaDespawn(e *Ent, tx *world.Tx) bool {
 	return true
 }
 
-func (b *MountBehaviour) riddenByPlayer() bool {
+func (b *mountBehaviour) riddenByPlayer() bool {
 	return b.passengers[0] != nil && b.passengers[0].Type().EncodeEntity() == "minecraft:player"
 }
 
-func (b *MountBehaviour) DismountAll(e *Ent, tx *world.Tx) {
+func (b *mountBehaviour) DismountAll(e *Ent, tx *world.Tx) {
 	m := &Mount{Ent: e}
 	for i, h := range b.passengers {
 		if h != nil {
@@ -277,17 +277,17 @@ func (b *MountBehaviour) DismountAll(e *Ent, tx *world.Tx) {
 }
 
 type Mount struct{ *Ent }
-type Horse struct{ *Mount }
-type Donkey struct{ *Mount }
-type Mule struct{ *Mount }
-type SkeletonHorse struct{ *Mount }
-type ZombieHorse struct{ *Mount }
-type Llama struct{ *Mount }
+type horse struct{ *Mount }
+type donkey struct{ *Mount }
+type mule struct{ *Mount }
+type skeletonHorse struct{ *Mount }
+type zombieHorse struct{ *Mount }
+type llama struct{ *Mount }
 type TraderLlama struct{ *Mount }
 type Camel struct{ *Mount }
 type CamelHusk struct{ *Mount }
 
-func (m *Mount) b() *MountBehaviour { return m.Behaviour().(*MountBehaviour) }
+func (m *Mount) b() *mountBehaviour { return m.Behaviour().(*mountBehaviour) }
 
 // updateState shows viewers the mount's flags and inventory.
 func (m *Mount) updateState() {
@@ -652,7 +652,7 @@ func (m *Mount) equip(tx *world.Tx, held item.Stack, ctx *item.UseContext) bool 
 }
 
 // wearable reports whether the species wears the stack as body armour.
-func (b *MountBehaviour) wearable(s item.Stack) bool {
+func (b *mountBehaviour) wearable(s item.Stack) bool {
 	switch {
 	case b.kind == mountHorse || b.kind == mountZombieHorse:
 		return mountArmor(s)
@@ -692,23 +692,23 @@ func (m *Mount) Panicking() bool {
 func mountTypeFor(kind mountKind) world.EntityType {
 	switch kind {
 	case mountHorse:
-		return HorseType
+		return horseType
 	case mountDonkey:
-		return DonkeyType
+		return donkeyType
 	case mountMule:
-		return MuleType
+		return muleType
 	case mountSkeletonHorse:
-		return SkeletonHorseType
+		return skeletonHorseType
 	case mountZombieHorse:
-		return ZombieHorseType
+		return zombieHorseType
 	case mountLlama:
-		return LlamaType
+		return llamaType
 	case mountTraderLlama:
-		return TraderLlamaType
+		return traderLlamaType
 	case mountCamel:
-		return CamelType
+		return camelType
 	default:
-		return CamelHuskType
+		return camelHuskType
 	}
 }
 func mountFromEntity(e world.Entity) *Mount {
@@ -722,7 +722,7 @@ func mountFromEntity(e world.Entity) *Mount {
 // once a living player comes within ten blocks.
 type skeletonTrapGoal struct {
 	goalFlags
-	mount *MountBehaviour
+	mount *mountBehaviour
 }
 
 func (g *skeletonTrapGoal) CanUse(m *Mob) bool {
@@ -744,7 +744,7 @@ func nearbyAlivePlayer(tx *world.Tx, pos mgl64.Vec3, dist float64) bool {
 // springSkeletonTrap ports SkeletonTrapGoal.tick: the horse is tamed and,
 // under a lightning bolt that only flashes, it and three more skeleton
 // horses spawn ridden by armoured skeletons with enchanted gear.
-func (b *MountBehaviour) springSkeletonTrap(m *Mob) {
+func (b *mountBehaviour) springSkeletonTrap(m *Mob) {
 	tx := m.tx
 	difficulty := tx.LocalDifficulty(m.BlockPos())
 	b.trap, b.tamed, b.ageTicks = false, true, 0
@@ -757,7 +757,7 @@ func (b *MountBehaviour) springSkeletonTrap(m *Mob) {
 	mobStartRiding(tx, skeleton, m.Self, true)
 	r := m.Random()
 	for range 3 {
-		horse, ok := tx.AddEntity(NewSkeletonHorse(world.EntitySpawnOpts{Position: pos, SpawnReason: "triggered"})).(*SkeletonHorse)
+		horse, ok := tx.AddEntity(NewSkeletonHorse(world.EntitySpawnOpts{Position: pos, SpawnReason: "triggered"})).(*skeletonHorse)
 		if !ok {
 			continue
 		}
@@ -779,20 +779,20 @@ func (b *MountBehaviour) springSkeletonTrap(m *Mob) {
 // trapSkeleton ports SkeletonTrapGoal.createSkeleton: a skeleton in an iron
 // helmet unless it wears another, whose weapon and helmet are enchanted as
 // mob spawn equipment.
-func trapSkeleton(tx *world.Tx, difficulty world.LocalDifficulty, pos mgl64.Vec3) *Skeleton {
-	skeleton, ok := tx.AddEntity(NewSkeleton(world.EntitySpawnOpts{Position: pos, SpawnReason: "triggered"})).(*Skeleton)
+func trapSkeleton(tx *world.Tx, difficulty world.LocalDifficulty, pos mgl64.Vec3) *skeleton {
+	skel, ok := tx.AddEntity(NewSkeleton(world.EntitySpawnOpts{Position: pos, SpawnReason: "triggered"})).(*skeleton)
 	if !ok {
 		return nil
 	}
-	skeleton.SetPersistenceRequired(true)
-	if ai, _ := skeleton.Ent.mobAI(); ai != nil {
+	skel.SetPersistenceRequired(true)
+	if ai, _ := skel.Ent.mobAI(); ai != nil {
 		ai.setInvulnerableTime(tx, 60)
 	}
-	s := skeleton.state()
+	s := skel.state()
 	if s.head.Empty() {
 		s.head = item.NewStack(item.Helmet{Tier: item.ArmourTierIron{}}, 1)
 	}
-	m, _ := mobOf(skeleton)
+	m, _ := mobOf(skel)
 	enchant := func(stack item.Stack) item.Stack {
 		if stack.Empty() || m == nil {
 			return stack
@@ -809,12 +809,18 @@ func trapSkeleton(tx *world.Tx, difficulty world.LocalDifficulty, pos mgl64.Vec3
 	}
 	s.main, s.head = enchant(s.main), enchant(s.head)
 	viewers := tx.Viewers(pos)
+	var itemsB, armourB world.Broadcast
 	for _, v := range viewers {
-		v.ViewEntityItems(skeleton)
-		v.ViewEntityArmour(skeleton)
+		if bv, ok := v.(world.EntityBroadcastViewer); ok {
+			bv.ViewEntityItemsShared(skel, &itemsB)
+			bv.ViewEntityArmourShared(skel, &armourB)
+		} else {
+			v.ViewEntityItems(skel)
+			v.ViewEntityArmour(skel)
+		}
 	}
 	tx.ReleaseViewers(viewers)
-	return skeleton
+	return skel
 }
 
 func mountArmor(s item.Stack) bool {
@@ -845,11 +851,7 @@ func (m *Mount) EquipmentArmour() (item.Stack, item.Stack, item.Stack, item.Stac
 // BodyItem returns the horse armour or llama carpet the mount wears.
 func (m *Mount) BodyItem() item.Stack { return m.b().armor }
 func (m *Mount) viewArmour(tx *world.Tx) {
-	viewers := tx.Viewers(m.Position())
-	for _, viewer := range viewers {
-		viewer.ViewEntityArmour(m)
-	}
-	tx.ReleaseViewers(viewers)
+	world.BroadcastEntityArmour(tx, m)
 }
 func (m *Mount) Inventory() *inventory.Inventory { return m.b().chestInventory() }
 func (m *Mount) InventorySize() int              { return len(m.b().chestItems) }
@@ -974,7 +976,7 @@ func (m *Mount) MountState() MountState {
 	}
 	return s
 }
-func (b *MountBehaviour) chestInventory() *inventory.Inventory {
+func (b *mountBehaviour) chestInventory() *inventory.Inventory {
 	if b.chestInv == nil && b.chested {
 		size := max(b.chestSize(), len(b.chestItems), 1)
 		if len(b.chestItems) < size {
@@ -990,7 +992,7 @@ func (b *MountBehaviour) chestInventory() *inventory.Inventory {
 
 // chestSize ports AbstractChestedHorse.getInventoryColumns: llamas carry three
 // slots per strength, donkeys and mules five columns of three.
-func (b *MountBehaviour) chestSize() int {
+func (b *mountBehaviour) chestSize() int {
 	if b.llama() {
 		return b.strength * 3
 	}
@@ -1015,17 +1017,17 @@ func (t mountType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData
 	m := &Mount{Ent: &Ent{tx: tx, handle: h, data: d}}
 	switch t.kind {
 	case mountHorse:
-		return &Horse{m}
+		return &horse{m}
 	case mountDonkey:
-		return &Donkey{m}
+		return &donkey{m}
 	case mountMule:
-		return &Mule{m}
+		return &mule{m}
 	case mountSkeletonHorse:
-		return &SkeletonHorse{m}
+		return &skeletonHorse{m}
 	case mountZombieHorse:
-		return &ZombieHorse{m}
+		return &zombieHorse{m}
 	case mountLlama:
-		return &Llama{m}
+		return &llama{m}
 	case mountTraderLlama:
 		return &TraderLlama{m}
 	case mountCamel:
@@ -1063,7 +1065,7 @@ func (t mountType) BBox(e world.Entity) cube.BBox {
 }
 func (t mountType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	c := defaultMountConfig(t.kind)
-	state := ReadNativeMobJavaState(n)
+	state := readNativeMobJavaState(n)
 	if state == nil {
 		state = n
 	}
@@ -1101,7 +1103,7 @@ func (t mountType) DecodeNBT(n map[string]any, d *world.EntityData) {
 		c.JumpStrength = jump.Base
 	}
 	d.Data = c.New()
-	b := d.Data.(*MountBehaviour)
+	b := d.Data.(*mountBehaviour)
 	// AbstractHorse.finalizeSpawn replaces the max-health base after loading
 	// Health; Source does not clamp that already-loaded health a second time.
 	if _, loadedHealth := state["Health"]; loadedHealth {
@@ -1118,33 +1120,33 @@ func (t mountType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	if _, ok := state["DespawnDelay"]; ok {
 		b.traderDespawn = int(nbtconv.Int32(state, "DespawnDelay"))
 	}
-	b.armor = mountStackFromNative(ReadNativeMobEquipment(n).Armor)
+	b.armor = mountStackFromNative(readNativeMobEquipment(n).Armor)
 	if b.chested {
-		b.chestItems = mountStacksFromNative(ReadNativeMobEquipment(n).ChestItems)
+		b.chestItems = mountStacksFromNative(readNativeMobEquipment(n).ChestItems)
 	}
 	b.breeding.decodeNBT(state)
 }
-func defaultMountConfig(kind mountKind) MountConfig {
-	return MountConfig{Kind: uint8(kind), Strength: 1}
+func defaultMountConfig(kind mountKind) mountConfig {
+	return mountConfig{Kind: uint8(kind), Strength: 1}
 }
 func (t mountType) EncodeNBT(d *world.EntityData) map[string]any {
-	b := d.Data.(*MountBehaviour)
+	b := d.Data.(*mountBehaviour)
 	native := map[string]any{}
-	native["Attributes"] = EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: b.health.MaxHealth(), Current: b.health.Health(), DefaultMin: 0, DefaultMax: b.health.MaxHealth(), Min: 0, Max: b.health.MaxHealth()}, {Name: "minecraft:movement", Base: b.movementSpeed, Current: b.movementSpeed, DefaultMin: 0, DefaultMax: b.movementSpeed, Min: 0, Max: b.movementSpeed}, {Name: "minecraft:horse.jump_strength", Base: b.jumpStrength, Current: b.jumpStrength, DefaultMin: 0, DefaultMax: 2, Min: 0, Max: 2}})
-	equipment := ReadNativeMobEquipment(d.NativeNBT)
+	native["Attributes"] = encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: b.health.MaxHealth(), Current: b.health.Health(), DefaultMin: 0, DefaultMax: b.health.MaxHealth(), Min: 0, Max: b.health.MaxHealth()}, {Name: "minecraft:movement", Base: b.movementSpeed, Current: b.movementSpeed, DefaultMin: 0, DefaultMax: b.movementSpeed, Min: 0, Max: b.movementSpeed}, {Name: "minecraft:horse.jump_strength", Base: b.jumpStrength, Current: b.jumpStrength, DefaultMin: 0, DefaultMax: 2, Min: 0, Max: 2}})
+	equipment := readNativeMobEquipment(d.NativeNBT)
 	if !b.armor.Empty() {
-		equipment.Armor = []NativeMobItem{mountNativeStack(b.armor, NativeMobItem{})}
+		equipment.Armor = []nativeMobItem{mountNativeStack(b.armor, nativeMobItem{})}
 	} else if equipment.Armor != nil {
-		equipment.Armor = []NativeMobItem{}
+		equipment.Armor = []nativeMobItem{}
 	}
 	if b.chested {
-		equipment.ChestItems = make([]NativeMobItem, len(b.chestItems))
+		equipment.ChestItems = make([]nativeMobItem, len(b.chestItems))
 		for i, s := range b.chestItems {
 			slot := int32(i)
-			equipment.ChestItems[i] = mountNativeStack(s, NativeMobItem{Slot: &slot})
+			equipment.ChestItems[i] = mountNativeStack(s, nativeMobItem{Slot: &slot})
 		}
 	}
-	for k, v := range EncodeNativeMobEquipment(equipment) {
+	for k, v := range encodeNativeMobEquipment(equipment) {
 		native[k] = v
 	}
 	state := b.breeding.encodeNBT(map[string]any{"Tame": b.tamed, "Saddled": b.saddled, "ChestedHorse": b.chested, "Strength": int32(b.strength), "Variant": int32(b.variant), "Age": int32(b.ageTicks), "Health": float32(b.health.Health()), "Sitting": b.sitting, "JumpStrength": b.jumpStrength, "DashCooldown": int32(b.dashCooldown), "Temper": int32(b.temper), "Bred": b.bred, "EatingHaystack": b.eating, "SkeletonTrap": b.trap, "SkeletonTrapTime": int32(b.trapTime), "LastPoseTick": b.lastPoseTick})
@@ -1154,9 +1156,9 @@ func (t mountType) EncodeNBT(d *world.EntityData) map[string]any {
 	if b.kind == mountTraderLlama {
 		state["DespawnDelay"] = int32(b.traderDespawn)
 	}
-	return MergeNativeMobJavaState(MergeNativeMobNBT(d.NativeNBT, native), state)
+	return mergeNativeMobJavaState(mergeNativeMobNBT(d.NativeNBT, native), state)
 }
-func mountStackFromNative(items []NativeMobItem) item.Stack {
+func mountStackFromNative(items []nativeMobItem) item.Stack {
 	for _, v := range items {
 		if v.Name != "" && v.Count > 0 {
 			if i, ok := world.ItemByName(v.Name, int16(v.Damage)); ok {
@@ -1166,7 +1168,7 @@ func mountStackFromNative(items []NativeMobItem) item.Stack {
 	}
 	return item.Stack{}
 }
-func mountStacksFromNative(items []NativeMobItem) []item.Stack {
+func mountStacksFromNative(items []nativeMobItem) []item.Stack {
 	out := make([]item.Stack, len(items))
 	for i, v := range items {
 		if v.Name != "" && v.Count > 0 {
@@ -1233,11 +1235,7 @@ func (m *Mount) die(src world.DamageSource) {
 }
 
 func (m *Mount) viewAction(a world.EntityAction) {
-	viewers := m.tx.Viewers(m.Position())
-	for _, v := range viewers {
-		v.ViewEntityAction(m, a)
-	}
-	m.tx.ReleaseViewers(viewers)
+	world.BroadcastEntityAction(m.tx, m, a)
 }
 
 // dropCustomDeathLoot drops the saddle and body armour or carpet, which the
@@ -1305,9 +1303,9 @@ func (m *Mount) FinalizeSpawn(reason string, random *vanilla.Random) {
 		// ZombieHorse.finalizeSpawn: zombie horses spawn ridden by a zombie
 		// with an iron spear.
 		opts := world.EntitySpawnOpts{Position: m.Position(), Rotation: cube.Rotation{m.Rotation().Yaw(), 0}, SpawnReason: reason}
-		if zombie, ok := m.tx.AddEntity(NewZombie(opts)).(*Zombie); ok {
-			zombie.state().main = item.NewStack(item.Spear{Tier: item.ToolTierIron}, 1)
-			m.addMobPassenger(m.tx, zombie, false)
+		if zomb, ok := m.tx.AddEntity(NewZombie(opts)).(*zombie); ok {
+			zomb.state().main = item.NewStack(item.Spear{Tier: item.ToolTierIron}, 1)
+			m.addMobPassenger(m.tx, zomb, false)
 		}
 	}
 	b.randomizeHorse(m, random)
@@ -1318,60 +1316,60 @@ func (m *Mount) FinalizeSpawn(reason string, random *vanilla.Random) {
 }
 
 var (
-	HorseType         = mountSpecies(mountHorse, "horse", 1.3965, 1.6)
-	DonkeyType        = mountSpecies(mountDonkey, "donkey", 1.3965, 1.5)
-	MuleType          = mountSpecies(mountMule, "mule", 1.3965, 1.6)
-	SkeletonHorseType = mountSpecies(mountSkeletonHorse, "skeleton_horse", 1.3965, 1.6)
-	ZombieHorseType   = mountSpecies(mountZombieHorse, "zombie_horse", 1.3965, 1.6)
-	LlamaType         = mountSpecies(mountLlama, "llama", .9, 1.87)
-	TraderLlamaType   = mountSpecies(mountTraderLlama, "trader_llama", .9, 1.87)
-	CamelType         = mountSpecies(mountCamel, "camel", 1.7, 2.375)
-	CamelHuskType     = mountSpecies(mountCamelHusk, "camel_husk", 1.7, 2.375)
+	horseType         = mountSpecies(mountHorse, "horse", 1.3965, 1.6)
+	donkeyType        = mountSpecies(mountDonkey, "donkey", 1.3965, 1.5)
+	muleType          = mountSpecies(mountMule, "mule", 1.3965, 1.6)
+	skeletonHorseType = mountSpecies(mountSkeletonHorse, "skeleton_horse", 1.3965, 1.6)
+	zombieHorseType   = mountSpecies(mountZombieHorse, "zombie_horse", 1.3965, 1.6)
+	llamaType         = mountSpecies(mountLlama, "llama", .9, 1.87)
+	traderLlamaType   = mountSpecies(mountTraderLlama, "trader_llama", .9, 1.87)
+	camelType         = mountSpecies(mountCamel, "camel", 1.7, 2.375)
+	camelHuskType     = mountSpecies(mountCamelHusk, "camel_husk", 1.7, 2.375)
 )
 
 func NewHorse(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(HorseType, defaultMountConfig(mountHorse))
+	return o.New(horseType, defaultMountConfig(mountHorse))
 }
 func NewDonkey(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(DonkeyType, defaultMountConfig(mountDonkey))
+	return o.New(donkeyType, defaultMountConfig(mountDonkey))
 }
 func NewMule(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(MuleType, defaultMountConfig(mountMule))
+	return o.New(muleType, defaultMountConfig(mountMule))
 }
 func NewSkeletonHorse(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(SkeletonHorseType, defaultMountConfig(mountSkeletonHorse))
+	return o.New(skeletonHorseType, defaultMountConfig(mountSkeletonHorse))
 }
 func NewSkeletonHorseTrap(o world.EntitySpawnOpts) *world.EntityHandle {
 	c := defaultMountConfig(mountSkeletonHorse)
 	c.SkeletonTrap = true
-	return o.New(SkeletonHorseType, c)
+	return o.New(skeletonHorseType, c)
 }
 func NewZombieHorse(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(ZombieHorseType, defaultMountConfig(mountZombieHorse))
+	return o.New(zombieHorseType, defaultMountConfig(mountZombieHorse))
 }
 func NewLlama(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(LlamaType, defaultMountConfig(mountLlama))
+	return o.New(llamaType, defaultMountConfig(mountLlama))
 }
 func NewTraderLlama(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(TraderLlamaType, defaultMountConfig(mountTraderLlama))
+	return o.New(traderLlamaType, defaultMountConfig(mountTraderLlama))
 }
 func NewCamel(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(CamelType, defaultMountConfig(mountCamel))
+	return o.New(camelType, defaultMountConfig(mountCamel))
 }
 func NewCamelHusk(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(CamelHuskType, defaultMountConfig(mountCamelHusk))
+	return o.New(camelHuskType, defaultMountConfig(mountCamelHusk))
 }
 
 type llamaSpitType struct{}
 
-var LlamaSpitType llamaSpitType
+var entityLlamaSpitType llamaSpitType
 
 func NewLlamaSpit(opts world.EntitySpawnOpts, owner world.Entity) *world.EntityHandle {
 	conf := ProjectileBehaviourConfig{Gravity: .03, Drag: .01, Damage: 1}
 	if owner != nil {
 		conf.Owner = owner.H()
 	}
-	return opts.New(LlamaSpitType, conf)
+	return opts.New(entityLlamaSpitType, conf)
 }
 func (llamaSpitType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
@@ -1388,4 +1386,4 @@ func (llamaSpitType) DecodeNBT(_ map[string]any, d *world.EntityData) {
 }
 func (llamaSpitType) EncodeNBT(*world.EntityData) map[string]any { return nil }
 
-func (b *MountBehaviour) effectManager() *EffectManager { return b.effects }
+func (b *mountBehaviour) effectManager() *EffectManager { return b.effects }

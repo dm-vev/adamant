@@ -7,7 +7,7 @@ import (
 )
 
 // EvokerFangsType is the delayed, damaging spell entity created by Evokers.
-var EvokerFangsType evokerFangsType
+var entityEvokerFangsType evokerFangsType
 
 type evokerFangsType struct{}
 
@@ -66,7 +66,7 @@ func NewEvokerFangs(opts world.EntitySpawnOpts, owner world.Entity, warmup int) 
 	if owner != nil {
 		h = owner.H()
 	}
-	return opts.New(EvokerFangsType, &evokerFangsBehaviour{owner: h, warmup: warmup})
+	return opts.New(entityEvokerFangsType, &evokerFangsBehaviour{owner: h, warmup: warmup})
 }
 
 var _ world.EntityType = evokerFangsType{}

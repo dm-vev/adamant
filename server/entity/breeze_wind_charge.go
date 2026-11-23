@@ -12,7 +12,7 @@ import (
 const breezeWindChargeRadius = 3
 
 // BreezeWindChargeType identifies the non-item wind charge fired by a Breeze.
-var BreezeWindChargeType breezeWindChargeType
+var entityBreezeWindChargeType breezeWindChargeType
 
 type breezeWindChargeType struct{}
 
@@ -36,7 +36,7 @@ func NewBreezeWindCharge(opts world.EntitySpawnOpts, owner world.Entity) *world.
 	if owner != nil {
 		handle = owner.H()
 	}
-	return opts.New(BreezeWindChargeType, breezeWindChargeConfig(handle))
+	return opts.New(entityBreezeWindChargeType, breezeWindChargeConfig(handle))
 }
 
 func breezeWindChargeConfig(owner *world.EntityHandle) ProjectileBehaviourConfig {

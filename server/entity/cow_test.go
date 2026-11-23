@@ -14,7 +14,7 @@ func TestCowNBTAndMilkAge(t *testing.T) {
 		"variant": "minecraft:cold", "sound_variant": "minecraft:moody",
 	}, data)
 	got := CowType.EncodeNBT(data)
-	javaState := ReadNativeMobJavaState(got)
+	javaState := readNativeMobJavaState(got)
 	if javaState["Age"] != int32(-100) || javaState["variant"] != "minecraft:cold" || javaState["sound_variant"] != "minecraft:moody" {
 		t.Fatalf("cow Java state did not round-trip: %#v", javaState)
 	}

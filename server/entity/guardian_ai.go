@@ -34,9 +34,9 @@ func (b *oceanBehaviour) aiTickGuardian(e *Ent, tx *world.Tx) *Movement {
 	if b.kind == oceanElderGuardian {
 		ai.EyeHeight = .99875
 	}
-	var self world.Entity = &Guardian{&oceanMob{Ent: e}}
+	var self world.Entity = &guardian{&oceanMob{Ent: e}}
 	if b.kind == oceanElderGuardian {
-		self = &ElderGuardian{&oceanMob{Ent: e}}
+		self = &elderGuardian{&oceanMob{Ent: e}}
 	}
 	if ai.started && e.data.Riding == nil {
 		m := ai.Mob(e, self)
@@ -61,7 +61,7 @@ func (b *oceanBehaviour) registerGuardianGoals(m *Mob) {
 	ai.nav.SetWaterBound(false)
 	ai.moveOverride = &guardianMoveControl{}
 	ai.SetPathfindingMalus(PathWater, 0)
-	stroll := NewRandomStrollGoal(1)
+	stroll := newRandomStrollGoal(1)
 	stroll.goalFlags = goalFlags{GoalMove | GoalLook}
 	stroll.Interval = 80
 	if b.kind == oceanElderGuardian {
@@ -71,12 +71,12 @@ func (b *oceanBehaviour) registerGuardianGoals(m *Mob) {
 	ai.Goals.Add(4, &guardianAttackGoal{goalFlags: goalFlags{GoalMove | GoalLook}})
 	ai.Goals.Add(5, &moveTowardsRestrictionGoal{goalFlags: goalFlags{GoalMove}, speedModifier: 1})
 	ai.Goals.Add(7, stroll)
-	ai.Goals.Add(8, NewLookAtPlayerGoal(8))
-	lookGuardian := NewLookAtPlayerGoal(12)
+	ai.Goals.Add(8, newLookAtPlayerGoal(8))
+	lookGuardian := newLookAtPlayerGoal(12)
 	lookGuardian.IsType, lookGuardian.Probability = entityIs("minecraft:guardian", "minecraft:elder_guardian"), .01
 	ai.Goals.Add(8, lookGuardian)
-	ai.Goals.Add(9, NewRandomLookAroundGoal())
-	targets := NewNearestAttackableTargetGoal(func(e world.Entity) bool { _, ok := e.(Living); return ok }, true)
+	ai.Goals.Add(9, newRandomLookAroundGoal())
+	targets := newNearestAttackableTargetGoal(func(e world.Entity) bool { _, ok := e.(Living); return ok }, true)
 	targets.Selector = func(m *Mob, target world.Entity) bool {
 		switch target.H().Type().EncodeEntity() {
 		case "minecraft:player", "minecraft:squid", "minecraft:glow_squid", "minecraft:axolotl":
@@ -313,7 +313,7 @@ func (g *moveTowardsRestrictionGoal) CanUse(m *Mob) bool {
 	if m.WithinHome(m.BlockPos()) {
 		return false
 	}
-	pos, ok := DefaultRandomPosTowards(m, 16, 7, mgl64.Vec3{float64(home.pos[0]) + .5, float64(home.pos[1]), float64(home.pos[2]) + .5}, math.Pi/2)
+	pos, ok := defaultRandomPosTowards(m, 16, 7, mgl64.Vec3{float64(home.pos[0]) + .5, float64(home.pos[1]), float64(home.pos[2]) + .5}, math.Pi/2)
 	if ok {
 		g.wanted = pos
 	}

@@ -121,7 +121,7 @@ func (conf ProjectileBehaviourConfig) New() *ProjectileBehaviour {
 		conf.ParticleCount = 1
 	}
 	return &ProjectileBehaviour{
-		BaseBehaviour: NewBaseBehaviour(),
+		baseBehaviour: newBaseBehaviour(),
 		conf:          conf,
 		collided:      conf.CollisionPosition != cube.Pos{},
 		collisionPos:  conf.CollisionPosition,
@@ -136,7 +136,7 @@ func (conf ProjectileBehaviourConfig) New() *ProjectileBehaviour {
 // ProjectileBehaviour implements the behaviour of projectiles. Its specifics
 // may be configured using ProjectileBehaviourConfig.
 type ProjectileBehaviour struct {
-	BaseBehaviour
+	baseBehaviour
 
 	conf        ProjectileBehaviourConfig
 	mc          *MovementComputer
@@ -319,13 +319,7 @@ func (lt *ProjectileBehaviour) tryPickup(e *Ent, tx *world.Tx) {
 
 		// A collector was within range and able to pick up the entity.
 		lt.close = true
-		viewers := tx.Viewers(e.Position())
-		// Projectile pickups can happen many times per second in arenas; recycling the viewer slice keeps the
-		// action snappy by avoiding short-lived allocations.
-		for _, viewer := range viewers {
-			viewer.ViewEntityAction(e, PickedUpAction{Collector: collector})
-		}
-		tx.ReleaseViewers(viewers)
+		world.BroadcastEntityAction(tx, e, PickedUpAction{Collector: collector})
 		// Only one collector may pick the projectile up: every further one would receive a copy of it.
 		return
 	}
@@ -348,12 +342,17 @@ func (lt *ProjectileBehaviour) hitBlockSurviving(e *Ent, r trace.BlockResult, m 
 		viewers := tx.Viewers(m.pos)
 		// Reuse the pooled buffer to broadcast the collision feedback, then hand it back so other projectiles
 		// in flight can benefit from the same allocation.
-		var b world.Broadcast
+		var actionB, stateB world.Broadcast
+		action := ArrowShakeAction{Duration: time.Millisecond * 350}
 		for _, v := range viewers {
 			v.ViewEntityTeleport(e, m.pos)
-			v.ViewEntityAction(e, ArrowShakeAction{Duration: time.Millisecond * 350})
+			if bv, ok := v.(world.EntityBroadcastViewer); ok {
+				bv.ViewEntityActionShared(e, action, &actionB)
+			} else {
+				v.ViewEntityAction(e, action)
+			}
 			if sv, ok := v.(world.EntityStateSharedViewer); ok {
-				sv.ViewEntityStateShared(e, &b)
+				sv.ViewEntityStateShared(e, &stateB)
 			} else {
 				v.ViewEntityState(e)
 			}

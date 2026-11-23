@@ -9,7 +9,7 @@ import (
 )
 
 // DragonFireballType is the Java dragon-breath projectile entity type.
-var DragonFireballType dragonFireballType
+var entityDragonFireballType dragonFireballType
 
 type dragonFireballType struct{}
 
@@ -58,7 +58,7 @@ func spawnDragonFireballFrom(owner *Ent, pos, target mgl64.Vec3, tx *world.Tx) {
 	}
 	conf := dragonFireballConf
 	conf.Owner = owner.handle
-	tx.AddEntity(world.EntitySpawnOpts{Position: pos, Velocity: delta.Normalize().Mul(.1)}.New(DragonFireballType, conf))
+	tx.AddEntity(world.EntitySpawnOpts{Position: pos, Velocity: delta.Normalize().Mul(.1)}.New(entityDragonFireballType, conf))
 }
 
 var _ world.EntityType = dragonFireballType{}

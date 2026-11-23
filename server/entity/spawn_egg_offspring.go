@@ -54,7 +54,7 @@ func spawnEggBabyNBT(tx *world.Tx, parent world.Entity, id string) map[string]an
 	case "minecraft:sulfur_cube":
 		data["Size"] = int32(0)
 	case "minecraft:nautilus":
-		if n, ok := parent.(*Nautilus); ok && n.b().tamed {
+		if n, ok := parent.(*nautilus); ok && n.b().tamed {
 			data["Tame"] = byte(1)
 		}
 	case "minecraft:zombie", "minecraft:husk", "minecraft:drowned", "minecraft:zombie_villager", "minecraft:zombified_piglin":
@@ -74,6 +74,6 @@ func (v *Villager) eggOffspring(tx *world.Tx) *world.EntityHandle {
 	if tx.RegionRandom().NextDouble() >= 0.5 {
 		variant = v.Variant()
 	}
-	conf := VillagerBehaviourConfig{Profession: "minecraft:none", Type: variant, Level: 1, Age: babyStartAge, Finalized: true}
-	return world.EntitySpawnOpts{Position: v.Position()}.New(VillagerType, conf)
+	conf := villagerBehaviourConfig{Profession: "minecraft:none", Type: variant, Level: 1, Age: babyStartAge, Finalized: true}
+	return world.EntitySpawnOpts{Position: v.Position()}.New(entityVillagerType, conf)
 }

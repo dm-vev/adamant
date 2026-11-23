@@ -16,22 +16,22 @@ func TestEndermanSavesCarriedBlockAsBDS(t *testing.T) {
 	t.Parallel()
 	world.DefaultBlockRegistry.Finalize()
 	data := &world.EntityData{}
-	EndermanType.DecodeNBT(map[string]any{"carriedBlock": map[string]any{"name": "minecraft:grass_block", "states": map[string]any{}}}, data)
+	entityEndermanType.DecodeNBT(map[string]any{"carriedBlock": map[string]any{"name": "minecraft:grass_block", "states": map[string]any{}}}, data)
 	if _, ok := data.Data.(*speciesState).carried.(block.Grass); !ok {
 		t.Fatalf("decoded carried block %#v, want grass", data.Data.(*speciesState).carried)
 	}
-	saved := EndermanType.EncodeNBT(data)
+	saved := entityEndermanType.EncodeNBT(data)
 	carried, _ := saved["carriedBlock"].(map[string]any)
 	if carried["name"] != "minecraft:grass_block" || carried["version"] == nil {
 		t.Fatalf("saved carriedBlock %v", carried)
 	}
-	if j := ReadNativeMobJavaState(saved); j["CarriedBlock"] != nil {
+	if j := readNativeMobJavaState(saved); j["CarriedBlock"] != nil {
 		t.Fatalf("carried block also saved in the Java state: %v", j)
 	}
 
 	// Saves of earlier versions kept the block in the Java state.
 	legacy := &world.EntityData{}
-	EndermanType.DecodeNBT(MergeNativeMobJavaState(map[string]any{}, map[string]any{"CarriedBlock": map[string]any{"Name": "minecraft:sand", "Properties": map[string]any{}}}), legacy)
+	entityEndermanType.DecodeNBT(mergeNativeMobJavaState(map[string]any{}, map[string]any{"CarriedBlock": map[string]any{"Name": "minecraft:sand", "Properties": map[string]any{}}}), legacy)
 	if _, ok := legacy.Data.(*speciesState).carried.(block.Sand); !ok {
 		t.Fatalf("decoded legacy carried block %#v, want sand", legacy.Data.(*speciesState).carried)
 	}

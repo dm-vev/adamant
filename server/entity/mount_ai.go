@@ -17,7 +17,7 @@ import (
 // Camel.
 
 // registerGoals registers the goals of the species.
-func (b *MountBehaviour) registerGoals(m *Mob) {
+func (b *mountBehaviour) registerGoals(m *Mob) {
 	switch {
 	case b.camel():
 		b.registerCamelGoals(m)
@@ -31,14 +31,14 @@ func (b *MountBehaviour) registerGoals(m *Mob) {
 // registerHorseGoals ports AbstractHorse.registerGoals with the
 // addBehaviourGoals of the horse species: skeleton horses neither float,
 // panic nor follow food, and zombie horses do not panic.
-func (b *MountBehaviour) registerHorseGoals(m *Mob) {
+func (b *mountBehaviour) registerHorseGoals(m *Mob) {
 	ai := m.AI
 	ai.Goals.Add(1, &runAroundLikeCrazyGoal{goalFlags: goalFlags{GoalMove}, mount: b})
-	ai.Goals.Add(2, NewBreedGoal(1))
-	ai.Goals.Add(4, NewFollowParentGoal(1))
-	ai.Goals.Add(6, NewWaterAvoidingRandomStrollGoal(.7))
-	ai.Goals.Add(7, NewLookAtPlayerGoal(6))
-	ai.Goals.Add(8, NewRandomLookAroundGoal())
+	ai.Goals.Add(2, newBreedGoal(1))
+	ai.Goals.Add(4, newFollowParentGoal(1))
+	ai.Goals.Add(6, newWaterAvoidingRandomStrollGoal(.7))
+	ai.Goals.Add(7, newLookAtPlayerGoal(6))
+	ai.Goals.Add(8, newRandomLookAroundGoal())
 	if b.horseRearing() {
 		ai.Goals.Add(9, &randomStandGoal{mount: b, nextStand: -400})
 	}
@@ -46,15 +46,15 @@ func (b *MountBehaviour) registerHorseGoals(m *Mob) {
 	case mountSkeletonHorse:
 		ai.Goals.Add(1, &skeletonTrapGoal{mount: b})
 	case mountZombieHorse:
-		ai.Goals.Add(0, NewFloatGoal(m))
-		ai.Goals.Add(3, NewTemptGoal(1.25, (&Mount{Ent: m.Ent}).breedingFood, false))
+		ai.Goals.Add(0, newFloatGoal(m))
+		ai.Goals.Add(3, newTemptGoal(1.25, (&Mount{Ent: m.Ent}).breedingFood, false))
 	default:
-		ai.Goals.Add(0, NewFloatGoal(m))
+		ai.Goals.Add(0, newFloatGoal(m))
 		// AbstractHorse.MountPanicGoal: a horse a mob steers does not panic.
-		b.panic = NewPanicGoal(1.2)
+		b.panic = newPanicGoal(1.2)
 		b.panic.Causes = func(src world.DamageSource) bool { return !b.mobControlled() && panicCause(src) }
 		ai.Goals.Add(1, b.panic)
-		ai.Goals.Add(3, NewTemptGoal(1.25, func(s item.Stack) bool {
+		ai.Goals.Add(3, newTemptGoal(1.25, func(s item.Stack) bool {
 			return itemNamed(s, "minecraft:golden_carrot", "minecraft:golden_apple", "minecraft:enchanted_golden_apple")
 		}, false))
 	}
@@ -63,27 +63,27 @@ func (b *MountBehaviour) registerHorseGoals(m *Mob) {
 // registerLlamaGoals ports Llama.registerGoals and the goals TraderLlama
 // adds: trader llamas panic faster and defend their trader from those who
 // hurt it, zombies and illagers.
-func (b *MountBehaviour) registerLlamaGoals(m *Mob) {
+func (b *mountBehaviour) registerLlamaGoals(m *Mob) {
 	ai := m.AI
-	ai.Goals.Add(0, NewFloatGoal(m))
+	ai.Goals.Add(0, newFloatGoal(m))
 	ai.Goals.Add(1, &runAroundLikeCrazyGoal{goalFlags: goalFlags{GoalMove}, mount: b})
 	ai.Goals.Add(2, &llamaFollowCaravanGoal{goalFlags: goalFlags{GoalMove}, mount: b, speed: 2.1})
-	ai.Goals.Add(3, NewRangedAttackGoal(1.25, 40, 20, func(m *Mob, target world.Entity, _ float64) {
+	ai.Goals.Add(3, newRangedAttackGoal(1.25, 40, 20, func(m *Mob, target world.Entity, _ float64) {
 		(&Mount{Ent: m.Ent}).spit(m.tx, target)
 	}))
-	b.panic = NewPanicGoal(1.2)
+	b.panic = newPanicGoal(1.2)
 	ai.Goals.Add(3, b.panic)
-	ai.Goals.Add(4, NewBreedGoal(1))
-	ai.Goals.Add(5, NewTemptGoal(1.25, func(s item.Stack) bool { return itemNamed(s, "minecraft:hay_block") }, false))
-	ai.Goals.Add(6, NewFollowParentGoal(1))
-	ai.Goals.Add(7, NewWaterAvoidingRandomStrollGoal(.7))
-	ai.Goals.Add(8, NewLookAtPlayerGoal(6))
-	ai.Goals.Add(9, NewRandomLookAroundGoal())
-	ai.Targets.Add(1, llamaHurtByTargetGoal{NewHurtByTargetGoal(), b})
+	ai.Goals.Add(4, newBreedGoal(1))
+	ai.Goals.Add(5, newTemptGoal(1.25, func(s item.Stack) bool { return itemNamed(s, "minecraft:hay_block") }, false))
+	ai.Goals.Add(6, newFollowParentGoal(1))
+	ai.Goals.Add(7, newWaterAvoidingRandomStrollGoal(.7))
+	ai.Goals.Add(8, newLookAtPlayerGoal(6))
+	ai.Goals.Add(9, newRandomLookAroundGoal())
+	ai.Targets.Add(1, llamaHurtByTargetGoal{newHurtByTargetGoal(), b})
 	// LlamaAttackWolfGoal spits at untamed wolves within a quarter of the
 	// follow range it can reach.
-	wolves := &NearestAttackableTargetGoal{targetGoal: newTargetGoal(false, true), RandomInterval: reducedTickDelay(16),
-		IsType: func(e world.Entity) bool { return e.H().Type() == WolfType },
+	wolves := &nearestAttackableTargetGoal{targetGoal: newTargetGoal(false, true), RandomInterval: reducedTickDelay(16),
+		IsType: func(e world.Entity) bool { return e.H().Type() == entityWolfType },
 		Selector: func(_ *Mob, e world.Entity) bool {
 			w, ok := e.(*Wolf)
 			return ok && !w.Tamed()
@@ -93,14 +93,14 @@ func (b *MountBehaviour) registerLlamaGoals(m *Mob) {
 	if b.kind != mountTraderLlama {
 		return
 	}
-	b.panic = NewPanicGoal(2)
+	b.panic = newPanicGoal(2)
 	ai.Goals.Add(1, b.panic)
 	ai.Targets.Add(1, &traderLlamaDefendTraderGoal{targetGoal: newTargetGoal(false, false), stamp: -1})
-	ai.Targets.Add(2, NewNearestAttackableTargetGoal(func(e world.Entity) bool {
+	ai.Targets.Add(2, newNearestAttackableTargetGoal(func(e world.Entity) bool {
 		id := e.H().Type().EncodeEntity()
 		return zombieClass[id] && id != "minecraft:zombified_piglin"
 	}, true))
-	ai.Targets.Add(2, NewNearestAttackableTargetGoal(func(e world.Entity) bool {
+	ai.Targets.Add(2, newNearestAttackableTargetGoal(func(e world.Entity) bool {
 		switch e.H().Type().EncodeEntity() {
 		case "minecraft:pillager", "minecraft:vindicator", "minecraft:evoker", "minecraft:illusioner":
 			return true
@@ -111,7 +111,7 @@ func (b *MountBehaviour) registerLlamaGoals(m *Mob) {
 
 // registerCamelGoals ports the controls of the constructor of Camel, whose
 // brain stands in for goals.
-func (b *MountBehaviour) registerCamelGoals(m *Mob) {
+func (b *mountBehaviour) registerCamelGoals(m *Mob) {
 	ai := m.AI
 	ai.MaxHeadYaw = 30
 	ai.nav.SetCanWalkOverFences(true)
@@ -121,7 +121,7 @@ func (b *MountBehaviour) registerCamelGoals(m *Mob) {
 
 // playerController ports AbstractHorse.getControllingPassenger: a saddled
 // mount is steered by the player riding it first.
-func (b *MountBehaviour) playerController(tx *world.Tx) world.Entity {
+func (b *mountBehaviour) playerController(tx *world.Tx) world.Entity {
 	if !b.controlled() {
 		return nil
 	}
@@ -135,7 +135,7 @@ func (b *MountBehaviour) playerController(tx *world.Tx) world.Entity {
 // travel ports LivingEntity.travelRidden for mounts a player steers, with
 // AbstractHorse.tickRidden, getRiddenInput and getRiddenSpeed, and
 // Camel.travel, which keeps a sitting camel in place.
-func (b *MountBehaviour) travel(m *Mob, input mgl64.Vec3) bool {
+func (b *mountBehaviour) travel(m *Mob, input mgl64.Vec3) bool {
 	refuse := b.refuseToMove(m.tx) && m.OnGround()
 	if c := b.playerController(m.tx); c != nil && m.Alive() {
 		b.tickRidden(m, c)
@@ -168,7 +168,7 @@ func (b *MountBehaviour) travel(m *Mob, input mgl64.Vec3) bool {
 // tickRidden ports AbstractHorse.tickRidden and Camel.tickRidden: the mount
 // turns the way its rider looks unless it is a camel that sits, and riding
 // forward stands a sitting camel up.
-func (b *MountBehaviour) tickRidden(m *Mob, rider world.Entity) {
+func (b *mountBehaviour) tickRidden(m *Mob, rider world.Entity) {
 	if b.camel() && b.forward > 0 && b.sitting && !b.inPoseTransition(m.tx) {
 		b.standUp(&Mount{Ent: m.Ent})
 	}
@@ -182,7 +182,7 @@ func (b *MountBehaviour) tickRidden(m *Mob, rider world.Entity) {
 
 // riddenSpeed ports getRiddenSpeed: the movement speed of the mount, and
 // for a camel that may dash 0.1 more while its rider sprints.
-func (b *MountBehaviour) riddenSpeed(rider world.Entity) float64 {
+func (b *mountBehaviour) riddenSpeed(rider world.Entity) float64 {
 	speed := b.movementSpeed
 	if b.camel() {
 		if s, ok := rider.(interface{ Sprinting() bool }); ok && s.Sprinting() && b.dashCooldown == 0 {
@@ -194,7 +194,7 @@ func (b *MountBehaviour) riddenSpeed(rider world.Entity) float64 {
 
 // immobile ports AbstractHorse.isImmobile and Llama.isImmobile: a horse
 // stands still while it eats or rears.
-func (b *MountBehaviour) immobile() bool {
+func (b *mountBehaviour) immobile() bool {
 	if b.llama() {
 		return b.eating
 	}
@@ -202,7 +202,7 @@ func (b *MountBehaviour) immobile() bool {
 }
 
 // waterSlowDown ports getWaterSlowDown: skeleton horses swim faster.
-func (b *MountBehaviour) waterSlowDown() float64 {
+func (b *mountBehaviour) waterSlowDown() float64 {
 	if b.kind == mountSkeletonHorse {
 		return .96
 	}
@@ -215,7 +215,7 @@ func (b *MountBehaviour) waterSlowDown() float64 {
 // or bucks its rider off and grows more tempered.
 type runAroundLikeCrazyGoal struct {
 	goalFlags
-	mount *MountBehaviour
+	mount *mountBehaviour
 	pos   mgl64.Vec3
 }
 
@@ -224,7 +224,7 @@ func (g *runAroundLikeCrazyGoal) CanUse(m *Mob) bool {
 	if b.mobControlled() || b.tamed || !b.vehicle() {
 		return false
 	}
-	pos, ok := DefaultRandomPos(m, 5, 4)
+	pos, ok := defaultRandomPos(m, 5, 4)
 	g.pos = pos
 	return ok
 }
@@ -264,7 +264,7 @@ func (g *runAroundLikeCrazyGoal) Tick(m *Mob) {
 // longer it waited, a horse rears up one time in ten.
 type randomStandGoal struct {
 	goalFlags
-	mount     *MountBehaviour
+	mount     *mountBehaviour
 	nextStand int
 }
 
@@ -292,7 +292,7 @@ func (g *randomStandGoal) RequiresUpdateEveryTick() bool { return true }
 // behind the llama ahead of it.
 type llamaFollowCaravanGoal struct {
 	goalFlags
-	mount     *MountBehaviour
+	mount     *mountBehaviour
 	speed     float64
 	distCheck int
 }
@@ -374,8 +374,8 @@ func (g *llamaFollowCaravanGoal) Tick(m *Mob) {
 // llamaHurtByTargetGoal ports Llama.LlamaHurtByTargetGoal: a llama spits at
 // whoever hurt it once and leaves it be.
 type llamaHurtByTargetGoal struct {
-	*HurtByTargetGoal
-	mount *MountBehaviour
+	*hurtByTargetGoal
+	mount *mountBehaviour
 }
 
 func (g llamaHurtByTargetGoal) CanContinueToUse(m *Mob) bool {
@@ -383,7 +383,7 @@ func (g llamaHurtByTargetGoal) CanContinueToUse(m *Mob) bool {
 		g.mount.llamaState.didSpit = false
 		return false
 	}
-	return g.HurtByTargetGoal.CanContinueToUse(m)
+	return g.hurtByTargetGoal.CanContinueToUse(m)
 }
 
 // traderLlamaDefendTraderGoal ports
@@ -426,7 +426,7 @@ func (g *traderLlamaDefendTraderGoal) Stop(m *Mob) { g.stop(m) }
 
 // camelMoveControl ports CamelMoveControl: a sitting camel off its lead
 // that wants to walk somewhere stands up first.
-type camelMoveControl struct{ mount *MountBehaviour }
+type camelMoveControl struct{ mount *mountBehaviour }
 
 func (c camelMoveControl) tick(m *Mob) {
 	b := c.mount

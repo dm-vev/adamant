@@ -11,7 +11,7 @@ import (
 )
 
 // WitherSkullType is the Wither's native, destructible skull projectile.
-var WitherSkullType witherSkullType
+var entityWitherSkullType witherSkullType
 
 type witherSkullType struct{}
 
@@ -85,7 +85,7 @@ func NewWitherSkull(opts world.EntitySpawnOpts, owner world.Entity, charged bool
 	if owner != nil {
 		h = owner.H()
 	}
-	return opts.New(WitherSkullType, witherSkullConfig(h, charged))
+	return opts.New(entityWitherSkullType, witherSkullConfig(h, charged))
 }
 
 var _ world.EntityType = witherSkullType{}

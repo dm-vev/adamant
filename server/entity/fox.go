@@ -17,11 +17,11 @@ import (
 )
 
 // FoxType is the registered Java fox species.
-var FoxType foxType
+var entityFoxType foxType
 
 type foxType struct{}
 type Fox struct{ *Ent }
-type FoxConfig struct {
+type foxConfig struct {
 	Health, MaxHealth            float64
 	Age, Variant                 int
 	Sleeping, Crouching, Sitting bool
@@ -51,11 +51,11 @@ type foxShownState struct {
 	held                                     bool
 }
 
-func NewFox(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(FoxType, FoxConfig{}) }
+func NewFox(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(entityFoxType, foxConfig{}) }
 func (foxType) EncodeEntity() string                     { return "minecraft:fox" }
 func (foxType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
-		FoxConfig{}.Apply(d)
+		foxConfig{}.Apply(d)
 	}
 	return &Fox{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
@@ -65,8 +65,8 @@ func (foxType) BBox(e world.Entity) cube.BBox {
 	}
 	return cube.Box(-.4, 0, -.4, .4, .7, .4)
 }
-func (c FoxConfig) Apply(d *world.EntityData) { d.Data = c.New() }
-func (c FoxConfig) New() *foxState {
+func (c foxConfig) Apply(d *world.EntityData) { d.Data = c.New() }
+func (c foxConfig) New() *foxState {
 	maxHealth := c.MaxHealth
 	if maxHealth <= 0 {
 		maxHealth = 10
@@ -78,11 +78,11 @@ func (c FoxConfig) New() *foxState {
 	return &foxState{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), age: c.Age, variant: max(0, min(c.Variant, 1)), sleeping: c.Sleeping, crouching: c.Crouching, sitting: c.Sitting, trusted: append([]string(nil), c.Trusted...), speed: .3}
 }
 func (foxType) DecodeNBT(n map[string]any, d *world.EntityData) {
-	s := ReadNativeMobJavaState(n)
+	s := readNativeMobJavaState(n)
 	if s == nil {
 		s = n
 	}
-	c := FoxConfig{Age: int(nbtconv.Int32(s, "Age")), Variant: int(nbtconv.Int32(s, "Type")), Sleeping: nbtconv.Bool(s, "Sleeping"), Crouching: nbtconv.Bool(s, "Crouching"), Sitting: nbtconv.Bool(s, "Sitting")}
+	c := foxConfig{Age: int(nbtconv.Int32(s, "Age")), Variant: int(nbtconv.Int32(s, "Type")), Sleeping: nbtconv.Bool(s, "Sleeping"), Crouching: nbtconv.Bool(s, "Crouching"), Sitting: nbtconv.Bool(s, "Sitting")}
 	if t, ok := s["Trusted"].([]string); ok {
 		c.Trusted = append([]string(nil), t...)
 	}
@@ -92,23 +92,23 @@ func (foxType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	d.Data = c.New()
 	state := d.Data.(*foxState)
 	state.breeding.decodeNBT(s)
-	if equipment := ReadNativeMobEquipment(n); len(equipment.Mainhand) > 0 {
+	if equipment := readNativeMobEquipment(n); len(equipment.Mainhand) > 0 {
 		state.held = item.ReadNBT(equipment.Mainhand[0].Raw)
 	}
 }
 func (foxType) EncodeNBT(d *world.EntityData) map[string]any {
 	s := d.Data.(*foxState)
 	maxHealth := s.health.MaxHealth()
-	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: maxHealth, Current: s.health.Health(), DefaultMin: 0, DefaultMax: maxHealth, Min: 0, Max: maxHealth}})
+	attrs := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: maxHealth, Current: s.health.Health(), DefaultMin: 0, DefaultMax: maxHealth, Min: 0, Max: maxHealth}})
 	canonical := map[string]any{"Attributes": attrs}
 	if !s.held.Empty() {
 		name, damage := s.held.Item().EncodeItem()
-		equipment := NativeMobEquipment{Mainhand: []NativeMobItem{{Name: name, Count: byte(s.held.Count()), Damage: int32(damage), WasPickedUp: 1, Raw: item.WriteNBT(s.held)}}}
-		for key, value := range EncodeNativeMobEquipment(equipment) {
+		equipment := nativeMobEquipment{Mainhand: []nativeMobItem{{Name: name, Count: byte(s.held.Count()), Damage: int32(damage), WasPickedUp: 1, Raw: item.WriteNBT(s.held)}}}
+		for key, value := range encodeNativeMobEquipment(equipment) {
 			canonical[key] = value
 		}
 	}
-	return MergeNativeMobJavaState(canonical, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), s.breeding.encodeNBT(map[string]any{"Age": int32(s.age), "Type": int32(s.variant), "Sleeping": s.sleeping, "Crouching": s.crouching, "Sitting": s.sitting, "Trusted": append([]string(nil), s.trusted...)})))
+	return mergeNativeMobJavaState(canonical, mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), s.breeding.encodeNBT(map[string]any{"Age": int32(s.age), "Type": int32(s.variant), "Sleeping": s.sleeping, "Crouching": s.crouching, "Sitting": s.sitting, "Trusted": append([]string(nil), s.trusted...)})))
 }
 func (f *Fox) b() *foxState { return f.Behaviour().(*foxState) }
 
@@ -186,11 +186,7 @@ func (s *foxState) afterTick(m *Mob) {
 	shown := foxShownState{s.sleeping, s.crouching, s.sitting, s.interested, !s.held.Empty()}
 	if shown != s.shown {
 		if shown.held != s.shown.held || !s.held.Empty() {
-			viewers := m.tx.Viewers(m.data.Pos)
-			for _, v := range viewers {
-				v.ViewEntityItems(m.Self)
-			}
-			m.tx.ReleaseViewers(viewers)
+			world.BroadcastEntityItems(m.tx, m.Self)
 		}
 		s.shown = shown
 		m.updateState()
@@ -264,11 +260,7 @@ func (f *Fox) KnockBack(src mgl64.Vec3, k, h float64) {
 	knockBack(f, src, k, h)
 }
 func (f *Fox) view(a world.EntityAction) {
-	v := f.tx.Viewers(f.Position())
-	for _, x := range v {
-		x.ViewEntityAction(f, a)
-	}
-	f.tx.ReleaseViewers(v)
+	world.BroadcastEntityAction(f.tx, f, a)
 }
 func (f *Fox) Variant() int    { return f.b().variant }
 func (f *Fox) Sleeping() bool  { return f.b().sleeping }
@@ -301,7 +293,7 @@ func (f *Fox) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
 			trusted = append(trusted, cause.String())
 		}
 	}
-	return babyAt(f).New(FoxType, FoxConfig{Age: babyStartAge, Variant: randomParent(randomOf(f.tx, f), f.b().variant, mate.b().variant), Trusted: trusted})
+	return babyAt(f).New(entityFoxType, foxConfig{Age: babyStartAge, Variant: randomParent(randomOf(f.tx, f), f.b().variant, mate.b().variant), Trusted: trusted})
 }
 func (f *Fox) FinalizeSpawn(_ string, r *vanilla.Random) {
 	if r == nil {

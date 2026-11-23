@@ -30,17 +30,17 @@ func tadpoleTestWorld(t *testing.T, age int) (*world.World, *world.EntityHandle)
 				}
 			}
 		}
-		tadpole = tx.AddEntity(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 62, .5}}.New(TadpoleType, AquaticMobConfig{ID: "minecraft:tadpole", MaxHealth: 6, Age: age})).H()
+		tadpole = tx.AddEntity(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 62, .5}}.New(tadpoleType, aquaticMobConfig{ID: "minecraft:tadpole", MaxHealth: 6, Age: age})).H()
 	})
 	return w, tadpole
 }
 
-func tadpoleOf(tx *world.Tx, h *world.EntityHandle) (*Tadpole, bool) {
+func tadpoleOf(tx *world.Tx, h *world.EntityHandle) (*tadpole, bool) {
 	e, ok := h.Entity(tx)
 	if !ok {
 		return nil, false
 	}
-	t, ok := e.(*Tadpole)
+	t, ok := e.(*tadpole)
 	return t, ok
 }
 
@@ -103,7 +103,7 @@ func TestTadpolesGrowIntoFrogs(t *testing.T) {
 		}
 		frogs := 0
 		for e := range tx.Entities() {
-			if _, ok := e.(*Frog); ok {
+			if _, ok := e.(*frog); ok {
 				frogs++
 			}
 		}

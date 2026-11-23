@@ -273,7 +273,7 @@ func comparePistonVanillaBody(t *testing.T, tick int64, e *Ent, want pistonEntit
 	t.Helper()
 	box := e.H().Type().BBox(e).Translate(e.Position())
 	velocity := e.Velocity()
-	if b, ok := e.Behaviour().(*ArmourStandBehaviour); ok {
+	if b, ok := e.Behaviour().(*armourStandBehaviour); ok {
 		// ScriptActor::getVelocity (0xbd8ac30) returns component 0xf96968b0
 		// for mobs: the last travel delta, not StateVector's next velocity.
 		velocity = b.passive.mc.nativeLastDelta

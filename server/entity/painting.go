@@ -21,7 +21,7 @@ type PaintingMotive struct {
 
 // PaintingMotives lists every Bedrock canvas in BDS registration order, with
 // the sizes of Java's PaintingVariants.
-var PaintingMotives = []PaintingMotive{
+var paintingMotives = []PaintingMotive{
 	{"Kebab", 1, 1}, {"Aztec", 1, 1}, {"Alban", 1, 1}, {"Aztec2", 1, 1}, {"Bomb", 1, 1}, {"Plant", 1, 1},
 	{"Wasteland", 1, 1}, {"Pool", 2, 1}, {"Courbet", 2, 1}, {"Sea", 2, 1}, {"Sunset", 2, 1}, {"Creebet", 2, 1},
 	{"Wanderer", 1, 2}, {"Graham", 1, 2}, {"Match", 2, 2}, {"Bust", 2, 2}, {"Stage", 2, 2}, {"Void", 2, 2},
@@ -35,8 +35,8 @@ var PaintingMotives = []PaintingMotive{
 }
 
 // PaintingMotiveByName looks up a canvas by its Bedrock motive ID.
-func PaintingMotiveByName(name string) (PaintingMotive, bool) {
-	for _, m := range PaintingMotives {
+func paintingMotiveByName(name string) (PaintingMotive, bool) {
+	for _, m := range paintingMotives {
 		if m.Name == name {
 			return m, true
 		}
@@ -55,7 +55,7 @@ func (m PaintingMotive) placeable() bool {
 }
 
 // PaintingType is the world.EntityType of a painting.
-var PaintingType paintingType
+var entityPaintingType paintingType
 
 type paintingType struct{}
 
@@ -89,16 +89,16 @@ func NewPainting(opts world.EntitySpawnOpts, pos cube.Pos, facing cube.Direction
 	box := paintingBox(pos, facing, motive)
 	opts.Position = box.Min().Add(box.Max()).Mul(0.5)
 	opts.Velocity = mgl64.Vec3{}
-	return opts.New(PaintingType, paintingConfig{motive: motive, facing: facing, pos: pos})
+	return opts.New(entityPaintingType, paintingConfig{motive: motive, facing: facing, pos: pos})
 }
 
 // CreatePainting ports Painting.create: of the placeable canvases that
 // survive at pos, one of the largest is chosen at random. Nil is returned if
 // no canvas fits.
-func CreatePainting(tx *world.Tx, pos cube.Pos, facing cube.Direction) *world.EntityHandle {
+func createPainting(tx *world.Tx, pos cube.Pos, facing cube.Direction) *world.EntityHandle {
 	var candidates []PaintingMotive
 	largest := 0
-	for _, m := range PaintingMotives {
+	for _, m := range paintingMotives {
 		if !m.placeable() || !paintingSurvives(tx, pos, facing, m, nil) {
 			continue
 		}
@@ -220,7 +220,7 @@ func legacySolid(tx world.BlockSource, b world.Block, pos cube.Pos) bool {
 // Open ...
 func (paintingType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
-		paintingConfig{motive: PaintingMotives[0], facing: cube.South}.Apply(d)
+		paintingConfig{motive: paintingMotives[0], facing: cube.South}.Apply(d)
 	}
 	return &Painting{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
@@ -254,9 +254,9 @@ func BedrockDirection(d cube.Direction) byte {
 // DecodeNBT reads the Bedrock Motif and Dir fields. The occupied block is
 // recovered from the centred actor position.
 func (paintingType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	motive, ok := PaintingMotiveByName(stringNBT(m, "Motif"))
+	motive, ok := paintingMotiveByName(stringNBT(m, "Motif"))
 	if !ok {
-		motive = PaintingMotives[0]
+		motive = paintingMotives[0]
 	}
 	dir, ok := m["Dir"].(byte)
 	if !ok {

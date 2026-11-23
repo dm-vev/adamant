@@ -19,10 +19,10 @@ import (
 // with.
 
 // mobAI returns the MobAI of the mob.
-func (b *AquaticMobBehaviour) mobAI() *MobAI { return &b.ai }
+func (b *aquaticMobBehaviour) mobAI() *MobAI { return &b.ai }
 
 // schooling reports if the fish extends Java's AbstractSchoolingFish.
-func (b *AquaticMobBehaviour) schooling() bool {
+func (b *aquaticMobBehaviour) schooling() bool {
 	switch b.id {
 	case "minecraft:cod", "minecraft:salmon", "minecraft:tropical_fish":
 		return true
@@ -31,7 +31,7 @@ func (b *AquaticMobBehaviour) schooling() bool {
 }
 
 // maxSchoolSize ports AbstractSchoolingFish.getMaxSchoolSize.
-func (b *AquaticMobBehaviour) maxSchoolSize() int {
+func (b *aquaticMobBehaviour) maxSchoolSize() int {
 	if b.id == "minecraft:salmon" {
 		return 5
 	}
@@ -40,7 +40,7 @@ func (b *AquaticMobBehaviour) maxSchoolSize() int {
 
 // tickFish runs a tick of a fish: its air out of water, the puffing of a
 // pufferfish, its flopping on land and its MobAI.
-func (b *AquaticMobBehaviour) tickFish(e *Ent, tx *world.Tx) *Movement {
+func (b *aquaticMobBehaviour) tickFish(e *Ent, tx *world.Tx) *Movement {
 	self := aquaticWorldEntity(e)
 	ai := &b.ai
 	ai.MovementSpeed = b.speed
@@ -92,14 +92,14 @@ const tadpoleTicksToBeFrog = 24000
 
 // setTadpoleAge ports Tadpole.setAge: a tadpole old enough grows up into a
 // frog of the biome it is in.
-func (b *AquaticMobBehaviour) setTadpoleAge(e *Ent, tx *world.Tx, age int) {
+func (b *aquaticMobBehaviour) setTadpoleAge(e *Ent, tx *world.Tx, age int) {
 	b.age = age
 	if b.age < tadpoleTicksToBeFrog || b.dead {
 		return
 	}
 	b.dead = true
 	opts := world.EntitySpawnOpts{Position: e.Position(), Rotation: e.data.Rot}
-	frog := convertMob(tx, e.living(), opts.New(FrogType, frogConfig{variant: frogVariantAt(tx, e.Position())}), conversion{})
+	frog := convertMob(tx, e.living(), opts.New(entityFrogType, frogConfig{variant: frogVariantAt(tx, e.Position())}), conversion{})
 	if p, ok := frog.(interface{ SetPersistenceRequired(bool) }); ok {
 		p.SetPersistenceRequired(true)
 	}
@@ -108,7 +108,7 @@ func (b *AquaticMobBehaviour) setTadpoleAge(e *Ent, tx *world.Tx, age int) {
 
 // feedTadpole ports Tadpole.mobInteract: frog food makes a tadpole grow up
 // sooner, and a golden dandelion stops or restarts its growth.
-func (b *AquaticMobBehaviour) feedTadpole(e *Ent, tx *world.Tx, held item.Stack, ctx *item.UseContext) bool {
+func (b *aquaticMobBehaviour) feedTadpole(e *Ent, tx *world.Tx, held item.Stack, ctx *item.UseContext) bool {
 	switch {
 	case inItemTag(held, "frog_food") && !b.breeding.ageLocked:
 		ctx.SubtractFromCount(1)
@@ -126,7 +126,7 @@ func (b *AquaticMobBehaviour) feedTadpole(e *Ent, tx *world.Tx, held item.Stack,
 }
 
 // newTadpoleBrain ports TadpoleAi and the brain provider of Tadpole.
-func newTadpoleBrain() *Brain {
+func newTadpoleBrain() *brain {
 	b := newBrain(nearestLivingEntitySensor{}, playerSensor{}, hurtBySensor{},
 		temptingSensor{items: func(_ *Mob, s item.Stack) bool { return inItemTag(s, "frog_food") }})
 	b.addActivity(activityCore, 0,
@@ -147,11 +147,11 @@ func newTadpoleBrain() *Brain {
 	return b
 }
 
-func (b *AquaticMobBehaviour) brain() *Brain { return b.br }
+func (b *aquaticMobBehaviour) brain() *brain { return b.br }
 
 // customServerAiStep ports Tadpole.customServerAiStep: a tadpole runs its
 // brain besides the goals of a fish.
-func (b *AquaticMobBehaviour) customServerAiStep(m *Mob) {
+func (b *aquaticMobBehaviour) customServerAiStep(m *Mob) {
 	if b.id == "minecraft:axolotl" {
 		b.axolotlServerAiStep(m)
 		return
@@ -165,7 +165,7 @@ func (b *AquaticMobBehaviour) customServerAiStep(m *Mob) {
 
 // registerFishGoals ports AbstractFish.registerGoals and those of its
 // subclasses, with the navigation and move control of AbstractFish.
-func (b *AquaticMobBehaviour) registerFishGoals(m *Mob) {
+func (b *aquaticMobBehaviour) registerFishGoals(m *Mob) {
 	ai := m.AI
 	ai.nav.SetWaterBound(false)
 	// WaterAnimal: water costs nothing.
@@ -175,13 +175,13 @@ func (b *AquaticMobBehaviour) registerFishGoals(m *Mob) {
 		ai.moveOverride = smoothSwimmingMoveControl{maxTurnX: 85, maxTurnY: 10, inWater: float64(float32(.02)), outsideWater: float64(float32(.1)), gravity: true}
 		ai.lookOverride = smoothSwimmingLookControl{maxYawFromCentre: 10}
 	}
-	b.panic = NewPanicGoal(1.25)
+	b.panic = newPanicGoal(1.25)
 	ai.Goals.Add(0, b.panic)
 	if b.id == "minecraft:pufferfish" {
 		ai.Goals.Add(1, &pufferfishPuffGoal{fish: b})
 	}
-	ai.Goals.Add(2, NewAvoidEntityGoal(func(e world.Entity) bool { return isPlayerEntity(e) && !spectator(e) }, 8, 1.6, 1.4))
-	swim := NewRandomStrollGoal(1)
+	ai.Goals.Add(2, newAvoidEntityGoal(func(e world.Entity) bool { return isPlayerEntity(e) && !spectator(e) }, 8, 1.6, 1.4))
+	swim := newRandomStrollGoal(1)
 	swim.Interval, swim.Position = 40, randomSwimmablePos
 	ai.Goals.Add(4, fishSwimGoal{swim, b})
 	if b.schooling() {
@@ -191,7 +191,7 @@ func (b *AquaticMobBehaviour) registerFishGoals(m *Mob) {
 
 // travel ports AbstractFish.travelInWater: a fish swims slowly and sinks
 // unless it chases something.
-func (b *AquaticMobBehaviour) travel(m *Mob, input mgl64.Vec3) bool {
+func (b *aquaticMobBehaviour) travel(m *Mob, input mgl64.Vec3) bool {
 	if b.id == "minecraft:axolotl" {
 		return axolotlTravel(m, input)
 	}
@@ -215,9 +215,9 @@ func randomSwimmablePos(m *Mob) (mgl64.Vec3, bool) { return randomSwimmablePosWi
 // randomSwimmablePosWithin ports BehaviorUtils.getRandomSwimmablePos: a
 // random spot within the distances a mob may swim to.
 func randomSwimmablePosWithin(m *Mob, horizontal, vertical int) (mgl64.Vec3, bool) {
-	pos, ok := DefaultRandomPos(m, horizontal, vertical)
+	pos, ok := defaultRandomPos(m, horizontal, vertical)
 	for count := 0; ok && !pathfindableWater(m, cube.PosFromVec3(pos)) && count < 10; count++ {
-		pos, ok = DefaultRandomPos(m, horizontal, vertical)
+		pos, ok = defaultRandomPos(m, horizontal, vertical)
 	}
 	return pos, ok
 }
@@ -253,17 +253,17 @@ func (fishMoveControl) tick(m *Mob) {
 // fishSwimGoal ports AbstractFish.FishSwimGoal, which a fish following a
 // school does not run.
 type fishSwimGoal struct {
-	*RandomStrollGoal
-	fish *AquaticMobBehaviour
+	*randomStrollGoal
+	fish *aquaticMobBehaviour
 }
 
 func (g fishSwimGoal) CanUse(m *Mob) bool {
-	return !g.fish.isFollower(m.tx) && g.RandomStrollGoal.CanUse(m)
+	return !g.fish.isFollower(m.tx) && g.randomStrollGoal.CanUse(m)
 }
 
 // isFollower ports AbstractSchoolingFish.isFollower: the fish follows a
 // living leader.
-func (b *AquaticMobBehaviour) isFollower(tx *world.Tx) bool {
+func (b *aquaticMobBehaviour) isFollower(tx *world.Tx) bool {
 	if b.leader == nil || b.leaderState == nil || b.leaderState.dead {
 		return false
 	}
@@ -272,13 +272,13 @@ func (b *AquaticMobBehaviour) isFollower(tx *world.Tx) bool {
 }
 
 // startFollowing ports AbstractSchoolingFish.startFollowing.
-func (b *AquaticMobBehaviour) startFollowing(leader *world.EntityHandle, state *AquaticMobBehaviour) {
+func (b *aquaticMobBehaviour) startFollowing(leader *world.EntityHandle, state *aquaticMobBehaviour) {
 	b.leader, b.leaderState = leader, state
 	state.schoolSize++
 }
 
 // stopFollowing ports AbstractSchoolingFish.stopFollowing.
-func (b *AquaticMobBehaviour) stopFollowing() {
+func (b *aquaticMobBehaviour) stopFollowing() {
 	if b.leaderState != nil {
 		b.leaderState.schoolSize--
 	}
@@ -286,13 +286,13 @@ func (b *AquaticMobBehaviour) stopFollowing() {
 }
 
 // canBeFollowed ports AbstractSchoolingFish.canBeFollowed.
-func (b *AquaticMobBehaviour) canBeFollowed() bool {
+func (b *aquaticMobBehaviour) canBeFollowed() bool {
 	return b.schoolSize > 1 && b.schoolSize < b.maxSchoolSize()
 }
 
 // checkSchool ports the part of AbstractSchoolingFish.tick that breaks up a
 // school with no fish of its kind within eight blocks.
-func (b *AquaticMobBehaviour) checkSchool(m *Mob) {
+func (b *aquaticMobBehaviour) checkSchool(m *Mob) {
 	neighbours := 0
 	for e := range m.tx.EntitiesWithin(m.BBox().Grow(8)) {
 		if e.H().Type() == m.H().Type() {
@@ -310,11 +310,11 @@ func (b *AquaticMobBehaviour) checkSchool(m *Mob) {
 // of it.
 type followFlockLeaderGoal struct {
 	goalFlags
-	fish                            *AquaticMobBehaviour
+	fish                            *aquaticMobBehaviour
 	timeToRecalcPath, nextStartTick int
 }
 
-func newFollowFlockLeaderGoal(m *Mob, fish *AquaticMobBehaviour) *followFlockLeaderGoal {
+func newFollowFlockLeaderGoal(m *Mob, fish *aquaticMobBehaviour) *followFlockLeaderGoal {
 	g := &followFlockLeaderGoal{fish: fish}
 	g.nextStartTick = g.startDelay(m)
 	return g
@@ -337,8 +337,8 @@ func (g *followFlockLeaderGoal) CanUse(m *Mob) bool {
 		return false
 	}
 	g.nextStartTick = g.startDelay(m)
-	var candidates []*AquaticMob
-	var leader *AquaticMob
+	var candidates []*aquaticMob
+	var leader *aquaticMob
 	for e := range m.tx.EntitiesWithin(m.BBox().Grow(8)) {
 		if e.H().Type() != m.H().Type() {
 			continue
@@ -355,7 +355,7 @@ func (g *followFlockLeaderGoal) CanUse(m *Mob) bool {
 		}
 	}
 	if leader == nil {
-		leader = &AquaticMob{Ent: m.Ent}
+		leader = &aquaticMob{Ent: m.Ent}
 	}
 	// AbstractSchoolingFish.addFollowers takes as many of the fish that
 	// follow no leader as fit in the school, the leader among them.
@@ -403,20 +403,20 @@ func (g *followFlockLeaderGoal) Tick(m *Mob) {
 }
 
 // aquaticOf returns the aquatic mob of an entity, or nil.
-func aquaticOf(e world.Entity) *AquaticMob {
+func aquaticOf(e world.Entity) *aquaticMob {
 	switch a := e.(type) {
-	case *Cod:
-		return a.AquaticMob
+	case *cod:
+		return a.aquaticMob
 	case *Salmon:
-		return a.AquaticMob
+		return a.aquaticMob
 	case *TropicalFish:
-		return a.AquaticMob
-	case *Pufferfish:
-		return a.AquaticMob
-	case *Tadpole:
-		return a.AquaticMob
+		return a.aquaticMob
+	case *pufferfish:
+		return a.aquaticMob
+	case *tadpole:
+		return a.aquaticMob
 	case *Axolotl:
-		return a.AquaticMob
+		return a.aquaticMob
 	}
 	return nil
 }
@@ -441,7 +441,7 @@ func scaresPufferfish(self, target world.Entity) bool {
 // something that scares it is within two blocks.
 type pufferfishPuffGoal struct {
 	goalFlags
-	fish *AquaticMobBehaviour
+	fish *aquaticMobBehaviour
 }
 
 func (g *pufferfishPuffGoal) CanUse(m *Mob) bool {
@@ -460,7 +460,7 @@ func (g *pufferfishPuffGoal) Stop(*Mob) { g.fish.inflateCounter = 0 }
 // tickPuffState ports what Pufferfish.tick does before the AI: a pufferfish
 // puffs up halfway at once and fully after two seconds, and deflates three
 // and five seconds after it calmed down.
-func (b *AquaticMobBehaviour) tickPuffState(m *Mob) {
+func (b *aquaticMobBehaviour) tickPuffState(m *Mob) {
 	state := b.puffState
 	switch {
 	case b.inflateCounter > 0:
@@ -492,7 +492,7 @@ func (b *AquaticMobBehaviour) tickPuffState(m *Mob) {
 // afterAiStep ports what Pufferfish.aiStep does after the AI: a puffed up
 // pufferfish stings the mobs it touches, and Pufferfish.playerTouch the
 // players that touch it.
-func (b *AquaticMobBehaviour) afterAiStep(m *Mob) {
+func (b *aquaticMobBehaviour) afterAiStep(m *Mob) {
 	if b.id != "minecraft:pufferfish" || b.puffState == 0 || b.dead {
 		return
 	}

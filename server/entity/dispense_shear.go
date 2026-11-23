@@ -99,7 +99,7 @@ func (m *Mooshroom) ShearIfReady(tx *world.Tx) bool {
 
 // ShearIfReady ports SnowGolem.readyForShearing and shear: a snow golem that
 // wears its pumpkin sheds it.
-func (m *SnowGolem) ShearIfReady(tx *world.Tx) bool {
+func (m *snowGolem) ShearIfReady(tx *world.Tx) bool {
 	if m.Dead() || !m.HasPumpkin() {
 		return false
 	}

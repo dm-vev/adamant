@@ -38,12 +38,12 @@ func TestHopperMinecartPullAndCooldown(t *testing.T) {
 		}
 
 		b.transferCooldown = 2
-		handle := world.EntitySpawnOpts{Position: cube.Pos{4, 4, 4}.Vec3Centre()}.New(HopperMinecartType, hopperMinecartConf)
+		handle := world.EntitySpawnOpts{Position: cube.Pos{4, 4, 4}.Vec3Centre()}.New(entityHopperMinecartType, hopperMinecartConf)
 		tx.AddEntity(handle)
 		entity, _ := handle.Entity(tx)
-		other := entity.(*MinecartContainer).Behaviour().(*HopperMinecartBehaviour)
+		other := entity.(*minecartContainer).Behaviour().(*hopperMinecartBehaviour)
 		other.transferCooldown = 2
-		other.Tick(entity.(*MinecartContainer).Ent, tx)
+		other.Tick(entity.(*minecartContainer).Ent, tx)
 		if other.transferCooldown != 1 {
 			t.Fatalf("cooldown = %d, want 1", other.transferCooldown)
 		}
@@ -82,13 +82,13 @@ func TestHopperMinecartCollectsStackWithoutDuplication(t *testing.T) {
 
 	<-w.Exec(func(tx *world.Tx) {
 		pos := cube.Pos{0, 1, 0}.Vec3Centre()
-		minecartHandle := world.EntitySpawnOpts{Position: pos}.New(HopperMinecartType, hopperMinecartConf)
+		minecartHandle := world.EntitySpawnOpts{Position: pos}.New(entityHopperMinecartType, hopperMinecartConf)
 		itemHandle := NewItem(world.EntitySpawnOpts{Position: pos}, item.NewStack(item.Diamond{}, 3))
 		tx.AddEntity(minecartHandle)
 		tx.AddEntity(itemHandle)
 		minecartEntity, _ := minecartHandle.Entity(tx)
-		minecart := minecartEntity.(*MinecartContainer)
-		behaviour := minecart.Behaviour().(*HopperMinecartBehaviour)
+		minecart := minecartEntity.(*minecartContainer)
+		behaviour := minecart.Behaviour().(*hopperMinecartBehaviour)
 
 		if !behaviour.collectItem(minecart.Ent, tx) {
 			t.Fatal("hopper minecart did not collect nearby item")
@@ -113,11 +113,11 @@ func TestHopperMinecartNBTRoundTrip(t *testing.T) {
 	b.enabled = false
 	_ = b.inv.SetItem(4, item.NewStack(item.Diamond{}, 3))
 	data := &world.EntityData{Data: b}
-	nbt := HopperMinecartType.EncodeNBT(data)
+	nbt := entityHopperMinecartType.EncodeNBT(data)
 
 	decoded := new(world.EntityData)
-	HopperMinecartType.DecodeNBT(nbt, decoded)
-	got := decoded.Data.(*HopperMinecartBehaviour)
+	entityHopperMinecartType.DecodeNBT(nbt, decoded)
+	got := decoded.Data.(*hopperMinecartBehaviour)
 	stack, _ := got.inv.Item(4)
 	if nbt["TransferCooldown"] != int32(7) || got.transferCooldown != 7 || got.enabled || stack.Count() != 3 || got.ContainerKind() != ContainerMinecartHopper || got.ContainerSize() != 5 {
 		t.Fatalf("round trip failed: nbt=%v cooldown=%d enabled=%v stack=%v kind=%d size=%d", nbt, got.transferCooldown, got.enabled, stack, got.ContainerKind(), got.ContainerSize())
@@ -131,19 +131,19 @@ func TestHopperMinecartActivatorRail(t *testing.T) {
 
 	<-w.Exec(func(tx *world.Tx) {
 		pos := cube.Pos{0, 1, 0}
-		handle := world.EntitySpawnOpts{Position: pos.Vec3Middle()}.New(HopperMinecartType, hopperMinecartConf)
+		handle := world.EntitySpawnOpts{Position: pos.Vec3Middle()}.New(entityHopperMinecartType, hopperMinecartConf)
 		tx.AddEntity(handle)
 		entity, _ := handle.Entity(tx)
-		behaviour := entity.(*MinecartContainer).Behaviour().(*HopperMinecartBehaviour)
+		behaviour := entity.(*minecartContainer).Behaviour().(*hopperMinecartBehaviour)
 
 		tx.SetBlock(pos, block.ActivatorRail{Powered: true}, nil)
-		behaviour.Activate(entity.(*MinecartContainer).Ent, tx, true)
+		behaviour.Activate(entity.(*minecartContainer).Ent, tx, true)
 		if behaviour.enabled {
 			t.Fatal("powered activator rail did not disable hopper minecart")
 		}
 
 		tx.SetBlock(pos, block.ActivatorRail{}, nil)
-		behaviour.Activate(entity.(*MinecartContainer).Ent, tx, false)
+		behaviour.Activate(entity.(*minecartContainer).Ent, tx, false)
 		if !behaviour.enabled {
 			t.Fatal("unpowered activator rail did not enable hopper minecart")
 		}
@@ -170,7 +170,7 @@ func TestVehicleContainerKinds(t *testing.T) {
 		{"chest boat", chestBoatConf.New().ContainerKind(), ContainerChestBoat},
 		{"chest minecart", chestMinecartConf.New().ContainerKind(), ContainerMinecartChest},
 		{"hopper minecart", hopperMinecartConf.New().ContainerKind(), ContainerMinecartHopper},
-		{"minecart of the zero kind", MinecartContainerBehaviourConfig{Size: 1}.New().ContainerKind(), ContainerMinecartChest},
+		{"minecart of the zero kind", minecartContainerBehaviourConfig{Size: 1}.New().ContainerKind(), ContainerMinecartChest},
 	} {
 		if c.got != c.want {
 			t.Errorf("%s: ContainerKind() = %d, want %d", c.name, c.got, c.want)

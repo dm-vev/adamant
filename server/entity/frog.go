@@ -13,7 +13,7 @@ import (
 )
 
 // FrogType is the Java frog entity type, used as the real destination of tadpole metamorphosis.
-var FrogType frogType
+var entityFrogType frogType
 
 type frogType struct{}
 
@@ -22,7 +22,7 @@ func (frogType) Open(tx *world.Tx, h *world.EntityHandle, data *world.EntityData
 	if data.Data == nil {
 		frogConfig{}.Apply(data)
 	}
-	return &Frog{Ent: &Ent{tx: tx, handle: h, data: data}}
+	return &frog{Ent: &Ent{tx: tx, handle: h, data: data}}
 }
 func (frogType) BBox(world.Entity) cube.BBox { return cube.Box(-.25, 0, -.25, .25, .5, .25) }
 func (frogType) DecodeNBT(nbt map[string]any, data *world.EntityData) {
@@ -86,7 +86,7 @@ type frogBehaviour struct {
 	health  *HealthManager
 	effects *EffectManager
 	ai      MobAI
-	br      *Brain
+	br      *brain
 	variant int
 	speed   float64
 	dead    bool
@@ -102,12 +102,12 @@ type frogBehaviour struct {
 }
 
 // Frog is a living amphibian runtime entity. Tadpoles convert into this runtime at Java's age threshold.
-type Frog struct{ *Ent }
+type frog struct{ *Ent }
 
-func (f *Frog) behaviour() *frogBehaviour { return f.Behaviour().(*frogBehaviour) }
+func (f *frog) behaviour() *frogBehaviour { return f.Behaviour().(*frogBehaviour) }
 
 // FinalizeSpawn ports Frog.finalizeSpawn: the biome selects the variant.
-func (f *Frog) FinalizeSpawn(_ string, r *vanilla.Random) {
+func (f *frog) FinalizeSpawn(_ string, r *vanilla.Random) {
 	if r == nil {
 		return
 	}
@@ -118,25 +118,25 @@ func (f *Frog) FinalizeSpawn(_ string, r *vanilla.Random) {
 
 // Variant returns the variant of the frog by Bedrock's number, which the world
 // format saves and Bedrock clients are sent: 0 temperate, 1 cold, 2 warm.
-func (f *Frog) Variant() int32 { return int32(f.behaviour().variant) }
+func (f *frog) Variant() int32 { return int32(f.behaviour().variant) }
 
 // LootComponents exposes the frog variant (Bedrock 0 temperate, 1 cold, 2 warm)
 // to loot predicates such as the magma cube froglight drop.
-func (f *Frog) LootComponents() map[string]any {
+func (f *frog) LootComponents() map[string]any {
 	return map[string]any{"minecraft:frog/variant": "minecraft:" + []string{"temperate", "cold", "warm"}[max(0, min(f.behaviour().variant, 2))]}
 }
-func (f *Frog) Tick(tx *world.Tx, current int64) {
+func (f *frog) Tick(tx *world.Tx, current int64) {
 	f.behaviour().effects.Tick(f, tx)
 	f.Ent.Tick(tx, current)
 }
 
 func (b *frogBehaviour) mobAI() *MobAI   { return &b.ai }
-func (b *frogBehaviour) brain() *Brain   { return b.br }
+func (b *frogBehaviour) brain() *brain   { return b.br }
 func (b *frogBehaviour) panicking() bool { return b.br.has(memIsPanicking) }
 
 // Tick runs a tick of the frog: its love and its MobAI with its brain.
 func (b *frogBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	f := &Frog{Ent: e}
+	f := &frog{Ent: e}
 	if !b.memoriesInit {
 		// FrogAi.initMemories.
 		b.memoriesInit = true
@@ -217,13 +217,13 @@ func (b *frogBehaviour) setTongueTarget(m *Mob, e world.Entity) {
 var frogTimeBetweenLongJumps = uniformInt{100, 140}
 
 // newFrogBrain ports FrogAi and the brain provider of Frog.
-func newFrogBrain(f *frogBehaviour) *Brain {
+func newFrogBrain(f *frogBehaviour) *brain {
 	b := newBrain(nearestLivingEntitySensor{}, hurtBySensor{}, frogAttackablesSensor{},
 		temptingSensor{items: func(_ *Mob, s item.Stack) bool { return inItemTag(s, "frog_food") }}, isInWaterSensor{})
 	lookAtPlayers := func() behaviorControl { return newSetEntityLookTargetSometimes(isPlayerType, 6, uniformInt{30, 60}) }
 	startAttacking := func() behaviorControl {
-		return newStartAttacking(func(m *Mob) bool { return !m.Brain().has(memBreedTarget) }, func(m *Mob) world.Entity {
-			return m.Brain().entity(m, memNearestAttackable)
+		return newStartAttacking(func(m *Mob) bool { return !m.brain().has(memBreedTarget) }, func(m *Mob) world.Entity {
+			return m.brain().entity(m, memNearestAttackable)
 		})
 	}
 	onGround := func() behaviorControl { return newOneShotIf(func(m *Mob) bool { return m.OnGround() }) }
@@ -236,7 +236,7 @@ func newFrogBrain(f *frogBehaviour) *Brain {
 	)
 	b.addActivityWith(activityIdle, []prioritizedBehavior{
 		{0, lookAtPlayers()},
-		{0, newAnimalMakeLove(FrogType, 1, 2)},
+		{0, newAnimalMakeLove(entityFrogType, 1, 2)},
 		{1, newFollowTemptation(constSpeed(1.25), nil, false)},
 		{2, startAttacking()},
 		{3, newTryFindLand(6, 1)},
@@ -343,14 +343,14 @@ func newFrogShootTongue(f *frogBehaviour) *behavior {
 		pathCounter int
 	)
 	walkTo := func(m *Mob, target world.Entity) {
-		m.Brain().set(memWalkTarget, walkTarget{target: newBlockPosTracker(cube.PosFromVec3(target.Position())), speed: 2})
+		m.brain().set(memWalkTarget, walkTarget{target: newBlockPosTracker(cube.PosFromVec3(target.Position())), speed: 2})
 	}
 	return &behavior{
 		entry: []memoryCondition{{memWalkTarget, memAbsent}, {memLookTarget, memRegistered}, {memAttackTarget, memPresent},
 			{memIsPanicking, memAbsent}},
 		minDuration: 100, maxDuration: 100,
 		checkExtra: func(m *Mob) bool {
-			b := m.Brain()
+			b := m.brain()
 			target := b.entity(m, memAttackTarget)
 			if target == nil {
 				return false
@@ -364,23 +364,23 @@ func newFrogShootTongue(f *frogBehaviour) *behavior {
 			return f.pose != frogCroaking && frogCanEat(target)
 		},
 		canStillUse: func(m *Mob, _ int64) bool {
-			b := m.Brain()
+			b := m.brain()
 			return b.has(memAttackTarget) && state != frogTongueDone && !b.has(memIsPanicking)
 		},
 		start: func(m *Mob, _ int64) {
-			target := m.Brain().entity(m, memAttackTarget)
-			m.Brain().set(memLookTarget, newEntityTracker(target, true))
+			target := m.brain().entity(m, memAttackTarget)
+			m.brain().set(memLookTarget, newEntityTracker(target, true))
 			f.setTongueTarget(m, target)
 			walkTo(m, target)
 			pathCounter, state = 10, frogTongueMove
 		},
 		stop: func(m *Mob, _ int64) {
-			m.Brain().erase(memAttackTarget)
+			m.brain().erase(memAttackTarget)
 			f.setTongueTarget(m, nil)
 			f.setPose(m, frogStanding)
 		},
 		tick: func(m *Mob, _ int64) {
-			target := m.Brain().entity(m, memAttackTarget)
+			target := m.brain().entity(m, memAttackTarget)
 			if target == nil {
 				return
 			}
@@ -440,7 +440,7 @@ func frogEat(m *Mob, f *frogBehaviour) {
 // frogForgetTongueTarget ports ShootTongue.addUnreachableTargetToMemory: a
 // frog remembers up to five prey it found no path to for five seconds.
 func frogForgetTongueTarget(m *Mob, target world.Entity) {
-	b := m.Brain()
+	b := m.brain()
 	var list []*world.EntityHandle
 	if v, ok := b.get(memUnreachableTongueTargets); ok {
 		list = v.([]*world.EntityHandle)
@@ -475,7 +475,7 @@ func (frogAttackablesSensor) requires() []memoryType {
 	return []memoryType{memNearestAttackable, memNearestVisibleLivingEntities, memUnreachableTongueTargets}
 }
 
-func (frogAttackablesSensor) doTick(m *Mob, b *Brain) {
+func (frogAttackablesSensor) doTick(m *Mob, b *brain) {
 	var unreachable []*world.EntityHandle
 	if v, ok := b.get(memUnreachableTongueTargets); ok {
 		unreachable = v.([]*world.EntityHandle)
@@ -497,7 +497,7 @@ func (frogAttackablesSensor) doTick(m *Mob, b *Brain) {
 // newTryLaySpawnOnFluidNearLand ports TryLaySpawnOnFluidNearLand: a pregnant
 // mob walking on land lays its spawn on water beside the block it stands on.
 func newTryLaySpawnOnFluidNearLand(spawn world.Block) *oneShot {
-	return newOneShot([]memoryCondition{{memAttackTarget, memAbsent}, {memWalkTarget, memPresent}, {memIsPregnant, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memAttackTarget, memAbsent}, {memWalkTarget, memPresent}, {memIsPregnant, memPresent}}, func(m *Mob, b *brain, _ int64) bool {
 		if m.InWater() || !m.OnGround() {
 			return false
 		}
@@ -532,14 +532,14 @@ func faceUpEmpty(tx *world.Tx, pos cube.Pos) bool {
 	return true
 }
 
-func (f *Frog) Health() float64        { return f.behaviour().health.Health() }
-func (f *Frog) MaxHealth() float64     { return f.behaviour().health.MaxHealth() }
-func (f *Frog) SetMaxHealth(v float64) { f.behaviour().health.SetMaxHealth(v) }
-func (f *Frog) Dead() bool             { return f.behaviour().dead || f.Health() <= 0 }
+func (f *frog) Health() float64        { return f.behaviour().health.Health() }
+func (f *frog) MaxHealth() float64     { return f.behaviour().health.MaxHealth() }
+func (f *frog) SetMaxHealth(v float64) { f.behaviour().health.SetMaxHealth(v) }
+func (f *frog) Dead() bool             { return f.behaviour().dead || f.Health() <= 0 }
 
 // Panicking reports whether the frog runs from danger.
-func (f *Frog) Panicking() bool { return f.behaviour().panicking() }
-func (f *Frog) Hurt(d float64, src world.DamageSource) (float64, bool) {
+func (f *frog) Panicking() bool { return f.behaviour().panicking() }
+func (f *frog) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if f.Dead() || d <= 0 {
 		return 0, false
 	}
@@ -566,7 +566,7 @@ func (f *Frog) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	}
 	return dealt, true
 }
-func (f *Frog) Heal(h float64, _ world.HealingSource) float64 {
+func (f *frog) Heal(h float64, _ world.HealingSource) float64 {
 	if f.Dead() || h <= 0 {
 		return 0
 	}
@@ -574,43 +574,39 @@ func (f *Frog) Heal(h float64, _ world.HealingSource) float64 {
 	f.behaviour().health.AddHealth(h)
 	return f.Health() - before
 }
-func (f *Frog) KnockBack(src mgl64.Vec3, force, height float64) {
+func (f *frog) KnockBack(src mgl64.Vec3, force, height float64) {
 	knockBack(f, src, force, height)
 }
-func (f *Frog) AddEffect(e effect.Effect)  { f.behaviour().effects.Add(e, f) }
-func (f *Frog) RemoveEffect(t effect.Type) { f.behaviour().effects.Remove(t, f) }
-func (f *Frog) Effects() []effect.Effect   { return f.behaviour().effects.Effects() }
-func (f *Frog) Speed() float64             { return f.behaviour().speed }
-func (f *Frog) SetSpeed(v float64)         { f.behaviour().speed = v }
-func (f *Frog) viewAction(action world.EntityAction) {
-	viewers := f.tx.Viewers(f.Position())
-	for _, v := range viewers {
-		v.ViewEntityAction(f, action)
-	}
-	f.tx.ReleaseViewers(viewers)
+func (f *frog) AddEffect(e effect.Effect)  { f.behaviour().effects.Add(e, f) }
+func (f *frog) RemoveEffect(t effect.Type) { f.behaviour().effects.Remove(t, f) }
+func (f *frog) Effects() []effect.Effect   { return f.behaviour().effects.Effects() }
+func (f *frog) Speed() float64             { return f.behaviour().speed }
+func (f *frog) SetSpeed(v float64)         { f.behaviour().speed = v }
+func (f *frog) viewAction(action world.EntityAction) {
+	world.BroadcastEntityAction(f.tx, f, action)
 }
 
 // Croaking reports if the frog croaks, as Bedrock shows.
-func (f *Frog) Croaking() bool { return f.behaviour().pose == frogCroaking }
+func (f *frog) Croaking() bool { return f.behaviour().pose == frogCroaking }
 
 // EatingMob reports if the frog pulls in prey with its tongue, as Bedrock
 // shows.
-func (f *Frog) EatingMob() bool { return f.behaviour().pose == frogUsingTongue }
+func (f *frog) EatingMob() bool { return f.behaviour().pose == frogUsingTongue }
 
 // JumpGoalJumping reports if the frog is in a long jump, as Bedrock shows.
-func (f *Frog) JumpGoalJumping() bool { return f.behaviour().pose == frogLongJumping }
+func (f *frog) JumpGoalJumping() bool { return f.behaviour().pose == frogLongJumping }
 
 // TongueTargetHandle returns what the frog reaches for with its tongue, or
 // nil.
-func (f *Frog) TongueTargetHandle() *world.EntityHandle { return f.behaviour().tongueTarget }
+func (f *frog) TongueTargetHandle() *world.EntityHandle { return f.behaviour().tongueTarget }
 
-func NewFrog(opts world.EntitySpawnOpts) *world.EntityHandle { return opts.New(FrogType, frogConfig{}) }
+func NewFrog(opts world.EntitySpawnOpts) *world.EntityHandle { return opts.New(entityFrogType, frogConfig{}) }
 
 var _ world.EntityType = frogType{}
-var _ Living = (*Frog)(nil)
+var _ Living = (*frog)(nil)
 
 // Interact feeds the frog slime balls to breed it.
-func (f *Frog) Interact(_ *world.Tx, u item.User, ctx *item.UseContext) bool {
+func (f *frog) Interact(_ *world.Tx, u item.User, ctx *item.UseContext) bool {
 	if !feedBreeder(f, u, ctx) {
 		return false
 	}
@@ -620,21 +616,21 @@ func (f *Frog) Interact(_ *world.Tx, u item.User, ctx *item.UseContext) bool {
 }
 
 // InLove reports whether the frog is in love.
-func (f *Frog) InLove() bool { return f.behaviour().breeding.InLove() }
+func (f *frog) InLove() bool { return f.behaviour().breeding.InLove() }
 
 // Pregnant reports whether the frog bred and is yet to lay frogspawn.
-func (f *Frog) Pregnant() bool { return f.behaviour().br.has(memIsPregnant) }
+func (f *frog) Pregnant() bool { return f.behaviour().br.has(memIsPregnant) }
 
-func (f *Frog) breedingState() *breeding { return &f.behaviour().breeding }
-func (f *Frog) ageTicks() *int           { return &f.behaviour().age }
+func (f *frog) breedingState() *breeding { return &f.behaviour().breeding }
+func (f *frog) ageTicks() *int           { return &f.behaviour().age }
 
-func (f *Frog) breedingFood(stack item.Stack) bool { return inItemTag(stack, "frog_food") }
+func (f *frog) breedingFood(stack item.Stack) bool { return inItemTag(stack, "frog_food") }
 
-func (f *Frog) breedOffspring(*world.Tx, breeder) *world.EntityHandle { return nil }
+func (f *frog) breedOffspring(*world.Tx, breeder) *world.EntityHandle { return nil }
 
 // spawnChildFromBreeding ports Frog.spawnChildFromBreeding: instead of a
 // baby, the frog becomes pregnant and lays frogspawn later.
-func (f *Frog) spawnChildFromBreeding(tx *world.Tx, partner breeder) {
+func (f *frog) spawnChildFromBreeding(tx *world.Tx, partner breeder) {
 	finishBreeding(f, partner, tx)
 	f.behaviour().br.set(memIsPregnant, true)
 }

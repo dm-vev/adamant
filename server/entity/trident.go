@@ -25,14 +25,14 @@ func NewTrident(opts world.EntitySpawnOpts, owner world.Entity, stack item.Stack
 	}
 	conf.PickupItem = stack
 	conf.DisablePickup = stack.Empty()
-	trident := TridentConfig{
+	trident := tridentConfig{
 		Projectile: conf,
 		Item:       stack,
 		Loyalty:    loyaltyLevel,
 		Impaling:   impalingLevel,
 		Channeling: channeling,
 	}
-	return opts.New(TridentType, trident)
+	return opts.New(entityTridentType, trident)
 }
 
 var tridentConf = ProjectileBehaviourConfig{
@@ -44,7 +44,7 @@ var tridentConf = ProjectileBehaviourConfig{
 }
 
 // TridentConfig holds the configuration for a thrown trident entity.
-type TridentConfig struct {
+type tridentConfig struct {
 	Projectile ProjectileBehaviourConfig
 	Item       item.Stack
 	Loyalty    int
@@ -54,13 +54,13 @@ type TridentConfig struct {
 }
 
 // Apply applies the configuration to the entity data.
-func (conf TridentConfig) Apply(data *world.EntityData) {
+func (conf tridentConfig) Apply(data *world.EntityData) {
 	data.Data = conf.New()
 }
 
 // New creates a new TridentBehaviour from the configuration.
-func (conf TridentConfig) New() *TridentBehaviour {
-	behaviour := &TridentBehaviour{
+func (conf tridentConfig) New() *tridentBehaviour {
+	behaviour := &tridentBehaviour{
 		item:       conf.Item,
 		loyalty:    conf.Loyalty,
 		impaling:   conf.Impaling,
@@ -75,7 +75,7 @@ func (conf TridentConfig) New() *TridentBehaviour {
 }
 
 // TridentBehaviour implements the behaviour for thrown trident entities.
-type TridentBehaviour struct {
+type tridentBehaviour struct {
 	*ProjectileBehaviour
 
 	item       item.Stack
@@ -86,7 +86,7 @@ type TridentBehaviour struct {
 }
 
 // Tick progresses the trident's behaviour.
-func (b *TridentBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (b *tridentBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.loyalty > 0 && !b.returning {
 		if b.ProjectileBehaviour.collided || e.Age() >= loyaltyReturnDelay {
 			b.startReturn()
@@ -115,8 +115,14 @@ func (b *TridentBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 					}
 					if n, ok := collector.Collect(b.item); ok && n > 0 {
 						viewers := tx.Viewers(owner.Position())
+						var actB world.Broadcast
+						act := PickedUpAction{Collector: collector}
 						for _, viewer := range viewers {
-							viewer.ViewEntityAction(e, PickedUpAction{Collector: collector})
+							if bv, ok := viewer.(world.EntityBroadcastViewer); ok {
+								bv.ViewEntityActionShared(e, act, &actB)
+							} else {
+								viewer.ViewEntityAction(e, act)
+							}
 						}
 						tx.ReleaseViewers(viewers)
 						tx.PlaySound(owner.Position(), sound.TridentReturn{})
@@ -144,7 +150,7 @@ func (b *TridentBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	return movement
 }
 
-func (b *TridentBehaviour) hit(e *Ent, tx *world.Tx, result trace.Result) {
+func (b *tridentBehaviour) hit(e *Ent, tx *world.Tx, result trace.Result) {
 	switch r := result.(type) {
 	case trace.EntityResult:
 		if living, ok := r.Entity().(Living); ok {
@@ -167,7 +173,7 @@ func (b *TridentBehaviour) hit(e *Ent, tx *world.Tx, result trace.Result) {
 	}
 }
 
-func (b *TridentBehaviour) startReturn() {
+func (b *tridentBehaviour) startReturn() {
 	if b.loyalty <= 0 {
 		return
 	}
@@ -178,7 +184,7 @@ func (b *TridentBehaviour) startReturn() {
 }
 
 // TridentType is a world.EntityType implementation for thrown tridents.
-var TridentType tridentType
+var entityTridentType tridentType
 
 type tridentType struct{}
 
@@ -197,7 +203,7 @@ func (t tridentType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf.DisablePickup = !nbtconv.Bool(m, "player")
 	conf.PickupItem = item.MapNBT(m, "Item")
 	conf.CollisionPosition = nbtconv.Pos(m, "StuckToBlockPos")
-	trident := TridentConfig{
+	trident := tridentConfig{
 		Projectile: conf,
 		Item:       conf.PickupItem,
 		Loyalty:    int(nbtconv.Int32(m, "loyalty")),
@@ -209,7 +215,7 @@ func (t tridentType) DecodeNBT(m map[string]any, data *world.EntityData) {
 }
 
 func (t tridentType) EncodeNBT(data *world.EntityData) map[string]any {
-	behaviour := data.Data.(*TridentBehaviour)
+	behaviour := data.Data.(*tridentBehaviour)
 	m := map[string]any{
 		"Damage":     float32(behaviour.ProjectileBehaviour.conf.Damage),
 		"player":     boolByte(!behaviour.ProjectileBehaviour.conf.DisablePickup),

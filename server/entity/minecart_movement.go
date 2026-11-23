@@ -50,16 +50,16 @@ func minecartHorizontalSpeed(v mgl32.Vec3) float32 {
 // applyNaturalSlowdown follows Minecart::preNormalTick's virtual call, before
 // rail projection and calculateMoveVelocity. Container carts use the native
 // comparator fullness signal, including its binary32 accumulation.
-func (b *MinecartBehaviour) applyNaturalSlowdown(e *Ent, vel *mgl64.Vec3) {
+func (b *minecartBehaviour) applyNaturalSlowdown(e *Ent, vel *mgl64.Vec3) {
 	factor := float32(.96)
 	if b.passenger != nil || !b.slowWhenEmpty {
 		factor = .997
 	}
 	var inv *inventory.Inventory
 	switch behaviour := e.Behaviour().(type) {
-	case *MinecartContainerBehaviour:
+	case *minecartContainerBehaviour:
 		inv = behaviour.inv
-	case *HopperMinecartBehaviour:
+	case *hopperMinecartBehaviour:
 		inv = behaviour.inv
 	case *commandBlockMinecartBehaviour:
 		inv = behaviour.inv
@@ -84,7 +84,7 @@ func (b *MinecartBehaviour) applyNaturalSlowdown(e *Ent, vel *mgl64.Vec3) {
 
 // moveOnRails follows the native ECS pre-move, move and post-move stages
 // (0x95e7df0, 0x33db740, 0x33dbac0). Positions here address the actor centre.
-func (b *MinecartBehaviour) moveOnRails(e *Ent, tx *world.Tx, railPos cube.Pos, rail world.Block, pos, vel mgl64.Vec3) (mgl64.Vec3, mgl64.Vec3) {
+func (b *minecartBehaviour) moveOnRails(e *Ent, tx *world.Tx, railPos cube.Pos, rail world.Block, pos, vel mgl64.Vec3) (mgl64.Vec3, mgl64.Vec3) {
 	v := mgl32.Vec3{float32(vel[0]), float32(vel[1]), float32(vel[2])}
 	before, beforeOK := b.nextRailPos(tx, pos)
 	dir, _, _ := block.RailInfo(rail)
@@ -173,27 +173,34 @@ func (b *MinecartBehaviour) moveOnRails(e *Ent, tx *world.Tx, railPos cube.Pos, 
 		v[0], v[2] = speed*float32(ix), speed*float32(iz)
 	}
 	if poweredRail && pr.Powered {
-		speed = minecartHorizontalSpeed(v)
-		if speed > .01 {
-			v[0] += float32(v[0]/speed) * .06
-			v[2] += float32(v[2]/speed) * .06
-		} else if dir == block.RailNorthSouth || dir == block.RailEastWest {
-			negative, positive, axis := cube.FaceNorth, cube.FaceSouth, 2
-			if dir == block.RailEastWest {
-				negative, positive, axis = cube.FaceWest, cube.FaceEast, 0
-			}
-			p, n := railPos.Side(positive), railPos.Side(negative)
-			if tx.Block(n).Model().FaceSolid(n, positive, tx) {
-				v[axis] = .02
-			} else if tx.Block(p).Model().FaceSolid(p, negative, tx) {
-				v[axis] = -.02
-			}
-		}
+		v = b.applyPoweredRail(tx, railPos, dir, v)
 	}
 	return pos, mgl64.Vec3{float64(v[0]), float64(v[1]), float64(v[2])}
 }
 
-func (b *MinecartBehaviour) nextRailPos(tx *world.Tx, pos mgl64.Vec3) (mgl64.Vec3, bool) {
+func (b *minecartBehaviour) applyPoweredRail(tx *world.Tx, railPos cube.Pos, dir block.RailDirection, v mgl32.Vec3) mgl32.Vec3 {
+	speed := minecartHorizontalSpeed(v)
+	if speed > .01 {
+		v[0] += float32(v[0]/speed) * .06
+		v[2] += float32(v[2]/speed) * .06
+		return v
+	}
+	if dir == block.RailNorthSouth || dir == block.RailEastWest {
+		negative, positive, axis := cube.FaceNorth, cube.FaceSouth, 2
+		if dir == block.RailEastWest {
+			negative, positive, axis = cube.FaceWest, cube.FaceEast, 0
+		}
+		p, n := railPos.Side(positive), railPos.Side(negative)
+		if tx.Block(n).Model().FaceSolid(n, positive, tx) {
+			v[axis] = .02
+		} else if tx.Block(p).Model().FaceSolid(p, negative, tx) {
+			v[axis] = -.02
+		}
+	}
+	return v
+}
+
+func (b *minecartBehaviour) nextRailPos(tx *world.Tx, pos mgl64.Vec3) (mgl64.Vec3, bool) {
 	p := cube.PosFromVec3(pos)
 	if isRailAt(tx, p.Side(cube.FaceDown)) {
 		p = p.Side(cube.FaceDown)
@@ -231,7 +238,7 @@ func (b *MinecartBehaviour) nextRailPos(tx *world.Tx, pos mgl64.Vec3) (mgl64.Vec
 	return mgl64.Vec3{float64(a[0]), float64(a[1]), float64(a[2])}, true
 }
 
-func (b *MinecartBehaviour) moveDerailed(e *Ent, tx *world.Tx, pos, vel mgl64.Vec3) (mgl64.Vec3, mgl64.Vec3) {
+func (b *minecartBehaviour) moveDerailed(e *Ent, tx *world.Tx, pos, vel mgl64.Vec3) (mgl64.Vec3, mgl64.Vec3) {
 	vel[0] = clamp(vel[0], -b.maxSpeed, b.maxSpeed)
 	vel[2] = clamp(vel[2], -b.maxSpeed, b.maxSpeed)
 	if b.mc.onGround {
@@ -248,7 +255,7 @@ func (b *MinecartBehaviour) moveDerailed(e *Ent, tx *world.Tx, pos, vel mgl64.Ve
 	return pos, vel
 }
 
-func (b *MinecartBehaviour) moveWithCollision(e *Ent, tx *world.Tx, centre, delta, vel mgl64.Vec3) (mgl64.Vec3, mgl64.Vec3) {
+func (b *minecartBehaviour) moveWithCollision(e *Ent, tx *world.Tx, centre, delta, vel mgl64.Vec3) (mgl64.Vec3, mgl64.Vec3) {
 	feet := minecartFeet(centre)
 	dPos, moved := b.mc.checkCollision(tx, e, feet, delta)
 	centre = minecartCentre(feet.Add(dPos))

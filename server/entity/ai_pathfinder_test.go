@@ -18,13 +18,13 @@ func testSpawnMob(t *testing.T, tx *world.Tx, h *world.EntityHandle) *Mob {
 	}
 	var ent *Ent
 	switch v := e.(type) {
-	case *Zombie:
+	case *zombie:
 		ent = v.Ent
 	case *Parrot:
 		ent = v.Ent
-	case *Dolphin:
+	case *dolphin:
 		ent = v.Ent
-	case *Frog:
+	case *frog:
 		ent = v.Ent
 	case *Cow:
 		ent = v.Ent
@@ -365,11 +365,11 @@ func TestFindGroundPathWaterFireAndReuse(t *testing.T) {
 
 		start, goal := cube.Pos{0, 1, 0}, cube.Pos{7, 1, 0}
 		// Blocked when water is disallowed.
-		if p := FindGroundPath(tx, start, goal, GroundProfile{MaxVisitedNodes: 256, AllowWater: false}); len(p) != 0 {
+		if p := findGroundPath(tx, start, goal, groundProfile{MaxVisitedNodes: 256, AllowWater: false}); len(p) != 0 {
 			t.Fatalf("expected no path with AllowWater=false, got %v", p)
 		}
 		// Reachable when water is allowed, routes around fire, and is identical across repeated calls.
-		first := FindGroundPath(tx, start, goal, GroundProfile{MaxVisitedNodes: 256, AllowWater: true})
+		first := findGroundPath(tx, start, goal, groundProfile{MaxVisitedNodes: 256, AllowWater: true})
 		if len(first) == 0 || first[len(first)-1] != goal {
 			t.Fatalf("expected valid path to %v, got %v", goal, first)
 		}
@@ -379,7 +379,7 @@ func TestFindGroundPathWaterFireAndReuse(t *testing.T) {
 			}
 		}
 		for i := range 5 {
-			again := FindGroundPath(tx, start, goal, GroundProfile{MaxVisitedNodes: 256, AllowWater: true})
+			again := findGroundPath(tx, start, goal, groundProfile{MaxVisitedNodes: 256, AllowWater: true})
 			if len(again) != len(first) {
 				t.Fatalf("repeat %d length mismatch: %d vs %d", i, len(again), len(first))
 			}
@@ -440,7 +440,7 @@ func TestUnreachablePathBackoffAndInvalidation(t *testing.T) {
 	}
 	<-w.Exec(func(tx *world.Tx) {
 		e, _ := zombieH.Entity(tx)
-		z := e.(*Zombie)
+		z := e.(*zombie)
 		ai, _ := z.Ent.mobAI()
 		m := ai.Mob(z.Ent, z)
 		m.AI.onGround = true
@@ -461,7 +461,7 @@ func TestUnreachablePathBackoffAndInvalidation(t *testing.T) {
 	}
 	<-w.Exec(func(tx *world.Tx) {
 		e, _ := zombieH.Entity(tx)
-		z := e.(*Zombie)
+		z := e.(*zombie)
 		ai, _ := z.Ent.mobAI()
 		m := ai.Mob(z.Ent, z)
 		m.AI.onGround = true
@@ -482,7 +482,7 @@ func TestUnreachablePathBackoffAndInvalidation(t *testing.T) {
 	w.AdvanceTick()
 	<-w.Exec(func(tx *world.Tx) {
 		e, _ := zombieH.Entity(tx)
-		z := e.(*Zombie)
+		z := e.(*zombie)
 		ai, _ := z.Ent.mobAI()
 		m := ai.Mob(z.Ent, z)
 		m.AI.onGround = true

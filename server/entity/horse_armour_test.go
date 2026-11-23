@@ -19,7 +19,7 @@ func TestHorseArmourProtects(t *testing.T) {
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {
 		hit := func(armour world.Item, src world.DamageSource) float64 {
-			horse := tx.AddEntity(NewHorse(world.EntitySpawnOpts{Position: mgl64.Vec3{0, 100, 0}})).(*Horse)
+			horse := tx.AddEntity(NewHorse(world.EntitySpawnOpts{Position: mgl64.Vec3{0, 100, 0}})).(*horse)
 			if armour != nil {
 				if err := horse.gearInventory().SetItem(1, item.NewStack(armour, 1)); err != nil {
 					t.Fatal(err)
@@ -45,7 +45,7 @@ func TestHorseArmourProtects(t *testing.T) {
 		}
 
 		pushed := func(armour world.Item) float64 {
-			horse := tx.AddEntity(NewHorse(world.EntitySpawnOpts{Position: mgl64.Vec3{5, 100, 0}})).(*Horse)
+			horse := tx.AddEntity(NewHorse(world.EntitySpawnOpts{Position: mgl64.Vec3{5, 100, 0}})).(*horse)
 			if armour != nil {
 				_ = horse.gearInventory().SetItem(1, item.NewStack(armour, 1))
 			}

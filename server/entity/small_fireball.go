@@ -15,7 +15,7 @@ func NewSmallFireball(opts world.EntitySpawnOpts, owner world.Entity) *world.Ent
 	if owner != nil {
 		conf.Owner = owner.H()
 	}
-	return opts.New(SmallFireballType, conf)
+	return opts.New(entitySmallFireballType, conf)
 }
 
 var smallFireballConf = ProjectileBehaviourConfig{
@@ -41,7 +41,7 @@ func smallFireballHit(_ *Ent, tx *world.Tx, target trace.Result) {
 }
 
 // SmallFireballType is a world.EntityType implementation for small fireballs.
-var SmallFireballType smallFireballType
+var entitySmallFireballType smallFireballType
 
 type smallFireballType struct{}
 

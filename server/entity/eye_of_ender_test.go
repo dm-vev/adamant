@@ -49,7 +49,7 @@ func throwEye(t *testing.T, conf world.EntityConfig) (*eyeRecorder, []item.Stack
 	t.Cleanup(func() { _ = w.Close() })
 	recorder := &eyeRecorder{particles: map[world.Particle]mgl64.Vec3{}}
 	start := mgl64.Vec3{0.5, 70, 0.5}
-	h := world.EntitySpawnOpts{Position: start}.New(EyeOfEnderType, conf)
+	h := world.EntitySpawnOpts{Position: start}.New(entityEyeOfEnderType, conf)
 	<-w.Exec(func(tx *world.Tx) {
 		loader := world.NewLoader(2, w, recorder)
 		loader.Move(tx, start)
@@ -135,14 +135,14 @@ func TestReloadedEyeOfEnderFliesOn(t *testing.T) {
 	vel := mgl64.Vec3{0.1, 0.05, 0}
 	w := world.Config{Synchronous: true, Entities: DefaultRegistry, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
-	h := world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 70, 0.5}, Velocity: vel}.New(EyeOfEnderType, reloadedEye{})
+	h := world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 70, 0.5}, Velocity: vel}.New(entityEyeOfEnderType, reloadedEye{})
 	<-w.Exec(func(tx *world.Tx) {
 		tx.AddEntity(h)
 		e, _ := h.Entity(tx)
 		for i := range 10 {
-			e.(*EyeOfEnder).Tick(tx, int64(i))
+			e.(*eyeOfEnder).Tick(tx, int64(i))
 		}
-		if got := e.(*EyeOfEnder).Velocity(); got != vel {
+		if got := e.(*eyeOfEnder).Velocity(); got != vel {
 			t.Errorf("velocity = %v, want %v kept", got, vel)
 		}
 		if got, want := e.Position(), (mgl64.Vec3{1.5, 70.5, 0.5}); !got.ApproxEqualThreshold(want, 1e-9) {

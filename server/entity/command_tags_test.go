@@ -17,7 +17,7 @@ func TestCommandTagsRoundTripThroughEntityNBT(t *testing.T) {
 		t.Fatalf("tags after add = %v", got)
 	}
 	got := CowType.EncodeNBT(&data)
-	state := ReadNativeMobJavaState(got)
+	state := readNativeMobJavaState(got)
 	if !reflect.DeepEqual(state["Tags"], []string{"alpha", "beta"}) {
 		t.Fatalf("encoded Java tags = %#v", state["Tags"])
 	}

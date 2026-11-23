@@ -15,7 +15,7 @@ const experienceOrbSearchInterval int64 = 20
 
 // ExperienceOrbBehaviourConfig holds optional parameters for the creation of
 // an ExperienceOrbBehaviour.
-type ExperienceOrbBehaviourConfig struct {
+type experienceOrbBehaviourConfig struct {
 	// Gravity is the amount of Y velocity subtracted every tick.
 	Gravity float64
 	// Drag is used to reduce all axes of the velocity every tick. Velocity is
@@ -28,12 +28,12 @@ type ExperienceOrbBehaviourConfig struct {
 	Experience int
 }
 
-func (conf ExperienceOrbBehaviourConfig) Apply(data *world.EntityData) {
+func (conf experienceOrbBehaviourConfig) Apply(data *world.EntityData) {
 	data.Data = conf.New()
 }
 
 // New creates an ExperienceOrbBehaviour using the parameters in conf.
-func (conf ExperienceOrbBehaviourConfig) New() *ExperienceOrbBehaviour {
+func (conf experienceOrbBehaviourConfig) New() *ExperienceOrbBehaviour {
 	if conf.Experience == 0 {
 		conf.Experience = 1
 	}
@@ -41,7 +41,7 @@ func (conf ExperienceOrbBehaviourConfig) New() *ExperienceOrbBehaviour {
 		conf.ExistenceDuration = time.Minute * 5
 	}
 	b := &ExperienceOrbBehaviour{conf: conf, lastSearchTick: -experienceOrbSearchInterval}
-	b.passive = PassiveBehaviourConfig{
+	b.passive = passiveBehaviourConfig{
 		Gravity:           conf.Gravity,
 		Drag:              conf.Drag,
 		ExistenceDuration: conf.ExistenceDuration,
@@ -53,9 +53,9 @@ func (conf ExperienceOrbBehaviourConfig) New() *ExperienceOrbBehaviour {
 
 // ExperienceOrbBehaviour implements Behaviour for an experience orb entity.
 type ExperienceOrbBehaviour struct {
-	conf ExperienceOrbBehaviourConfig
+	conf experienceOrbBehaviourConfig
 
-	passive *PassiveBehaviour
+	passive *passiveBehaviour
 
 	// lastSearchTick tracks when we last performed a collector search using the world's logical tick counter.
 	// Relying on ticks instead of time.Now() avoids jitter when the server slows down and ensures orbs wake up

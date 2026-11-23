@@ -34,7 +34,7 @@ func NewTNT(opts world.EntitySpawnOpts, fuse time.Duration, owner world.Entity) 
 		ownerID = living.H().UUID()
 		nativeOwnerID = living.H().UniqueID()
 	}
-	return opts.New(TNTType, tntConfig{fuse: fuse, owner: ownerID, nativeOwnerID: nativeOwnerID})
+	return opts.New(tNTType, tntConfig{fuse: fuse, owner: ownerID, nativeOwnerID: nativeOwnerID})
 }
 
 type tntConfig struct {
@@ -44,11 +44,11 @@ type tntConfig struct {
 }
 
 func (c tntConfig) Apply(data *world.EntityData) {
-	data.Data = &tntBehaviour{PassiveBehaviour: tntConf.New(), remainingFuse: c.fuse, owner: c.owner, nativeOwnerID: c.nativeOwnerID}
+	data.Data = &tntBehaviour{passiveBehaviour: tntConf.New(), remainingFuse: c.fuse, owner: c.owner, nativeOwnerID: c.nativeOwnerID}
 }
 
 type tntBehaviour struct {
-	*PassiveBehaviour
+	*passiveBehaviour
 	remainingFuse time.Duration
 	owner         uuid.UUID
 	nativeOwnerID int64
@@ -57,11 +57,11 @@ type tntBehaviour struct {
 func (b *tntBehaviour) Fuse() time.Duration { return b.remainingFuse }
 
 // TNT retains the living igniter across chained explosions and world reloads.
-type TNT struct{ *Ent }
+type tntEntity struct{ *Ent }
 
 // Tick decrements the TNT's own fuse independently of its entity age. A zero
 // fuse still moves once, then disappears before its explosion is applied.
-func (t *TNT) Tick(tx *world.Tx, current int64) {
+func (t *tntEntity) Tick(tx *world.Tx, current int64) {
 	t.Ent.Tick(tx, current)
 	if _, present := tx.EntityByUUID(t.H().UUID()); !present {
 		return
@@ -79,7 +79,7 @@ func (t *TNT) Tick(tx *world.Tx, current int64) {
 	}
 }
 
-func (t *TNT) Owner() *world.EntityHandle {
+func (t *tntEntity) Owner() *world.EntityHandle {
 	behaviour := t.data.Data.(*tntBehaviour)
 	if behaviour.owner != uuid.Nil {
 		if owner, ok := t.tx.EntityByUUID(behaviour.owner); ok {
@@ -95,18 +95,18 @@ func (t *TNT) Owner() *world.EntityHandle {
 	return nil
 }
 
-var tntConf = PassiveBehaviourConfig{
+var tntConf = passiveBehaviourConfig{
 	Gravity: 0.04,
 	Drag:    0.02,
 }
 
 // TNTType is a world.EntityType implementation for TNT.
-var TNTType tntType
+var tNTType tntType
 
 type tntType struct{}
 
 func (t tntType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.EntityData) world.Entity {
-	return &TNT{Ent: &Ent{tx: tx, handle: handle, data: data}}
+	return &tntEntity{Ent: &Ent{tx: tx, handle: handle, data: data}}
 }
 
 func (tntType) EncodeEntity() string { return "minecraft:tnt" }

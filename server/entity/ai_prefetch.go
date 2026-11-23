@@ -104,44 +104,54 @@ type collisionCell struct {
 func (ai *MobAI) prefetch(e *Ent, self world.Entity, v *world.ReadView) {
 	p := &ai.pre
 	p.fluidOK, p.collisions.ok = false, false
-	box := self.H().Type().BBox(self).Translate(e.data.Pos)
 
-	// updateFluids measures the fluids around the box the mob starts its
-	// tick with. Only prefetch fluids when the surrounding subchunks may
-	// contain liquid; otherwise the owner's MayContainLiquid check is cheaper.
-	shrunk := box.Grow(-.001)
-	minX, minY, minZ := int(math.Floor(shrunk.Min()[0])), int(math.Floor(shrunk.Min()[1])), int(math.Floor(shrunk.Min()[2]))
-	maxX, maxY, maxZ := int(math.Ceil(shrunk.Max()[0]))-1, int(math.Ceil(shrunk.Max()[1]))-1, int(math.Ceil(shrunk.Max()[2]))-1
-	fLo, fHi := cube.Pos{minX, minY, minZ}, cube.Pos{maxX, maxY, maxZ}
-	v.Reset()
-	if v.MayContainLiquid(fLo, fHi) {
-		fluid := measureFluidsRange(v, box.Min()[1], shrunk.Min()[1], minX, minY, minZ, maxX, maxY, maxZ, true)
-		lo, hi := fLo, fHi
-		if fluid.waterHeight > 0 || fluid.lavaHeight > 0 {
-			lo, hi = fluidReadRange(box)
-		}
-		if !v.Missed() && p.fluidCols.record(v, lo, hi) {
-			p.fluid, p.fluidBox, p.fluidOK = fluid, box, true
-		}
-	}
-
-	// collide reads the blocks around the box extended by the movement of
-	// the tick and the step height. Skip collision prefetch when the mob is
-	// stationary on the ground with no active navigation or steering input,
-	// because MobAI.collide resolves pure downward floor contact via a single
-	// RID lookup on the owner.
 	vel := e.data.Vel
 	stationary := vel[0] == 0 && vel[2] == 0 && (vel[1] == 0 || ai.onGround) && !ai.nav.InProgress() && ai.xxa == 0 && ai.zza == 0
-	if !stationary {
-		horizontal := .75 + math.Max(math.Abs(vel[0]), math.Abs(vel[2]))
-		down := .75 + math.Abs(vel[1])
-		up := math.Max(ai.StepHeight, 1) + .5 + math.Abs(vel[1])
-		area := cube.Box(box.Min()[0]-horizontal, box.Min()[1]-down, box.Min()[2]-horizontal, box.Max()[0]+horizontal, box.Max()[1]+up, box.Max()[2]+horizontal)
-		v.Reset()
-		p.collisions.read(v, area)
+	needFluid := !stationary || ai.waterHeight > 0 || ai.lavaHeight > 0
+	if needFluid || !stationary {
+		box := self.H().Type().BBox(self).Translate(e.data.Pos)
+		if needFluid {
+			// updateFluids measures the fluids around the box the mob starts
+			// its tick with. Only prefetch fluids when moving or already in
+			// liquid and surrounding subchunks may contain liquid; otherwise
+			// the owner's fast MayContainLiquid check is cheaper.
+			shrunk := box.Grow(-.001)
+			minX, minY, minZ := int(math.Floor(shrunk.Min()[0])), int(math.Floor(shrunk.Min()[1])), int(math.Floor(shrunk.Min()[2]))
+			maxX, maxY, maxZ := int(math.Ceil(shrunk.Max()[0]))-1, int(math.Ceil(shrunk.Max()[1]))-1, int(math.Ceil(shrunk.Max()[2]))-1
+			fLo, fHi := cube.Pos{minX, minY, minZ}, cube.Pos{maxX, maxY, maxZ}
+			v.Reset()
+			if v.MayContainLiquid(fLo, fHi) {
+				fluid := measureFluidsRange(v, box.Min()[1], shrunk.Min()[1], minX, minY, minZ, maxX, maxY, maxZ, true)
+				lo, hi := fLo, fHi
+				if fluid.waterHeight > 0 || fluid.lavaHeight > 0 {
+					lo, hi = fluidReadRange(box)
+				}
+				if !v.Missed() && p.fluidCols.record(v, lo, hi) {
+					p.fluid, p.fluidBox, p.fluidOK = fluid, box, true
+				}
+			}
+		}
+
+		// Only prefetch collision boxes when the mob is moving or navigating.
+		if !stationary {
+			horizontal := .55 + math.Max(math.Abs(vel[0]), math.Abs(vel[2]))
+			down := .40 + math.Abs(vel[1])
+			step := ai.StepHeight
+			if ai.ridden {
+				step = math.Max(step, 1)
+			}
+			up := math.Max(step, .45) + .35 + math.Abs(vel[1])
+			area := cube.Box(box.Min()[0]-horizontal, box.Min()[1]-down, box.Min()[2]-horizontal, box.Max()[0]+horizontal, box.Max()[1]+up, box.Max()[2]+horizontal)
+			v.Reset()
+			p.collisions.read(v, area)
+		}
 	}
 
-	ai.prefetchPath(e, self, v)
+	if ai.target != nil {
+		ai.prefetchPath(e, self, v)
+	} else {
+		p.path.ok, p.path.path = false, nil
+	}
 }
 
 // fluidReadRange returns the blocks measureFluids may read for box: those
@@ -243,8 +253,8 @@ func (p *mobPrefetch) prefetchedFluids(tx *world.Tx, box cube.BBox) (fluidContac
 	return p.fluid, true
 }
 
-// meleeAttackGoal returns the goal itself, also through goals embedding it.
-func (g *MeleeAttackGoal) meleeAttackGoal() *MeleeAttackGoal { return g }
+// asMeleeAttackGoal returns the goal itself, also through goals embedding it.
+func (g *meleeAttackGoal) asMeleeAttackGoal() *meleeAttackGoal { return g }
 
 // pathPrefetch is a path found in the parallel phase for a request the mob
 // was expected to make in its tick, with everything the path depends on.
@@ -280,10 +290,10 @@ func (w *walkNodeEvaluator) config() walkNodeConfig {
 	return walkNodeConfig{w.canPassDoors, w.canOpenDoors, w.canFloat, w.canWalkOverFences, w.amphibious, w.prefersShallow, w.frog, w.fly}
 }
 
-func (ai *MobAI) findMeleeAttackGoal() (*MeleeAttackGoal, *wrappedGoal) {
+func (ai *MobAI) findMeleeAttackGoal() (*meleeAttackGoal, *wrappedGoal) {
 	for _, w := range ai.Goals.goals {
-		if g, ok := w.goal.(interface{ meleeAttackGoal() *MeleeAttackGoal }); ok {
-			return g.meleeAttackGoal(), w
+		if g, ok := w.goal.(interface{ asMeleeAttackGoal() *meleeAttackGoal }); ok {
+			return g.asMeleeAttackGoal(), w
 		}
 	}
 	return nil, nil
@@ -331,7 +341,7 @@ func (ai *MobAI) prefetchPath(e *Ent, self world.Entity, v *world.ReadView) {
 		// at most once in 20 ticks, if no running goal holds its flags.
 		next := ai.tickCount + 1
 		full := (next+ai.entityID)%2 == 0 || next <= 1
-		if !full || melee.hasLastCanUseCheck && tick-melee.lastCanUseCheck < 20 || wrapped.goal.Flags()&ai.Goals.disabled != 0 || !ai.Goals.canReplaceAll(wrapped) {
+		if !full || melee.hasLastCanUseCheck && tick-melee.lastCanUseCheck < 20 || wrapped.flags&ai.Goals.disabled != 0 || !ai.Goals.canReplaceAll(wrapped) {
 			return
 		}
 	}

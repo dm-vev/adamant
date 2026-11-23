@@ -31,36 +31,36 @@ const (
 func NewBoat(opts world.EntitySpawnOpts, variant int) *world.EntityHandle {
 	conf := boatConf
 	conf.Variant = variant
-	return opts.New(BoatType, conf)
+	return opts.New(entityBoatType, conf)
 }
 
 // NewChestBoat creates a new chest boat entity with the variant passed.
 func NewChestBoat(opts world.EntitySpawnOpts, variant int) *world.EntityHandle {
 	conf := chestBoatConf
 	conf.Boat.Variant = variant
-	return opts.New(ChestBoatType, conf)
+	return opts.New(entityChestBoatType, conf)
 }
 
 // BoatBehaviourConfig configures boat behaviour.
-type BoatBehaviourConfig struct {
+type boatBehaviourConfig struct {
 	Variant       int
 	MaxPassengers int
 }
 
 // Apply applies the configuration to the entity data.
-func (conf BoatBehaviourConfig) Apply(data *world.EntityData) {
+func (conf boatBehaviourConfig) Apply(data *world.EntityData) {
 	data.Data = conf.New()
 }
 
 // New creates a new boat behaviour.
-func (conf BoatBehaviourConfig) New() *BoatBehaviour {
+func (conf boatBehaviourConfig) New() *boatBehaviour {
 	if conf.MaxPassengers <= 0 {
 		conf.MaxPassengers = 2
 	}
 	if conf.MaxPassengers > 2 {
 		conf.MaxPassengers = 2
 	}
-	return &BoatBehaviour{
+	return &boatBehaviour{
 		mc:               &MovementComputer{},
 		variant:          int32(conf.Variant),
 		maxPassengers:    conf.MaxPassengers,
@@ -70,7 +70,7 @@ func (conf BoatBehaviourConfig) New() *BoatBehaviour {
 }
 
 // BoatBehaviour implements the behaviour for boats.
-type BoatBehaviour struct {
+type boatBehaviour struct {
 	mc *MovementComputer
 
 	variant       int32
@@ -93,12 +93,12 @@ type BoatBehaviour struct {
 }
 
 // Base returns the base boat behaviour.
-func (b *BoatBehaviour) Base() *BoatBehaviour {
+func (b *boatBehaviour) Base() *boatBehaviour {
 	return b
 }
 
 // Tick ticks the boat behaviour.
-func (b *BoatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (b *boatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	prevPos, prevVel, prevRot := e.data.Pos, e.data.Vel, e.data.Rot
 	prevRowLeft, prevRowRight := b.rowTimeLeft, b.rowTimeRight
 	if b.passengers[0] == nil {
@@ -133,7 +133,7 @@ func (b *BoatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 }
 
 // CanRideTarget reports if the boat can be ridden.
-func (b *BoatBehaviour) CanRideTarget() bool {
+func (b *boatBehaviour) CanRideTarget() bool {
 	return true
 }
 
@@ -141,7 +141,7 @@ func (b *BoatBehaviour) CanRideTarget() bool {
 // seat riders: one rider sits centred, two sit front and back, and a chest
 // boat seats its one rider in front of the chest. A bamboo raft seats riders
 // higher.
-func (b *BoatBehaviour) RiderSeat(rider world.Entity) world.RiderSeat {
+func (b *boatBehaviour) RiderSeat(rider world.Entity) world.RiderSeat {
 	y := -0.2
 	if b.variant == boatVariantBamboo {
 		y = 0.1
@@ -185,7 +185,7 @@ func boatTurnsRider(rider world.Entity, boat bool) bool {
 
 // reseatPassengers gives every passenger the seat it now takes, after a
 // passenger mounted or dismounted.
-func (b *BoatBehaviour) reseatPassengers(e *Ent, tx *world.Tx) {
+func (b *boatBehaviour) reseatPassengers(e *Ent, tx *world.Tx) {
 	for _, h := range b.passengers[:b.maxPassengers] {
 		if h == nil {
 			continue
@@ -198,38 +198,38 @@ func (b *BoatBehaviour) reseatPassengers(e *Ent, tx *world.Tx) {
 
 // Variant returns the wood of the boat by Bedrock's number, which the world
 // format saves and Bedrock clients are sent.
-func (b *BoatBehaviour) Variant() int32 {
+func (b *boatBehaviour) Variant() int32 {
 	return b.variant
 }
 
 // Buoyant reports if the boat is buoyant.
-func (b *BoatBehaviour) Buoyant() bool {
+func (b *boatBehaviour) Buoyant() bool {
 	return true
 }
 
 // RowTimeLeft returns the left paddle animation timer metadata.
-func (b *BoatBehaviour) RowTimeLeft() float32 {
+func (b *boatBehaviour) RowTimeLeft() float32 {
 	return b.rowTimeLeft
 }
 
 // RowTimeRight returns the right paddle animation timer metadata.
-func (b *BoatBehaviour) RowTimeRight() float32 {
+func (b *boatBehaviour) RowTimeRight() float32 {
 	return b.rowTimeRight
 }
 
 // SetVehicleInput updates the input used to control the boat.
-func (b *BoatBehaviour) SetVehicleInput(strafe, forward float64) {
+func (b *boatBehaviour) SetVehicleInput(strafe, forward float64) {
 	b.inputStrafe = strafe
 	b.inputForward = forward
 }
 
 // Passenger returns the controlling passenger handle.
-func (b *BoatBehaviour) Passenger() *world.EntityHandle {
+func (b *boatBehaviour) Passenger() *world.EntityHandle {
 	return b.passengers[0]
 }
 
 // Mount mounts a passenger on the boat.
-func (b *BoatBehaviour) Mount(e *Ent, tx *world.Tx, passenger world.Entity) bool {
+func (b *boatBehaviour) Mount(e *Ent, tx *world.Tx, passenger world.Entity) bool {
 	if passenger == nil || b.Full() {
 		return false
 	}
@@ -255,7 +255,7 @@ func (b *BoatBehaviour) Mount(e *Ent, tx *world.Tx, passenger world.Entity) bool
 }
 
 // Dismount removes a passenger from the boat.
-func (b *BoatBehaviour) Dismount(e *Ent, tx *world.Tx, passenger world.Entity) {
+func (b *boatBehaviour) Dismount(e *Ent, tx *world.Tx, passenger world.Entity) {
 	if passenger == nil {
 		return
 	}
@@ -263,7 +263,7 @@ func (b *BoatBehaviour) Dismount(e *Ent, tx *world.Tx, passenger world.Entity) {
 }
 
 // DismountAll dismounts all passengers from the boat.
-func (b *BoatBehaviour) DismountAll(e *Ent, tx *world.Tx) {
+func (b *boatBehaviour) DismountAll(e *Ent, tx *world.Tx) {
 	for i := 0; i < b.maxPassengers; i++ {
 		if h := b.passengers[i]; h != nil {
 			b.dismountHandle(e, tx, h)
@@ -272,22 +272,22 @@ func (b *BoatBehaviour) DismountAll(e *Ent, tx *world.Tx) {
 }
 
 // RollingAmplitude returns the rolling amplitude metadata.
-func (b *BoatBehaviour) RollingAmplitude() int {
+func (b *boatBehaviour) RollingAmplitude() int {
 	return b.rollingAmplitude
 }
 
 // RollingDirection returns the rolling direction metadata.
-func (b *BoatBehaviour) RollingDirection() int {
+func (b *boatBehaviour) RollingDirection() int {
 	return b.rollingDirection
 }
 
 // Damage returns the accumulated boat damage metadata.
-func (b *BoatBehaviour) Damage() float64 {
+func (b *boatBehaviour) Damage() float64 {
 	return b.damage
 }
 
 // Hurt applies damage and returns true if the boat should break.
-func (b *BoatBehaviour) Hurt(amount float64) bool {
+func (b *boatBehaviour) Hurt(amount float64) bool {
 	if b.rollingDirection == 0 {
 		b.rollingDirection = 1
 	}
@@ -297,7 +297,7 @@ func (b *BoatBehaviour) Hurt(amount float64) bool {
 	return b.damage > 40
 }
 
-func (b *BoatBehaviour) applyInput(e *Ent, vel *mgl64.Vec3, friction float64) {
+func (b *boatBehaviour) applyInput(e *Ent, vel *mgl64.Vec3, friction float64) {
 	inputLeft := b.inputStrafe > 0.35
 	inputRight := b.inputStrafe < -0.35
 	inputUp := b.inputForward > 0.35
@@ -347,7 +347,7 @@ func (b *BoatBehaviour) applyInput(e *Ent, vel *mgl64.Vec3, friction float64) {
 	vel[2] += math.Cos(rad) * acceleration
 }
 
-func (b *BoatBehaviour) applyVerticalMotion(vel *mgl64.Vec3, waterDiff float64) {
+func (b *boatBehaviour) applyVerticalMotion(vel *mgl64.Vec3, waterDiff float64) {
 	if !b.inWater {
 		vel[1] -= boatGravity
 		b.sinking = true
@@ -378,7 +378,7 @@ func (b *BoatBehaviour) applyVerticalMotion(vel *mgl64.Vec3, waterDiff float64) 
 	}
 }
 
-func (b *BoatBehaviour) updateRotation(e *Ent) {
+func (b *boatBehaviour) updateRotation(e *Ent) {
 	horizontal := mgl64.Vec3{e.data.Vel[0], 0, e.data.Vel[2]}
 	if horizontal.LenSqr() <= 1.0e-4 {
 		return
@@ -387,7 +387,7 @@ func (b *BoatBehaviour) updateRotation(e *Ent) {
 	e.data.Rot = cube.Rotation{yaw, 0}
 }
 
-func (b *BoatBehaviour) updatePassengers(e *Ent, tx *world.Tx) {
+func (b *boatBehaviour) updatePassengers(e *Ent, tx *world.Tx) {
 	count := b.passengerCount()
 	for i := 0; i < b.maxPassengers; i++ {
 		h := b.passengers[i]
@@ -410,7 +410,7 @@ func (b *BoatBehaviour) updatePassengers(e *Ent, tx *world.Tx) {
 	}
 }
 
-func (b *BoatBehaviour) checkPassengersAlive(e *Ent, tx *world.Tx) {
+func (b *boatBehaviour) checkPassengersAlive(e *Ent, tx *world.Tx) {
 	for i := 0; i < b.maxPassengers; i++ {
 		h := b.passengers[i]
 		if h == nil {
@@ -427,7 +427,7 @@ func (b *BoatBehaviour) checkPassengersAlive(e *Ent, tx *world.Tx) {
 	}
 }
 
-func (b *BoatBehaviour) dismountHandle(e *Ent, tx *world.Tx, passenger *world.EntityHandle) {
+func (b *boatBehaviour) dismountHandle(e *Ent, tx *world.Tx, passenger *world.EntityHandle) {
 	seat := b.seatIndex(passenger)
 	if seat < 0 {
 		return
@@ -456,7 +456,7 @@ func (b *BoatBehaviour) dismountHandle(e *Ent, tx *world.Tx, passenger *world.En
 	b.broadcastPassengerState(tx, passenger)
 }
 
-func (b *BoatBehaviour) waterLevelDiff(e *Ent, tx *world.Tx) float64 {
+func (b *boatBehaviour) waterLevelDiff(e *Ent, tx *world.Tx) float64 {
 	box := e.H().Type().BBox(e).Translate(e.data.Pos)
 	minV, maxV := box.Min(), box.Max()
 	minX, minY, minZ := int(math.Floor(minV[0])), int(math.Floor(minV[1])), int(math.Floor(minV[2]))
@@ -502,7 +502,7 @@ func liquidSurfaceHeight(liquid world.Liquid) float64 {
 	return float64(depth) / 8
 }
 
-func (b *BoatBehaviour) groundFriction(tx *world.Tx, e *Ent) float64 {
+func (b *boatBehaviour) groundFriction(tx *world.Tx, e *Ent) float64 {
 	if b.inWater {
 		return boatWaterDrag
 	}
@@ -538,7 +538,7 @@ func (b *BoatBehaviour) groundFriction(tx *world.Tx, e *Ent) float64 {
 	return friction / float64(count)
 }
 
-func (b *BoatBehaviour) passengerCount() int {
+func (b *boatBehaviour) passengerCount() int {
 	count := 0
 	for i := 0; i < b.maxPassengers; i++ {
 		if b.passengers[i] != nil {
@@ -549,11 +549,11 @@ func (b *BoatBehaviour) passengerCount() int {
 }
 
 // Full reports if every seat of the boat is taken.
-func (b *BoatBehaviour) Full() bool {
+func (b *boatBehaviour) Full() bool {
 	return b.passengerCount() >= b.maxPassengers
 }
 
-func (b *BoatBehaviour) firstEmptySeat() int {
+func (b *boatBehaviour) firstEmptySeat() int {
 	for i := 0; i < b.maxPassengers; i++ {
 		if b.passengers[i] == nil {
 			return i
@@ -562,7 +562,7 @@ func (b *BoatBehaviour) firstEmptySeat() int {
 	return -1
 }
 
-func (b *BoatBehaviour) seatIndex(handle *world.EntityHandle) int {
+func (b *boatBehaviour) seatIndex(handle *world.EntityHandle) int {
 	if handle == nil {
 		return -1
 	}
@@ -574,7 +574,7 @@ func (b *BoatBehaviour) seatIndex(handle *world.EntityHandle) int {
 	return -1
 }
 
-func (b *BoatBehaviour) linkTypeForSeat(seat int) LinkType {
+func (b *boatBehaviour) linkTypeForSeat(seat int) LinkType {
 	if seat == 0 {
 		return LinkRider
 	}
@@ -601,7 +601,7 @@ func rotateBoatOffset(offset mgl64.Vec3, yaw float64) mgl64.Vec3 {
 	return mgl64.Vec3{x, offset[1], z}
 }
 
-func (b *BoatBehaviour) broadcastLink(e *Ent, tx *world.Tx, passenger *world.EntityHandle, linkType LinkType, mounted bool) {
+func (b *boatBehaviour) broadcastLink(e *Ent, tx *world.Tx, passenger *world.EntityHandle, linkType LinkType, mounted bool) {
 	viewers := tx.Viewers(e.data.Pos)
 	for _, v := range viewers {
 		if linkViewer, ok := v.(interface {
@@ -619,11 +619,11 @@ func (b *BoatBehaviour) broadcastLink(e *Ent, tx *world.Tx, passenger *world.Ent
 	tx.ReleaseViewers(viewers)
 }
 
-func (b *BoatBehaviour) broadcastState(e *Ent, tx *world.Tx) {
+func (b *boatBehaviour) broadcastState(e *Ent, tx *world.Tx) {
 	world.BroadcastEntityState(tx, e)
 }
 
-func (b *BoatBehaviour) broadcastPassengerState(tx *world.Tx, passenger *world.EntityHandle) {
+func (b *boatBehaviour) broadcastPassengerState(tx *world.Tx, passenger *world.EntityHandle) {
 	if passenger == nil {
 		return
 	}
@@ -634,7 +634,7 @@ func (b *BoatBehaviour) broadcastPassengerState(tx *world.Tx, passenger *world.E
 	world.BroadcastEntityState(tx, ent)
 }
 
-func (b *BoatBehaviour) newMovement(e *Ent, tx *world.Tx, prevPos, prevVel mgl64.Vec3, prevRot cube.Rotation) *Movement {
+func (b *boatBehaviour) newMovement(e *Ent, tx *world.Tx, prevPos, prevVel mgl64.Vec3, prevRot cube.Rotation) *Movement {
 	viewers := tx.Viewers(prevPos)
 	return &Movement{
 		v:          viewers,
@@ -655,7 +655,7 @@ type Boat struct {
 	*Ent
 }
 
-func (b *Boat) base() *BoatBehaviour {
+func (b *Boat) base() *boatBehaviour {
 	return boatBaseBehaviour(b.Behaviour())
 }
 
@@ -742,19 +742,19 @@ func (b *Boat) Links() []Link {
 	return links
 }
 
-func boatBaseBehaviour(data any) *BoatBehaviour {
+func boatBaseBehaviour(data any) *boatBehaviour {
 	switch b := data.(type) {
-	case *BoatBehaviour:
+	case *boatBehaviour:
 		return b
-	case interface{ Base() *BoatBehaviour }:
-		return b.Base()
+	case interface{ base() *boatBehaviour }:
+		return b.base()
 	default:
 		return nil
 	}
 }
 
 // BoatType is a world.EntityType implementation for boats.
-var BoatType boatType
+var entityBoatType boatType
 
 type boatType struct{}
 
@@ -785,28 +785,28 @@ func (boatType) EncodeNBT(data *world.EntityData) map[string]any {
 	return map[string]any{"Variant": b.variant}
 }
 
-var boatConf = BoatBehaviourConfig{MaxPassengers: 2}
+var boatConf = boatBehaviourConfig{MaxPassengers: 2}
 
 // ChestBoatBehaviourConfig configures chest boat behaviour.
-type ChestBoatBehaviourConfig struct {
-	Boat BoatBehaviourConfig
+type chestBoatBehaviourConfig struct {
+	Boat boatBehaviourConfig
 	Size int
 }
 
 // Apply applies the configuration to the entity data.
-func (conf ChestBoatBehaviourConfig) Apply(data *world.EntityData) {
+func (conf chestBoatBehaviourConfig) Apply(data *world.EntityData) {
 	data.Data = conf.New()
 }
 
 // New creates a new chest boat behaviour.
-func (conf ChestBoatBehaviourConfig) New() *ChestBoatBehaviour {
+func (conf chestBoatBehaviourConfig) New() *ChestBoatBehaviour {
 	if conf.Size <= 0 {
 		conf.Size = 27
 	}
 	conf.Boat.MaxPassengers = 1
 	base := conf.Boat.New()
 	b := &ChestBoatBehaviour{
-		BoatBehaviour: base,
+		boatBehaviour: base,
 		containerSize: int32(conf.Size),
 		viewerMu:      new(sync.RWMutex),
 		viewers:       make(map[block.ContainerViewer]struct{}, 1),
@@ -823,7 +823,7 @@ func (conf ChestBoatBehaviourConfig) New() *ChestBoatBehaviour {
 
 // ChestBoatBehaviour implements behaviour for chest boats.
 type ChestBoatBehaviour struct {
-	*BoatBehaviour
+	*boatBehaviour
 
 	inv *inventory.Inventory
 
@@ -834,8 +834,8 @@ type ChestBoatBehaviour struct {
 }
 
 // Base returns the base boat behaviour.
-func (b *ChestBoatBehaviour) Base() *BoatBehaviour {
-	return b.BoatBehaviour
+func (b *ChestBoatBehaviour) base() *boatBehaviour {
+	return b.boatBehaviour
 }
 
 // Inventory returns the chest boat inventory.
@@ -950,7 +950,7 @@ func (b *ChestBoat) RemoveViewer(v block.ContainerViewer) {
 }
 
 // ChestBoatType is a world.EntityType implementation for chest boats.
-var ChestBoatType chestBoatType
+var entityChestBoatType chestBoatType
 
 type chestBoatType struct{}
 
@@ -985,7 +985,7 @@ func (chestBoatType) EncodeNBT(data *world.EntityData) map[string]any {
 	}
 }
 
-var chestBoatConf = ChestBoatBehaviourConfig{
-	Boat: BoatBehaviourConfig{MaxPassengers: 1},
+var chestBoatConf = chestBoatBehaviourConfig{
+	Boat: boatBehaviourConfig{MaxPassengers: 1},
 	Size: 27,
 }

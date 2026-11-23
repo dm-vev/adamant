@@ -9,8 +9,8 @@ import (
 
 func TestEnderDragonPartBoxes(t *testing.T) {
 	t.Parallel()
-	data := world.EntityData{Pos: mgl64.Vec3{10, 20, 30}, Data: EnderDragonBehaviourConfig{Phase: DragonHovering}.New()}
-	dragon := &EnderDragon{Ent: &Ent{data: &data}}
+	data := world.EntityData{Pos: mgl64.Vec3{10, 20, 30}, Data: enderDragonBehaviourConfig{Phase: dragonHovering}.New()}
+	dragon := &enderDragon{Ent: &Ent{data: &data}}
 	parts := dragon.PartBoxes()
 	want := [8]string{"head", "neck", "body", "tail1", "tail2", "tail3", "wing1", "wing2"}
 	for i, part := range parts {

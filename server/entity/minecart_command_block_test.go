@@ -16,8 +16,8 @@ func TestCommandBlockMinecartNBTRoundTrip(t *testing.T) {
 		"LPRedstoneMode": uint8(1), "auto": uint8(1), "Version": int32(26),
 	}
 	data := &world.EntityData{}
-	CommandBlockMinecartType.DecodeNBT(input, data)
-	got := CommandBlockMinecartType.EncodeNBT(data)
+	entityCommandBlockMinecartType.DecodeNBT(input, data)
+	got := entityCommandBlockMinecartType.EncodeNBT(data)
 	for key, want := range input {
 		if got[key] != want {
 			t.Errorf("%s = %#v, want %#v", key, got[key], want)
@@ -28,14 +28,14 @@ func TestCommandBlockMinecartNBTRoundTrip(t *testing.T) {
 func TestCommandBlockMinecartContainerNBTRoundTrip(t *testing.T) {
 	t.Parallel()
 	data := &world.EntityData{}
-	(CommandBlockMinecartConfig{SuccessCount: 7}).Apply(data)
+	(commandBlockMinecartConfig{SuccessCount: 7}).Apply(data)
 	before := data.Data.(*commandBlockMinecartBehaviour)
 	if err := before.inv.SetItem(0, item.NewStack(item.Diamond{}, 37)); err != nil {
 		t.Fatal(err)
 	}
-	encoded := CommandBlockMinecartType.EncodeNBT(data)
+	encoded := entityCommandBlockMinecartType.EncodeNBT(data)
 	decoded := &world.EntityData{}
-	CommandBlockMinecartType.DecodeNBT(encoded, decoded)
+	entityCommandBlockMinecartType.DecodeNBT(encoded, decoded)
 	after := decoded.Data.(*commandBlockMinecartBehaviour)
 	stack, err := after.inv.Item(0)
 	if err != nil || after.inv.Size() != 1 || stack.Count() != 37 || !stack.Comparable(item.NewStack(item.Diamond{}, 1)) || after.successCount != 7 {

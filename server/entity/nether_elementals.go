@@ -16,9 +16,9 @@ type ghastType struct{}
 type blazeType struct{}
 type magmaCubeType struct{}
 
-var GhastType ghastType
-var BlazeType blazeType
-var MagmaCubeType magmaCubeType
+var entityGhastType ghastType
+var entityBlazeType blazeType
+var entityMagmaCubeType magmaCubeType
 
 type netherKind uint8
 
@@ -57,8 +57,8 @@ type netherState struct {
 	cubeAI         cubeAI
 	ghastMove      ghastMoveControl
 }
-type Ghast struct{ *Ent }
-type Blaze struct{ *Ent }
+type ghast struct{ *Ent }
+type blaze struct{ *Ent }
 type MagmaCube struct{ *Ent }
 
 func (ghastType) EncodeEntity() string     { return "minecraft:ghast" }
@@ -98,21 +98,21 @@ func openNether(tx *world.Tx, h *world.EntityHandle, d *world.EntityData, k neth
 	e := &Ent{tx: tx, handle: h, data: d}
 	switch k {
 	case ghastKind:
-		return &Ghast{e}
+		return &ghast{e}
 	case blazeKind:
-		return &Blaze{e}
+		return &blaze{e}
 	default:
 		return &MagmaCube{e}
 	}
 }
 func decodeNether(k netherKind, n map[string]any, d *world.EntityData) {
 	c := netherConfig{kind: k, size: 1}
-	for _, a := range ReadNativeMobAttributes(n) {
+	for _, a := range readNativeMobAttributes(n) {
 		if a.Name == "minecraft:health" {
 			c.health = a.Current
 		}
 	}
-	if j := ReadNativeMobJavaState(n); j != nil {
+	if j := readNativeMobJavaState(n); j != nil {
 		c.size = int(nbtconv.Int32(j, "Size"))
 		c.explosionPower = int(nbtconv.Int32(j, "Charge"))
 		c.jump = int(nbtconv.Int32(j, "JumpDelay"))
@@ -124,7 +124,7 @@ func decodeNether(k netherKind, n map[string]any, d *world.EntityData) {
 		size, _ := nbtconv.Integer(n, "Size")
 		c.size = int(size) + 1
 	}
-	d.NativeNBT = CloneNativeMobNBT(n)
+	d.NativeNBT = cloneNativeMobNBT(n)
 	c.Apply(d)
 }
 func encodeNether(k netherKind, d *world.EntityData) map[string]any {
@@ -136,7 +136,7 @@ func encodeNether(k netherKind, d *world.EntityData) map[string]any {
 	case magmaKind:
 		maxHP, speed, attack = float64(s.size*s.size), .2+.1*float64(s.size), float64(s.size)
 	}
-	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: maxHP, Current: s.health.Health(), DefaultMin: 0, DefaultMax: maxHP, Min: 0, Max: maxHP}, {Name: "minecraft:movement", Base: speed, Current: s.speed, DefaultMin: 0, DefaultMax: 3, Min: 0, Max: 3}, {Name: "minecraft:attack_damage", Base: attack, Current: attack, DefaultMin: 0, DefaultMax: 2048, Min: 0, Max: 2048}})
+	attrs := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: maxHP, Current: s.health.Health(), DefaultMin: 0, DefaultMax: maxHP, Min: 0, Max: maxHP}, {Name: "minecraft:movement", Base: speed, Current: s.speed, DefaultMin: 0, DefaultMax: 3, Min: 0, Max: 3}, {Name: "minecraft:attack_damage", Base: attack, Current: attack, DefaultMin: 0, DefaultMax: 2048, Min: 0, Max: 2048}})
 	// BDS saves positions, rotations and motion as floats.
 	n := map[string]any{"identifier": speciesIDNether(k), "Pos": []float32{float32(d.Pos[0]), float32(d.Pos[1]), float32(d.Pos[2])}, "Rotation": []float32{float32(d.Rot[0]), float32(d.Rot[1])}, "Motion": []float32{float32(d.Vel[0]), float32(d.Vel[1]), float32(d.Vel[2])}, "Attributes": attrs}
 	switch k {
@@ -145,7 +145,7 @@ func encodeNether(k netherKind, d *world.EntityData) map[string]any {
 	case magmaKind:
 		n["Size"] = uint8(s.size - 1)
 	}
-	return MergeNativeMobJavaState(MergeNativeMobNBT(d.NativeNBT, n), map[string]any{"Size": int32(s.size), "Charge": int32(s.explosionPower), "JumpDelay": int32(s.cubeAI.move.jumpDelay)})
+	return mergeNativeMobJavaState(mergeNativeMobNBT(d.NativeNBT, n), map[string]any{"Size": int32(s.size), "Charge": int32(s.explosionPower), "JumpDelay": int32(s.cubeAI.move.jumpDelay)})
 }
 func speciesIDNether(k netherKind) string {
 	switch k {
@@ -189,23 +189,23 @@ func (c netherConfig) Apply(d *world.EntityData) {
 	d.Data = s
 }
 func NewGhast(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(GhastType, netherConfig{kind: ghastKind, size: 1})
+	return o.New(entityGhastType, netherConfig{kind: ghastKind, size: 1})
 }
 func NewBlaze(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(BlazeType, netherConfig{kind: blazeKind, size: 1})
+	return o.New(entityBlazeType, netherConfig{kind: blazeKind, size: 1})
 }
 func NewMagmaCube(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(MagmaCubeType, netherConfig{kind: magmaKind, size: 1})
+	return o.New(entityMagmaCubeType, netherConfig{kind: magmaKind, size: 1})
 }
-func (m *Ghast) n() *netherState            { return m.Behaviour().(*netherState) }
-func (m *Blaze) n() *netherState            { return m.Behaviour().(*netherState) }
+func (m *ghast) n() *netherState            { return m.Behaviour().(*netherState) }
+func (m *blaze) n() *netherState            { return m.Behaviour().(*netherState) }
 func (m *MagmaCube) n() *netherState        { return m.Behaviour().(*netherState) }
 func (m *MagmaCube) Size() int              { return m.n().size }
-func (m *Ghast) Tick(tx *world.Tx, n int64) { m.n().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
-func (m *Blaze) Tick(tx *world.Tx, n int64) { m.n().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
+func (m *ghast) Tick(tx *world.Tx, n int64) { m.n().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
+func (m *blaze) Tick(tx *world.Tx, n int64) { m.n().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
 
 // IsSensitiveToWater reports that water hurts blazes, as Blaze does.
-func (m *Blaze) IsSensitiveToWater() bool       { return true }
+func (m *blaze) IsSensitiveToWater() bool       { return true }
 func (m *MagmaCube) Tick(tx *world.Tx, n int64) { m.n().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
 func (s *netherState) Tick(e *Ent, tx *world.Tx) *Movement {
 	switch s.kind {
@@ -271,39 +271,31 @@ func (s *netherState) Hurt(e *Ent, self world.Entity, d float64, src world.Damag
 	}
 	s.health.AddHealth(-d)
 	s.ai.Hurt(src)
-	viewers := e.tx.Viewers(e.Position())
-	for _, viewer := range viewers {
-		viewer.ViewEntityAction(e, HurtAction{})
-	}
-	e.tx.ReleaseViewers(viewers)
+	world.BroadcastEntityAction(e.tx, e, HurtAction{})
 	onMobHurt(e.tx, self)
 	if s.health.Health() <= 0 {
 		s.dead = true
-		viewers = e.tx.Viewers(e.Position())
-		for _, viewer := range viewers {
-			viewer.ViewEntityAction(self, DeathAction{})
-		}
-		e.tx.ReleaseViewers(viewers)
+		world.BroadcastEntityAction(e.tx, self, DeathAction{})
 		dropAllDeathLoot(e.tx, self, src)
 		e.CloseIn(e.tx)
 	}
 	return d, true
 }
-func (m *Ghast) Health() float64        { return m.n().health.Health() }
-func (m *Ghast) MaxHealth() float64     { return m.n().health.MaxHealth() }
-func (m *Ghast) SetMaxHealth(v float64) { m.n().health.SetMaxHealth(v) }
-func (m *Ghast) Dead() bool             { return m.n().dead || m.Health() <= 0 }
-func (m *Ghast) Hurt(d float64, s world.DamageSource) (float64, bool) {
+func (m *ghast) Health() float64        { return m.n().health.Health() }
+func (m *ghast) MaxHealth() float64     { return m.n().health.MaxHealth() }
+func (m *ghast) SetMaxHealth(v float64) { m.n().health.SetMaxHealth(v) }
+func (m *ghast) Dead() bool             { return m.n().dead || m.Health() <= 0 }
+func (m *ghast) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	if p, ok := s.(ProjectileDamageSource); ok && p.Projectile != nil && p.Projectile.H().Type().EncodeEntity() == "minecraft:fireball" && p.Owner != nil && p.Owner.H().Type().EncodeEntity() == "minecraft:player" {
 		return m.n().Hurt(m.Ent, m, 1000, s)
 	}
 	return m.n().Hurt(m.Ent, m, d, s)
 }
-func (m *Blaze) Health() float64        { return m.n().health.Health() }
-func (m *Blaze) MaxHealth() float64     { return m.n().health.MaxHealth() }
-func (m *Blaze) SetMaxHealth(v float64) { m.n().health.SetMaxHealth(v) }
-func (m *Blaze) Dead() bool             { return m.n().dead || m.Health() <= 0 }
-func (m *Blaze) Hurt(d float64, s world.DamageSource) (float64, bool) {
+func (m *blaze) Health() float64        { return m.n().health.Health() }
+func (m *blaze) MaxHealth() float64     { return m.n().health.MaxHealth() }
+func (m *blaze) SetMaxHealth(v float64) { m.n().health.SetMaxHealth(v) }
+func (m *blaze) Dead() bool             { return m.n().dead || m.Health() <= 0 }
+func (m *blaze) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	return m.n().Hurt(m.Ent, m, d, s)
 }
 func (m *MagmaCube) Health() float64        { return m.n().health.Health() }
@@ -338,13 +330,13 @@ func (m *MagmaCube) FinalizeSpawn(_ string, r *vanilla.Random) {
 	m.updateState()
 }
 func NewMagmaCubeWithSize(o world.EntitySpawnOpts, size int) *world.EntityHandle {
-	return o.New(MagmaCubeType, netherConfig{kind: magmaKind, size: size})
+	return o.New(entityMagmaCubeType, netherConfig{kind: magmaKind, size: size})
 }
 
 // CubeSize returns the Java Slime.getSize of the magma cube.
 func (m *MagmaCube) CubeSize() int                                 { return m.n().size }
-func (m *Ghast) Heal(h float64, _ world.HealingSource) float64     { return healNether(m.n(), h) }
-func (m *Blaze) Heal(h float64, _ world.HealingSource) float64     { return healNether(m.n(), h) }
+func (m *ghast) Heal(h float64, _ world.HealingSource) float64     { return healNether(m.n(), h) }
+func (m *blaze) Heal(h float64, _ world.HealingSource) float64     { return healNether(m.n(), h) }
 func (m *MagmaCube) Heal(h float64, _ world.HealingSource) float64 { return healNether(m.n(), h) }
 func healNether(s *netherState, h float64) float64 {
 	if h <= 0 || s.dead {
@@ -354,34 +346,34 @@ func healNether(s *netherState, h float64) float64 {
 	s.health.AddHealth(h)
 	return s.health.Health() - old
 }
-func (m *Ghast) KnockBack(src mgl64.Vec3, f, h float64)     { netherKnock(m.Ent, src, f, h) }
-func (m *Blaze) KnockBack(src mgl64.Vec3, f, h float64)     { netherKnock(m.Ent, src, f, h) }
+func (m *ghast) KnockBack(src mgl64.Vec3, f, h float64)     { netherKnock(m.Ent, src, f, h) }
+func (m *blaze) KnockBack(src mgl64.Vec3, f, h float64)     { netherKnock(m.Ent, src, f, h) }
 func (m *MagmaCube) KnockBack(src mgl64.Vec3, f, h float64) { netherKnock(m.Ent, src, f, h) }
 func netherKnock(e *Ent, src mgl64.Vec3, f, h float64) {
 	knockBack(e, src, f, h)
 }
-func (m *Ghast) AddEffect(e effect.Effect)      { m.n().effects.Add(e, m) }
-func (m *Blaze) AddEffect(e effect.Effect)      { m.n().effects.Add(e, m) }
+func (m *ghast) AddEffect(e effect.Effect)      { m.n().effects.Add(e, m) }
+func (m *blaze) AddEffect(e effect.Effect)      { m.n().effects.Add(e, m) }
 func (m *MagmaCube) AddEffect(e effect.Effect)  { m.n().effects.Add(e, m) }
-func (m *Ghast) RemoveEffect(t effect.Type)     { m.n().effects.Remove(t, m) }
-func (m *Blaze) RemoveEffect(t effect.Type)     { m.n().effects.Remove(t, m) }
+func (m *ghast) RemoveEffect(t effect.Type)     { m.n().effects.Remove(t, m) }
+func (m *blaze) RemoveEffect(t effect.Type)     { m.n().effects.Remove(t, m) }
 func (m *MagmaCube) RemoveEffect(t effect.Type) { m.n().effects.Remove(t, m) }
-func (m *Ghast) Effects() []effect.Effect       { return m.n().effects.Effects() }
-func (m *Blaze) Effects() []effect.Effect       { return m.n().effects.Effects() }
+func (m *ghast) Effects() []effect.Effect       { return m.n().effects.Effects() }
+func (m *blaze) Effects() []effect.Effect       { return m.n().effects.Effects() }
 func (m *MagmaCube) Effects() []effect.Effect   { return m.n().effects.Effects() }
-func (m *Ghast) Speed() float64                 { return m.n().speed }
-func (m *Blaze) Speed() float64                 { return m.n().speed }
+func (m *ghast) Speed() float64                 { return m.n().speed }
+func (m *blaze) Speed() float64                 { return m.n().speed }
 func (m *MagmaCube) Speed() float64             { return m.n().speed }
-func (m *Ghast) SetSpeed(v float64)             { m.n().speed = v }
-func (m *Blaze) SetSpeed(v float64)             { m.n().speed = v }
+func (m *ghast) SetSpeed(v float64)             { m.n().speed = v }
+func (m *blaze) SetSpeed(v float64)             { m.n().speed = v }
 func (m *MagmaCube) SetSpeed(v float64)         { m.n().speed = v }
 
 // Burning reports if the blaze burns, which it does while it charges its
 // fireballs.
-func (m *Blaze) Burning() bool { return m.n().charging }
+func (m *blaze) Burning() bool { return m.n().charging }
 
 // Charging reports if the ghast opens its mouth to shoot a fireball.
-func (m *Ghast) Charging() bool { return m.n().charging }
+func (m *ghast) Charging() bool { return m.n().charging }
 
 type ghastFireballBehaviour struct{ *ProjectileBehaviour }
 type ghastFireballType struct{}
@@ -400,14 +392,14 @@ func (b *ghastFireballBehaviour) Attack(e *Ent, attacker world.Entity, tx *world
 	tx.PlaySound(e.Position(), sound.Custom{Name: "entity.ghast.shoot", Volume: 1, Pitch: 1})
 }
 
-var GhastFireballType ghastFireballType
+var entityGhastFireballType ghastFireballType
 
 func ghastFireballHit(e *Ent, tx *world.Tx, target trace.Result) {
 	if entityResult, ok := target.(trace.EntityResult); ok {
-		if ghast, ok := entityResult.Entity().(*Ghast); ok {
+		if gh, ok := entityResult.Entity().(*ghast); ok {
 			if behaviour, ok := e.Behaviour().(*ghastFireballBehaviour); ok && behaviour.Owner() != nil {
 				if owner, ok := behaviour.Owner().Entity(tx); ok && owner.H().Type().EncodeEntity() == "minecraft:player" {
-					ghast.Hurt(1000, ProjectileDamageSource{Projectile: e, Owner: owner})
+					gh.Hurt(1000, ProjectileDamageSource{Projectile: e, Owner: owner})
 					return
 				}
 			}
@@ -434,15 +426,15 @@ func NewGhastFireball(o world.EntitySpawnOpts, owner world.Entity) *world.Entity
 		ownerHandle = owner.H()
 	}
 	conf := ProjectileBehaviourConfig{Owner: ownerHandle, Acceleration: .1, Damage: -1, Hit: ghastFireballHit}
-	return o.New(GhastFireballType, &ghastFireballBehaviour{ProjectileBehaviour: conf.New()})
+	return o.New(entityGhastFireballType, &ghastFireballBehaviour{ProjectileBehaviour: conf.New()})
 }
 
 var _ world.EntityType = ghastType{}
 var _ world.EntityType = blazeType{}
 var _ world.EntityType = magmaCubeType{}
 var _ world.EntityType = ghastFireballType{}
-var _ Living = (*Ghast)(nil)
-var _ Living = (*Blaze)(nil)
+var _ Living = (*ghast)(nil)
+var _ Living = (*blaze)(nil)
 var _ Living = (*MagmaCube)(nil)
 
 func (b *netherState) effectManager() *EffectManager { return b.effects }

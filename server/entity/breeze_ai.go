@@ -18,12 +18,12 @@ import (
 // its animations, so only the others are sent.
 
 // newBreezeBrain ports BreezeAi and the brain provider of Breeze.
-func newBreezeBrain(s *breezeState) *Brain {
+func newBreezeBrain(s *breezeState) *brain {
 	br := newBrain(breezeAttackEntitySensor{}, hurtBySensor{}, playerSensor{})
 	br.addActivity(activityCore, 0, newSwim(.8), newLookAtTargetSink(45, 90))
 	br.addActivityWith(activityIdle, []prioritizedBehavior{
-		{0, newStartAttacking(nil, func(m *Mob) world.Entity { return m.Brain().entity(m, memNearestAttackable) })},
-		{1, newStartAttacking(nil, func(m *Mob) world.Entity { return m.Brain().entity(m, memHurtByEntity) })},
+		{0, newStartAttacking(nil, func(m *Mob) world.Entity { return m.brain().entity(m, memNearestAttackable) })},
+		{1, newStartAttacking(nil, func(m *Mob) world.Entity { return m.brain().entity(m, memHurtByEntity) })},
 		{2, newBreezeSlideToTargetSink(s, 20, 40)},
 		{3, newRunOne(nil,
 			weightedBehavior{newDoNothing(20, 100), 1},
@@ -66,7 +66,7 @@ func (s breezeAttackEntitySensor) requires() []memoryType {
 	return append(s.nearestLivingEntitySensor.requires(), memNearestAttackable)
 }
 
-func (s breezeAttackEntitySensor) doTick(m *Mob, b *Brain) {
+func (s breezeAttackEntitySensor) doTick(m *Mob, b *brain) {
 	s.nearestLivingEntitySensor.doTick(m, b)
 	for _, e := range nearestLiving(m) {
 		if g, ok := e.(interface{ GameMode() world.GameMode }); ok && g.GameMode() == world.GameModeCreative {
@@ -92,8 +92,8 @@ func newBreezeSlideToTargetSink(s *breezeState, minTimeout, maxTimeout int) *beh
 	bh.stop = func(m *Mob, time int64) {
 		stop(m, time)
 		s.setPose(m, breezeStanding)
-		if m.Brain().has(memAttackTarget) {
-			m.Brain().setWithExpiry(memBreezeShoot, true, 60)
+		if m.brain().has(memAttackTarget) {
+			m.brain().setWithExpiry(memBreezeShoot, true, 60)
 		}
 	}
 	return bh
@@ -114,7 +114,7 @@ func newBreezeShoot(s *breezeState) *behavior {
 		if s.pose != breezeStanding {
 			return false
 		}
-		b := m.Brain()
+		b := m.brain()
 		target := b.entity(m, memAttackTarget)
 		if target == nil {
 			return false
@@ -126,11 +126,11 @@ func newBreezeShoot(s *breezeState) *behavior {
 		return true
 	}
 	bh.canStillUse = func(m *Mob, _ int64) bool {
-		b := m.Brain()
+		b := m.brain()
 		return b.has(memAttackTarget) && b.has(memBreezeShoot)
 	}
 	bh.start = func(m *Mob, _ int64) {
-		b := m.Brain()
+		b := m.brain()
 		if b.entity(m, memAttackTarget) != nil {
 			s.setPose(m, breezeShooting)
 		}
@@ -140,12 +140,12 @@ func newBreezeShoot(s *breezeState) *behavior {
 		if s.pose == breezeShooting {
 			s.setPose(m, breezeStanding)
 		}
-		b := m.Brain()
+		b := m.brain()
 		b.setWithExpiry(memBreezeShootCooldown, true, cooldownTicks)
 		b.erase(memBreezeShoot)
 	}
 	bh.tick = func(m *Mob, _ int64) {
-		b := m.Brain()
+		b := m.brain()
 		target := b.entity(m, memAttackTarget)
 		if target == nil {
 			return
@@ -202,10 +202,10 @@ func newBreezeLongJump(s *breezeState) *behavior {
 	}
 	bh.checkExtra = breezeCanLongJump
 	bh.canStillUse = func(m *Mob, _ int64) bool {
-		return s.pose != breezeStanding && !m.Brain().has(memBreezeJumpCooldown)
+		return s.pose != breezeStanding && !m.brain().has(memBreezeJumpCooldown)
 	}
 	bh.start = func(m *Mob, _ int64) {
-		b := m.Brain()
+		b := m.brain()
 		if !b.has(memBreezeJumpInhaling) {
 			b.setWithExpiry(memBreezeJumpInhaling, true, inhalingTicks)
 		}
@@ -215,7 +215,7 @@ func newBreezeLongJump(s *breezeState) *behavior {
 		}
 	}
 	bh.tick = func(m *Mob, _ int64) {
-		b := m.Brain()
+		b := m.brain()
 		inWater := m.InWater()
 		if !inWater && b.has(memBreezeLeavingWater) {
 			b.erase(memBreezeLeavingWater)
@@ -255,7 +255,7 @@ func newBreezeLongJump(s *breezeState) *behavior {
 		if s.pose == breezeLongJumping || s.pose == breezeInhaling {
 			s.setPose(m, breezeStanding)
 		}
-		b := m.Brain()
+		b := m.brain()
 		b.erase(memBreezeJumpTarget)
 		b.erase(memBreezeJumpInhaling)
 		b.erase(memBreezeLeavingWater)
@@ -273,7 +273,7 @@ func breezeCanLongJump(m *Mob) bool {
 	if m.AI.waterHeight > m.FluidJumpThreshold() || m.InLava() {
 		return false
 	}
-	b := m.Brain()
+	b := m.brain()
 	if b.has(memBreezeJumpTarget) {
 		return true
 	}
@@ -428,7 +428,7 @@ func newBreezeShootWhenStuck() *behavior {
 			return m.data.Riding != nil || m.InWater() || levitating
 		},
 		canStillUse: func(*Mob, int64) bool { return false },
-		start:       func(m *Mob, _ int64) { m.Brain().setWithExpiry(memBreezeShoot, true, 60) },
+		start:       func(m *Mob, _ int64) { m.brain().setWithExpiry(memBreezeShoot, true, 60) },
 	}
 }
 
@@ -445,7 +445,7 @@ func newBreezeSlide(s *breezeState) *behavior {
 		},
 		canStillUse: func(*Mob, int64) bool { return false },
 		start: func(m *Mob, _ int64) {
-			enemy := m.Brain().entity(m, memAttackTarget)
+			enemy := m.brain().entity(m, memAttackTarget)
 			if enemy == nil {
 				return
 			}
@@ -455,7 +455,7 @@ func newBreezeSlide(s *breezeState) *behavior {
 			// Breeze.withinInnerCircleRange.
 			centre := m.BlockPos().Vec3Centre()
 			if dx, dy, dz := ep[0]-centre[0], ep[1]-centre[1], ep[2]-centre[2]; dx*dx+dz*dz < 16 && math.Abs(dy) < 10 {
-				if away, ok := DefaultRandomPosAway(m, 5, 5, ep); ok && breezeHasLineOfSight(m, away) && ep.Sub(away).LenSqr() > ep.Sub(m.data.Pos).LenSqr() {
+				if away, ok := defaultRandomPosAway(m, 5, 5, ep); ok && breezeHasLineOfSight(m, away) && ep.Sub(away).LenSqr() > ep.Sub(m.data.Pos).LenSqr() {
 					pos, found = away, true
 				}
 			}
@@ -469,7 +469,7 @@ func newBreezeSlide(s *breezeState) *behavior {
 					pos = m.data.Pos.Add(javaNormalize(d).Mul(dist))
 				}
 			}
-			m.Brain().set(memWalkTarget, walkTarget{target: newBlockPosTracker(cube.PosFromVec3(pos)), speed: float64(float32(.6)), closeEnough: 1})
+			m.brain().set(memWalkTarget, walkTarget{target: newBlockPosTracker(cube.PosFromVec3(pos)), speed: float64(float32(.6)), closeEnough: 1})
 		},
 	}
 }

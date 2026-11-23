@@ -173,7 +173,7 @@ func (t *groundWalkTable) grow() {
 	}
 }
 
-func (t *groundWalkTable) eval(tx *world.Tx, pos cube.Pos, p GroundProfile, rng cube.Range, radius, vertical int) (bool, float64) {
+func (t *groundWalkTable) eval(tx *world.Tx, pos cube.Pos, p groundProfile, rng cube.Range, radius, vertical int) (bool, float64) {
 	if (t.count+1)*2 >= len(t.entries) {
 		t.grow()
 	}
@@ -299,7 +299,7 @@ func releaseGroundScratch(s *groundPathScratch) {
 	}
 }
 
-func normalizeGroundProfile(profile GroundProfile) (GroundProfile, int, int) {
+func normalizeGroundProfile(profile groundProfile) (groundProfile, int, int) {
 	if profile.StepHeight <= 0 {
 		profile.StepHeight = 1
 	}
@@ -326,7 +326,7 @@ func normalizeGroundProfile(profile GroundProfile) (GroundProfile, int, int) {
 }
 
 // FindGroundPath finds a route using Java-like eight-way ground navigation.
-func FindGroundPath(tx *world.Tx, start, goal cube.Pos, profile GroundProfile) []cube.Pos {
+func findGroundPath(tx *world.Tx, start, goal cube.Pos, profile groundProfile) []cube.Pos {
 	if start == goal {
 		return nil
 	}
@@ -424,7 +424,7 @@ func heuristic(a, b cube.Pos) float64 {
 	return math.Sqrt(dx*dx + dy*dy + dz*dz)
 }
 
-func groundWalkableAndCost(tx *world.Tx, pos cube.Pos, p GroundProfile, rng cube.Range, radius, vertical int) (bool, float64) {
+func groundWalkableAndCost(tx *world.Tx, pos cube.Pos, p groundProfile, rng cube.Range, radius, vertical int) (bool, float64) {
 	if pos[1] < rng[0] || pos[1] > rng[1] {
 		return false, 0
 	}

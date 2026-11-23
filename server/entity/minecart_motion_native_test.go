@@ -232,15 +232,15 @@ func replayMinecartFlatMotionBDS(t *testing.T, filename string, count int) {
 						opts := world.EntitySpawnOpts{Position: trace.Spawn.Body.Position.vec()}
 						switch c.Entity {
 						case "minecraft:minecart":
-							handle = opts.New(MinecartType, minecartConf)
+							handle = opts.New(entityMinecartType, minecartConf)
 						case "minecraft:chest_minecart":
-							handle = opts.New(ChestMinecartType, chestMinecartConf)
+							handle = opts.New(entityChestMinecartType, chestMinecartConf)
 						case "minecraft:hopper_minecart":
-							handle = opts.New(HopperMinecartType, hopperMinecartConf)
+							handle = opts.New(entityHopperMinecartType, hopperMinecartConf)
 						case "minecraft:tnt_minecart":
-							handle = opts.New(TNTMinecartType, tntMinecartConf)
+							handle = opts.New(entityTNTMinecartType, tntMinecartConf)
 						case "minecraft:command_block_minecart":
-							handle = NewCommandBlockMinecart(opts, CommandBlockMinecartConfig{})
+							handle = newCommandBlockMinecart(opts, commandBlockMinecartConfig{})
 						default:
 							t.Fatal("unhandled native cart")
 						}

@@ -22,7 +22,7 @@ func NewAreaEffectCloud(opts world.EntitySpawnOpts, p potion.Potion) *world.Enti
 // after a wait of 10, a quarter of the potion's durations, effects again
 // after AreaEffectCloud's reapplication delay of 20 ticks.
 func newLingeringCloud(opts world.EntitySpawnOpts, p potion.Potion, owner *world.EntityHandle) *world.EntityHandle {
-	return opts.New(AreaEffectCloudType, AreaEffectCloudBehaviourConfig{
+	return opts.New(entityAreaEffectCloudType, AreaEffectCloudBehaviourConfig{
 		Potion:             p,
 		Radius:             3,
 		RadiusUseGrowth:    -0.5,
@@ -40,7 +40,7 @@ func newLingeringCloud(opts world.EntitySpawnOpts, p potion.Potion, owner *world
 // and 2.5/300 a tick for 300 ticks after a wait of 10, a quarter of the
 // effects' durations.
 func newCreeperCloud(pos mgl64.Vec3, effects []effect.Effect) *world.EntityHandle {
-	return world.EntitySpawnOpts{Position: pos}.New(AreaEffectCloudType, AreaEffectCloudBehaviourConfig{
+	return world.EntitySpawnOpts{Position: pos}.New(entityAreaEffectCloudType, AreaEffectCloudBehaviourConfig{
 		Radius:             2.5,
 		RadiusUseGrowth:    -0.5,
 		RadiusTickGrowth:   -2.5 / 300,
@@ -65,11 +65,11 @@ func NewAreaEffectCloudWith(opts world.EntitySpawnOpts, t potion.Potion, duratio
 		WaitTime:           time.Second / 2,
 		DurationScale:      0.25,
 	}
-	return opts.New(AreaEffectCloudType, config)
+	return opts.New(entityAreaEffectCloudType, config)
 }
 
 // AreaEffectCloudType is a world.EntityType implementation for AreaEffectCloud.
-var AreaEffectCloudType areaEffectCloudType
+var entityAreaEffectCloudType areaEffectCloudType
 
 type areaEffectCloudType struct{}
 
@@ -150,7 +150,7 @@ func newDragonBreathCloud(pos mgl64.Vec3, owner *world.EntityHandle, radius floa
 	if amplifier > 0 {
 		p = potion.StrongHarming()
 	}
-	return world.EntitySpawnOpts{Position: pos}.New(AreaEffectCloudType, AreaEffectCloudBehaviourConfig{
+	return world.EntitySpawnOpts{Position: pos}.New(entityAreaEffectCloudType, AreaEffectCloudBehaviourConfig{
 		Potion:             p,
 		Radius:             radius,
 		RadiusTickGrowth:   radiusPerTick,
@@ -184,7 +184,7 @@ func (e *Ent) BottleDragonBreath(tx *world.Tx) bool {
 		return false
 	}
 	owner, ok := a.conf.Owner.Entity(tx)
-	if _, dragon := owner.(*EnderDragon); !ok || !dragon {
+	if _, dragon := owner.(*enderDragon); !ok || !dragon {
 		return false
 	}
 	a.SetRadius(a.radius - .5)

@@ -65,14 +65,14 @@ func (c golemConfig) Apply(d *world.EntityData) {
 }
 
 func NewIronGolem(opts world.EntitySpawnOpts) *world.EntityHandle {
-	return opts.New(IronGolemType, golemConfig{kind: ironKind})
+	return opts.New(entityIronGolemType, golemConfig{kind: ironKind})
 }
 func NewSnowGolem(opts world.EntitySpawnOpts) *world.EntityHandle {
-	return opts.New(SnowGolemType, golemConfig{kind: snowKind, pumpkin: true})
+	return opts.New(entitySnowGolemType, golemConfig{kind: snowKind, pumpkin: true})
 }
 
-var IronGolemType ironGolemType
-var SnowGolemType snowGolemType
+var entityIronGolemType ironGolemType
+var entitySnowGolemType snowGolemType
 
 type ironGolemType struct{}
 type snowGolemType struct{}
@@ -81,20 +81,20 @@ func (ironGolemType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityDa
 	if d.Data == nil {
 		golemConfig{kind: ironKind}.Apply(d)
 	}
-	return &IronGolem{Ent: &Ent{tx: tx, handle: h, data: d}}
+	return &ironGolem{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
 func (snowGolemType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
 		golemConfig{kind: snowKind, pumpkin: true}.Apply(d)
 	}
-	return &SnowGolem{Ent: &Ent{tx: tx, handle: h, data: d}}
+	return &snowGolem{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
 func (ironGolemType) EncodeEntity() string        { return "minecraft:iron_golem" }
 func (snowGolemType) EncodeEntity() string        { return "minecraft:snow_golem" }
 func (ironGolemType) BBox(world.Entity) cube.BBox { return cube.Box(-.7, 0, -.7, .7, 2.7, .7) }
 func (snowGolemType) BBox(world.Entity) cube.BBox { return cube.Box(-.35, 0, -.35, .35, 1.9, .35) }
 func (ironGolemType) DecodeNBT(n map[string]any, d *world.EntityData) {
-	source := ReadNativeMobJavaState(n)
+	source := readNativeMobJavaState(n)
 	if source == nil {
 		source = n
 	}
@@ -112,7 +112,7 @@ func (ironGolemType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	c.Apply(d)
 }
 func (snowGolemType) DecodeNBT(n map[string]any, d *world.EntityData) {
-	source := ReadNativeMobJavaState(n)
+	source := readNativeMobJavaState(n)
 	if source == nil {
 		source = n
 	}
@@ -132,7 +132,7 @@ func (snowGolemType) DecodeNBT(n map[string]any, d *world.EntityData) {
 func (ironGolemType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*golemState)
 	h := b.health
-	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{
+	attrs := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{
 		{Name: "minecraft:health", Base: ironGolemHealth, Current: h.Health(), DefaultMin: 0, DefaultMax: ironGolemHealth, Min: 0, Max: ironGolemHealth},
 	})
 	javaState := map[string]any{"Health": float32(h.Health()), "PlayerCreated": byte(boolByte(b.playerCreated)),
@@ -144,24 +144,24 @@ func (ironGolemType) EncodeNBT(d *world.EntityData) map[string]any {
 	if target != nil && b.angerTicks > 0 {
 		javaState["AngryAt"] = target
 	}
-	native := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Health": float32(h.Health()), "Attributes": attrs,
+	native := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Health": float32(h.Health()), "Attributes": attrs,
 		"PlayerCreated": byte(boolByte(b.playerCreated)), "IsAngry": byte(boolByte(b.angerTicks > 0))})
-	state := MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), javaState)
+	state := mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), javaState)
 	if target == nil || b.angerTicks <= 0 {
 		delete(state, "AngryAt")
 	}
-	return MergeNativeMobJavaState(native, state)
+	return mergeNativeMobJavaState(native, state)
 }
 func (snowGolemType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*golemState)
 	h := b.health
-	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{
+	attrs := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{
 		{Name: "minecraft:health", Base: snowGolemHealth, Current: h.Health(), DefaultMin: 0, DefaultMax: snowGolemHealth, Min: 0, Max: snowGolemHealth},
 	})
-	native := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Health": float32(h.Health()), "Attributes": attrs,
+	native := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Health": float32(h.Health()), "Attributes": attrs,
 		"Pumpkin": byte(boolByte(b.pumpkin))})
-	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), map[string]any{"Health": float32(h.Health()), "Pumpkin": byte(boolByte(b.pumpkin))})
-	return MergeNativeMobJavaState(native, javaState)
+	javaState := mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), map[string]any{"Health": float32(h.Health()), "Pumpkin": byte(boolByte(b.pumpkin))})
+	return mergeNativeMobJavaState(native, javaState)
 }
 
 func golemUUIDNBT(raw string) []int32 {
@@ -194,22 +194,22 @@ func golemUUIDString(raw any) string {
 	return id.String()
 }
 
-type IronGolem struct{ *Ent }
-type SnowGolem struct{ *Ent }
+type ironGolem struct{ *Ent }
+type snowGolem struct{ *Ent }
 
-func (m *IronGolem) b() *golemState             { return m.Behaviour().(*golemState) }
-func (m *SnowGolem) b() *golemState             { return m.Behaviour().(*golemState) }
-func (m *IronGolem) Tick(tx *world.Tx, n int64) { m.b().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
-func (m *SnowGolem) Tick(tx *world.Tx, n int64) { m.b().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
+func (m *ironGolem) b() *golemState             { return m.Behaviour().(*golemState) }
+func (m *snowGolem) b() *golemState             { return m.Behaviour().(*golemState) }
+func (m *ironGolem) Tick(tx *world.Tx, n int64) { m.b().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
+func (m *snowGolem) Tick(tx *world.Tx, n int64) { m.b().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
 func (b *golemState) Tick(e *Ent, tx *world.Tx) *Movement {
 	ai := &b.ai
 	ai.MovementSpeed = b.speed
 	var self world.Entity
 	if b.kind == ironKind {
-		self = &IronGolem{Ent: e}
+		self = &ironGolem{Ent: e}
 		ai.EyeHeight, ai.StepHeight = 2.295, 1
 	} else {
-		self = &SnowGolem{Ent: e}
+		self = &snowGolem{Ent: e}
 		ai.EyeHeight = 1.7
 	}
 	mv := ai.Tick(e, self, b.registerGoals)
@@ -220,7 +220,7 @@ func (b *golemState) Tick(e *Ent, tx *world.Tx) *Movement {
 }
 
 // OfferFlower reports whether the golem is currently offering a flower.
-func (m *IronGolem) OfferFlower() bool { return m.b().offerFlowerTick > 0 }
+func (m *ironGolem) OfferFlower() bool { return m.b().offerFlowerTick > 0 }
 
 func newGolemSnowball(opts world.EntitySpawnOpts, owner world.Entity) *world.EntityHandle {
 	conf := snowballConf
@@ -235,7 +235,7 @@ func newGolemSnowball(opts world.EntitySpawnOpts, owner world.Entity) *world.Ent
 			living.Hurt(3, ProjectileDamageSource{Projectile: projectile, Owner: attacker})
 		}
 	}
-	return opts.New(SnowballType, conf)
+	return opts.New(entitySnowballType, conf)
 }
 
 type golemFireDamage struct{}
@@ -294,53 +294,49 @@ func (m golemLiving) Effects() []effect.Effect   { return m.b.effects.Effects() 
 func (m golemLiving) Speed() float64             { return m.b.speed }
 func (m golemLiving) SetSpeed(s float64)         { m.b.speed = s }
 func (m golemLiving) viewAction(a world.EntityAction) {
-	v := m.tx.Viewers(m.Position())
-	for _, x := range v {
-		x.ViewEntityAction(m, a)
-	}
-	m.tx.ReleaseViewers(v)
+	world.BroadcastEntityAction(m.tx, m, a)
 }
-func (m *IronGolem) Health() float64        { return m.b().health.Health() }
-func (m *SnowGolem) Health() float64        { return m.b().health.Health() }
-func (m *IronGolem) MaxHealth() float64     { return m.b().health.MaxHealth() }
-func (m *SnowGolem) MaxHealth() float64     { return m.b().health.MaxHealth() }
-func (m *IronGolem) SetMaxHealth(h float64) { m.b().health.SetMaxHealth(h) }
-func (m *SnowGolem) SetMaxHealth(h float64) { m.b().health.SetMaxHealth(h) }
-func (m *IronGolem) Dead() bool             { return m.b().dead || m.Health() <= 0 }
-func (m *SnowGolem) Dead() bool             { return m.b().dead || m.Health() <= 0 }
-func (m *IronGolem) Hurt(d float64, s world.DamageSource) (float64, bool) {
+func (m *ironGolem) Health() float64        { return m.b().health.Health() }
+func (m *snowGolem) Health() float64        { return m.b().health.Health() }
+func (m *ironGolem) MaxHealth() float64     { return m.b().health.MaxHealth() }
+func (m *snowGolem) MaxHealth() float64     { return m.b().health.MaxHealth() }
+func (m *ironGolem) SetMaxHealth(h float64) { m.b().health.SetMaxHealth(h) }
+func (m *snowGolem) SetMaxHealth(h float64) { m.b().health.SetMaxHealth(h) }
+func (m *ironGolem) Dead() bool             { return m.b().dead || m.Health() <= 0 }
+func (m *snowGolem) Dead() bool             { return m.b().dead || m.Health() <= 0 }
+func (m *ironGolem) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	return golemLiving{m.Ent, m.b()}.Hurt(d, s)
 }
-func (m *SnowGolem) Hurt(d float64, s world.DamageSource) (float64, bool) {
+func (m *snowGolem) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	return golemLiving{m.Ent, m.b()}.Hurt(d, s)
 }
-func (m *IronGolem) Heal(h float64, s world.HealingSource) float64 {
+func (m *ironGolem) Heal(h float64, s world.HealingSource) float64 {
 	return golemLiving{m.Ent, m.b()}.Heal(h, s)
 }
-func (m *SnowGolem) Heal(h float64, s world.HealingSource) float64 {
+func (m *snowGolem) Heal(h float64, s world.HealingSource) float64 {
 	return golemLiving{m.Ent, m.b()}.Heal(h, s)
 }
 
 // KnockBack does nothing: iron golems resist all knockback.
-func (m *IronGolem) KnockBack(mgl64.Vec3, float64, float64) {}
-func (m *SnowGolem) KnockBack(p mgl64.Vec3, f, h float64) {
+func (m *ironGolem) KnockBack(mgl64.Vec3, float64, float64) {}
+func (m *snowGolem) KnockBack(p mgl64.Vec3, f, h float64) {
 	golemLiving{m.Ent, m.b()}.KnockBack(p, f, h)
 }
-func (m *IronGolem) AddEffect(e effect.Effect)  { m.b().effects.Add(e, m) }
-func (m *SnowGolem) AddEffect(e effect.Effect)  { m.b().effects.Add(e, m) }
-func (m *IronGolem) RemoveEffect(t effect.Type) { m.b().effects.Remove(t, m) }
-func (m *SnowGolem) RemoveEffect(t effect.Type) { m.b().effects.Remove(t, m) }
-func (m *IronGolem) Effects() []effect.Effect   { return m.b().effects.Effects() }
-func (m *SnowGolem) Effects() []effect.Effect   { return m.b().effects.Effects() }
-func (m *IronGolem) Speed() float64             { return m.b().speed }
-func (m *SnowGolem) Speed() float64             { return m.b().speed }
-func (m *IronGolem) SetSpeed(v float64)         { m.b().speed = v }
-func (m *SnowGolem) SetSpeed(v float64)         { m.b().speed = v }
-func (m *IronGolem) PlayerCreated() bool        { return m.b().playerCreated }
-func (m *IronGolem) SetPlayerCreated(v bool)    { m.b().playerCreated = v }
-func (m *SnowGolem) HasPumpkin() bool           { return m.b().pumpkin }
-func (m *SnowGolem) SetPumpkin(v bool)          { m.b().pumpkin = v }
-func (m *IronGolem) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) bool {
+func (m *ironGolem) AddEffect(e effect.Effect)  { m.b().effects.Add(e, m) }
+func (m *snowGolem) AddEffect(e effect.Effect)  { m.b().effects.Add(e, m) }
+func (m *ironGolem) RemoveEffect(t effect.Type) { m.b().effects.Remove(t, m) }
+func (m *snowGolem) RemoveEffect(t effect.Type) { m.b().effects.Remove(t, m) }
+func (m *ironGolem) Effects() []effect.Effect   { return m.b().effects.Effects() }
+func (m *snowGolem) Effects() []effect.Effect   { return m.b().effects.Effects() }
+func (m *ironGolem) Speed() float64             { return m.b().speed }
+func (m *snowGolem) Speed() float64             { return m.b().speed }
+func (m *ironGolem) SetSpeed(v float64)         { m.b().speed = v }
+func (m *snowGolem) SetSpeed(v float64)         { m.b().speed = v }
+func (m *ironGolem) PlayerCreated() bool        { return m.b().playerCreated }
+func (m *ironGolem) SetPlayerCreated(v bool)    { m.b().playerCreated = v }
+func (m *snowGolem) HasPumpkin() bool           { return m.b().pumpkin }
+func (m *snowGolem) SetPumpkin(v bool)          { m.b().pumpkin = v }
+func (m *ironGolem) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) bool {
 	if u == nil {
 		return false
 	}
@@ -356,15 +352,15 @@ func (m *IronGolem) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) bo
 	tx.PlaySound(m.Position(), sound.Custom{Name: "entity.iron_golem.repair", Volume: 1, Pitch: 1})
 	return true
 }
-func (m *SnowGolem) RequiresCustomPersistence() bool            { return false }
-func (m *SnowGolem) CanBeHitByPiercingWeapon(world.Entity) bool { return true }
-func (m *IronGolem) CanBeHitByPiercingWeapon(world.Entity) bool { return true }
-func (m *SnowGolem) IsSensitiveToWater() bool                   { return true }
-func (m *IronGolem) IsSensitiveToWater() bool                   { return false }
+func (m *snowGolem) RequiresCustomPersistence() bool            { return false }
+func (m *snowGolem) CanBeHitByPiercingWeapon(world.Entity) bool { return true }
+func (m *ironGolem) CanBeHitByPiercingWeapon(world.Entity) bool { return true }
+func (m *snowGolem) IsSensitiveToWater() bool                   { return true }
+func (m *ironGolem) IsSensitiveToWater() bool                   { return false }
 
 // TrySpawnGolemPattern checks the Java snow and iron golem patterns with pos as
 // the newly placed carved pumpkin. It clears the pattern before adding the mob.
-func TrySpawnGolemPattern(tx *world.Tx, pos cube.Pos) bool {
+func trySpawnGolemPattern(tx *world.Tx, pos cube.Pos) bool {
 	switch head := tx.Block(pos).(type) {
 	case block.Pumpkin:
 		if !head.Carved {
@@ -378,7 +374,7 @@ func TrySpawnGolemPattern(tx *world.Tx, pos cube.Pos) bool {
 		base := pos.Sub(golemScale(up, 2))
 		if ironGolemPattern(tx, pos, right, up) {
 			clearIronGolemPattern(tx, pos, right, up)
-			tx.AddEntity(world.EntitySpawnOpts{Position: base.Vec3Middle().Add(mgl64.Vec3{0, .05, 0})}.New(IronGolemType, golemConfig{kind: ironKind, playerCreated: true}))
+			tx.AddEntity(world.EntitySpawnOpts{Position: base.Vec3Middle().Add(mgl64.Vec3{0, .05, 0})}.New(entityIronGolemType, golemConfig{kind: ironKind, playerCreated: true}))
 			return true
 		}
 		snowTop := pos.Sub(up)
@@ -458,11 +454,11 @@ func clearIronGolemPattern(tx *world.Tx, head, right, up cube.Pos) {
 	}
 }
 
-var _ Living = (*IronGolem)(nil)
-var _ Living = (*SnowGolem)(nil)
+var _ Living = (*ironGolem)(nil)
+var _ Living = (*snowGolem)(nil)
 var _ world.EntityType = ironGolemType{}
 var _ world.EntityType = snowGolemType{}
 
 func (b *golemState) effectManager() *EffectManager { return b.effects }
 
-func (m *IronGolem) forgive(id string) { b := m.b(); b.forgiveAnger(&b.ai, id) }
+func (m *ironGolem) forgive(id string) { b := m.b(); b.forgiveAnger(&b.ai, id) }

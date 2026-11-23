@@ -16,17 +16,17 @@ import (
 
 // NewMooshroom creates a red, adult mooshroom.
 func NewMooshroom(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(MooshroomType, MooshroomConfig{})
+	return o.New(entityMooshroomType, mooshroomConfig{})
 }
 
 // MooshroomType is the registered Java mushroom cow entity type.
-var MooshroomType mooshroomType
+var entityMooshroomType mooshroomType
 
 type mooshroomType struct{}
 
 func (mooshroomType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
-		MooshroomConfig{}.Apply(d)
+		mooshroomConfig{}.Apply(d)
 	}
 	return &Mooshroom{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
@@ -38,11 +38,11 @@ func (mooshroomType) BBox(e world.Entity) cube.BBox {
 	return cube.Box(-.45, 0, -.45, .45, 1.4, .45)
 }
 func (mooshroomType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	s := ReadNativeMobJavaState(m)
+	s := readNativeMobJavaState(m)
 	if s == nil {
 		s = m
 	}
-	c := MooshroomConfig{Variant: 0, Age: int(nbtconv.Int32(s, "Age")), LastLightningBolt: nbtconv.String(s, "LastLightningBolt")}
+	c := mooshroomConfig{Variant: 0, Age: int(nbtconv.Int32(s, "Age")), LastLightningBolt: nbtconv.String(s, "LastLightningBolt")}
 	if n, ok := s["Type"].(string); ok && n == "brown" {
 		c.Variant = 1
 	}
@@ -50,39 +50,39 @@ func (mooshroomType) DecodeNBT(m map[string]any, d *world.EntityData) {
 		c.Health, c.MaxHealth = a.Current, a.Base
 	}
 	d.Data = c.New()
-	d.Data.(*MooshroomBehaviour).breeding.decodeNBT(s)
+	d.Data.(*mooshroomBehaviour).breeding.decodeNBT(s)
 }
 func (mooshroomType) EncodeNBT(d *world.EntityData) map[string]any {
-	b := d.Data.(*MooshroomBehaviour)
-	a := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
+	b := d.Data.(*mooshroomBehaviour)
+	a := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
 	variant := "red"
 	if b.variant == 1 {
 		variant = "brown"
 	}
-	return MergeNativeMobJavaState(map[string]any{"Attributes": a}, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "Type": variant, "LastLightningBolt": b.lastLightningBolt})))
+	return mergeNativeMobJavaState(map[string]any{"Attributes": a}, mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "Type": variant, "LastLightningBolt": b.lastLightningBolt})))
 }
 
 // MooshroomConfig configures variant and age.
-type MooshroomConfig struct {
+type mooshroomConfig struct {
 	Health, MaxHealth float64
 	Variant, Age      int
 	LastLightningBolt string
 }
 
-func (c MooshroomConfig) Apply(d *world.EntityData) { d.Data = c.New() }
-func (c MooshroomConfig) New() *MooshroomBehaviour {
+func (c mooshroomConfig) Apply(d *world.EntityData) { d.Data = c.New() }
+func (c mooshroomConfig) New() *mooshroomBehaviour {
 	if c.MaxHealth <= 0 {
 		c.MaxHealth = 10
 	}
 	if c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	return &MooshroomBehaviour{health: c.Health, maxHealth: c.MaxHealth, variant: max(0, min(c.Variant, 1)), age: c.Age, lastLightningBolt: c.LastLightningBolt, speed: .2, effects: NewEffectManager()}
+	return &mooshroomBehaviour{health: c.Health, maxHealth: c.MaxHealth, variant: max(0, min(c.Variant, 1)), age: c.Age, lastLightningBolt: c.LastLightningBolt, speed: .2, effects: NewEffectManager()}
 }
 
 // Mooshroom is a separately modeled mushroom-field bovine with red/brown type and bowl milking.
 type Mooshroom struct{ *Ent }
-type MooshroomBehaviour struct {
+type mooshroomBehaviour struct {
 	effects           *EffectManager
 	health, maxHealth float64
 	variant, age      int
@@ -93,12 +93,12 @@ type MooshroomBehaviour struct {
 	animalAI
 }
 
-func (m *Mooshroom) behaviour() *MooshroomBehaviour { return m.Behaviour().(*MooshroomBehaviour) }
+func (m *Mooshroom) behaviour() *mooshroomBehaviour { return m.Behaviour().(*mooshroomBehaviour) }
 func (m *Mooshroom) Tick(tx *world.Tx, t int64) {
 	m.behaviour().effects.Tick(m, tx)
 	m.Ent.Tick(tx, t)
 }
-func (b *MooshroomBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (b *mooshroomBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	m := &Mooshroom{Ent: e}
 	b.ai.MovementSpeed, b.ai.EyeHeight = b.speed, animalEyeHeight(1.3, b.age < 0)
 	return animalTick(e, tx, m, &b.animalAI, func(mob *Mob) {
@@ -116,7 +116,7 @@ func (m *Mooshroom) Dead() bool { return m.behaviour().dead || m.Health() <= 0 }
 
 // walkTargetValue ports MushroomCow.getWalkTargetValue: mooshrooms stroll to
 // mycelium rather than grass.
-func (b *MooshroomBehaviour) walkTargetValue(m *Mob, pos cube.Pos) float64 {
+func (b *mooshroomBehaviour) walkTargetValue(m *Mob, pos cube.Pos) float64 {
 	if _, ok := m.tx.Block(pos.Side(cube.FaceDown)).(block.Mycelium); ok {
 		return 10
 	}
@@ -171,11 +171,7 @@ func (m *Mooshroom) KnockBack(src mgl64.Vec3, f, h float64) {
 	knockBack(m, src, f, h)
 }
 func (m *Mooshroom) viewAction(a world.EntityAction) {
-	vs := m.tx.Viewers(m.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(m, a)
-	}
-	m.tx.ReleaseViewers(vs)
+	world.BroadcastEntityAction(m.tx, m, a)
 }
 func (m *Mooshroom) Variant() int { return m.behaviour().variant }
 
@@ -218,7 +214,7 @@ func (m *Mooshroom) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHa
 	if own == other && randInt(r, 1024) == 0 {
 		variant = 1 - own
 	}
-	return babyAt(m).New(MooshroomType, MooshroomConfig{Age: babyStartAge, Variant: variant})
+	return babyAt(m).New(entityMooshroomType, mooshroomConfig{Age: babyStartAge, Variant: variant})
 }
 func (m *Mooshroom) Shear(tx *world.Tx) item.Stack {
 	if m.Dead() {
@@ -244,4 +240,4 @@ func (m *Mooshroom) FinalizeSpawn(_ string, r *vanilla.Random) {
 	}
 }
 
-func (b *MooshroomBehaviour) effectManager() *EffectManager { return b.effects }
+func (b *mooshroomBehaviour) effectManager() *EffectManager { return b.effects }

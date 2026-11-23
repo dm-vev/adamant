@@ -14,7 +14,7 @@ import (
 )
 
 // ItemBehaviourConfig holds optional parameters for an ItemBehaviour.
-type ItemBehaviourConfig struct {
+type itemBehaviourConfig struct {
 	Item item.Stack
 	// Gravity is the amount of Y velocity subtracted every tick.
 	Gravity float64
@@ -29,13 +29,13 @@ type ItemBehaviourConfig struct {
 	PickupDelay time.Duration
 }
 
-func (conf ItemBehaviourConfig) Apply(data *world.EntityData) {
+func (conf itemBehaviourConfig) Apply(data *world.EntityData) {
 	data.Data = conf.New()
 }
 
 // New creates an ItemBehaviour using i and the optional parameters in conf. An
 // optional block registry is used when normalising block items.
-func (conf ItemBehaviourConfig) New(registries ...world.BlockRegistry) *ItemBehaviour {
+func (conf itemBehaviourConfig) New(registries ...world.BlockRegistry) *ItemBehaviour {
 	i := conf.Item
 	if i.Count() > i.MaxCount() {
 		i = i.Grow(i.MaxCount() - i.Count())
@@ -50,7 +50,7 @@ func (conf ItemBehaviourConfig) New(registries ...world.BlockRegistry) *ItemBeha
 	}
 
 	b := &ItemBehaviour{conf: conf, i: i, pickupDelay: conf.PickupDelay}
-	b.passive = PassiveBehaviourConfig{
+	b.passive = passiveBehaviourConfig{
 		Gravity:           conf.Gravity,
 		Drag:              conf.Drag,
 		ExistenceDuration: conf.ExistenceDuration,
@@ -65,8 +65,8 @@ func (conf ItemBehaviourConfig) New(registries ...world.BlockRegistry) *ItemBeha
 
 // ItemBehaviour implements the behaviour of item entities.
 type ItemBehaviour struct {
-	conf    ItemBehaviourConfig
-	passive *PassiveBehaviour
+	conf    itemBehaviourConfig
+	passive *passiveBehaviour
 	i       item.Stack
 
 	pickupDelay          time.Duration
@@ -305,11 +305,7 @@ func (i *ItemBehaviour) merge(e *Ent, other *Ent, tx *world.Tx) bool {
 // UpdateStackSize event changes the client stack without resetting its motion.
 func (i *ItemBehaviour) setCount(e *Ent, count int, tx *world.Tx) {
 	i.i = i.i.Grow(count - i.i.Count())
-	viewers := tx.Viewers(e.Position())
-	for _, v := range viewers {
-		v.ViewEntityAction(e, ItemStackSizeAction{Count: count})
-	}
-	tx.ReleaseViewers(viewers)
+	world.BroadcastEntityAction(tx, e, ItemStackSizeAction{Count: count})
 }
 
 // collect makes a collector collect the item (or at least part of it).
@@ -321,11 +317,7 @@ func (i *ItemBehaviour) collect(e *Ent, collector Collector, tx *world.Tx) {
 	if n == i.i.Count() {
 		// TakeItemActor removes the client actor, so only send it when the
 		// whole stack was collected. A partial pickup updates its count.
-		viewers := tx.Viewers(e.Position())
-		for _, viewer := range viewers {
-			viewer.ViewEntityAction(e, PickedUpAction{Collector: collector})
-		}
-		tx.ReleaseViewers(viewers)
+		world.BroadcastEntityAction(tx, e, PickedUpAction{Collector: collector})
 		_ = e.CloseIn(tx)
 		return
 	}

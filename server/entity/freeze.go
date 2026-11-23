@@ -23,7 +23,7 @@ func EnterPowderSnow(e world.Entity, data *world.EntityData) {
 		return
 	}
 	data.InPowderSnow = true
-	if CanFreeze(e) {
+	if canFreeze(e) {
 		data.FrozenTicks = min(ticksRequiredToFreeze, data.FrozenTicks+1)
 	}
 }
@@ -36,12 +36,12 @@ func TickFreezing(tx *world.Tx, e world.Entity, data *world.EntityData) {
 	if data.FrozenTicks == 0 && !data.InPowderSnow {
 		return
 	}
-	canFreeze := CanFreeze(e)
-	if !data.InPowderSnow || !canFreeze {
+	freezable := canFreeze(e)
+	if !data.InPowderSnow || !freezable {
 		data.FrozenTicks = max(0, data.FrozenTicks-2)
 	}
 	data.InPowderSnow = false
-	if tx.World().CurrentTick()%40 != 0 || data.FrozenTicks < ticksRequiredToFreeze || !canFreeze {
+	if tx.World().CurrentTick()%40 != 0 || data.FrozenTicks < ticksRequiredToFreeze || !freezable {
 		return
 	}
 	living, ok := e.(Living)
@@ -72,7 +72,7 @@ type freezable interface {
 // CanFreeze ports Entity.canFreeze and its LivingEntity, Skeleton and
 // SulfurCube overrides: spectators, freeze-immune entity types and entities
 // wearing leather armour do not freeze.
-func CanFreeze(e world.Entity) bool {
+func canFreeze(e world.Entity) bool {
 	if g, ok := e.(interface{ GameMode() world.GameMode }); ok && g.GameMode() == world.GameModeSpectator {
 		return false
 	}

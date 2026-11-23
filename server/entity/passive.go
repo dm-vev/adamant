@@ -8,7 +8,7 @@ import (
 )
 
 // PassiveBehaviourConfig holds optional parameters for a PassiveBehaviour.
-type PassiveBehaviourConfig struct {
+type passiveBehaviourConfig struct {
 	// Gravity is the amount of Y velocity subtracted every tick.
 	Gravity float64
 	// Drag is used to reduce all axes of the velocity every tick. Velocity is
@@ -29,17 +29,17 @@ type PassiveBehaviourConfig struct {
 	Move func(e *Ent, tx *world.Tx, mc *MovementComputer) *Movement
 }
 
-func (conf PassiveBehaviourConfig) Apply(data *world.EntityData) {
+func (conf passiveBehaviourConfig) Apply(data *world.EntityData) {
 	data.Data = conf.New()
 }
 
 // New creates a PassiveBehaviour using the parameters in conf.
-func (conf PassiveBehaviourConfig) New() *PassiveBehaviour {
+func (conf passiveBehaviourConfig) New() *passiveBehaviour {
 	if conf.ExistenceDuration == 0 {
 		conf.ExistenceDuration = math.MaxInt64
 	}
-	return &PassiveBehaviour{
-		BaseBehaviour: NewBaseBehaviour(),
+	return &passiveBehaviour{
+		baseBehaviour: newBaseBehaviour(),
 		conf:          conf,
 		fuse:          conf.ExistenceDuration,
 		mc: &MovementComputer{
@@ -53,10 +53,10 @@ func (conf PassiveBehaviourConfig) New() *PassiveBehaviour {
 // PassiveBehaviour implements Behaviour for entities that act passively. This
 // means that they can move, but only under influence of the environment, which
 // includes, for example, falling, and flowing water.
-type PassiveBehaviour struct {
-	BaseBehaviour
+type passiveBehaviour struct {
+	baseBehaviour
 
-	conf PassiveBehaviourConfig
+	conf passiveBehaviourConfig
 	mc   *MovementComputer
 
 	close        bool
@@ -66,13 +66,13 @@ type PassiveBehaviour struct {
 
 // Explode adds velocity to a passive entity to blast it away from the
 // explosion's source.
-func (p *PassiveBehaviour) Explode(e *Ent, src world.ExplosionSource, impact float64) {
+func (p *passiveBehaviour) Explode(e *Ent, src world.ExplosionSource, impact float64) {
 	e.data.Vel = e.data.Vel.Add(ExplosionImpulse(e, src, impact))
 }
 
 // Fuse returns the leftover time until PassiveBehaviourConfig.Expire is called,
 // or -1 if this function is not set.
-func (p *PassiveBehaviour) Fuse() time.Duration {
+func (p *passiveBehaviour) Fuse() time.Duration {
 	if p.conf.Expire != nil {
 		return p.fuse
 	}
@@ -81,7 +81,7 @@ func (p *PassiveBehaviour) Fuse() time.Duration {
 
 // Tick implements the behaviour for a passive entity. It performs movement and
 // updates its state.
-func (p *PassiveBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (p *passiveBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if p.close {
 		_ = e.CloseIn(tx)
 		return nil

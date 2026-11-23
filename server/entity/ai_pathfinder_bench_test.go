@@ -17,15 +17,15 @@ func benchSpawnMob(b *testing.B, tx *world.Tx, h *world.EntityHandle) (*Mob, wor
 	}
 	var ent *Ent
 	switch v := e.(type) {
-	case *Zombie:
+	case *zombie:
 		ent = v.Ent
 	case *Cow:
 		ent = v.Ent
 	case *Parrot:
 		ent = v.Ent
-	case *Dolphin:
+	case *dolphin:
 		ent = v.Ent
-	case *Frog:
+	case *frog:
 		ent = v.Ent
 	case *Bee:
 		ent = v.Ent
@@ -339,7 +339,7 @@ func BenchmarkRandomPosLand(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for range b.N {
-			_, _ = LandRandomPos(m, 10, 7)
+			_, _ = landRandomPos(m, 10, 7)
 		}
 	})
 }
@@ -356,7 +356,7 @@ func BenchmarkRandomPosDefault(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for range b.N {
-			_, _ = DefaultRandomPos(m, 10, 7)
+			_, _ = defaultRandomPos(m, 10, 7)
 		}
 	})
 }
@@ -372,7 +372,7 @@ func BenchmarkRandomPosHover(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for range b.N {
-			_, _ = HoverRandomPos(m, 8, 7, 1, 0, 1.57, 3, 1)
+			_, _ = hoverRandomPos(m, 8, 7, 1, 0, 1.57, 3, 1)
 		}
 	})
 }
@@ -415,13 +415,13 @@ func BenchmarkFindGroundPath(b *testing.B) {
 			tx.SetBlock(cube.Pos{6, 64, z}, block.Stone{}, nil)
 			tx.SetBlock(cube.Pos{6, 65, z}, block.Stone{}, nil)
 		}
-		profile := GroundProfile{MaxVisitedNodes: 256}
+		profile := groundProfile{MaxVisitedNodes: 256}
 		start, goal := cube.Pos{1, 64, 0}, cube.Pos{12, 64, 0}
 
 		b.ReportAllocs()
 		b.ResetTimer()
 		for range b.N {
-			path := FindGroundPath(tx, start, goal, profile)
+			path := findGroundPath(tx, start, goal, profile)
 			if len(path) == 0 {
 				b.Fatal("expected ground path")
 			}
@@ -435,8 +435,8 @@ func BenchmarkNavigatorTick(b *testing.B) {
 
 	w.Do(func(tx *world.Tx) {
 		fillFlatFloor(tx, -2, 16, -2, 2, 63, block.Stone{})
-		var nav Navigator
-		if !nav.MoveTo(tx, cube.Pos{0, 64, 0}, cube.Pos{12, 64, 0}, GroundProfile{MaxVisitedNodes: 256}, 1) {
+		var nav navigator
+		if !nav.MoveTo(tx, cube.Pos{0, 64, 0}, cube.Pos{12, 64, 0}, groundProfile{MaxVisitedNodes: 256}, 1) {
 			b.Fatal("expected initial path")
 		}
 

@@ -22,7 +22,7 @@ func TestOverlappingMobsArePushedApart(t *testing.T) {
 		a := tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{0, 64, 0}})).(*Cow)
 		b := tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{0.3, 64, 0}})).(*Cow)
 		drop := tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: mgl64.Vec3{0.1, 64, 0}}, item.NewStack(item.Stick{}, 1))).(*Ent)
-		TickEntityCollisions(tx)
+		tickEntityCollisions(tx)
 		if a.Velocity()[0] >= 0 || b.Velocity()[0] <= 0 {
 			t.Fatalf("cows not pushed apart: a=%v b=%v", a.Velocity(), b.Velocity())
 		}
@@ -45,7 +45,7 @@ func TestCrammingDamagesPackedMobs(t *testing.T) {
 				cows = append(cows, tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{float64(i) * 0.001, 64, 0}})).(*Cow))
 			}
 			for range 40 {
-				TickEntityCollisions(tx)
+				tickEntityCollisions(tx)
 			}
 			hurt := 0
 			for _, c := range cows {
@@ -73,7 +73,7 @@ func TestPushAcrossChunkBoundaryAndExactVelocity(t *testing.T) {
 		b := tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{16.1, 64, 8.05}})).(*Cow)
 		far := tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{40, 64, 40}})).(*Cow)
 
-		TickEntityCollisions(tx)
+		tickEntityCollisions(tx)
 
 		// Compute reference Java Entity.push(Entity) applied symmetrically (a pushes b, then b pushes a).
 		refDelta := func(p1, p2 mgl64.Vec3) (float64, float64) {
@@ -133,7 +133,7 @@ func TestCrammingKillMidPassStopsSubsequentPushesAndCramming(t *testing.T) {
 		*randomOf(tx, c1) = vanilla.NewXoroshiroRandom(triggerSeed)
 		*randomOf(tx, c2) = vanilla.NewXoroshiroRandom(triggerSeed)
 
-		TickEntityCollisions(tx)
+		tickEntityCollisions(tx)
 
 		if !c0.Dead() {
 			t.Fatalf("expected cow 0 to die from cramming, health=%v", c0.Health())
@@ -169,7 +169,7 @@ func TestCrammingExcludesPassengersAndSameVehicleNoPush(t *testing.T) {
 		}
 
 		for range 40 {
-			TickEntityCollisions(tx)
+			tickEntityCollisions(tx)
 		}
 
 		if victim.Health() < victim.MaxHealth() {
@@ -199,7 +199,7 @@ func TestPushSameVehicleDoesNotPushPigOrRider(t *testing.T) {
 		if !pig.Mount(tx, rider) {
 			t.Fatal("failed to mount cow on pig")
 		}
-		TickEntityCollisions(tx)
+		tickEntityCollisions(tx)
 		if pig.Velocity() != (mgl64.Vec3{}) || rider.Velocity() != (mgl64.Vec3{}) {
 			t.Fatalf("vehicle and its rider pushed each other: pig=%v rider=%v", pig.Velocity(), rider.Velocity())
 		}
@@ -297,11 +297,11 @@ func TestPushableVehiclesArmourStandAndSpectator(t *testing.T) {
 		}{
 			{"boat", tx.AddEntity(NewBoat(opts, 0))},
 			{"chest_boat", tx.AddEntity(NewChestBoat(opts, 0))},
-			{"minecart", tx.AddEntity(opts.New(MinecartType, minecartConf))},
-			{"chest_minecart", tx.AddEntity(opts.New(ChestMinecartType, chestMinecartConf))},
-			{"hopper_minecart", tx.AddEntity(opts.New(HopperMinecartType, hopperMinecartConf))},
-			{"tnt_minecart", tx.AddEntity(opts.New(TNTMinecartType, tntMinecartConf))},
-			{"command_block_minecart", tx.AddEntity(NewCommandBlockMinecart(opts, CommandBlockMinecartConfig{}))},
+			{"minecart", tx.AddEntity(opts.New(entityMinecartType, minecartConf))},
+			{"chest_minecart", tx.AddEntity(opts.New(entityChestMinecartType, chestMinecartConf))},
+			{"hopper_minecart", tx.AddEntity(opts.New(entityHopperMinecartType, hopperMinecartConf))},
+			{"tnt_minecart", tx.AddEntity(opts.New(entityTNTMinecartType, tntMinecartConf))},
+			{"command_block_minecart", tx.AddEntity(newCommandBlockMinecart(opts, commandBlockMinecartConfig{}))},
 			{"live_cow", tx.AddEntity(NewCow(opts))},
 			{"survival_player", tx.AddEntity(opts.New(pushPlayerStubType{}, pushStubConfig{state: &pushStubState{mode: world.GameModeSurvival}}))},
 		}
@@ -350,7 +350,7 @@ func TestPushSpectatorIgnoredAndPlayerPushesMobOnly(t *testing.T) {
 		cowStand := tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{64, 64, 0}})).(*Cow)
 		tx.AddEntity(NewArmourStand(world.EntitySpawnOpts{Position: mgl64.Vec3{64.2, 64, 0}}))
 
-		TickEntityCollisions(tx)
+		tickEntityCollisions(tx)
 
 		if cowSpec.Velocity() != (mgl64.Vec3{}) || spec.Velocity() != (mgl64.Vec3{}) {
 			t.Fatalf("spectator interacted with cow: cow=%v spec=%v", cowSpec.Velocity(), spec.Velocity())
@@ -387,7 +387,7 @@ func TestTickEntityCollisionsFaultIsolation(t *testing.T) {
 		a := tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{32, 64, 0}})).(*Cow)
 		b := tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{32.2, 64, 0}})).(*Cow)
 
-		TickEntityCollisions(tx)
+		tickEntityCollisions(tx)
 
 		if len(faults) != 1 || faults[0].Type != "test:panicker" {
 			t.Fatalf("faults = %+v, want 1 fault blamed on test:panicker", faults)
@@ -417,7 +417,7 @@ func TestTickEntityCollisionsConcurrentWorldsAndPoolReset(t *testing.T) {
 					cows = append(cows, c)
 				}
 				for range 30 {
-					TickEntityCollisions(tx)
+					tickEntityCollisions(tx)
 				}
 				moved := 0
 				for _, c := range cows {

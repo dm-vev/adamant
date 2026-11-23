@@ -18,7 +18,7 @@ import (
 // hoglins, guard gold from players, celebrate and run from zombified kin.
 
 func (s *piglinState) mobAI() *MobAI { return &s.ai }
-func (s *piglinState) brain() *Brain { return s.br }
+func (s *piglinState) brain() *brain { return s.br }
 
 // Tick runs the MobAI of the piglin with its brain.
 func (s *piglinState) Tick(e *Ent, tx *world.Tx) *Movement {
@@ -81,13 +81,9 @@ func (s *piglinState) afterAiStep(m *Mob) {
 		if !ok || !e.H().Type().BBox(e).Translate(e.Position()).IntersectsWith(box) || !s.wantsToPickUp(m, stack) {
 			continue
 		}
-		viewers := m.tx.Viewers(e.Position())
-		for _, v := range viewers {
-			if c, ok := m.Self.(Collector); ok {
-				v.ViewEntityAction(e, PickedUpAction{Collector: c})
-			}
+		if c, ok := m.Self.(Collector); ok {
+			world.BroadcastEntityAction(m.tx, e, PickedUpAction{Collector: c})
 		}
-		m.tx.ReleaseViewers(viewers)
 		if s.brute {
 			// PiglinBrute only wants golden axes, which it equips.
 			s.equipItemIfPossible(m, stack)
@@ -144,7 +140,7 @@ func (s *piglinState) nonMeleeWeapon() bool {
 }
 
 // newPiglinBrain ports PiglinAi and the brain provider of Piglin.
-func newPiglinBrain(s *piglinState) *Brain {
+func newPiglinBrain(s *piglinState) *brain {
 	br := newBrain(nearestLivingEntitySensor{}, playerSensor{}, nearestItemSensor{wants: func(m *Mob, st item.Stack) bool {
 		return !mobGriefingDisabled(m.tx) && piglinWantsToPickup(m, s, st)
 	}}, hurtBySensor{}, piglinSpecificSensor{})
@@ -176,7 +172,7 @@ func newPiglinBrain(s *piglinState) *Brain {
 		return newRunOne(nil,
 			weightedBehavior{newRandomStroll(.6, true), 2},
 			weightedBehavior{newInteractWith(isPiglinType, 8, .6, 2), 2},
-			weightedBehavior{newTriggerIf(func(m *Mob) bool { return !m.Brain().has(memNearestPlayerHoldingWantedItem) }, newSetWalkTargetFromLookTarget(nil, constSpeed(.6), 3)), 2},
+			weightedBehavior{newTriggerIf(func(m *Mob) bool { return !m.brain().has(memNearestPlayerHoldingWantedItem) }, newSetWalkTargetFromLookTarget(nil, constSpeed(.6), 3)), 2},
 			weightedBehavior{newDoNothing(30, 60), 1},
 		)
 	}
@@ -237,7 +233,7 @@ func newPiglinBrain(s *piglinState) *Brain {
 		newMount(.8),
 		lookAtLovedItem(8),
 		newTriggerIf(func(m *Mob) bool { return m.data.Riding != nil },
-			newTriggerOneShuffled(append(lookBehaviors(), weightedBehavior{newOneShot(nil, func(*Mob, *Brain, int64) bool { return true }), 1})...)),
+			newTriggerOneShuffled(append(lookBehaviors(), weightedBehavior{newOneShot(nil, func(*Mob, *brain, int64) bool { return true }), 1})...)),
 		newDismountOrSkipMounting(8, piglinWantsToStopRiding),
 	), []memoryCondition{{memRideTarget, memPresent}}, nil)
 	br.addActivityWith(activityAvoid, prioritiesFrom(10,
@@ -253,7 +249,7 @@ func newPiglinBrain(s *piglinState) *Brain {
 func adultNot(s *piglinState) func(*Mob) bool { return func(*Mob) bool { return s.baby } }
 
 // isPiglinType reports if an entity is a piglin, not a brute.
-func isPiglinType(e world.Entity) bool { return e.H().Type() == PiglinType{} }
+func isPiglinType(e world.Entity) bool { return e.H().Type() == piglinType{} }
 
 // piglinUpdateActivity ports PiglinAi.updateActivity.
 func piglinUpdateActivity(m *Mob, s *piglinState) {
@@ -296,7 +292,7 @@ func piglinBabyRidingBaby(m *Mob, s *piglinState) bool {
 		return false
 	}
 	t := vehicle.H().Type()
-	return t == PiglinType{} || t == HoglinType
+	return t == piglinType{} || t == hoglinType
 }
 
 // piglinWantsToStopRiding ports PiglinAi.wantsToStopRiding: a piglin gets
@@ -308,13 +304,13 @@ func piglinWantsToStopRiding(m *Mob, vehicle world.Entity) bool {
 	}
 	hurt := func(e world.Entity) bool {
 		bm, ok := brainMobOf(e)
-		return ok && bm.Brain().has(memHurtBy)
+		return ok && bm.brain().has(memHurtBy)
 	}
-	if !mobBaby(vehicle) || !entityAlive(vehicle) || m.Brain().has(memHurtBy) || hurt(vehicle) {
+	if !mobBaby(vehicle) || !entityAlive(vehicle) || m.brain().has(memHurtBy) || hurt(vehicle) {
 		return true
 	}
 	r, ok := vehicle.(Rider)
-	return vehicle.H().Type() == (PiglinType{}) && (!ok || r.Riding() == nil)
+	return vehicle.H().Type() == (piglinType{}) && (!ok || r.Riding() == nil)
 }
 
 // piglinActivitySound ports PiglinAi.getSoundForActivity.
@@ -342,14 +338,14 @@ func piglinActivitySound(m *Mob, s *piglinState) string {
 
 // piglinNearAvoidTarget ports PiglinAi.isNearAvoidTarget.
 func piglinNearAvoidTarget(m *Mob) bool {
-	e := m.Brain().entity(m, memAvoidTarget)
+	e := m.brain().entity(m, memAvoidTarget)
 	return e != nil && m.DistanceToSqr(e) < 144
 }
 
 // piglinNearZombified ports PiglinAi.isNearZombified: a zombified piglin or
 // zoglin it sees within six blocks.
 func piglinNearZombified(m *Mob) bool {
-	e := m.Brain().entity(m, memNearestVisibleZombified)
+	e := m.brain().entity(m, memNearestVisibleZombified)
 	return e != nil && m.DistanceToSqr(e) < 36
 }
 
@@ -357,7 +353,7 @@ func piglinNearZombified(m *Mob) bool {
 // what the piglin is angry at, any player in universal anger, its nemesis,
 // or a player not wearing gold.
 func piglinNearestValidAttackTarget(m *Mob) world.Entity {
-	br := m.Brain()
+	br := m.brain()
 	if piglinNearZombified(m) {
 		return nil
 	}
@@ -384,7 +380,7 @@ func piglinNearestValidAttackTarget(m *Mob) world.Entity {
 func sensorAttackableIgnoringSight(m *Mob, e world.Entity) bool {
 	c := forCombat()
 	c.rangeLimit, c.ignoreSight = m.AI.FollowRange, true
-	if v, ok := m.Brain().get(memAttackTarget); ok && v == e.H() {
+	if v, ok := m.brain().get(memAttackTarget); ok && v == e.H() {
 		c.ignoreInvis = true
 	}
 	return c.test(m, e)
@@ -393,7 +389,7 @@ func sensorAttackableIgnoringSight(m *Mob, e world.Entity) bool {
 // piglinWantsToDance ports PiglinAi.wantsToDance: a piglin that killed a
 // hoglin dances one time in ten.
 func piglinWantsToDance(m *Mob, killed world.EntityType) bool {
-	if killed != HoglinType {
+	if killed != hoglinType {
 		return false
 	}
 	// RandomSource.createThreadLocalInstance seeded with the game time.
@@ -455,7 +451,7 @@ func piglinWearingSafeArmour(e world.Entity) bool {
 
 // piglinWantsToPickup ports PiglinAi.wantsToPickup.
 func piglinWantsToPickup(m *Mob, s *piglinState, stack item.Stack) bool {
-	br := m.Brain()
+	br := m.brain()
 	switch {
 	case s.baby && inItemTag(stack, "ignored_by_piglin_babies"):
 		return false
@@ -493,11 +489,11 @@ func piglinPickUpItem(m *Mob, s *piglinState, e world.Entity, stack item.Stack) 
 	}
 	switch {
 	case piglinLovedItem(taken):
-		m.Brain().erase(memTimeTryingToReachAdmireItem)
+		m.brain().erase(memTimeTryingToReachAdmireItem)
 		piglinHoldInOffhand(m, s, taken)
 		piglinAdmireGoldItem(m)
-	case piglinFood(taken) && !m.Brain().has(memAteRecently):
-		m.Brain().setWithExpiry(memAteRecently, true, 200)
+	case piglinFood(taken) && !m.brain().has(memAteRecently):
+		m.brain().setWithExpiry(memAteRecently, true, 200)
 	default:
 		if s.equipItemIfPossible(m, taken).Empty() {
 			piglinPutInInventory(m, s, taken)
@@ -515,17 +511,17 @@ func piglinHoldInOffhand(m *Mob, s *piglinState, stack item.Stack) {
 }
 
 // piglinAdmireGoldItem ports PiglinAi.admireGoldItem.
-func piglinAdmireGoldItem(m *Mob) { m.Brain().setWithExpiry(memAdmiringItem, true, 119) }
+func piglinAdmireGoldItem(m *Mob) { m.brain().setWithExpiry(memAdmiringItem, true, 119) }
 
 // piglinStopWalking ports PiglinAi.stopWalking.
 func piglinStopWalking(m *Mob) {
-	m.Brain().erase(memWalkTarget)
+	m.brain().erase(memWalkTarget)
 	m.AI.nav.Stop()
 }
 
 // piglinCanAdmire ports PiglinAi.canAdmire.
 func piglinCanAdmire(m *Mob, s *piglinState, held item.Stack) bool {
-	br := m.Brain()
+	br := m.brain()
 	return !br.has(memAdmiringDisabled) && !br.has(memAdmiringItem) && !s.baby && piglinBarterCurrency(held)
 }
 
@@ -562,7 +558,7 @@ func piglinStopHoldingOffHandItem(m *Mob, s *piglinState, barter bool) {
 
 // piglinCancelAdmiring ports PiglinAi.cancelAdmiring.
 func piglinCancelAdmiring(m *Mob, s *piglinState) {
-	if m.Brain().has(memAdmiringItem) && !s.off.Empty() {
+	if m.brain().has(memAdmiringItem) && !s.off.Empty() {
 		m.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: m.data.Pos}, s.off))
 		s.off = item.Stack{}
 		m.updateState()
@@ -580,7 +576,7 @@ func piglinPutInInventory(m *Mob, s *piglinState, stack item.Stack) {
 // piglinThrowItems ports PiglinAi.throwItems: towards the player it sees, or
 // a random spot nearby.
 func piglinThrowItems(m *Mob, s *piglinState, stacks []item.Stack) {
-	if p := m.Brain().entity(m, memNearestVisiblePlayer); p != nil {
+	if p := m.brain().entity(m, memNearestVisiblePlayer); p != nil {
 		piglinThrowItemsTowards(m, stacks, p.Position())
 		return
 	}
@@ -606,7 +602,7 @@ func piglinThrowItemsTowards(m *Mob, stacks []item.Stack, target mgl64.Vec3) {
 
 // piglinRandomNearbyPos ports PiglinAi.getRandomNearbyPos.
 func piglinRandomNearbyPos(m *Mob) mgl64.Vec3 {
-	if p, ok := LandRandomPos(m, 4, 2); ok {
+	if p, ok := landRandomPos(m, 4, 2); ok {
 		return p
 	}
 	return m.data.Pos
@@ -722,12 +718,12 @@ func (s *piglinState) equipItemIfPossible(m *Mob, stack item.Stack) item.Stack {
 
 // piglinWantsToStopFleeing ports PiglinAi.wantsToStopFleeing.
 func piglinWantsToStopFleeing(m *Mob) bool {
-	br := m.Brain()
+	br := m.brain()
 	avoided := br.entity(m, memAvoidTarget)
 	if avoided == nil {
 		return true
 	}
-	if avoided.H().Type() == HoglinType {
+	if avoided.H().Type() == hoglinType {
 		return !piglinHoglinsOutnumber(m)
 	}
 	if piglinZombified(avoided) {
@@ -739,24 +735,24 @@ func piglinWantsToStopFleeing(m *Mob) bool {
 
 // piglinZombified ports PiglinAi.isZombified.
 func piglinZombified(e world.Entity) bool {
-	return e.H().Type() == (ZombifiedPiglinType{}) || e.H().Type() == ZoglinType
+	return e.H().Type() == (zombifiedPiglinType{}) || e.H().Type() == zoglinType
 }
 
 // piglinHoglinsOutnumber ports PiglinAi.hoglinsOutnumberPiglins.
 func piglinHoglinsOutnumber(m *Mob) bool {
-	piglins, _ := m.Brain().int(memVisibleAdultPiglinCount)
-	hoglins, _ := m.Brain().int(memVisibleAdultHoglinCount)
+	piglins, _ := m.brain().int(memVisibleAdultPiglinCount)
+	hoglins, _ := m.brain().int(memVisibleAdultHoglinCount)
 	return hoglins > piglins+1
 }
 
 // piglinDontHuntForAWhile ports PiglinAi.dontKillAnyMoreHoglinsForAWhile.
 func piglinDontHuntForAWhile(m *Mob) {
-	m.Brain().setWithExpiry(memHuntedRecently, true, int64(600+m.Random().NextInt(1801)))
+	m.brain().setWithExpiry(memHuntedRecently, true, int64(600+m.Random().NextInt(1801)))
 }
 
 // piglinSetAvoidTarget ports PiglinAi.setAvoidTargetAndDontHuntForAWhile.
 func piglinSetAvoidTarget(m *Mob, target world.Entity) {
-	br := m.Brain()
+	br := m.brain()
 	br.erase(memAngryAt)
 	br.erase(memAttackTarget)
 	br.erase(memWalkTarget)
@@ -766,7 +762,7 @@ func piglinSetAvoidTarget(m *Mob, target world.Entity) {
 
 // piglinsOf returns the piglins a memory holds.
 func piglinsOf(m *Mob, mem memoryType) []*Mob {
-	v, _ := m.Brain().get(mem)
+	v, _ := m.brain().get(mem)
 	handles, _ := v.([]*world.EntityHandle)
 	var out []*Mob
 	for _, h := range handles {
@@ -781,13 +777,13 @@ func piglinsOf(m *Mob, mem memoryType) []*Mob {
 
 // piglinWasHurtBy ports PiglinAi.wasHurtBy.
 func piglinWasHurtBy(m *Mob, s *piglinState, attacker world.Entity) {
-	if attacker.H().Type() == (PiglinType{}) {
+	if attacker.H().Type() == (piglinType{}) {
 		return
 	}
 	if !s.off.Empty() {
 		piglinStopHoldingOffHandItem(m, s, false)
 	}
-	br := m.Brain()
+	br := m.brain()
 	br.erase(memCelebrateLocation)
 	br.erase(memDancing)
 	br.erase(memAdmiringItem)
@@ -803,12 +799,12 @@ func piglinWasHurtBy(m *Mob, s *piglinState, attacker world.Entity) {
 		if sensorAttackableIgnoringSight(m, attacker) {
 			piglinBroadcastAngerTarget(m, attacker)
 		}
-	case attacker.H().Type() == HoglinType && piglinHoglinsOutnumber(m):
+	case attacker.H().Type() == hoglinType && piglinHoglinsOutnumber(m):
 		piglinSetAvoidTarget(m, attacker)
 		for _, p := range piglinsOf(m, memNearestVisibleAdultPiglins) {
-			if p.H().Type() == (PiglinType{}) {
-				nearest := nearestOf(p, p.Brain().entity(p, memAvoidTarget), attacker)
-				nearest = nearestOf(p, p.Brain().entity(p, memAttackTarget), nearest)
+			if p.H().Type() == (piglinType{}) {
+				nearest := nearestOf(p, p.brain().entity(p, memAvoidTarget), attacker)
+				nearest = nearestOf(p, p.brain().entity(p, memAttackTarget), nearest)
 				piglinSetAvoidTarget(p, nearest)
 			}
 		}
@@ -819,13 +815,13 @@ func piglinWasHurtBy(m *Mob, s *piglinState, attacker world.Entity) {
 
 // piglinMaybeRetaliate ports PiglinAi.maybeRetaliate.
 func piglinMaybeRetaliate(m *Mob, attacker world.Entity) {
-	if m.Brain().isActive(activityAvoid) || !sensorAttackableIgnoringSight(m, attacker) || otherTargetMuchFurther(m, attacker, 4) {
+	if m.brain().isActive(activityAvoid) || !sensorAttackableIgnoringSight(m, attacker) || otherTargetMuchFurther(m, attacker, 4) {
 		return
 	}
 	if isPlayerEntity(attacker) && m.tx.World().GameRuleBool("universal_anger") {
 		piglinSetAngerTargetToNearestPlayer(m, attacker)
 		for _, p := range piglinsOf(m, memNearbyAdultPiglins) {
-			if pl := p.Brain().entity(p, memNearestVisibleAttackablePlayer); pl != nil {
+			if pl := p.brain().entity(p, memNearestVisibleAttackablePlayer); pl != nil {
 				piglinSetAngerTarget(p, pl)
 			}
 		}
@@ -840,10 +836,10 @@ func piglinSetAngerTarget(m *Mob, target world.Entity) {
 	if !sensorAttackableIgnoringSight(m, target) {
 		return
 	}
-	br := m.Brain()
+	br := m.brain()
 	br.erase(memCantReachWalkTargetSince)
 	br.setWithExpiry(memAngryAt, target.H().UUID(), 600)
-	if target.H().Type() == HoglinType && piglinCanHunt(m) {
+	if target.H().Type() == hoglinType && piglinCanHunt(m) {
 		piglinDontHuntForAWhile(m)
 	}
 	if isPlayerEntity(target) && m.tx.World().GameRuleBool("universal_anger") {
@@ -860,7 +856,7 @@ func piglinCanHunt(m *Mob) bool {
 // piglinSetAngerTargetToNearestPlayer ports
 // PiglinAi.setAngerTargetToNearestTargetablePlayerIfFound.
 func piglinSetAngerTargetToNearestPlayer(m *Mob, fallback world.Entity) {
-	if p := m.Brain().entity(m, memNearestVisibleAttackablePlayer); p != nil {
+	if p := m.brain().entity(m, memNearestVisibleAttackablePlayer); p != nil {
 		piglinSetAngerTarget(m, p)
 		return
 	}
@@ -872,11 +868,11 @@ func piglinSetAngerTargetToNearestPlayer(m *Mob, fallback world.Entity) {
 // hoglin they may hunt.
 func piglinBroadcastAngerTarget(m *Mob, target world.Entity) {
 	for _, p := range piglinsOf(m, memNearbyAdultPiglins) {
-		if h, ok := target.(*Hoglin); ok && (!piglinCanHunt(p) || !h.CanBeHunted()) {
+		if h, ok := target.(*hoglin); ok && (!piglinCanHunt(p) || !h.CanBeHunted()) {
 			continue
 		}
 		var current world.Entity
-		if v, ok := p.Brain().get(memAngryAt); ok {
+		if v, ok := p.brain().get(memAngryAt); ok {
 			current, _ = p.tx.EntityByUUID(v.(uuid.UUID))
 		}
 		nearest := nearestOf(p, current, target)
@@ -911,7 +907,7 @@ func AngerNearbyPiglins(tx *world.Tx, player world.Entity, onlyIfSeen bool) {
 
 // newStopHoldingItemIfNoLongerAdmiring ports StopHoldingItemIfNoLongerAdmiring.
 func newStopHoldingItemIfNoLongerAdmiring(s *piglinState) *oneShot {
-	return newOneShot([]memoryCondition{{memAdmiringItem, memAbsent}}, func(m *Mob, _ *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memAdmiringItem, memAbsent}}, func(m *Mob, _ *brain, _ int64) bool {
 		if s.off.Empty() {
 			return false
 		}
@@ -925,7 +921,7 @@ func newStopHoldingItemIfNoLongerAdmiring(s *piglinState) *oneShot {
 
 // newStartAdmiringItemIfSeen ports StartAdmiringItemIfSeen.
 func newStartAdmiringItemIfSeen(duration int) *oneShot {
-	return newOneShot([]memoryCondition{{memNearestVisibleWantedItem, memPresent}, {memAdmiringItem, memAbsent}, {memAdmiringDisabled, memAbsent}, {memDisableWalkToAdmireItem, memAbsent}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memNearestVisibleWantedItem, memPresent}, {memAdmiringItem, memAbsent}, {memAdmiringDisabled, memAbsent}, {memDisableWalkToAdmireItem, memAbsent}}, func(m *Mob, b *brain, _ int64) bool {
 		it := b.entity(m, memNearestVisibleWantedItem)
 		stack, ok := pickableItem(it)
 		if it == nil || !ok && !itemEntityStackOf(it, &stack) || !piglinLovedItem(stack) {
@@ -953,7 +949,7 @@ func itemEntityStackOf(e world.Entity, stack *item.Stack) bool {
 
 // newStopAdmiringIfItemTooFarAway ports StopAdmiringIfItemTooFarAway.
 func newStopAdmiringIfItemTooFarAway(s *piglinState, maxDist float64) *oneShot {
-	return newOneShot([]memoryCondition{{memAdmiringItem, memPresent}, {memNearestVisibleWantedItem, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memAdmiringItem, memPresent}, {memNearestVisibleWantedItem, memRegistered}}, func(m *Mob, b *brain, _ int64) bool {
 		if !s.off.Empty() {
 			return false
 		}
@@ -968,7 +964,7 @@ func newStopAdmiringIfItemTooFarAway(s *piglinState, maxDist float64) *oneShot {
 // newStopAdmiringIfTiredOfTryingToReachItem ports
 // StopAdmiringIfTiredOfTryingToReachItem.
 func newStopAdmiringIfTiredOfTryingToReachItem(s *piglinState, maxTime, disableTime int) *oneShot {
-	return newOneShot([]memoryCondition{{memAdmiringItem, memPresent}, {memNearestVisibleWantedItem, memPresent}, {memTimeTryingToReachAdmireItem, memRegistered}, {memDisableWalkToAdmireItem, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memAdmiringItem, memPresent}, {memNearestVisibleWantedItem, memPresent}, {memTimeTryingToReachAdmireItem, memRegistered}, {memDisableWalkToAdmireItem, memRegistered}}, func(m *Mob, b *brain, _ int64) bool {
 		if !s.off.Empty() {
 			return false
 		}
@@ -991,13 +987,13 @@ func newStopAdmiringIfTiredOfTryingToReachItem(s *piglinState, maxTime, disableT
 // hoglin it may hunt sets on it with the piglins around, unless one of them
 // hunted lately.
 func newStartHuntingHoglin(s *piglinState) *oneShot {
-	return newOneShot([]memoryCondition{{memNearestVisibleHuntableHoglin, memPresent}, {memAngryAt, memAbsent}, {memHuntedRecently, memAbsent}, {memNearestVisibleAdultPiglins, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memNearestVisibleHuntableHoglin, memPresent}, {memAngryAt, memAbsent}, {memHuntedRecently, memAbsent}, {memNearestVisibleAdultPiglins, memRegistered}}, func(m *Mob, b *brain, _ int64) bool {
 		if s.baby {
 			return false
 		}
 		piglins := piglinsOf(m, memNearestVisibleAdultPiglins)
 		for _, p := range piglins {
-			if p.Brain().has(memHuntedRecently) {
+			if p.brain().has(memHuntedRecently) {
 				return false
 			}
 		}
@@ -1017,8 +1013,8 @@ func newStartHuntingHoglin(s *piglinState) *oneShot {
 
 // newRememberIfHoglinWasKilled ports RememberIfHoglinWasKilled.
 func newRememberIfHoglinWasKilled() *oneShot {
-	return newOneShot([]memoryCondition{{memAttackTarget, memPresent}, {memHuntedRecently, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
-		if d, ok := attackTargetDeath(m); ok && d.typ == HoglinType {
+	return newOneShot([]memoryCondition{{memAttackTarget, memPresent}, {memHuntedRecently, memRegistered}}, func(m *Mob, b *brain, _ int64) bool {
+		if d, ok := attackTargetDeath(m); ok && d.typ == hoglinType {
 			b.setWithExpiry(memHuntedRecently, true, int64(600+m.Random().NextInt(1801)))
 		}
 		return true
@@ -1031,7 +1027,7 @@ func newCrossbowAttack(s *piglinState) *behavior {
 	state, delay, used := crossbowUncharged, 0, 0
 	holding := func() bool { _, ok := s.main.Item().(item.Crossbow); return ok }
 	canShoot := func(m *Mob) bool {
-		target := m.Brain().entity(m, memAttackTarget)
+		target := m.brain().entity(m, memAttackTarget)
 		return holding() && target != nil && brainCanSee(m, target) && m.DistanceToSqr(target) <= 64
 	}
 	setCharged := func(m *Mob, charged bool) {
@@ -1049,13 +1045,13 @@ func newCrossbowAttack(s *piglinState) *behavior {
 		entry:       []memoryCondition{{memLookTarget, memRegistered}, {memAttackTarget, memPresent}},
 		minDuration: 1200, maxDuration: 1200,
 		checkExtra:  canShoot,
-		canStillUse: func(m *Mob, _ int64) bool { return m.Brain().has(memAttackTarget) && canShoot(m) },
+		canStillUse: func(m *Mob, _ int64) bool { return m.brain().has(memAttackTarget) && canShoot(m) },
 		tick: func(m *Mob, _ int64) {
-			target := m.Brain().entity(m, memAttackTarget)
+			target := m.brain().entity(m, memAttackTarget)
 			if target == nil {
 				return
 			}
-			m.Brain().set(memLookTarget, newEntityTracker(target, true))
+			m.brain().set(memLookTarget, newEntityTracker(target, true))
 			switch state {
 			case crossbowUncharged:
 				state, used = crossbowCharging, 0
@@ -1109,7 +1105,7 @@ func (piglinSpecificSensor) requires() []memoryType {
 		memNearbyAdultPiglins, memVisibleAdultPiglinCount, memVisibleAdultHoglinCount, memNearestRepellent, memNearestVisibleZombified}
 }
 
-func (piglinSpecificSensor) doTick(m *Mob, b *Brain) {
+func (piglinSpecificSensor) doTick(m *Mob, b *brain) {
 	if p, ok := findManhattanBox(m.BlockPos(), 8, 4, func(p cube.Pos) bool { return piglinRepellent(m.tx.Block(p)) }); ok {
 		b.set(memNearestRepellent, p)
 	} else {
@@ -1121,7 +1117,7 @@ func (piglinSpecificSensor) doTick(m *Mob, b *Brain) {
 	if v := visibleLiving(m); v != nil {
 		for _, e := range v.findAll(m, func(world.Entity) bool { return true }) {
 			switch t := e.(type) {
-			case *Hoglin:
+			case *hoglin:
 				if t.beast().age < 0 {
 					if babyHoglin == nil {
 						babyHoglin = e
@@ -1147,7 +1143,7 @@ func (piglinSpecificSensor) doTick(m *Mob, b *Brain) {
 					if holdingWanted == nil && !spectator(e) && piglinPlayerHoldingLovedItem(e) {
 						holdingWanted = e
 					}
-				case nemesis == nil && (e.H().Type().EncodeEntity() == "minecraft:wither_skeleton" || e.H().Type() == WitherType):
+				case nemesis == nil && (e.H().Type().EncodeEntity() == "minecraft:wither_skeleton" || e.H().Type() == entityWitherType):
 					nemesis = e
 				case zombified == nil && piglinZombified(e):
 					zombified = e
@@ -1198,12 +1194,12 @@ func piglinRepellent(b world.Block) bool {
 
 // newPiglinBruteBrain ports PiglinBruteAi and the brain provider of
 // PiglinBrute.
-func newPiglinBruteBrain(s *piglinState) *Brain {
+func newPiglinBruteBrain(s *piglinState) *brain {
 	br := newBrain(nearestLivingEntitySensor{}, playerSensor{}, nearestItemSensor{wants: func(m *Mob, st item.Stack) bool {
 		return !mobGriefingDisabled(m.tx) && s.wantsToPickUp(m, st)
 	}}, hurtBySensor{}, piglinBruteSpecificSensor{})
 	br.register(memNearestVisibleAdultPiglins)
-	isBruteType := func(e world.Entity) bool { return e.H().Type() == (PiglinBruteType{}) }
+	isBruteType := func(e world.Entity) bool { return e.H().Type() == (piglinBruteType{}) }
 	br.addActivity(activityCore, 0,
 		newLookAtTargetSink(45, 90),
 		newMoveToTargetSink(150, 250, nil),
@@ -1243,7 +1239,7 @@ func newPiglinBruteBrain(s *piglinState) *Brain {
 // piglinBruteNearestValidAttackTarget ports
 // PiglinBruteAi.findNearestValidAttackTarget.
 func piglinBruteNearestValidAttackTarget(m *Mob) world.Entity {
-	br := m.Brain()
+	br := m.brain()
 	if v, ok := br.get(memAngryAt); ok {
 		if e, ok := m.tx.EntityByUUID(v.(uuid.UUID)); ok && sensorAttackableIgnoringSight(m, e) {
 			return e
@@ -1289,11 +1285,11 @@ func (piglinBruteSpecificSensor) requires() []memoryType {
 	return []memoryType{memNearestVisibleLivingEntities, memNearestVisibleNemesis, memNearbyAdultPiglins}
 }
 
-func (piglinBruteSpecificSensor) doTick(m *Mob, b *Brain) {
+func (piglinBruteSpecificSensor) doTick(m *Mob, b *brain) {
 	var nemesis world.Entity
 	if v := visibleLiving(m); v != nil {
 		nemesis = v.findClosest(m, func(e world.Entity) bool {
-			return e.H().Type().EncodeEntity() == "minecraft:wither_skeleton" || e.H().Type() == WitherType
+			return e.H().Type().EncodeEntity() == "minecraft:wither_skeleton" || e.H().Type() == entityWitherType
 		})
 	}
 	b.setEntity(memNearestVisibleNemesis, nemesis)

@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type ZombifiedPiglinType struct{}
+type zombifiedPiglinType struct{}
 type ZombifiedPiglin struct{ *Ent }
 type zombifiedPiglinState struct {
 	health     *HealthManager
@@ -36,14 +36,14 @@ type zombifiedPiglinConfig struct {
 	gear                  mobGear
 }
 
-func (ZombifiedPiglinType) EncodeEntity() string { return "minecraft:zombie_pigman" }
-func (ZombifiedPiglinType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
+func (zombifiedPiglinType) EncodeEntity() string { return "minecraft:zombie_pigman" }
+func (zombifiedPiglinType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
 		newZombifiedPiglinConfig().Apply(d)
 	}
 	return &ZombifiedPiglin{&Ent{tx: tx, handle: h, data: d}}
 }
-func (ZombifiedPiglinType) BBox(e world.Entity) cube.BBox {
+func (zombifiedPiglinType) BBox(e world.Entity) cube.BBox {
 	if z, ok := e.(*ZombifiedPiglin); ok && z.z().baby {
 		return cube.Box(-.245, 0, -.245, .245, .98, .245)
 	}
@@ -58,8 +58,8 @@ func (c zombifiedPiglinConfig) Apply(d *world.EntityData) {
 	d.Data = &zombifiedPiglinState{health: NewHealthManager(h, 20), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true},
 		neutralAnger: neutralAnger{angerTicks: c.anger, angerTarget: target}, baby: c.baby, mobGear: c.gear, speed: .23}
 }
-func (ZombifiedPiglinType) DecodeNBT(n map[string]any, d *world.EntityData) {
-	j := ReadNativeMobJavaState(n)
+func (zombifiedPiglinType) DecodeNBT(n map[string]any, d *world.EntityData) {
+	j := readNativeMobJavaState(n)
 	if j == nil {
 		j = n
 	}
@@ -75,11 +75,11 @@ func (ZombifiedPiglinType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	}
 	c.Apply(d)
 }
-func (ZombifiedPiglinType) EncodeNBT(d *world.EntityData) map[string]any {
+func (zombifiedPiglinType) EncodeNBT(d *world.EntityData) map[string]any {
 	s := d.Data.(*zombifiedPiglinState)
-	n := map[string]any{"Attributes": EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: 20, Current: s.health.Health(), DefaultMin: 0, DefaultMax: 20, Min: 0, Max: 20}})}
+	n := map[string]any{"Attributes": encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: 20, Current: s.health.Health(), DefaultMin: 0, DefaultMax: 20, Min: 0, Max: 20}})}
 	javaGear := s.encodeGear(d.NativeNBT, n)
-	out := MergeNativeMobNBT(d.NativeNBT, n)
+	out := mergeNativeMobNBT(d.NativeNBT, n)
 	target := ""
 	if s.angerTarget != uuid.Nil {
 		target = s.angerTarget.String()
@@ -88,10 +88,10 @@ func (ZombifiedPiglinType) EncodeNBT(d *world.EntityData) map[string]any {
 	for k, v := range javaGear {
 		j[k] = v
 	}
-	return MergeNativeMobJavaState(out, j)
+	return mergeNativeMobJavaState(out, j)
 }
 func NewZombifiedPiglin(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(ZombifiedPiglinType{}, newZombifiedPiglinConfig())
+	return o.New(zombifiedPiglinType{}, newZombifiedPiglinConfig())
 }
 
 // newZombifiedPiglinConfig returns the config of a zombified piglin holding
@@ -102,7 +102,7 @@ func newZombifiedPiglinConfig() zombifiedPiglinConfig {
 	return c
 }
 func (z *ZombifiedPiglin) z() *zombifiedPiglinState      { return z.Behaviour().(*zombifiedPiglinState) }
-func (z *ZombifiedPiglin) SpeciesType() world.EntityType { return ZombifiedPiglinType{} }
+func (z *ZombifiedPiglin) SpeciesType() world.EntityType { return zombifiedPiglinType{} }
 func (z *ZombifiedPiglin) Tick(tx *world.Tx, n int64)    { z.z().effects.Tick(z, tx); z.Ent.Tick(tx, n) }
 
 func (z *ZombifiedPiglin) Health() float64        { return z.z().health.Health() }
@@ -113,11 +113,7 @@ func (z *ZombifiedPiglin) viewAction(a world.EntityAction) {
 	if z.tx == nil {
 		return
 	}
-	vs := z.tx.Viewers(z.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(z, a)
-	}
-	z.tx.ReleaseViewers(vs)
+	world.BroadcastEntityAction(z.tx, z, a)
 }
 func (z *ZombifiedPiglin) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	s := z.z()
@@ -216,7 +212,7 @@ func (z *ZombifiedPiglin) experienceEquipment() int {
 	return n
 }
 
-var _ world.EntityType = ZombifiedPiglinType{}
+var _ world.EntityType = zombifiedPiglinType{}
 var _ Living = (*ZombifiedPiglin)(nil)
 
 // UsingItem reports if the zombified piglin holds its spear out.

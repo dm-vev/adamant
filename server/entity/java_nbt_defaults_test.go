@@ -41,7 +41,7 @@ func TestEntitiesLoadJavaDefaults(t *testing.T) {
 		{"id": "minecraft:fireworks_rocket"},
 		{"id": "minecraft:fireworks_rocket", "Item": map[string]any{"Name": "minecraft:stone", "Count": byte(1)}},
 	} {
-		if got, want := behaviour(data).(*FireworkBehaviour).Firework(), (item.Firework{Duration: time.Second / 2}); !reflect.DeepEqual(got, want) {
+		if got, want := behaviour(data).(*fireworkBehaviour).Firework(), (item.Firework{Duration: time.Second / 2}); !reflect.DeepEqual(got, want) {
 			t.Errorf("firework from %v is %v, want %v", data, got, want)
 		}
 	}

@@ -24,7 +24,7 @@ func (r *stateViewRecorder) ViewEntityState(e world.Entity) {
 		r.chargingPillager = r.chargingPillager || e.UsingItem() || e.CrossbowCharged()
 	case *Ent:
 		// Arrows are bare entities; illagers must not be.
-		if t := e.H().Type(); t == VindicatorType || t == PillagerType {
+		if t := e.H().Type(); t == vindicatorType || t == pillagerType {
 			r.bare = true
 		}
 	}

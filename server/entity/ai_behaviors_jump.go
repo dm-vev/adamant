@@ -43,7 +43,7 @@ func newLongJumpMidJump(between uniformInt, landingSound string) *behavior {
 			if j, ok := m.Behaviour().(longJumper); ok {
 				j.setLongJumping(m, false)
 			}
-			b := m.Brain()
+			b := m.brain()
 			b.erase(memLongJumpMidJump)
 			b.set(memLongJumpCooldownTicks, between.sample(m))
 		},
@@ -103,7 +103,7 @@ func newLongJumpToPreferredBlock(between uniformInt, maxHeight, maxWidth int, ma
 		notPreferred = notPreferred[1:]
 		return c, true
 	}
-	cooldown := func(m *Mob) { m.Brain().set(memLongJumpCooldownTicks, between.sample(m)/2) }
+	cooldown := func(m *Mob) { m.brain().set(memLongJumpCooldownTicks, between.sample(m)/2) }
 	return &behavior{
 		entry:       []memoryCondition{{memLookTarget, memRegistered}, {memLongJumpCooldownTicks, memAbsent}, {memLongJumpMidJump, memAbsent}},
 		minDuration: 200, maxDuration: 200,
@@ -117,9 +117,9 @@ func newLongJumpToPreferredBlock(between uniformInt, maxHeight, maxWidth int, ma
 		},
 		canStillUse: func(m *Mob, _ int64) bool {
 			valid := initial != nil && *initial == m.data.Pos && findTries > 0 && !m.InWater() && (chosen != nil || len(candidates) > 0)
-			if !valid && !m.Brain().has(memLongJumpMidJump) {
+			if !valid && !m.brain().has(memLongJumpMidJump) {
 				cooldown(m)
-				m.Brain().erase(memLookTarget)
+				m.brain().erase(memLookTarget)
 			}
 			return valid
 		},
@@ -149,7 +149,7 @@ func newLongJumpToPreferredBlock(between uniformInt, maxHeight, maxWidth int, ma
 					m.AI.DiscardFriction = true
 					length := chosen.Len()
 					m.data.Vel = chosen.Mul((length + jumpBoostPower(m)) / length)
-					m.Brain().set(memLongJumpMidJump, true)
+					m.brain().set(memLongJumpMidJump, true)
 					m.tx.PlaySound(m.data.Pos, sound.Custom{Name: jumpSound(m), Volume: 1, Pitch: 1})
 				}
 				return
@@ -170,7 +170,7 @@ func newLongJumpToPreferredBlock(between uniformInt, maxHeight, maxWidth int, ma
 				if !ok {
 					continue
 				}
-				m.Brain().set(memLookTarget, newBlockPosTracker(c.pos))
+				m.brain().set(memLookTarget, newBlockPosTracker(c.pos))
 				if path := m.AI.nav.CreatePathWithLength(m, c.pos, 0, 8); path == nil || !path.CanReach() {
 					chosen, prepareStart = &jump, time
 					return

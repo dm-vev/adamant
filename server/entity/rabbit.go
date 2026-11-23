@@ -13,16 +13,16 @@ import (
 )
 
 // NewRabbit creates a common brown rabbit.
-func NewRabbit(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(RabbitType, RabbitConfig{}) }
+func NewRabbit(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(entityRabbitType, rabbitConfig{}) }
 
 // RabbitType is the registered Java rabbit type.
-var RabbitType rabbitType
+var entityRabbitType rabbitType
 
 type rabbitType struct{}
 
 func (rabbitType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
-		RabbitConfig{}.Apply(d)
+		rabbitConfig{}.Apply(d)
 	}
 	return &Rabbit{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
@@ -34,43 +34,43 @@ func (rabbitType) BBox(e world.Entity) cube.BBox {
 	return cube.Box(-.25, 0, -.25, .25, .5, .25)
 }
 func (rabbitType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	s := ReadNativeMobJavaState(m)
+	s := readNativeMobJavaState(m)
 	if s == nil {
 		s = m
 	}
-	c := RabbitConfig{Variant: int(nbtconv.Int32(s, "RabbitType")), Age: int(nbtconv.Int32(s, "Age")), MoreCarrotTicks: int(nbtconv.Int32(s, "MoreCarrotTicks"))}
+	c := rabbitConfig{Variant: int(nbtconv.Int32(s, "RabbitType")), Age: int(nbtconv.Int32(s, "Age")), MoreCarrotTicks: int(nbtconv.Int32(s, "MoreCarrotTicks"))}
 	if a, ok := nativeMobAttribute(m, "minecraft:health"); ok {
 		c.Health, c.MaxHealth = a.Current, a.Base
 	}
 	d.Data = c.New()
-	d.Data.(*RabbitBehaviour).breeding.decodeNBT(s)
+	d.Data.(*rabbitBehaviour).breeding.decodeNBT(s)
 }
 func (rabbitType) EncodeNBT(d *world.EntityData) map[string]any {
-	b := d.Data.(*RabbitBehaviour)
-	a := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
-	return MergeNativeMobJavaState(map[string]any{"Attributes": a}, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "RabbitType": int32(b.variant), "MoreCarrotTicks": int32(b.moreCarrotTicks)})))
+	b := d.Data.(*rabbitBehaviour)
+	a := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
+	return mergeNativeMobJavaState(map[string]any{"Attributes": a}, mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "RabbitType": int32(b.variant), "MoreCarrotTicks": int32(b.moreCarrotTicks)})))
 }
 
 // RabbitConfig controls variant and age.
-type RabbitConfig struct {
+type rabbitConfig struct {
 	Health, MaxHealth             float64
 	Variant, Age, MoreCarrotTicks int
 }
 
-func (c RabbitConfig) Apply(d *world.EntityData) { d.Data = c.New() }
-func (c RabbitConfig) New() *RabbitBehaviour {
+func (c rabbitConfig) Apply(d *world.EntityData) { d.Data = c.New() }
+func (c rabbitConfig) New() *rabbitBehaviour {
 	if c.MaxHealth <= 0 {
 		c.MaxHealth = 3
 	}
 	if c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	return &RabbitBehaviour{health: c.Health, maxHealth: c.MaxHealth, variant: max(0, min(c.Variant, 99)), age: c.Age, killer: c.Variant == 99, moreCarrotTicks: c.MoreCarrotTicks, speed: .3, effects: NewEffectManager()}
+	return &rabbitBehaviour{health: c.Health, maxHealth: c.MaxHealth, variant: max(0, min(c.Variant, 99)), age: c.Age, killer: c.Variant == 99, moreCarrotTicks: c.MoreCarrotTicks, speed: .3, effects: NewEffectManager()}
 }
 
 // Rabbit is a small prey animal with source variant, crop-raiding and killer-bunny state.
 type Rabbit struct{ *Ent }
-type RabbitBehaviour struct {
+type rabbitBehaviour struct {
 	effects           *EffectManager
 	health, maxHealth float64
 	variant, age      int
@@ -89,12 +89,12 @@ type RabbitBehaviour struct {
 	moreCarrotTicks int
 }
 
-func (r *Rabbit) behaviour() *RabbitBehaviour { return r.Behaviour().(*RabbitBehaviour) }
+func (r *Rabbit) behaviour() *rabbitBehaviour { return r.Behaviour().(*rabbitBehaviour) }
 func (r *Rabbit) Tick(tx *world.Tx, t int64) {
 	r.behaviour().effects.Tick(r, tx)
 	r.Ent.Tick(tx, t)
 }
-func (b *RabbitBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (b *rabbitBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	rabbit := &Rabbit{Ent: e}
 	b.ai.MovementSpeed, b.ai.EyeHeight = b.speed, .59
 	if b.age < 0 {
@@ -113,7 +113,7 @@ func (b *RabbitBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 
 // doHurtTarget ports Mob.doHurtTarget for the killer bunny, which bites for
 // 8 damage.
-func (b *RabbitBehaviour) doHurtTarget(m *Mob, target world.Entity) bool {
+func (b *rabbitBehaviour) doHurtTarget(m *Mob, target world.Entity) bool {
 	l, ok := target.(Living)
 	if !ok {
 		return false
@@ -194,11 +194,7 @@ func (r *Rabbit) KnockBack(src mgl64.Vec3, f, h float64) {
 	knockBack(r, src, f, h)
 }
 func (r *Rabbit) viewAction(a world.EntityAction) {
-	vs := r.tx.Viewers(r.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(r, a)
-	}
-	r.tx.ReleaseViewers(vs)
+	world.BroadcastEntityAction(r.tx, r, a)
 }
 func (r *Rabbit) Variant() int { return r.behaviour().variant }
 func (r *Rabbit) Killer() bool { return r.behaviour().killer }
@@ -227,7 +223,7 @@ func (r *Rabbit) breedOffspring(tx *world.Tx, partner breeder) *world.EntityHand
 	if randInt(random, 20) != 0 {
 		variant = randomParent(random, partner.(*Rabbit).behaviour().variant, r.behaviour().variant)
 	}
-	return babyAt(r).New(RabbitType, RabbitConfig{Age: babyStartAge, Variant: variant})
+	return babyAt(r).New(entityRabbitType, rabbitConfig{Age: babyStartAge, Variant: variant})
 }
 
 // rabbitBiomeVariant ports Rabbit.getRandomRabbitVariant: white or
@@ -285,4 +281,4 @@ func (r *Rabbit) FinalizeSpawn(reason string, j *vanilla.Random) {
 	}
 }
 
-func (b *RabbitBehaviour) effectManager() *EffectManager { return b.effects }
+func (b *rabbitBehaviour) effectManager() *EffectManager { return b.effects }

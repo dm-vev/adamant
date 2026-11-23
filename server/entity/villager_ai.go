@@ -24,7 +24,7 @@ const villagerSpeed = .5
 
 // newVillagerBrain ports the brain provider of Villager: babies play where
 // adults work.
-func newVillagerBrain(b *VillagerBehaviour) *Brain {
+func newVillagerBrain(b *villagerBehaviour) *brain {
 	br := newBrain(nearestLivingEntitySensor{}, playerSensor{}, nearestItemSensor{wants: func(m *Mob, s item.Stack) bool { return b.wantsToPickUp(m, s) }},
 		&villagerNearestBedSensor{}, hurtBySensor{}, villagerHostilesSensor{}, villagerBabiesSensor{}, villagerSecondaryPoiSensor{b}, villagerGolemSensor{})
 	for _, mem := range []memoryType{memHome, memJobSite, memPotentialJobSite, memMeetingPoint, memLastSlept, memLastWoken, memLastWorkedAtPoi,
@@ -77,7 +77,7 @@ func villagerScheduled(m *Mob, baby bool) activity {
 }
 
 // updateActivityFromSchedule ports Brain.updateActivityFromSchedule.
-func (b *VillagerBehaviour) updateActivityFromSchedule(m *Mob) {
+func (b *villagerBehaviour) updateActivityFromSchedule(m *Mob) {
 	br := b.br
 	time := m.tx.CurrentTick()
 	if time-br.lastScheduleUpdate <= 20 {
@@ -90,8 +90,8 @@ func (b *VillagerBehaviour) updateActivityFromSchedule(m *Mob) {
 }
 
 // newUpdateActivityFromSchedule ports UpdateActivityFromSchedule.
-func newUpdateActivityFromSchedule(b *VillagerBehaviour) *oneShot {
-	return newOneShot(nil, func(m *Mob, _ *Brain, _ int64) bool {
+func newUpdateActivityFromSchedule(b *villagerBehaviour) *oneShot {
+	return newOneShot(nil, func(m *Mob, _ *brain, _ int64) bool {
 		b.updateActivityFromSchedule(m)
 		return true
 	})
@@ -137,7 +137,7 @@ func entityMobCategory(e world.Entity) string {
 func isVillagerMob(e world.Entity) bool { _, ok := e.(*Villager); return ok }
 
 // villagerCorePackage ports VillagerGoalPackages.getCorePackage.
-func villagerCorePackage(b *VillagerBehaviour, speed float64) []prioritizedBehavior {
+func villagerCorePackage(b *villagerBehaviour, speed float64) []prioritizedBehavior {
 	return []prioritizedBehavior{
 		{0, newSwim(.8)},
 		{0, newInteractWithDoor()},
@@ -170,7 +170,7 @@ func villagerBedFree(tx *world.Tx, pos cube.Pos) bool {
 }
 
 // villagerWorkPackage ports VillagerGoalPackages.getWorkPackage.
-func villagerWorkPackage(b *VillagerBehaviour, speed float64) []prioritizedBehavior {
+func villagerWorkPackage(b *villagerBehaviour, speed float64) []prioritizedBehavior {
 	farmer := b.profession == "minecraft:farmer"
 	harvest, bonemeal := 5, 7
 	if farmer {
@@ -208,15 +208,15 @@ func villagerPlayPackage(speed float64) []prioritizedBehavior {
 			weightedBehavior{newJumpOnBed(speed), 2},
 			weightedBehavior{newDoNothing(20, 40), 2},
 		)},
-		{99, newOneShot(nil, func(m *Mob, _ *Brain, _ int64) bool {
-			m.Behaviour().(*VillagerBehaviour).updateActivityFromSchedule(m)
+		{99, newOneShot(nil, func(m *Mob, _ *brain, _ int64) bool {
+			m.Behaviour().(*villagerBehaviour).updateActivityFromSchedule(m)
 			return true
 		})},
 	}
 }
 
 // villagerRestPackage ports VillagerGoalPackages.getRestPackage.
-func villagerRestPackage(b *VillagerBehaviour, speed float64) []prioritizedBehavior {
+func villagerRestPackage(b *villagerBehaviour, speed float64) []prioritizedBehavior {
 	return []prioritizedBehavior{
 		{2, newSetWalkTargetFromBlockMemory(b, memHome, speed, 1, 150, 1200)},
 		{3, newValidateNearbyPoi(b, func(p world.POI) bool { return p.Kind == world.Home }, memHome)},
@@ -274,7 +274,7 @@ func villagerIdlePackage(speed float64) []prioritizedBehavior {
 }
 
 // villagerPanicPackage ports VillagerGoalPackages.getPanicPackage.
-func villagerPanicPackage(b *VillagerBehaviour, speed float64) []prioritizedBehavior {
+func villagerPanicPackage(b *villagerBehaviour, speed float64) []prioritizedBehavior {
 	runaway := float64(float32(speed) * 1.5)
 	away := func(m *Mob, v any) mgl64.Vec3 {
 		if e, ok := v.(*world.EntityHandle).Entity(m.tx); ok {
@@ -306,7 +306,7 @@ func villagerPreRaidPackage(speed float64) []prioritizedBehavior {
 }
 
 // villagerRaidPackage ports VillagerGoalPackages.getRaidPackage.
-func villagerRaidPackage(b *VillagerBehaviour, speed float64) []prioritizedBehavior {
+func villagerRaidPackage(b *villagerBehaviour, speed float64) []prioritizedBehavior {
 	return []prioritizedBehavior{
 		{0, newTriggerIf(func(m *Mob) bool {
 			r := m.tx.Raids().At(m.BlockPos())
@@ -338,7 +338,7 @@ func villagerHidePackage(speed float64) []prioritizedBehavior {
 // weighted random order until one triggers.
 func newOneShotGate(children ...weightedBehavior) *oneShot {
 	gate := newRunOne(nil, children...)
-	return newOneShot(nil, func(m *Mob, _ *Brain, time int64) bool {
+	return newOneShot(nil, func(m *Mob, _ *brain, time int64) bool {
 		gate.tryStart(m, time)
 		gate.doStop(m, time)
 		return true
@@ -346,10 +346,10 @@ func newOneShotGate(children ...weightedBehavior) *oneShot {
 }
 
 // villagerOf returns the behaviour of the villager driving a mob.
-func villagerOf(m *Mob) *VillagerBehaviour { return m.Behaviour().(*VillagerBehaviour) }
+func villagerOf(m *Mob) *villagerBehaviour { return m.Behaviour().(*villagerBehaviour) }
 
 func newUpdateActivityFromScheduleAny() *oneShot {
-	return newOneShot(nil, func(m *Mob, _ *Brain, _ int64) bool {
+	return newOneShot(nil, func(m *Mob, _ *brain, _ int64) bool {
 		villagerOf(m).updateActivityFromSchedule(m)
 		return true
 	})
@@ -358,15 +358,15 @@ func newUpdateActivityFromScheduleAny() *oneShot {
 // newVillagerPanicTrigger ports VillagerPanicTrigger: a hurt villager or one
 // near a hostile mob panics, and every five seconds panicking villagers may
 // summon an iron golem.
-func newVillagerPanicTrigger(b *VillagerBehaviour) *behavior {
-	scared := func(m *Mob) bool { return m.Brain().has(memHurtBy) || m.Brain().has(memNearestHostile) }
+func newVillagerPanicTrigger(b *villagerBehaviour) *behavior {
+	scared := func(m *Mob) bool { return m.brain().has(memHurtBy) || m.brain().has(memNearestHostile) }
 	return &behavior{
 		canStillUse: func(m *Mob, _ int64) bool { return scared(m) },
 		start: func(m *Mob, _ int64) {
 			if !scared(m) {
 				return
 			}
-			br := m.Brain()
+			br := m.brain()
 			if !br.isActive(activityPanic) {
 				for _, mem := range []memoryType{memPath, memWalkTarget, memLookTarget, memBreedTarget, memInteractionTarget} {
 					br.erase(mem)
@@ -384,8 +384,8 @@ func newVillagerPanicTrigger(b *VillagerBehaviour) *behavior {
 
 // newVillagerCalmDown ports VillagerCalmDown: a villager neither hurt nor
 // near danger calms down and returns to its schedule.
-func newVillagerCalmDown(b *VillagerBehaviour) *oneShot {
-	return newOneShot([]memoryCondition{{memHurtBy, memRegistered}, {memHurtByEntity, memRegistered}, {memNearestHostile, memRegistered}}, func(m *Mob, br *Brain, _ int64) bool {
+func newVillagerCalmDown(b *villagerBehaviour) *oneShot {
+	return newOneShot([]memoryCondition{{memHurtBy, memRegistered}, {memHurtByEntity, memRegistered}, {memNearestHostile, memRegistered}}, func(m *Mob, br *brain, _ int64) bool {
 		attacker := br.entity(m, memHurtByEntity)
 		scared := br.has(memHurtBy) || br.has(memNearestHostile) || attacker != nil && attacker.Position().Sub(m.data.Pos).LenSqr() <= 36
 		if !scared {
@@ -398,8 +398,8 @@ func newVillagerCalmDown(b *VillagerBehaviour) *oneShot {
 }
 
 // newWakeUp ports WakeUp: a villager sleeping outside its rest wakes up.
-func newWakeUp(b *VillagerBehaviour) *oneShot {
-	return newOneShot(nil, func(m *Mob, br *Brain, _ int64) bool {
+func newWakeUp(b *villagerBehaviour) *oneShot {
+	return newOneShot(nil, func(m *Mob, br *brain, _ int64) bool {
 		if br.isActive(activityRest) || b.sleeping == nil {
 			return false
 		}
@@ -410,8 +410,8 @@ func newWakeUp(b *VillagerBehaviour) *oneShot {
 
 // newReactToBell ports ReactToBell: a villager that heard a bell without a
 // raid near hides.
-func newReactToBell(b *VillagerBehaviour) *oneShot {
-	return newOneShot([]memoryCondition{{memHeardBellTime, memPresent}}, func(m *Mob, br *Brain, _ int64) bool {
+func newReactToBell(b *villagerBehaviour) *oneShot {
+	return newOneShot([]memoryCondition{{memHeardBellTime, memPresent}}, func(m *Mob, br *brain, _ int64) bool {
 		if m.tx.Raids().At(m.BlockPos()) == nil {
 			br.setActiveIfPossible(activityHide)
 		}
@@ -421,8 +421,8 @@ func newReactToBell(b *VillagerBehaviour) *oneShot {
 
 // newSetRaidStatus ports SetRaidStatus: a villager in a raid prepares for it
 // and then joins it.
-func newSetRaidStatus(b *VillagerBehaviour) *oneShot {
-	return newOneShot(nil, func(m *Mob, br *Brain, _ int64) bool {
+func newSetRaidStatus(b *villagerBehaviour) *oneShot {
+	return newOneShot(nil, func(m *Mob, br *brain, _ int64) bool {
 		if m.Random().NextInt(20) != 0 {
 			return false
 		}
@@ -440,7 +440,7 @@ func newSetRaidStatus(b *VillagerBehaviour) *oneShot {
 
 // newResetRaidStatus ports ResetRaidStatus.
 func newResetRaidStatus() *oneShot {
-	return newOneShot(nil, func(m *Mob, br *Brain, _ int64) bool {
+	return newOneShot(nil, func(m *Mob, br *brain, _ int64) bool {
 		if m.Random().NextInt(20) != 0 {
 			return false
 		}
@@ -454,7 +454,7 @@ func newResetRaidStatus() *oneShot {
 
 // villagerPoi returns the POI a memory holds in the world of the mob.
 func villagerPoi(m *Mob, mem memoryType) (cube.Pos, bool) {
-	v, ok := m.Brain().get(mem)
+	v, ok := m.brain().get(mem)
 	if !ok {
 		return cube.Pos{}, false
 	}
@@ -469,8 +469,8 @@ func newValidateNearbyPoiAny(match func(world.POI) bool, mem memoryType) *oneSho
 // newValidateNearbyPoi ports ValidateNearbyPoi: a villager within sixteen
 // blocks of a POI it remembers forgets it once it is gone, or a bed somebody
 // else sleeps in.
-func newValidateNearbyPoi(_ *VillagerBehaviour, match func(world.POI) bool, mem memoryType) *oneShot {
-	return newOneShot([]memoryCondition{{mem, memPresent}}, func(m *Mob, br *Brain, _ int64) bool {
+func newValidateNearbyPoi(_ *villagerBehaviour, match func(world.POI) bool, mem memoryType) *oneShot {
+	return newOneShot([]memoryCondition{{mem, memPresent}}, func(m *Mob, br *brain, _ int64) bool {
 		pos, here := villagerPoi(m, mem)
 		if !here || pos.Vec3Centre().Sub(m.data.Pos).LenSqr() >= 256 {
 			return false
@@ -505,8 +505,8 @@ func villagerSleepsIn(tx *world.Tx, pos cube.Pos) bool {
 
 // newPoiCompetitorScan ports PoiCompetitorScan: of the villagers near that
 // claim the same job site, the one with the most experience keeps it.
-func newPoiCompetitorScan(b *VillagerBehaviour) *oneShot {
-	return newOneShot([]memoryCondition{{memJobSite, memPresent}, {memNearestLivingEntities, memPresent}}, func(m *Mob, br *Brain, _ int64) bool {
+func newPoiCompetitorScan(b *villagerBehaviour) *oneShot {
+	return newOneShot([]memoryCondition{{memJobSite, memPresent}, {memNearestLivingEntities, memPresent}}, func(m *Mob, br *brain, _ int64) bool {
 		v, _ := br.get(memJobSite)
 		site := v.(globalPos)
 		poi, ok := m.tx.POIs().At(site.pos)
@@ -537,7 +537,7 @@ func newPoiCompetitorScan(b *VillagerBehaviour) *oneShot {
 
 // newLookAndFollowTradingPlayerSink ports LookAndFollowTradingPlayerSink: a
 // villager trading with a player walks up to and looks at them.
-func newLookAndFollowTradingPlayerSink(b *VillagerBehaviour, speed float64) *behavior {
+func newLookAndFollowTradingPlayerSink(b *villagerBehaviour, speed float64) *behavior {
 	trader := func(m *Mob) world.Entity {
 		if b.trading.user == nil {
 			return nil
@@ -554,7 +554,7 @@ func newLookAndFollowTradingPlayerSink(b *VillagerBehaviour, speed float64) *beh
 	}
 	follow := func(m *Mob) {
 		p := trader(m)
-		br := m.Brain()
+		br := m.brain()
 		br.set(memWalkTarget, walkTarget{target: newEntityTracker(p, false), speed: speed, closeEnough: 2})
 		br.set(memLookTarget, newEntityTracker(p, true))
 	}
@@ -566,8 +566,8 @@ func newLookAndFollowTradingPlayerSink(b *VillagerBehaviour, speed float64) *beh
 		start:       func(m *Mob, _ int64) { follow(m) },
 		tick:        func(m *Mob, _ int64) { follow(m) },
 		stop: func(m *Mob, _ int64) {
-			m.Brain().erase(memWalkTarget)
-			m.Brain().erase(memLookTarget)
+			m.brain().erase(memWalkTarget)
+			m.brain().erase(memLookTarget)
 		},
 	}
 }
@@ -625,14 +625,14 @@ func (r *poiRetry) mark(m *Mob, time int64) {
 // newAcquirePoi ports AcquirePoi: every second or so a villager without the
 // POI tries to path to one of the five nearest free ones within 48 blocks,
 // and takes the one it reaches. Those it cannot reach it retries later.
-func newAcquirePoi(b *VillagerBehaviour, match func(world.POI) bool, validate, acquire memoryType, onlyAdult bool, valid func(*world.Tx, cube.Pos) bool) *oneShot {
+func newAcquirePoi(b *villagerBehaviour, match func(world.POI) bool, validate, acquire memoryType, onlyAdult bool, valid func(*world.Tx, cube.Pos) bool) *oneShot {
 	var nextStart int64
 	cache := map[cube.Pos]*poiRetry{}
 	conds := []memoryCondition{{acquire, memAbsent}}
 	if validate != acquire {
 		conds = append(conds, memoryCondition{validate, memAbsent})
 	}
-	return newOneShot(conds, func(m *Mob, br *Brain, time int64) bool {
+	return newOneShot(conds, func(m *Mob, br *brain, time int64) bool {
 		if onlyAdult && b.age < 0 {
 			return false
 		}
@@ -706,15 +706,15 @@ func newAcquirePoi(b *VillagerBehaviour, match func(world.POI) bool, validate, a
 
 // newGoToPotentialJobSite ports GoToPotentialJobSite: a villager walks to the
 // job site it found for up to a minute, then gives it up.
-func newGoToPotentialJobSite(b *VillagerBehaviour, speed float64) *behavior {
+func newGoToPotentialJobSite(b *villagerBehaviour, speed float64) *behavior {
 	return &behavior{
 		entry:       []memoryCondition{{memPotentialJobSite, memPresent}},
 		minDuration: 1200, maxDuration: 1200,
 		checkExtra: func(m *Mob) bool {
-			act, ok := m.Brain().activeNonCore()
+			act, ok := m.brain().activeNonCore()
 			return !ok || act == activityIdle || act == activityWork || act == activityPlay
 		},
-		canStillUse: func(m *Mob, _ int64) bool { return m.Brain().has(memPotentialJobSite) },
+		canStillUse: func(m *Mob, _ int64) bool { return m.brain().has(memPotentialJobSite) },
 		tick: func(m *Mob, _ int64) {
 			if pos, ok := villagerPoi(m, memPotentialJobSite); ok {
 				setWalkAndLookTarget(m, newBlockPosTracker(pos), speed, 1)
@@ -724,16 +724,16 @@ func newGoToPotentialJobSite(b *VillagerBehaviour, speed float64) *behavior {
 			if pos, ok := villagerPoi(m, memPotentialJobSite); ok {
 				m.tx.POIs().Release(pos, m.H().UUID())
 			}
-			m.Brain().erase(memPotentialJobSite)
+			m.brain().erase(memPotentialJobSite)
 		},
 	}
 }
 
 // newYieldJobSite ports YieldJobSite: an unemployed villager hands the job
 // site it found to a nearby villager of its profession that wants it.
-func newYieldJobSite(b *VillagerBehaviour, speed float64) *oneShot {
+func newYieldJobSite(b *villagerBehaviour, speed float64) *oneShot {
 	return newOneShot([]memoryCondition{{memPotentialJobSite, memPresent}, {memJobSite, memAbsent}, {memNearestLivingEntities, memPresent},
-		{memWalkTarget, memRegistered}, {memLookTarget, memRegistered}}, func(m *Mob, br *Brain, _ int64) bool {
+		{memWalkTarget, memRegistered}, {memLookTarget, memRegistered}}, func(m *Mob, br *brain, _ int64) bool {
 		if b.age < 0 || b.profession != "minecraft:none" {
 			return false
 		}
@@ -782,8 +782,8 @@ func villagerWantsJobSite(v *Villager, poi world.POI, pos cube.Pos) bool {
 // newAssignProfessionFromJobSite ports AssignProfessionFromJobSite: a
 // villager at its potential job site takes it and, unemployed, the
 // profession of it.
-func newAssignProfessionFromJobSite(b *VillagerBehaviour) *oneShot {
-	return newOneShot([]memoryCondition{{memPotentialJobSite, memPresent}, {memJobSite, memRegistered}}, func(m *Mob, br *Brain, _ int64) bool {
+func newAssignProfessionFromJobSite(b *villagerBehaviour) *oneShot {
+	return newOneShot([]memoryCondition{{memPotentialJobSite, memPresent}, {memJobSite, memRegistered}}, func(m *Mob, br *brain, _ int64) bool {
 		v, _ := br.get(memPotentialJobSite)
 		site := v.(globalPos)
 		if site.pos.Vec3Centre().Sub(m.data.Pos).LenSqr() >= 4 {
@@ -806,8 +806,8 @@ func newAssignProfessionFromJobSite(b *VillagerBehaviour) *oneShot {
 
 // newResetProfession ports ResetProfession: a villager that lost its job
 // site before ever trading loses its profession.
-func newResetProfession(b *VillagerBehaviour) *oneShot {
-	return newOneShot([]memoryCondition{{memJobSite, memAbsent}}, func(m *Mob, _ *Brain, _ int64) bool {
+func newResetProfession(b *villagerBehaviour) *oneShot {
+	return newOneShot([]memoryCondition{{memJobSite, memAbsent}}, func(m *Mob, _ *brain, _ int64) bool {
 		if b.profession == "minecraft:none" || b.profession == "minecraft:nitwit" || b.xp != 0 || b.level > 1 {
 			return false
 		}
@@ -820,7 +820,7 @@ func newResetProfession(b *VillagerBehaviour) *oneShot {
 // newWorkAtPoi ports WorkAtPoi and WorkAtComposter: every fifteen seconds or
 // so a villager at its job site works at it and restocks its trades. A
 // farmer makes bread and composts its spare seeds.
-func newWorkAtPoi(b *VillagerBehaviour, composter bool) *behavior {
+func newWorkAtPoi(b *villagerBehaviour, composter bool) *behavior {
 	var lastCheck int64
 	atSite := func(m *Mob) bool {
 		pos, ok := villagerPoi(m, memJobSite)
@@ -836,9 +836,9 @@ func newWorkAtPoi(b *VillagerBehaviour, composter bool) *behavior {
 			lastCheck = time
 			return atSite(m)
 		},
-		canStillUse: func(m *Mob, _ int64) bool { return m.Brain().has(memJobSite) && atSite(m) },
+		canStillUse: func(m *Mob, _ int64) bool { return m.brain().has(memJobSite) && atSite(m) },
 		start: func(m *Mob, time int64) {
-			br := m.Brain()
+			br := m.brain()
 			br.set(memLastWorkedAtPoi, time)
 			pos, _ := villagerPoi(m, memJobSite)
 			br.set(memLookTarget, newBlockPosTracker(pos))
@@ -858,7 +858,7 @@ func newWorkAtPoi(b *VillagerBehaviour, composter bool) *behavior {
 
 // makeBread ports WorkAtComposter.makeBread: a farmer bakes up to three loaves
 // out of its wheat while it carries no more than 36.
-func (b *VillagerBehaviour) makeBread(m *Mob) {
+func (b *villagerBehaviour) makeBread(m *Mob) {
 	if villagerItemCount(b.inventory.Slots(), "minecraft:bread") > 36 {
 		return
 	}
@@ -875,7 +875,7 @@ func (b *VillagerBehaviour) makeBread(m *Mob) {
 // compostItems ports WorkAtComposter.compostItems: a farmer empties a full
 // composter and fills it with the seeds it has beyond ten of a kind, twenty
 // at most.
-func (b *VillagerBehaviour) compostItems(m *Mob, pos cube.Pos, c block.Composter) {
+func (b *villagerBehaviour) compostItems(m *Mob, pos cube.Pos, c block.Composter) {
 	if c.Level == 8 {
 		c.Level = 0
 		m.tx.SetBlock(pos, c, nil)
@@ -956,7 +956,7 @@ func removeInventoryItems(inv interface {
 // strolls to one of the secondary POIs around it now and then.
 func newStrollToPoiList(list memoryType, speed float64, closeEnough, maxDist int, near memoryType) *oneShot {
 	var nextOK int64
-	return newOneShot([]memoryCondition{{memWalkTarget, memRegistered}, {list, memPresent}, {near, memPresent}}, func(m *Mob, br *Brain, time int64) bool {
+	return newOneShot([]memoryCondition{{memWalkTarget, memRegistered}, {list, memPresent}, {near, memPresent}}, func(m *Mob, br *brain, time int64) bool {
 		v, _ := br.get(list)
 		sites := v.([]globalPos)
 		if len(sites) == 0 {
@@ -982,8 +982,8 @@ func newSetWalkTargetFromBlockMemoryAny(mem memoryType, speed float64, closeEnou
 // newSetWalkTargetFromBlockMemory ports SetWalkTargetFromBlockMemory: a
 // villager walks to the POI it remembers, towards it while it is far, and
 // gives it up when it has not reached it for too long.
-func newSetWalkTargetFromBlockMemory(_ *VillagerBehaviour, mem memoryType, speed float64, closeEnough, tooFar, tooLong int) *oneShot {
-	return newOneShot([]memoryCondition{{memCantReachWalkTargetSince, memRegistered}, {memWalkTarget, memAbsent}, {mem, memPresent}}, func(m *Mob, br *Brain, time int64) bool {
+func newSetWalkTargetFromBlockMemory(_ *villagerBehaviour, mem memoryType, speed float64, closeEnough, tooFar, tooLong int) *oneShot {
+	return newOneShot([]memoryCondition{{memCantReachWalkTargetSince, memRegistered}, {memWalkTarget, memAbsent}, {mem, memPresent}}, func(m *Mob, br *brain, time int64) bool {
 		v, _ := br.get(mem)
 		target := v.(globalPos)
 		giveUp := func() {
@@ -1001,7 +1001,7 @@ func newSetWalkTargetFromBlockMemory(_ *VillagerBehaviour, mem memoryType, speed
 			var towards mgl64.Vec3
 			found := false
 			for tries := 0; !found || manhattan(cube.PosFromVec3(towards), m.BlockPos()) > tooFar; {
-				towards, found = DefaultRandomPosTowards(m, 15, 7, target.pos.Vec3Middle(), math.Pi/2)
+				towards, found = defaultRandomPosTowards(m, 15, 7, target.pos.Vec3Middle(), math.Pi/2)
 				if tries++; tries == 1000 {
 					giveUp()
 					return true
@@ -1017,7 +1017,7 @@ func newSetWalkTargetFromBlockMemory(_ *VillagerBehaviour, mem memoryType, speed
 
 // newHarvestFarmland ports HarvestFarmland: a farmer harvests the grown crops
 // around it and plants seeds on the bare farmland, for up to ten seconds.
-func newHarvestFarmland(b *VillagerBehaviour) *behavior {
+func newHarvestFarmland(b *villagerBehaviour) *behavior {
 	var (
 		target    *cube.Pos
 		nextOK    int64
@@ -1040,7 +1040,7 @@ func newHarvestFarmland(b *VillagerBehaviour) *behavior {
 		return air && farmland
 	}
 	setTargets := func(m *Mob) {
-		br := m.Brain()
+		br := m.brain()
 		br.set(memWalkTarget, walkTarget{target: newBlockPosTracker(*target), speed: villagerSpeed, closeEnough: 1})
 		br.set(memLookTarget, newBlockPosTracker(*target))
 	}
@@ -1071,8 +1071,8 @@ func newHarvestFarmland(b *VillagerBehaviour) *behavior {
 			}
 		},
 		stop: func(m *Mob, time int64) {
-			m.Brain().erase(memLookTarget)
-			m.Brain().erase(memWalkTarget)
+			m.brain().erase(memLookTarget)
+			m.brain().erase(memWalkTarget)
 			worked = 0
 			nextOK = time + 40
 		},
@@ -1119,7 +1119,7 @@ func villagerBreakBlock(m *Mob, pos cube.Pos) {
 
 // plantSeeds plants the first plantable seed a farmer carries on bare
 // farmland, as HarvestFarmland.tick does.
-func (b *VillagerBehaviour) plantSeeds(m *Mob, pos cube.Pos) {
+func (b *villagerBehaviour) plantSeeds(m *Mob, pos cube.Pos) {
 	for i, s := range b.inventory.Slots() {
 		if s.Empty() || !inItemTag(s, "villager_plantable_seeds") {
 			continue
@@ -1138,7 +1138,7 @@ func (b *VillagerBehaviour) plantSeeds(m *Mob, pos cube.Pos) {
 
 // newUseBonemeal ports UseBonemeal: a farmer with bone meal fertilises the
 // growing crops around it for four seconds.
-func newUseBonemeal(b *VillagerBehaviour) *behavior {
+func newUseBonemeal(b *villagerBehaviour) *behavior {
 	var (
 		next, last int64
 		worked     int
@@ -1166,7 +1166,7 @@ func newUseBonemeal(b *VillagerBehaviour) *behavior {
 		if crop == nil {
 			return
 		}
-		br := m.Brain()
+		br := m.brain()
 		br.set(memLookTarget, newBlockPosTracker(*crop))
 		br.set(memWalkTarget, walkTarget{target: newBlockPosTracker(*crop), speed: villagerSpeed, closeEnough: 1})
 	}
@@ -1216,7 +1216,7 @@ func newShowTradesToPlayerAny(minDuration, maxDuration int) *behavior {
 
 // newShowTradesToPlayer ports ShowTradesToPlayer: a villager a player near
 // looks at shows the trades for what the player holds, cycling through them.
-func newShowTradesToPlayer(_ *VillagerBehaviour, minDuration, maxDuration int) *behavior {
+func newShowTradesToPlayer(_ *villagerBehaviour, minDuration, maxDuration int) *behavior {
 	var (
 		playerItem   *item.Stack
 		display      []item.Stack
@@ -1224,12 +1224,12 @@ func newShowTradesToPlayer(_ *VillagerBehaviour, minDuration, maxDuration int) *
 		lookTime     int
 	)
 	valid := func(m *Mob) bool {
-		target := m.Brain().entity(m, memInteractionTarget)
+		target := m.brain().entity(m, memInteractionTarget)
 		return target != nil && isPlayerEntity(target) && m.Alive() && entityAlive(target) && villagerOf(m).age >= 0 && m.DistanceToSqr(target) <= 17
 	}
 	lookAt := func(m *Mob) world.Entity {
-		target := m.Brain().entity(m, memInteractionTarget)
-		m.Brain().set(memLookTarget, newEntityTracker(target, true))
+		target := m.brain().entity(m, memInteractionTarget)
+		m.brain().set(memLookTarget, newEntityTracker(target, true))
 		return target
 	}
 	return &behavior{
@@ -1237,7 +1237,7 @@ func newShowTradesToPlayer(_ *VillagerBehaviour, minDuration, maxDuration int) *
 		minDuration: minDuration, maxDuration: maxDuration,
 		checkExtra: valid,
 		canStillUse: func(m *Mob, _ int64) bool {
-			return valid(m) && lookTime > 0 && m.Brain().has(memInteractionTarget)
+			return valid(m) && lookTime > 0 && m.brain().has(memInteractionTarget)
 		},
 		start: func(m *Mob, _ int64) {
 			lookAt(m)
@@ -1284,7 +1284,7 @@ func newShowTradesToPlayer(_ *VillagerBehaviour, minDuration, maxDuration int) *
 			lookTime--
 		},
 		stop: func(m *Mob, _ int64) {
-			m.Brain().erase(memInteractionTarget)
+			m.brain().erase(memInteractionTarget)
 			villagerOf(m).setHeld(m, item.Stack{})
 			playerItem = nil
 		},
@@ -1314,12 +1314,12 @@ var villagerGifts = map[string]string{
 
 // newGiveGiftToHero ports GiveGiftToHero: now and then a villager walks up to
 // a Hero of the Village it sees and throws them a gift of its profession.
-func newGiveGiftToHero(_ *VillagerBehaviour, timeout int) *behavior {
+func newGiveGiftToHero(_ *villagerBehaviour, timeout int) *behavior {
 	untilNext := 600
 	given := false
 	var start int64
 	hero := func(m *Mob) world.Entity {
-		p := m.Brain().entity(m, memNearestVisiblePlayer)
+		p := m.brain().entity(m, memNearestVisiblePlayer)
 		if p == nil {
 			return nil
 		}
@@ -1350,12 +1350,12 @@ func newGiveGiftToHero(_ *VillagerBehaviour, timeout int) *behavior {
 		start: func(m *Mob, time int64) {
 			given, start = false, time
 			p := hero(m)
-			m.Brain().setEntity(memInteractionTarget, p)
-			m.Brain().set(memLookTarget, newEntityTracker(p, true))
+			m.brain().setEntity(memInteractionTarget, p)
+			m.brain().set(memLookTarget, newEntityTracker(p, true))
 		},
 		tick: func(m *Mob, time int64) {
 			p := hero(m)
-			m.Brain().set(memLookTarget, newEntityTracker(p, true))
+			m.brain().set(memLookTarget, newEntityTracker(p, true))
 			if p.Position().Sub(m.data.Pos).LenSqr() < 25 {
 				if time-start > 20 {
 					villagerOf(m).throwGift(m, p)
@@ -1367,7 +1367,7 @@ func newGiveGiftToHero(_ *VillagerBehaviour, timeout int) *behavior {
 		},
 		stop: func(m *Mob, _ int64) {
 			untilNext = 600 + int(m.tx.RegionRandom().NextInt(6001))
-			br := m.Brain()
+			br := m.brain()
 			br.erase(memInteractionTarget)
 			br.erase(memWalkTarget)
 			br.erase(memLookTarget)
@@ -1379,7 +1379,7 @@ func newGiveGiftToHero(_ *VillagerBehaviour, timeout int) *behavior {
 // each other, and run off into the village when chased.
 func newPlayTagWithOtherKids() *oneShot {
 	return newOneShot([]memoryCondition{{memVisibleVillagerBabies, memPresent}, {memWalkTarget, memAbsent}, {memLookTarget, memRegistered},
-		{memInteractionTarget, memRegistered}}, func(m *Mob, br *Brain, _ int64) bool {
+		{memInteractionTarget, memRegistered}}, func(m *Mob, br *brain, _ int64) bool {
 		if m.tx.RegionRandom().NextInt(10) != 0 {
 			return false
 		}
@@ -1404,7 +1404,7 @@ func newPlayTagWithOtherKids() *oneShot {
 		for _, f := range friends {
 			if c := chasing(f); c != nil && c.H() == m.H() {
 				for range 10 {
-					if pos, ok := LandRandomPos(m, 20, 8); ok && m.tx.POIs().IsVillage(cube.PosFromVec3(pos)) {
+					if pos, ok := landRandomPos(m, 20, 8); ok && m.tx.POIs().IsVillage(cube.PosFromVec3(pos)) {
 						br.set(memWalkTarget, walkTarget{target: newVecTracker(pos), speed: float64(float32(.6))})
 						break
 					}
@@ -1439,16 +1439,16 @@ func newPlayTagWithOtherKids() *oneShot {
 // newVillageBoundRandomStroll ports VillageBoundRandomStroll: a villager
 // strolls about the village, or towards it from outside.
 func newVillageBoundRandomStroll(speed float64, horizontal, vertical int) *oneShot {
-	return newOneShot([]memoryCondition{{memWalkTarget, memAbsent}}, func(m *Mob, br *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memWalkTarget, memAbsent}}, func(m *Mob, br *brain, _ int64) bool {
 		bp := m.BlockPos()
 		var pos mgl64.Vec3
 		var ok bool
 		if m.tx.POIs().IsVillage(bp) {
-			pos, ok = LandRandomPos(m, horizontal, vertical)
+			pos, ok = landRandomPos(m, horizontal, vertical)
 		} else if section, closer := villageSectionTowards(m.tx, bp, 2); closer {
-			pos, ok = DefaultRandomPosTowards(m, horizontal, vertical, section, math.Pi/2)
+			pos, ok = defaultRandomPosTowards(m, horizontal, vertical, section, math.Pi/2)
 		} else {
-			pos, ok = LandRandomPos(m, horizontal, vertical)
+			pos, ok = landRandomPos(m, horizontal, vertical)
 		}
 		if ok {
 			br.set(memWalkTarget, walkTarget{target: newVecTracker(pos), speed: speed})
@@ -1497,7 +1497,7 @@ func newJumpOnBed(speed float64) *behavior {
 		return jumpable(m.tx, bp) || jumpable(m.tx, bp.Side(cube.FaceDown))
 	}
 	nearest := func(m *Mob) (cube.Pos, bool) {
-		v, ok := m.Brain().get(memNearestBed)
+		v, ok := m.brain().get(memNearestBed)
 		if !ok {
 			return cube.Pos{}, false
 		}
@@ -1517,7 +1517,7 @@ func newJumpOnBed(speed float64) *behavior {
 			if p, ok := nearest(m); ok {
 				bed = &p
 				timeToReach, jumps, cooldown = 100, 3+int(m.tx.RegionRandom().NextInt(4)), 0
-				m.Brain().set(memWalkTarget, walkTarget{target: newBlockPosTracker(p), speed: speed})
+				m.brain().set(memWalkTarget, walkTarget{target: newBlockPosTracker(p), speed: speed})
 			}
 		},
 		stop: func(*Mob, int64) { bed, timeToReach, jumps, cooldown = nil, 0, 0, 0 },
@@ -1545,7 +1545,7 @@ func newJumpOnBed(speed float64) *behavior {
 
 // newSleepInBed ports SleepInBed: at rest, a villager at its free bed sleeps
 // in it.
-func newSleepInBed(b *VillagerBehaviour) *behavior {
+func newSleepInBed(b *villagerBehaviour) *behavior {
 	var nextOK int64
 	return &behavior{
 		entry: []memoryCondition{{memHome, memPresent}, {memLastWoken, memRegistered}, {memLastSlept, memRegistered}, {memWalkTarget, memRegistered},
@@ -1559,7 +1559,7 @@ func newSleepInBed(b *VillagerBehaviour) *behavior {
 			if !here {
 				return false
 			}
-			if v, ok := m.Brain().get(memLastWoken); ok {
+			if v, ok := m.brain().get(memLastWoken); ok {
 				if since := m.tx.CurrentTick() - v.(int64); since > 0 && since < 100 {
 					return false
 				}
@@ -1569,13 +1569,13 @@ func newSleepInBed(b *VillagerBehaviour) *behavior {
 		},
 		canStillUse: func(m *Mob, _ int64) bool {
 			pos, ok := villagerPoi(m, memHome)
-			return ok && m.Brain().isActive(activityRest) && m.data.Pos[1] > float64(pos[1])+.4 && pos.Vec3Centre().Sub(m.data.Pos).LenSqr() < 1.14*1.14
+			return ok && m.brain().isActive(activityRest) && m.data.Pos[1] > float64(pos[1])+.4 && pos.Vec3Centre().Sub(m.data.Pos).LenSqr() < 1.14*1.14
 		},
 		start: func(m *Mob, time int64) {
 			if time <= nextOK {
 				return
 			}
-			br := m.Brain()
+			br := m.brain()
 			pos, _ := villagerPoi(m, memHome)
 			if b.startSleeping(m, pos) {
 				br.set(memLastSlept, time)
@@ -1597,7 +1597,7 @@ func newSleepInBed(b *VillagerBehaviour) *behavior {
 func newSetClosestHomeAsWalkTarget(speed float64) *oneShot {
 	var lastUpdate int64
 	cache := map[cube.Pos]int64{}
-	return newOneShot([]memoryCondition{{memWalkTarget, memAbsent}, {memHome, memAbsent}}, func(m *Mob, br *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memWalkTarget, memAbsent}, {memHome, memAbsent}}, func(m *Mob, br *brain, _ int64) bool {
 		time := m.tx.CurrentTick()
 		if time-lastUpdate < 20 {
 			return false
@@ -1640,7 +1640,7 @@ func newSetClosestHomeAsWalkTarget(speed float64) *oneShot {
 // newInsideBrownianWalk ports InsideBrownianWalk: a villager indoors without
 // a bed shuffles about a block at a time, staying indoors.
 func newInsideBrownianWalk(speed float64) *oneShot {
-	return newOneShot([]memoryCondition{{memWalkTarget, memAbsent}}, func(m *Mob, br *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memWalkTarget, memAbsent}}, func(m *Mob, br *brain, _ int64) bool {
 		if canSeeSky(m.tx, m.BlockPos()) {
 			return false
 		}
@@ -1676,7 +1676,7 @@ func standable(tx *world.Tx, pos cube.Pos) bool {
 // newGoToClosestVillage ports GoToClosestVillage: a villager outside a
 // village heads for the nearest one.
 func newGoToClosestVillage(speed float64, closeEnough int) *oneShot {
-	return newOneShot([]memoryCondition{{memWalkTarget, memAbsent}}, func(m *Mob, br *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memWalkTarget, memAbsent}}, func(m *Mob, br *brain, _ int64) bool {
 		if m.tx.POIs().IsVillage(m.BlockPos()) {
 			return false
 		}
@@ -1684,7 +1684,7 @@ func newGoToClosestVillage(speed float64, closeEnough int) *oneShot {
 		var target mgl64.Vec3
 		found := false
 		for range 5 {
-			pos, ok := LandRandomPos(m, 15, 7)
+			pos, ok := landRandomPos(m, 15, 7)
 			if !ok {
 				continue
 			}
@@ -1708,7 +1708,7 @@ func newGoToClosestVillage(speed float64, closeEnough int) *oneShot {
 // to another one now and then.
 func newSocializeAtBell() *oneShot {
 	return newOneShot([]memoryCondition{{memWalkTarget, memRegistered}, {memLookTarget, memRegistered}, {memMeetingPoint, memPresent},
-		{memNearestVisibleLivingEntities, memPresent}, {memInteractionTarget, memAbsent}}, func(m *Mob, br *Brain, _ int64) bool {
+		{memNearestVisibleLivingEntities, memPresent}, {memInteractionTarget, memAbsent}}, func(m *Mob, br *brain, _ int64) bool {
 		pos, here := villagerPoi(m, memMeetingPoint)
 		v := visibleLiving(m)
 		if m.tx.RegionRandom().NextInt(100) != 0 || !here || pos.Vec3Centre().Sub(m.data.Pos).LenSqr() >= 16 || v.findClosest(m, isVillagerMob) == nil {
@@ -1725,7 +1725,7 @@ func newSocializeAtBell() *oneShot {
 
 // villagerTargetValid ports BehaviorUtils.targetIsValid for villagers.
 func villagerTargetValid(m *Mob, mem memoryType) *Villager {
-	e := m.Brain().entity(m, mem)
+	e := m.brain().entity(m, mem)
 	v, ok := e.(*Villager)
 	if !ok || !entityAlive(e) || !visibleLiving(m).contains(m, e) {
 		return nil
@@ -1773,7 +1773,7 @@ func newTradeWithVillager() *behavior {
 				b.throwHalfStack(m, func(s item.Stack) bool { n, _ := s.Item().EncodeItem(); return slices.Contains(trades, n) }, target)
 			}
 		},
-		stop: func(m *Mob, _ int64) { m.Brain().erase(memInteractionTarget) },
+		stop: func(m *Mob, _ int64) { m.brain().erase(memInteractionTarget) },
 	}
 }
 
@@ -1786,7 +1786,7 @@ func villagerRequestedItems(profession string) []string {
 }
 
 // throwHalfStack ports TradeWithVillager.throwHalfStack.
-func (b *VillagerBehaviour) throwHalfStack(m *Mob, match func(item.Stack) bool, target world.Entity) {
+func (b *villagerBehaviour) throwHalfStack(m *Mob, match func(item.Stack) bool, target world.Entity) {
 	for i, s := range b.inventory.Slots() {
 		if s.Empty() || !match(s) {
 			continue
@@ -1843,7 +1843,7 @@ func newVillagerMakeLove() *behavior {
 				self.viewAction(LoveHeartsAction{})
 			}
 		},
-		stop: func(m *Mob, _ int64) { m.Brain().erase(memBreedTarget) },
+		stop: func(m *Mob, _ int64) { m.brain().erase(memBreedTarget) },
 	}
 }
 
@@ -1896,7 +1896,7 @@ func villagerTakeVacantBed(m *Mob) (cube.Pos, bool) {
 // newRingBell ports RingBell: a villager by the bell during a raid rings it
 // now and then.
 func newRingBell() *oneShot {
-	return newOneShot([]memoryCondition{{memMeetingPoint, memPresent}}, func(m *Mob, br *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memMeetingPoint, memPresent}}, func(m *Mob, br *brain, _ int64) bool {
 		if m.tx.RegionRandom().NextFloat() <= .95 {
 			return false
 		}
@@ -1912,7 +1912,7 @@ func newRingBell() *oneShot {
 
 // newMoveToSkySeeingSpot ports MoveToSkySeeingSpot.
 func newMoveToSkySeeingSpot(speed float64) *oneShot {
-	return newOneShot([]memoryCondition{{memWalkTarget, memAbsent}}, func(m *Mob, br *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memWalkTarget, memAbsent}}, func(m *Mob, br *brain, _ int64) bool {
 		if canSeeSky(m.tx, m.BlockPos()) {
 			return false
 		}
@@ -1935,7 +1935,7 @@ func villagerNoBlocksAbove(m *Mob, pos cube.Pos) bool {
 
 // newCelebrateVillagersSurvivedRaid ports CelebrateVillagersSurvivedRaid:
 // villagers under the open sky celebrate a won raid with fireworks.
-func newCelebrateVillagersSurvivedRaid(b *VillagerBehaviour, minDuration, maxDuration int) *behavior {
+func newCelebrateVillagersSurvivedRaid(b *villagerBehaviour, minDuration, maxDuration int) *behavior {
 	var raid *world.Raid
 	return &behavior{
 		minDuration: minDuration, maxDuration: maxDuration,
@@ -1974,7 +1974,7 @@ func villagerFireworkDuration(flight int) time.Duration {
 // bed's house, or its own.
 func newLocateHidingPlace(radius int, speed float64, closeEnough int) *oneShot {
 	return newOneShot([]memoryCondition{{memWalkTarget, memAbsent}, {memHome, memRegistered}, {memHidingPlace, memRegistered}, {memPath, memRegistered},
-		{memLookTarget, memRegistered}, {memBreedTarget, memRegistered}, {memInteractionTarget, memRegistered}}, func(m *Mob, br *Brain, _ int64) bool {
+		{memLookTarget, memRegistered}, {memBreedTarget, memRegistered}, {memInteractionTarget, memRegistered}}, func(m *Mob, br *brain, _ int64) bool {
 		var pos cube.Pos
 		found := false
 		if near, _, ok := m.tx.POIs().Nearest(m.BlockPos(), world.Home, closeEnough+1, nil); ok && near.Vec3Centre().Sub(m.data.Pos).LenSqr() < float64(closeEnough*closeEnough) {
@@ -2011,7 +2011,7 @@ func newLocateHidingPlace(radius int, speed float64, closeEnough int) *oneShot {
 func newSetHiddenState(seconds, closeEnough int) *oneShot {
 	stay := seconds * 20
 	hidden := 0
-	return newOneShot([]memoryCondition{{memHidingPlace, memPresent}, {memHeardBellTime, memPresent}}, func(m *Mob, br *Brain, time int64) bool {
+	return newOneShot([]memoryCondition{{memHidingPlace, memPresent}, {memHeardBellTime, memPresent}}, func(m *Mob, br *brain, time int64) bool {
 		v, _ := br.get(memHeardBellTime)
 		timedOut := v.(int64)+300 <= time
 		if hidden <= stay && !timedOut {
@@ -2032,7 +2032,7 @@ func newSetHiddenState(seconds, closeEnough int) *oneShot {
 // the memory it remembers the target in.
 func newInteractWithMem(isType func(world.Entity) bool, r int, self func(*Mob) bool, target func(world.Entity) bool, mem memoryType, speed float64, stop int) *oneShot {
 	valid := func(e world.Entity) bool { return isType(e) && target(e) }
-	return newOneShot([]memoryCondition{{mem, memRegistered}, {memLookTarget, memRegistered}, {memWalkTarget, memAbsent}, {memNearestVisibleLivingEntities, memPresent}}, func(m *Mob, br *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{mem, memRegistered}, {memLookTarget, memRegistered}, {memWalkTarget, memAbsent}, {memNearestVisibleLivingEntities, memPresent}}, func(m *Mob, br *brain, _ int64) bool {
 		v := visibleLiving(m)
 		if !self(m) || v.findClosest(m, valid) == nil {
 			return false
@@ -2051,7 +2051,7 @@ type villagerHostilesSensor struct{}
 
 func (villagerHostilesSensor) scanRate() int          { return 0 }
 func (villagerHostilesSensor) requires() []memoryType { return []memoryType{memNearestHostile} }
-func (villagerHostilesSensor) doTick(m *Mob, b *Brain) {
+func (villagerHostilesSensor) doTick(m *Mob, b *brain) {
 	v := visibleLiving(m)
 	if v == nil {
 		b.erase(memNearestHostile)
@@ -2068,7 +2068,7 @@ type villagerBabiesSensor struct{}
 
 func (villagerBabiesSensor) scanRate() int          { return 0 }
 func (villagerBabiesSensor) requires() []memoryType { return []memoryType{memVisibleVillagerBabies} }
-func (villagerBabiesSensor) doTick(m *Mob, b *Brain) {
+func (villagerBabiesSensor) doTick(m *Mob, b *brain) {
 	v := visibleLiving(m)
 	if v == nil {
 		b.erase(memVisibleVillagerBabies)
@@ -2083,11 +2083,11 @@ func (villagerBabiesSensor) doTick(m *Mob, b *Brain) {
 
 // villagerSecondaryPoiSensor ports SecondaryPoiSensor: the farmland around a
 // farmer.
-type villagerSecondaryPoiSensor struct{ b *VillagerBehaviour }
+type villagerSecondaryPoiSensor struct{ b *villagerBehaviour }
 
 func (villagerSecondaryPoiSensor) scanRate() int          { return 40 }
 func (villagerSecondaryPoiSensor) requires() []memoryType { return []memoryType{memSecondaryJobSite} }
-func (s villagerSecondaryPoiSensor) doTick(m *Mob, b *Brain) {
+func (s villagerSecondaryPoiSensor) doTick(m *Mob, b *brain) {
 	var sites []globalPos
 	if s.b.profession == "minecraft:farmer" {
 		dim, centre := m.tx.World().Dimension(), m.BlockPos()
@@ -2117,9 +2117,9 @@ func (villagerGolemSensor) scanRate() int { return 200 }
 func (villagerGolemSensor) requires() []memoryType {
 	return []memoryType{memNearestLivingEntities, memGolemDetectedRecently}
 }
-func (villagerGolemSensor) doTick(m *Mob, b *Brain) {
+func (villagerGolemSensor) doTick(m *Mob, b *brain) {
 	for _, e := range nearestLiving(m) {
-		if e.H().Type() == IronGolemType {
+		if e.H().Type() == entityIronGolemType {
 			b.setWithExpiry(memGolemDetectedRecently, true, 599)
 			return
 		}
@@ -2136,7 +2136,7 @@ type villagerNearestBedSensor struct {
 
 func (*villagerNearestBedSensor) scanRate() int          { return 20 }
 func (*villagerNearestBedSensor) requires() []memoryType { return []memoryType{memNearestBed} }
-func (s *villagerNearestBedSensor) doTick(m *Mob, b *Brain) {
+func (s *villagerNearestBedSensor) doTick(m *Mob, b *brain) {
 	if !mobBaby(m.Self) {
 		return
 	}
@@ -2174,7 +2174,7 @@ func (s *villagerNearestBedSensor) doTick(m *Mob, b *Brain) {
 
 // gossip ports Villager.gossip: villagers that talk share gossip at most once
 // a minute, and may agree to summon an iron golem.
-func (b *VillagerBehaviour) gossip(m *Mob, target *Villager, time int64) {
+func (b *villagerBehaviour) gossip(m *Mob, target *Villager, time int64) {
 	tb := target.behaviour()
 	if (time >= b.lastGossip && time < b.lastGossip+1200) || (time >= tb.lastGossip && time < tb.lastGossip+1200) {
 		return
@@ -2192,7 +2192,7 @@ var gossipWeight = map[string]int{"major_negative": -5, "minor_negative": -1, "m
 
 // transferGossip ports GossipContainer.transferFrom: up to count gossips of
 // the source, picked by weighted value, are learned decayed.
-func (b *VillagerBehaviour) transferGossip(m *Mob, source *VillagerBehaviour, count int) {
+func (b *villagerBehaviour) transferGossip(m *Mob, source *villagerBehaviour, count int) {
 	type entry struct {
 		target, kind string
 		value        int
@@ -2247,7 +2247,7 @@ func (b *VillagerBehaviour) transferGossip(m *Mob, source *VillagerBehaviour, co
 }
 
 // releasePoi ports Villager.releasePoi.
-func (b *VillagerBehaviour) releasePoi(m *Mob, mem memoryType) {
+func (b *villagerBehaviour) releasePoi(m *Mob, mem memoryType) {
 	pos, ok := villagerPoi(m, mem)
 	if !ok {
 		return
@@ -2275,7 +2275,7 @@ func (b *VillagerBehaviour) releasePoi(m *Mob, mem memoryType) {
 // refreshBrain ports Villager.refreshBrain: the brain is rebuilt for the
 // profession and age of the villager, keeping what it remembers that Java
 // saves.
-func (b *VillagerBehaviour) refreshBrain(m *Mob) {
+func (b *villagerBehaviour) refreshBrain(m *Mob) {
 	old := b.br
 	old.stopAll(m)
 	b.br = newVillagerBrain(b)
@@ -2290,7 +2290,7 @@ func (b *VillagerBehaviour) refreshBrain(m *Mob) {
 
 // startSleeping ports LivingEntity.startSleeping for a villager: it lies in
 // the bed, which becomes occupied.
-func (b *VillagerBehaviour) startSleeping(m *Mob, pos cube.Pos) bool {
+func (b *villagerBehaviour) startSleeping(m *Mob, pos cube.Pos) bool {
 	bed, ok := m.tx.Block(pos).(block.Bed)
 	if !ok {
 		return false
@@ -2307,7 +2307,7 @@ func (b *VillagerBehaviour) startSleeping(m *Mob, pos cube.Pos) bool {
 
 // stopSleeping ports LivingEntity.stopSleeping for a villager: it gets up
 // beside the bed, which becomes free, and remembers when it woke.
-func (b *VillagerBehaviour) stopSleeping(m *Mob) {
+func (b *villagerBehaviour) stopSleeping(m *Mob) {
 	pos := *b.sleeping
 	b.sleeping = nil
 	if bed, ok := m.tx.Block(pos).(block.Bed); ok {
@@ -2329,7 +2329,7 @@ func (b *VillagerBehaviour) stopSleeping(m *Mob) {
 
 // wantsToPickUp ports Villager.wantsToPickUp: food, the items villagers pick
 // up and those its profession asks for, if there is room for them.
-func (b *VillagerBehaviour) wantsToPickUp(_ *Mob, s item.Stack) bool {
+func (b *villagerBehaviour) wantsToPickUp(_ *Mob, s item.Stack) bool {
 	name, _ := s.Item().EncodeItem()
 	if !inItemTag(s, "villager_picks_up") && villagerFoodPoints(item.NewStack(s.Item(), 1)) == 0 && !slices.Contains(villagerRequestedItems(b.profession), name) {
 		return false
@@ -2344,7 +2344,7 @@ func (b *VillagerBehaviour) wantsToPickUp(_ *Mob, s item.Stack) bool {
 
 // pickUpItems ports Mob.aiStep picking up loot for a villager, with
 // InventoryCarrier.pickUpItem.
-func (b *VillagerBehaviour) pickUpItems(m *Mob) {
+func (b *villagerBehaviour) pickUpItems(m *Mob) {
 	if mobGriefingDisabled(m.tx) || !m.Alive() {
 		return
 	}
@@ -2359,27 +2359,19 @@ func (b *VillagerBehaviour) pickUpItems(m *Mob) {
 		if taken <= 0 {
 			continue
 		}
-		viewers := m.tx.Viewers(e.Position())
-		for _, v := range viewers {
-			v.ViewEntityAction(e, PickedUpAction{Collector: m.Self.(Collector)})
-		}
-		m.tx.ReleaseViewers(viewers)
+		world.BroadcastEntityAction(m.tx, e, PickedUpAction{Collector: m.Self.(Collector)})
 		takeItemEntity(m, e, taken)
 	}
 }
 
 // setHeld sets the item the villager shows in its hand.
-func (b *VillagerBehaviour) setHeld(m *Mob, s item.Stack) {
+func (b *villagerBehaviour) setHeld(m *Mob, s item.Stack) {
 	b.held = s
-	viewers := m.tx.Viewers(m.data.Pos)
-	for _, v := range viewers {
-		v.ViewEntityItems(m.Self)
-	}
-	m.tx.ReleaseViewers(viewers)
+	world.BroadcastEntityItems(m.tx, m.Self)
 }
 
 // throwGift ports Villager.dropFromGiftLootTable for GiveGiftToHero.
-func (b *VillagerBehaviour) throwGift(m *Mob, target world.Entity) {
+func (b *villagerBehaviour) throwGift(m *Mob, target world.Entity) {
 	table := "minecraft:gameplay/hero_of_the_village/unemployed_gift"
 	if b.age < 0 {
 		table = "minecraft:gameplay/hero_of_the_village/baby_gift"

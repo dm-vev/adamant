@@ -13,10 +13,10 @@ import (
 )
 
 // MinecartCommandBlock is a minecart carrying an activator-rail command actor.
-type MinecartCommandBlock struct{ *Minecart }
+type minecartCommandBlock struct{ *minecart }
 
 // CommandBlockMinecartConfig configures the command actor carried by a minecart.
-type CommandBlockMinecartConfig struct {
+type commandBlockMinecartConfig struct {
 	Command, CustomName, LastOutput                                       string
 	TrackOutput                                                           bool
 	SuccessCount, TickDelay                                               int
@@ -25,9 +25,9 @@ type CommandBlockMinecartConfig struct {
 }
 
 // Apply installs command-block minecart state on entity data.
-func (c CommandBlockMinecartConfig) Apply(data *world.EntityData) {
+func (c commandBlockMinecartConfig) Apply(data *world.EntityData) {
 	data.Data = &commandBlockMinecartBehaviour{
-		MinecartBehaviour: minecartConf.New(), command: c.Command, customName: c.CustomName,
+		minecartBehaviour: minecartConf.New(), command: c.Command, customName: c.CustomName,
 		inv:        inventory.New(1, nil),
 		lastOutput: c.LastOutput, trackOutput: c.TrackOutput, successCount: c.SuccessCount,
 		tickDelay: c.TickDelay, powered: c.Powered, conditional: c.Conditional,
@@ -37,12 +37,12 @@ func (c CommandBlockMinecartConfig) Apply(data *world.EntityData) {
 }
 
 // NewCommandBlockMinecart constructs a command-block minecart entity handle.
-func NewCommandBlockMinecart(opts world.EntitySpawnOpts, conf CommandBlockMinecartConfig) *world.EntityHandle {
-	return opts.New(CommandBlockMinecartType, conf)
+func newCommandBlockMinecart(opts world.EntitySpawnOpts, conf commandBlockMinecartConfig) *world.EntityHandle {
+	return opts.New(entityCommandBlockMinecartType, conf)
 }
 
 type commandBlockMinecartBehaviour struct {
-	*MinecartBehaviour
+	*minecartBehaviour
 	inv                                                                                *inventory.Inventory
 	command, customName, lastOutput                                                    string
 	successCount, tickDelay                                                            int
@@ -54,15 +54,15 @@ type commandBlockMinecartBehaviour struct {
 
 // Inventory exposes the one-slot container used by Bedrock's detector-rail
 // comparator query. It is independent of command execution success count.
-func (m *MinecartCommandBlock) Inventory() *inventory.Inventory {
+func (m *minecartCommandBlock) Inventory() *inventory.Inventory {
 	return m.Behaviour().(*commandBlockMinecartBehaviour).inv
 }
 
-func (b *commandBlockMinecartBehaviour) Base() *MinecartBehaviour { return b.MinecartBehaviour }
+func (b *commandBlockMinecartBehaviour) Base() *minecartBehaviour { return b.minecartBehaviour }
 
 // Interact opens the command-block editor only for creative players of the
 // level of game masters.
-func (m *MinecartCommandBlock) Interact(_ *world.Tx, user item.User, _ *item.UseContext) bool {
+func (m *minecartCommandBlock) Interact(_ *world.Tx, user item.User, _ *item.UseContext) bool {
 	player, ok := user.(interface {
 		UUID() uuid.UUID
 		GameMode() world.GameMode
@@ -70,7 +70,7 @@ func (m *MinecartCommandBlock) Interact(_ *world.Tx, user item.User, _ *item.Use
 	return ok && player.GameMode().CreativeInventory() && cmd.HasLevel(player.UUID(), cmd.LevelGameMaster)
 }
 
-func (m *MinecartCommandBlock) Tick(tx *world.Tx, tick int64) {
+func (m *minecartCommandBlock) Tick(tx *world.Tx, tick int64) {
 	m.Ent.Tick(tx, tick)
 	b := m.Behaviour().(*commandBlockMinecartBehaviour)
 	p := cube.PosFromVec3(m.Position())
@@ -117,18 +117,18 @@ func (b *commandBlockMinecartBehaviour) execute(e *Ent, tx *world.Tx) {
 }
 
 // CommandBlockMinecartType is the registered command-block minecart entity type.
-var CommandBlockMinecartType commandBlockMinecartType
+var entityCommandBlockMinecartType commandBlockMinecartType
 
 type commandBlockMinecartType struct{}
 
 func (commandBlockMinecartType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
-	return &MinecartCommandBlock{Minecart: &Minecart{Ent: &Ent{tx: tx, handle: h, data: d}}}
+	return &minecartCommandBlock{minecart: &minecart{Ent: &Ent{tx: tx, handle: h, data: d}}}
 }
 func (commandBlockMinecartType) EncodeEntity() string          { return "minecraft:command_block_minecart" }
 func (commandBlockMinecartType) BBox(e world.Entity) cube.BBox { return minecartBBox(e) }
 func (commandBlockMinecartType) NetworkOffset() float64        { return minecartNetworkOffset }
 func (commandBlockMinecartType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	b := &commandBlockMinecartBehaviour{MinecartBehaviour: minecartConf.New(), inv: inventory.New(1, nil)}
+	b := &commandBlockMinecartBehaviour{minecartBehaviour: minecartConf.New(), inv: inventory.New(1, nil)}
 	nbtconv.InvFromNBT(b.inv, nbtconv.Slice(m, "Items"), m)
 	b.command = nbtconv.String(m, "Command")
 	b.customName = nbtconv.String(m, "CustomName")
@@ -146,7 +146,7 @@ func (commandBlockMinecartType) DecodeNBT(m map[string]any, d *world.EntityData)
 	} else {
 		b.needsRedstone = !nbtconv.Bool(m, "auto")
 	}
-	readMinecartDisplayNBT(b.MinecartBehaviour, m)
+	readMinecartDisplayNBT(b.minecartBehaviour, m)
 	d.Data = b
 }
 func (commandBlockMinecartType) EncodeNBT(d *world.EntityData) map[string]any {
@@ -161,7 +161,7 @@ func (commandBlockMinecartType) EncodeNBT(d *world.EntityData) map[string]any {
 		"LPCommandMode": int32(b.mode), "LPCondionalMode": boolByte(b.conditional), "LPRedstoneMode": boolByte(!b.needsRedstone),
 		"auto": boolByte(!b.needsRedstone), "Version": int32(26),
 	}
-	writeMinecartDisplayNBT(b.MinecartBehaviour, m)
+	writeMinecartDisplayNBT(b.minecartBehaviour, m)
 	if items := nbtconv.InvToNBT(b.inv); items != nil {
 		m["Items"] = items
 	} else {
@@ -171,7 +171,7 @@ func (commandBlockMinecartType) EncodeNBT(d *world.EntityData) map[string]any {
 }
 
 // UpdateCommandBlock applies client editor fields to the minecart actor.
-func (m *MinecartCommandBlock) UpdateCommandBlock(command, name, output string, trackOutput bool, delay uint32, firstTick bool) {
+func (m *minecartCommandBlock) UpdateCommandBlock(command, name, output string, trackOutput bool, delay uint32, firstTick bool) {
 	b := m.Behaviour().(*commandBlockMinecartBehaviour)
 	b.command, b.customName, b.lastOutput = command, name, output
 	b.trackOutput, b.tickDelay, b.executeOnFirstTick = trackOutput, int(delay), firstTick

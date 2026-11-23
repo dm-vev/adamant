@@ -26,7 +26,7 @@ func NewWindCharge(opts world.EntitySpawnOpts, owner world.Entity) *world.Entity
 	} else {
 		conf.Owner = nil
 	}
-	return opts.New(WindChargeType, conf)
+	return opts.New(entityWindChargeType, conf)
 }
 
 var windChargeConf = ProjectileBehaviourConfig{
@@ -37,7 +37,7 @@ var windChargeConf = ProjectileBehaviourConfig{
 }
 
 // WindChargeType is a world.EntityType implementation for wind charges.
-var WindChargeType windChargeType
+var entityWindChargeType windChargeType
 
 type windChargeType struct{}
 

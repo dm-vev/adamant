@@ -34,7 +34,7 @@ var minecartMatrix = [10][2][3]int{
 }
 
 // MinecartBehaviourConfig configures a minecart behaviour.
-type MinecartBehaviourConfig struct {
+type minecartBehaviourConfig struct {
 	DisplayBlock        world.Block
 	DisplayOffset       int
 	SlowWhenEmpty       bool
@@ -45,12 +45,12 @@ type MinecartBehaviourConfig struct {
 }
 
 // Apply applies the configuration to the entity data.
-func (conf MinecartBehaviourConfig) Apply(data *world.EntityData) {
+func (conf minecartBehaviourConfig) Apply(data *world.EntityData) {
 	data.Data = conf.New()
 }
 
 // New creates a new minecart behaviour.
-func (conf MinecartBehaviourConfig) New() *MinecartBehaviour {
+func (conf minecartBehaviourConfig) New() *minecartBehaviour {
 	if conf.DisplayOffset == 0 {
 		conf.DisplayOffset = minecartDisplayOffset
 	}
@@ -66,7 +66,7 @@ func (conf MinecartBehaviourConfig) New() *MinecartBehaviour {
 	if !conf.SlowWhenEmpty {
 		conf.SlowWhenEmpty = true
 	}
-	b := &MinecartBehaviour{
+	b := &minecartBehaviour{
 		displayBlock:        conf.DisplayBlock,
 		displayOffset:       conf.DisplayOffset,
 		slowWhenEmpty:       conf.SlowWhenEmpty,
@@ -90,7 +90,7 @@ func (conf MinecartBehaviourConfig) New() *MinecartBehaviour {
 }
 
 // MinecartBehaviour implements the behaviour of minecarts.
-type MinecartBehaviour struct {
+type minecartBehaviour struct {
 	mc *MovementComputer
 
 	displayBlock  world.Block
@@ -116,12 +116,12 @@ type MinecartBehaviour struct {
 }
 
 // Base returns the base minecart behaviour.
-func (b *MinecartBehaviour) Base() *MinecartBehaviour {
+func (b *minecartBehaviour) Base() *minecartBehaviour {
 	return b
 }
 
 // Tick ticks the minecart behaviour.
-func (b *MinecartBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (b *minecartBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	prevPos, prevVel, prevRot := e.data.Pos, e.data.Vel, e.data.Rot
 	if b.activatorPending {
 		b.activatorPending = false
@@ -160,12 +160,12 @@ func (b *MinecartBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 }
 
 // Explode adds velocity to the minecart when hit by an explosion.
-func (b *MinecartBehaviour) Explode(e *Ent, src world.ExplosionSource, impact float64) {
+func (b *minecartBehaviour) Explode(e *Ent, src world.ExplosionSource, impact float64) {
 	e.data.Vel = e.data.Vel.Add(ExplosionImpulse(e, src, impact))
 }
 
 // Activate triggers activator rail behaviour for the base minecart.
-func (b *MinecartBehaviour) Activate(e *Ent, tx *world.Tx, powered bool) {
+func (b *minecartBehaviour) Activate(e *Ent, tx *world.Tx, powered bool) {
 	if !powered || !b.rideable || b.passenger == nil {
 		return
 	}
@@ -174,32 +174,32 @@ func (b *MinecartBehaviour) Activate(e *Ent, tx *world.Tx, powered bool) {
 
 // Rideable reports if the minecart carries a passenger, as only plain
 // minecarts do.
-func (b *MinecartBehaviour) Rideable() bool {
+func (b *minecartBehaviour) Rideable() bool {
 	return b.rideable
 }
 
 // CanRideTarget reports if the minecart may be ridden.
-func (b *MinecartBehaviour) CanRideTarget() bool {
+func (b *minecartBehaviour) CanRideTarget() bool {
 	return b.rideable
 }
 
 // RiderSeat returns the seat of Bedrock's minecart: one rider, centred.
-func (b *MinecartBehaviour) RiderSeat(rider world.Entity) world.RiderSeat {
+func (b *minecartBehaviour) RiderSeat(rider world.Entity) world.RiderSeat {
 	return seat{pos: mgl64.Vec3{0, -0.2, 0}}.riderSeat(rider)
 }
 
 // SetVehicleInput updates the input used by the minecart.
-func (b *MinecartBehaviour) SetVehicleInput(_, forward float64) {
+func (b *minecartBehaviour) SetVehicleInput(_, forward float64) {
 	b.currentSpeed = forward
 }
 
 // Passenger returns the current passenger handle.
-func (b *MinecartBehaviour) Passenger() *world.EntityHandle {
+func (b *minecartBehaviour) Passenger() *world.EntityHandle {
 	return b.passenger
 }
 
 // DisplayBlock returns the display block, if any.
-func (b *MinecartBehaviour) DisplayBlock() (world.Block, bool) {
+func (b *minecartBehaviour) DisplayBlock() (world.Block, bool) {
 	if b.displayBlock != nil {
 		return b.displayBlock, true
 	}
@@ -212,32 +212,32 @@ func (b *MinecartBehaviour) DisplayBlock() (world.Block, bool) {
 }
 
 // DisplayOffset returns the display offset.
-func (b *MinecartBehaviour) DisplayOffset() int {
+func (b *minecartBehaviour) DisplayOffset() int {
 	return b.displayOffset
 }
 
 // CustomDisplay reports if the minecart uses a custom display tile.
-func (b *MinecartBehaviour) CustomDisplay() bool {
+func (b *minecartBehaviour) CustomDisplay() bool {
 	return b.customDisplay || b.displayBlock != nil || b.displayTile != 0
 }
 
 // RollingAmplitude returns the rolling amplitude for hurt animation.
-func (b *MinecartBehaviour) RollingAmplitude() int {
+func (b *minecartBehaviour) RollingAmplitude() int {
 	return b.rollingAmplitude
 }
 
 // RollingDirection returns the rolling direction for hurt animation.
-func (b *MinecartBehaviour) RollingDirection() int {
+func (b *minecartBehaviour) RollingDirection() int {
 	return b.rollingDirection
 }
 
 // Damage returns the stored minecart damage value.
-func (b *MinecartBehaviour) Damage() float64 {
+func (b *minecartBehaviour) Damage() float64 {
 	return b.damage
 }
 
 // Hurt applies damage to the minecart and returns true if it should be destroyed.
-func (b *MinecartBehaviour) Hurt(amount float64) bool {
+func (b *minecartBehaviour) Hurt(amount float64) bool {
 	b.rollingDirection *= -1
 	b.rollingAmplitude = 9
 	b.damage += amount * 10
@@ -245,12 +245,12 @@ func (b *MinecartBehaviour) Hurt(amount float64) bool {
 }
 
 // ResetDamage resets the damage to 0.
-func (b *MinecartBehaviour) ResetDamage() {
+func (b *minecartBehaviour) ResetDamage() {
 	b.damage = 0
 }
 
 // SetDisplayBlock updates the display block on the minecart.
-func (b *MinecartBehaviour) SetDisplayBlock(bl world.Block, custom bool) {
+func (b *minecartBehaviour) SetDisplayBlock(bl world.Block, custom bool) {
 	b.displayBlock = bl
 	if bl == nil {
 		b.customDisplay = false
@@ -272,12 +272,12 @@ func (b *MinecartBehaviour) SetDisplayBlock(bl world.Block, custom bool) {
 }
 
 // SetDisplayOffset updates the display offset.
-func (b *MinecartBehaviour) SetDisplayOffset(offset int) {
+func (b *minecartBehaviour) SetDisplayOffset(offset int) {
 	b.displayOffset = offset
 }
 
 // Mount mounts a passenger on the minecart.
-func (b *MinecartBehaviour) Mount(e *Ent, tx *world.Tx, passenger world.Entity) bool {
+func (b *minecartBehaviour) Mount(e *Ent, tx *world.Tx, passenger world.Entity) bool {
 	if passenger == nil || b.passenger != nil {
 		return false
 	}
@@ -295,7 +295,7 @@ func (b *MinecartBehaviour) Mount(e *Ent, tx *world.Tx, passenger world.Entity) 
 }
 
 // Dismount dismounts the current passenger.
-func (b *MinecartBehaviour) Dismount(e *Ent, tx *world.Tx) {
+func (b *minecartBehaviour) Dismount(e *Ent, tx *world.Tx) {
 	if b.passenger == nil {
 		return
 	}
@@ -312,11 +312,11 @@ func (b *MinecartBehaviour) Dismount(e *Ent, tx *world.Tx) {
 }
 
 // DismountAll dismounts all passengers from the minecart.
-func (b *MinecartBehaviour) DismountAll(e *Ent, tx *world.Tx) {
+func (b *minecartBehaviour) DismountAll(e *Ent, tx *world.Tx) {
 	b.Dismount(e, tx)
 }
 
-func (b *MinecartBehaviour) updateRotation(e *Ent, prevPos mgl64.Vec3) {
+func (b *minecartBehaviour) updateRotation(e *Ent, prevPos mgl64.Vec3) {
 	diffX := prevPos[0] - e.data.Pos[0]
 	diffZ := prevPos[2] - e.data.Pos[2]
 	yaw := e.data.Rot.Yaw()
@@ -329,7 +329,7 @@ func (b *MinecartBehaviour) updateRotation(e *Ent, prevPos mgl64.Vec3) {
 	e.data.Rot = cube.Rotation{yaw, 0}
 }
 
-func (b *MinecartBehaviour) updatePassenger(e *Ent, tx *world.Tx) {
+func (b *minecartBehaviour) updatePassenger(e *Ent, tx *world.Tx) {
 	if b.passenger == nil {
 		return
 	}
@@ -347,7 +347,7 @@ func (b *MinecartBehaviour) updatePassenger(e *Ent, tx *world.Tx) {
 	}
 }
 
-func (b *MinecartBehaviour) checkPassengerAlive(e *Ent, tx *world.Tx) {
+func (b *minecartBehaviour) checkPassengerAlive(e *Ent, tx *world.Tx) {
 	if b.passenger == nil {
 		return
 	}
@@ -361,7 +361,7 @@ func (b *MinecartBehaviour) checkPassengerAlive(e *Ent, tx *world.Tx) {
 	}
 }
 
-func (b *MinecartBehaviour) handleCollisions(e *Ent, tx *world.Tx) {
+func (b *minecartBehaviour) handleCollisions(e *Ent, tx *world.Tx) {
 	box := e.H().Type().BBox(e).Translate(e.data.Pos)
 	search := box.Grow(1.0)
 	collision := box.Grow(0.1)
@@ -383,7 +383,7 @@ func (b *MinecartBehaviour) handleCollisions(e *Ent, tx *world.Tx) {
 	}
 }
 
-func (b *MinecartBehaviour) applyEntityCollision(e *Ent, other world.Entity) {
+func (b *minecartBehaviour) applyEntityCollision(e *Ent, other world.Entity) {
 	if gm, ok := other.(interface{ GameMode() world.GameMode }); ok && !gm.GameMode().HasCollision() {
 		return
 	}
@@ -421,7 +421,7 @@ func (b *MinecartBehaviour) applyEntityCollision(e *Ent, other world.Entity) {
 	e.data.Vel[2] -= motiveZ
 }
 
-func (b *MinecartBehaviour) applyMinecartCollision(e *Ent, other world.Entity, otherCart interface {
+func (b *minecartBehaviour) applyMinecartCollision(e *Ent, other world.Entity, otherCart interface {
 	Velocity() mgl64.Vec3
 	SetVelocity(v mgl64.Vec3)
 }) {
@@ -517,7 +517,7 @@ func minecartEntityTypeID(entityID string) int {
 	}
 }
 
-func (b *MinecartBehaviour) broadcastLink(e *Ent, tx *world.Tx, passenger *world.EntityHandle, mounted bool) {
+func (b *minecartBehaviour) broadcastLink(e *Ent, tx *world.Tx, passenger *world.EntityHandle, mounted bool) {
 	viewers := tx.Viewers(e.data.Pos)
 	for _, v := range viewers {
 		if linkViewer, ok := v.(interface {
@@ -529,11 +529,11 @@ func (b *MinecartBehaviour) broadcastLink(e *Ent, tx *world.Tx, passenger *world
 	tx.ReleaseViewers(viewers)
 }
 
-func (b *MinecartBehaviour) broadcastState(e *Ent, tx *world.Tx) {
+func (b *minecartBehaviour) broadcastState(e *Ent, tx *world.Tx) {
 	world.BroadcastEntityState(tx, e)
 }
 
-func (b *MinecartBehaviour) broadcastPassengerState(tx *world.Tx, passenger *world.EntityHandle) {
+func (b *minecartBehaviour) broadcastPassengerState(tx *world.Tx, passenger *world.EntityHandle) {
 	if passenger == nil {
 		return
 	}
@@ -544,7 +544,7 @@ func (b *MinecartBehaviour) broadcastPassengerState(tx *world.Tx, passenger *wor
 	world.BroadcastEntityState(tx, ent)
 }
 
-func (b *MinecartBehaviour) newMovement(e *Ent, tx *world.Tx, prevPos, prevVel mgl64.Vec3, prevRot cube.Rotation) *Movement {
+func (b *minecartBehaviour) newMovement(e *Ent, tx *world.Tx, prevPos, prevVel mgl64.Vec3, prevRot cube.Rotation) *Movement {
 	viewers := tx.Viewers(prevPos)
 	return &Movement{
 		v:          viewers,
@@ -575,34 +575,34 @@ func clamp(v, min, max float64) float64 {
 }
 
 // Minecart is the base minecart entity.
-type Minecart struct {
+type minecart struct {
 	*Ent
 }
 
-func (m *Minecart) base() *MinecartBehaviour {
-	if b, ok := m.Behaviour().(*MinecartBehaviour); ok {
+func (m *minecart) base() *minecartBehaviour {
+	if b, ok := m.Behaviour().(*minecartBehaviour); ok {
 		return b
 	}
-	if b, ok := m.Behaviour().(interface{ Base() *MinecartBehaviour }); ok {
+	if b, ok := m.Behaviour().(interface{ Base() *minecartBehaviour }); ok {
 		return b.Base()
 	}
 	return nil
 }
 
 // SetVehicleInput updates the input used by the minecart.
-func (m *Minecart) SetVehicleInput(strafe, forward float64) {
+func (m *minecart) SetVehicleInput(strafe, forward float64) {
 	if b := m.base(); b != nil {
 		b.SetVehicleInput(strafe, forward)
 	}
 }
 
 // Interact handles interaction with the minecart.
-func (m *Minecart) Interact(tx *world.Tx, user item.User, _ *item.UseContext) bool {
+func (m *minecart) Interact(tx *world.Tx, user item.User, _ *item.UseContext) bool {
 	return m.Mount(tx, user)
 }
 
 // Mount seats passenger in a rideable minecart without a display block.
-func (m *Minecart) Mount(tx *world.Tx, passenger world.Entity) bool {
+func (m *minecart) Mount(tx *world.Tx, passenger world.Entity) bool {
 	if b := m.base(); b != nil && b.rideable {
 		if _, hasDisplay := b.DisplayBlock(); hasDisplay {
 			return false
@@ -613,7 +613,7 @@ func (m *Minecart) Mount(tx *world.Tx, passenger world.Entity) bool {
 }
 
 // Dismount removes the passenger from the minecart if it matches.
-func (m *Minecart) Dismount(tx *world.Tx, passenger world.Entity) {
+func (m *minecart) Dismount(tx *world.Tx, passenger world.Entity) {
 	b := m.base()
 	if b == nil || passenger == nil || b.passenger == nil {
 		return
@@ -625,7 +625,7 @@ func (m *Minecart) Dismount(tx *world.Tx, passenger world.Entity) {
 }
 
 // Destroy destroys the minecart, dropping the item if appropriate.
-func (m *Minecart) Destroy(tx *world.Tx, src world.DamageSource, causer world.Entity) bool {
+func (m *minecart) Destroy(tx *world.Tx, src world.DamageSource, causer world.Entity) bool {
 	b := m.base()
 	if b == nil {
 		_ = m.CloseIn(tx)
@@ -645,7 +645,7 @@ func (m *Minecart) Destroy(tx *world.Tx, src world.DamageSource, causer world.En
 }
 
 // Links returns the active links for the minecart.
-func (m *Minecart) Links() []Link {
+func (m *minecart) Links() []Link {
 	b := m.base()
 	if b == nil || b.passenger == nil {
 		return nil
@@ -692,12 +692,12 @@ func canDropMinecart(causer world.Entity, _ *world.World) bool {
 }
 
 // minecartType is a world.EntityType implementation for minecarts.
-var MinecartType minecartType
+var entityMinecartType minecartType
 
 type minecartType struct{}
 
 func (minecartType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.EntityData) world.Entity {
-	return &Minecart{Ent: &Ent{tx: tx, handle: handle, data: data}}
+	return &minecart{Ent: &Ent{tx: tx, handle: handle, data: data}}
 }
 
 func (minecartType) EncodeEntity() string { return "minecraft:minecart" }
@@ -721,23 +721,23 @@ func (minecartType) EncodeNBT(data *world.EntityData) map[string]any {
 	return m
 }
 
-var minecartConf = MinecartBehaviourConfig{
+var minecartConf = minecartBehaviourConfig{
 	Rideable:      true,
 	SlowWhenEmpty: true,
 }
 
-func minecartBaseBehaviour(data any) *MinecartBehaviour {
+func minecartBaseBehaviour(data any) *minecartBehaviour {
 	switch b := data.(type) {
-	case *MinecartBehaviour:
+	case *minecartBehaviour:
 		return b
-	case interface{ Base() *MinecartBehaviour }:
+	case interface{ Base() *minecartBehaviour }:
 		return b.Base()
 	default:
 		return nil
 	}
 }
 
-func readMinecartDisplayNBT(b *MinecartBehaviour, m map[string]any) {
+func readMinecartDisplayNBT(b *minecartBehaviour, m map[string]any) {
 	if b == nil {
 		return
 	}
@@ -766,7 +766,7 @@ func readMinecartDisplayNBT(b *MinecartBehaviour, m map[string]any) {
 	}
 }
 
-func writeMinecartDisplayNBT(b *MinecartBehaviour, m map[string]any) {
+func writeMinecartDisplayNBT(b *minecartBehaviour, m map[string]any) {
 	if b == nil {
 		return
 	}

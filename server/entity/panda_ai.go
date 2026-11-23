@@ -49,26 +49,26 @@ func (s *pandaState) canPerformAction(tx *world.Tx) bool {
 func (s *pandaState) registerGoals(m *Mob) {
 	ai := m.AI
 	ai.moveOverride = pandaMoveControl{s}
-	ai.Goals.Add(0, NewFloatGoal(m))
-	s.panic = NewPanicGoal(2)
+	ai.Goals.Add(0, newFloatGoal(m))
+	s.panic = newPanicGoal(2)
 	s.panic.Causes = panicEnvironmentalCause
 	ai.Goals.Add(2, pandaPanicGoal{s.panic, s})
-	ai.Goals.Add(2, &pandaBreedGoal{BreedGoal: NewBreedGoal(1), panda: s})
-	ai.Goals.Add(3, pandaAttackGoal{NewMeleeAttackGoal(1.2, true), s})
-	ai.Goals.Add(4, NewTemptGoal(1, pandaFood, false))
+	ai.Goals.Add(2, &pandaBreedGoal{breedGoal: newBreedGoal(1), panda: s})
+	ai.Goals.Add(3, pandaAttackGoal{newMeleeAttackGoal(1.2, true), s})
+	ai.Goals.Add(4, newTemptGoal(1, pandaFood, false))
 	notSpectating := func(e world.Entity) bool { return isPlayerEntity(e) && !spectator(e) }
-	ai.Goals.Add(6, pandaAvoidGoal{NewAvoidEntityGoal(notSpectating, 8, 2, 2), s})
-	ai.Goals.Add(6, pandaAvoidGoal{NewAvoidEntityGoal(func(e world.Entity) bool { return monsterClass[e.H().Type().EncodeEntity()] }, 4, 2, 2), s})
+	ai.Goals.Add(6, pandaAvoidGoal{newAvoidEntityGoal(notSpectating, 8, 2, 2), s})
+	ai.Goals.Add(6, pandaAvoidGoal{newAvoidEntityGoal(func(e world.Entity) bool { return monsterClass[e.H().Type().EncodeEntity()] }, 4, 2, 2), s})
 	ai.Goals.Add(7, &pandaSitGoal{goalFlags: goalFlags{GoalMove}, panda: s})
 	ai.Goals.Add(8, &pandaLieOnBackGoal{panda: s})
 	ai.Goals.Add(8, &pandaSneezeGoal{panda: s})
-	s.lookAtPlayer = &pandaLookAtPlayerGoal{LookAtPlayerGoal: NewLookAtPlayerGoal(6), panda: s}
+	s.lookAtPlayer = &pandaLookAtPlayerGoal{lookAtPlayerGoal: newLookAtPlayerGoal(6), panda: s}
 	ai.Goals.Add(9, s.lookAtPlayer)
-	ai.Goals.Add(10, NewRandomLookAroundGoal())
+	ai.Goals.Add(10, newRandomLookAroundGoal())
 	ai.Goals.Add(12, &pandaRollGoal{goalFlags: goalFlags{GoalMove | GoalLook | GoalJump}, panda: s})
-	ai.Goals.Add(13, NewFollowParentGoal(1.25))
-	ai.Goals.Add(14, NewWaterAvoidingRandomStrollGoal(1))
-	hurt := NewHurtByTargetGoal()
+	ai.Goals.Add(13, newFollowParentGoal(1.25))
+	ai.Goals.Add(14, newWaterAvoidingRandomStrollGoal(1))
+	hurt := newHurtByTargetGoal()
 	hurt.AlertOthers = true
 	// PandaHurtByTargetGoal.alertOther: only aggressive pandas join in.
 	hurt.AlertOther = func(_, other *Mob, attacker world.Entity) {
@@ -213,11 +213,7 @@ func (s *pandaState) handleEating(m *Mob) {
 
 // viewHeld shows viewers what the panda holds.
 func (s *pandaState) viewHeld(m *Mob) {
-	viewers := m.tx.Viewers(m.data.Pos)
-	for _, v := range viewers {
-		v.ViewEntityItems(m.Self)
-	}
-	m.tx.ReleaseViewers(viewers)
+	world.BroadcastEntityItems(m.tx, m.Self)
 }
 
 // tryToSit ports Panda.tryToSit.
@@ -260,7 +256,7 @@ func (c pandaMoveControl) tick(m *Mob) {
 // pandaPanicGoal ports Panda.PandaPanicGoal, which a panda sitting down
 // stops.
 type pandaPanicGoal struct {
-	*PanicGoal
+	*panicGoal
 	panda *pandaState
 }
 
@@ -269,21 +265,21 @@ func (g pandaPanicGoal) CanContinueToUse(m *Mob) bool {
 		m.AI.nav.Stop()
 		return false
 	}
-	return g.PanicGoal.CanContinueToUse(m)
+	return g.panicGoal.CanContinueToUse(m)
 }
 
 // pandaBreedGoal ports Panda.PandaBreedGoal: a panda only breeds with bamboo
 // growing within eight blocks, and otherwise sulks at the nearest player at
 // most every 30 seconds.
 type pandaBreedGoal struct {
-	*BreedGoal
+	*breedGoal
 	panda           *pandaState
 	unhappyCooldown int
 }
 
 func (g *pandaBreedGoal) CanUse(m *Mob) bool {
 	s := g.panda
-	if !g.BreedGoal.CanUse(m) || s.unhappy != 0 {
+	if !g.breedGoal.CanUse(m) || s.unhappy != 0 {
 		return false
 	}
 	if pandaBambooNearby(m.tx, m.BlockPos()) {
@@ -320,35 +316,35 @@ func pandaBambooNearby(tx *world.Tx, pos cube.Pos) bool {
 // pandaAttackGoal ports Panda.PandaAttackGoal, which a busy panda does not
 // start.
 type pandaAttackGoal struct {
-	*MeleeAttackGoal
+	*meleeAttackGoal
 	panda *pandaState
 }
 
 func (g pandaAttackGoal) CanUse(m *Mob) bool {
-	return g.panda.canPerformAction(m.tx) && g.MeleeAttackGoal.CanUse(m)
+	return g.panda.canPerformAction(m.tx) && g.meleeAttackGoal.CanUse(m)
 }
 
 // pandaAvoidGoal ports Panda.PandaAvoidGoal, which only a worried panda free
 // to act runs.
 type pandaAvoidGoal struct {
-	*AvoidEntityGoal
+	*avoidEntityGoal
 	panda *pandaState
 }
 
 func (g pandaAvoidGoal) CanUse(m *Mob) bool {
-	return g.panda.variant == pandaWorried && g.panda.canPerformAction(m.tx) && g.AvoidEntityGoal.CanUse(m)
+	return g.panda.variant == pandaWorried && g.panda.canPerformAction(m.tx) && g.avoidEntityGoal.CanUse(m)
 }
 
 // pandaHurtByTargetGoal ports Panda.PandaHurtByTargetGoal: a panda forgets
 // its attacker once it bit it or was given bamboo.
 type pandaHurtByTargetGoal struct {
-	*HurtByTargetGoal
+	*hurtByTargetGoal
 	panda *pandaState
 }
 
 func (g pandaHurtByTargetGoal) CanContinueToUse(m *Mob) bool {
 	if !g.panda.gotBamboo && !g.panda.didBite {
-		return g.HurtByTargetGoal.CanContinueToUse(m)
+		return g.hurtByTargetGoal.CanContinueToUse(m)
 	}
 	m.SetTarget(nil)
 	return false
@@ -383,7 +379,7 @@ func (g *pandaLieOnBackGoal) Stop(m *Mob) { g.panda.lying, g.cooldown = false, m
 // looking at the player a sulking panda picked and only a panda free to act
 // starts.
 type pandaLookAtPlayerGoal struct {
-	*LookAtPlayerGoal
+	*lookAtPlayerGoal
 	panda *pandaState
 }
 
@@ -402,12 +398,12 @@ func (g *pandaLookAtPlayerGoal) CanUse(m *Mob) bool {
 }
 
 func (g *pandaLookAtPlayerGoal) CanContinueToUse(m *Mob) bool {
-	return g.lookAt != nil && g.LookAtPlayerGoal.CanContinueToUse(m)
+	return g.lookAt != nil && g.lookAtPlayerGoal.CanContinueToUse(m)
 }
 
 func (g *pandaLookAtPlayerGoal) Tick(m *Mob) {
 	if g.lookAt != nil {
-		g.LookAtPlayerGoal.Tick(m)
+		g.lookAtPlayerGoal.Tick(m)
 	}
 }
 

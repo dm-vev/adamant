@@ -760,7 +760,7 @@ func mustDo(t *testing.T, w *world.World, f func(tx *world.Tx)) {
 type testPortalCreatorConfig struct{}
 
 func (testPortalCreatorConfig) Apply(data *world.EntityData) {
-	data.Data = &testMoveBehaviour{BaseBehaviour: BaseBehaviour{portalTravel: &PortalTravelComputer{CreatePortal: true}}}
+	data.Data = &testMoveBehaviour{baseBehaviour: baseBehaviour{portalTravel: &PortalTravelComputer{CreatePortal: true}}}
 }
 
 func waitForEntityWorld(t *testing.T, handle *world.EntityHandle, w *world.World) {
@@ -832,11 +832,11 @@ type testMoveConfig struct {
 }
 
 func (c testMoveConfig) Apply(data *world.EntityData) {
-	data.Data = &testMoveBehaviour{BaseBehaviour: NewBaseBehaviour(), delta: c.delta, movement: c.movement}
+	data.Data = &testMoveBehaviour{baseBehaviour: newBaseBehaviour(), delta: c.delta, movement: c.movement}
 }
 
 type testMoveBehaviour struct {
-	BaseBehaviour
+	baseBehaviour
 
 	delta    mgl64.Vec3
 	movement *Movement

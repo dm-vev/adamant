@@ -32,21 +32,21 @@ func (s *zombifiedPiglinState) Tick(e *Ent, tx *world.Tx) *Movement {
 func (s *zombifiedPiglinState) registerGoals(m *Mob) {
 	ai := m.AI
 	ai.SetPathfindingMalus(PathLava, 8)
-	ai.Goals.Add(8, NewLookAtPlayerGoal(8))
-	ai.Goals.Add(8, NewRandomLookAroundGoal())
-	attack := NewMeleeAttackGoal(1, false)
+	ai.Goals.Add(8, newLookAtPlayerGoal(8))
+	ai.Goals.Add(8, newRandomLookAroundGoal())
+	attack := newMeleeAttackGoal(1, false)
 	raiseArmTicks := 0
-	attack.OnTick = func(m *Mob, g *MeleeAttackGoal) {
+	attack.OnTick = func(m *Mob, g *meleeAttackGoal) {
 		raiseArmTicks++
 		m.SetAggressive(raiseArmTicks >= 5 && g.TicksUntilNextAttack() < g.AttackInterval()/2)
 	}
 	ai.Goals.Add(1, newSpearUseGoal(1, 1, 10, 2))
-	ai.Goals.Add(2, &zombieAttackGoal{MeleeAttackGoal: attack, raiseArmTicks: &raiseArmTicks})
-	ai.Goals.Add(7, NewWaterAvoidingRandomStrollGoal(1))
-	hurt := NewHurtByTargetGoal()
+	ai.Goals.Add(2, &zombieAttackGoal{meleeAttackGoal: attack, raiseArmTicks: &raiseArmTicks})
+	ai.Goals.Add(7, newWaterAvoidingRandomStrollGoal(1))
+	hurt := newHurtByTargetGoal()
 	hurt.AlertOthers = true
 	ai.Targets.Add(1, hurt)
-	players := NewNearestAttackableTargetGoal(nil, true)
+	players := newNearestAttackableTargetGoal(nil, true)
 	players.Selector = func(m *Mob, target world.Entity) bool { return zombifiedPiglinOf(m).angryAt(m, target) }
 	ai.Targets.Add(2, players)
 	ai.Targets.Add(3, &resetUniversalAngerTargetGoal{lastHurtByPlayer: -1, alertSameType: true})

@@ -10,22 +10,22 @@ import (
 
 // FloatGoal makes a mob swim up in water and lava, ported from Java's
 // FloatGoal.
-type FloatGoal struct{ goalFlags }
+type floatGoal struct{ goalFlags }
 
 // NewFloatGoal returns a FloatGoal and lets the navigation of the mob path
 // across water.
-func NewFloatGoal(m *Mob) *FloatGoal {
+func newFloatGoal(m *Mob) *floatGoal {
 	m.AI.nav.SetCanFloat(true)
-	return &FloatGoal{goalFlags{GoalJump}}
+	return &floatGoal{goalFlags{GoalJump}}
 }
 
-func (g *FloatGoal) CanUse(m *Mob) bool {
+func (g *floatGoal) CanUse(m *Mob) bool {
 	return m.AI.waterHeight > m.FluidJumpThreshold() || m.InLava()
 }
 
-func (g *FloatGoal) RequiresUpdateEveryTick() bool { return true }
+func (g *floatGoal) RequiresUpdateEveryTick() bool { return true }
 
-func (g *FloatGoal) Tick(m *Mob) {
+func (g *floatGoal) Tick(m *Mob) {
 	if m.Random().NextFloat() < .8 {
 		m.AI.jump.Jump()
 	}
@@ -34,7 +34,7 @@ func (g *FloatGoal) Tick(m *Mob) {
 // RandomStrollGoal walks a mob to random positions now and then, ported from
 // Java's RandomStrollGoal. With AvoidWater set, it is a
 // WaterAvoidingRandomStrollGoal.
-type RandomStrollGoal struct {
+type randomStrollGoal struct {
 	goalFlags
 	SpeedModifier     float64
 	Interval          int
@@ -52,18 +52,18 @@ type RandomStrollGoal struct {
 
 // NewRandomStrollGoal returns a RandomStrollGoal with the interval of 120
 // ticks of Java.
-func NewRandomStrollGoal(speedModifier float64) *RandomStrollGoal {
-	return &RandomStrollGoal{goalFlags: goalFlags{GoalMove}, SpeedModifier: speedModifier, Interval: 120, CheckNoActionTime: true}
+func newRandomStrollGoal(speedModifier float64) *randomStrollGoal {
+	return &randomStrollGoal{goalFlags: goalFlags{GoalMove}, SpeedModifier: speedModifier, Interval: 120, CheckNoActionTime: true}
 }
 
 // NewWaterAvoidingRandomStrollGoal returns a WaterAvoidingRandomStrollGoal.
-func NewWaterAvoidingRandomStrollGoal(speedModifier float64) *RandomStrollGoal {
-	g := NewRandomStrollGoal(speedModifier)
+func newWaterAvoidingRandomStrollGoal(speedModifier float64) *randomStrollGoal {
+	g := newRandomStrollGoal(speedModifier)
 	g.AvoidWater, g.Probability = true, .001
 	return g
 }
 
-func (g *RandomStrollGoal) CanUse(m *Mob) bool {
+func (g *randomStrollGoal) CanUse(m *Mob) bool {
 	if !g.forceTrigger {
 		if g.CheckNoActionTime && m.NoActionTime() >= 100 {
 			return false
@@ -80,40 +80,40 @@ func (g *RandomStrollGoal) CanUse(m *Mob) bool {
 	return true
 }
 
-func (g *RandomStrollGoal) position(m *Mob) (mgl64.Vec3, bool) {
+func (g *randomStrollGoal) position(m *Mob) (mgl64.Vec3, bool) {
 	if g.Position != nil {
 		return g.Position(m)
 	}
 	if !g.AvoidWater {
-		return DefaultRandomPos(m, 10, 7)
+		return defaultRandomPos(m, 10, 7)
 	}
 	if m.InWater() {
-		if pos, ok := LandRandomPos(m, 15, 7); ok {
+		if pos, ok := landRandomPos(m, 15, 7); ok {
 			return pos, true
 		}
-		return DefaultRandomPos(m, 10, 7)
+		return defaultRandomPos(m, 10, 7)
 	}
 	if float64(m.Random().NextFloat()) >= g.Probability {
-		return LandRandomPos(m, 10, 7)
+		return landRandomPos(m, 10, 7)
 	}
-	return DefaultRandomPos(m, 10, 7)
+	return defaultRandomPos(m, 10, 7)
 }
 
-func (g *RandomStrollGoal) CanContinueToUse(m *Mob) bool { return !m.AI.nav.IsDone() }
+func (g *randomStrollGoal) CanContinueToUse(m *Mob) bool { return !m.AI.nav.IsDone() }
 
-func (g *RandomStrollGoal) Start(m *Mob) {
+func (g *randomStrollGoal) Start(m *Mob) {
 	m.AI.nav.MoveToPos(m, g.wanted[0], g.wanted[1], g.wanted[2], g.SpeedModifier)
 }
 
-func (g *RandomStrollGoal) Stop(m *Mob) { m.AI.nav.Stop() }
+func (g *randomStrollGoal) Stop(m *Mob) { m.AI.nav.Stop() }
 
 // Trigger makes the goal walk the next time it may.
-func (g *RandomStrollGoal) Trigger() { g.forceTrigger = true }
+func (g *randomStrollGoal) Trigger() { g.forceTrigger = true }
 
 // LookAtPlayerGoal turns the head of a mob towards a nearby player, or an
 // entity of another type, now and then, ported from Java's
 // LookAtPlayerGoal.
-type LookAtPlayerGoal struct {
+type lookAtPlayerGoal struct {
 	goalFlags
 	// IsType selects the entities looked at, players if nil.
 	IsType         func(world.Entity) bool
@@ -127,11 +127,11 @@ type LookAtPlayerGoal struct {
 
 // NewLookAtPlayerGoal returns a LookAtPlayerGoal at players within a
 // distance with Java's probability of 0.02.
-func NewLookAtPlayerGoal(distance float64) *LookAtPlayerGoal {
-	return &LookAtPlayerGoal{goalFlags: goalFlags{GoalLook}, LookDistance: distance, Probability: .02}
+func newLookAtPlayerGoal(distance float64) *lookAtPlayerGoal {
+	return &lookAtPlayerGoal{goalFlags: goalFlags{GoalLook}, LookDistance: distance, Probability: .02}
 }
 
-func (g *LookAtPlayerGoal) conditions() targeting {
+func (g *lookAtPlayerGoal) conditions() targeting {
 	c := forNonCombat()
 	c.rangeLimit = g.LookDistance
 	if g.IsType == nil {
@@ -148,7 +148,7 @@ func ridingOn(tx *world.Tx, e world.Entity, h *world.EntityHandle) bool {
 	return ok && rider.Riding() == h
 }
 
-func (g *LookAtPlayerGoal) CanUse(m *Mob) bool {
+func (g *lookAtPlayerGoal) CanUse(m *Mob) bool {
 	if float64(m.Random().NextFloat()) >= g.Probability {
 		return false
 	}
@@ -167,14 +167,14 @@ func (g *LookAtPlayerGoal) CanUse(m *Mob) bool {
 	return true
 }
 
-func (g *LookAtPlayerGoal) target(m *Mob) (world.Entity, bool) {
+func (g *lookAtPlayerGoal) target(m *Mob) (world.Entity, bool) {
 	if g.lookAt == nil {
 		return nil, false
 	}
 	return g.lookAt.Entity(m.tx)
 }
 
-func (g *LookAtPlayerGoal) CanContinueToUse(m *Mob) bool {
+func (g *lookAtPlayerGoal) CanContinueToUse(m *Mob) bool {
 	t, ok := g.target(m)
 	if !ok || !entityAlive(t) {
 		return false
@@ -182,13 +182,13 @@ func (g *LookAtPlayerGoal) CanContinueToUse(m *Mob) bool {
 	return m.DistanceToSqr(t) <= g.LookDistance*g.LookDistance && g.lookTime > 0
 }
 
-func (g *LookAtPlayerGoal) Start(m *Mob) {
+func (g *lookAtPlayerGoal) Start(m *Mob) {
 	g.lookTime = adjustedTickDelay(g, 40+int(m.Random().NextInt(40)))
 }
 
-func (g *LookAtPlayerGoal) Stop(*Mob) { g.lookAt = nil }
+func (g *lookAtPlayerGoal) Stop(*Mob) { g.lookAt = nil }
 
-func (g *LookAtPlayerGoal) Tick(m *Mob) {
+func (g *lookAtPlayerGoal) Tick(m *Mob) {
 	t, ok := g.target(m)
 	if !ok || !entityAlive(t) {
 		return
@@ -203,30 +203,30 @@ func (g *LookAtPlayerGoal) Tick(m *Mob) {
 
 // RandomLookAroundGoal turns the head of an idle mob in random directions,
 // ported from Java's RandomLookAroundGoal.
-type RandomLookAroundGoal struct {
+type randomLookAroundGoal struct {
 	goalFlags
 	relX, relZ float64
 	lookTime   int
 }
 
 // NewRandomLookAroundGoal returns a RandomLookAroundGoal.
-func NewRandomLookAroundGoal() *RandomLookAroundGoal {
-	return &RandomLookAroundGoal{goalFlags: goalFlags{GoalMove | GoalLook}}
+func newRandomLookAroundGoal() *randomLookAroundGoal {
+	return &randomLookAroundGoal{goalFlags: goalFlags{GoalMove | GoalLook}}
 }
 
-func (g *RandomLookAroundGoal) CanUse(m *Mob) bool { return m.Random().NextFloat() < .02 }
+func (g *randomLookAroundGoal) CanUse(m *Mob) bool { return m.Random().NextFloat() < .02 }
 
-func (g *RandomLookAroundGoal) CanContinueToUse(*Mob) bool { return g.lookTime >= 0 }
+func (g *randomLookAroundGoal) CanContinueToUse(*Mob) bool { return g.lookTime >= 0 }
 
-func (g *RandomLookAroundGoal) Start(m *Mob) {
+func (g *randomLookAroundGoal) Start(m *Mob) {
 	angle := math.Pi * 2 * m.Random().NextDouble()
 	g.relX, g.relZ = math.Cos(angle), math.Sin(angle)
 	g.lookTime = 20 + int(m.Random().NextInt(20))
 }
 
-func (g *RandomLookAroundGoal) RequiresUpdateEveryTick() bool { return true }
+func (g *randomLookAroundGoal) RequiresUpdateEveryTick() bool { return true }
 
-func (g *RandomLookAroundGoal) Tick(m *Mob) {
+func (g *randomLookAroundGoal) Tick(m *Mob) {
 	g.lookTime--
 	m.AI.look.SetLookAt(m, m.data.Pos[0]+g.relX, m.EyeY(), m.data.Pos[2]+g.relZ)
 }
@@ -274,16 +274,16 @@ func (m *Mob) WithinMeleeAttackRange(target world.Entity) bool {
 
 // MeleeAttackGoal chases the target of a mob and hits it when in reach,
 // ported from Java's MeleeAttackGoal.
-type MeleeAttackGoal struct {
+type meleeAttackGoal struct {
 	goalFlags
 	SpeedModifier                float64
 	FollowingTargetEvenIfNotSeen bool
 	// OnTick runs after every tick of the goal, as ZombieAttackGoal raises
 	// the arms of a zombie.
-	OnTick func(m *Mob, g *MeleeAttackGoal)
+	OnTick func(m *Mob, g *meleeAttackGoal)
 	// CheckAttack, if set, replaces checkAndPerformAttack, as goals that
 	// override it do.
-	CheckAttack func(m *Mob, g *MeleeAttackGoal, target world.Entity)
+	CheckAttack func(m *Mob, g *meleeAttackGoal, target world.Entity)
 
 	path                     *mobPath
 	pathedTarget             mgl64.Vec3
@@ -294,11 +294,11 @@ type MeleeAttackGoal struct {
 }
 
 // NewMeleeAttackGoal returns a MeleeAttackGoal.
-func NewMeleeAttackGoal(speedModifier float64, followEvenIfNotSeen bool) *MeleeAttackGoal {
-	return &MeleeAttackGoal{goalFlags: goalFlags{GoalMove | GoalLook}, SpeedModifier: speedModifier, FollowingTargetEvenIfNotSeen: followEvenIfNotSeen}
+func newMeleeAttackGoal(speedModifier float64, followEvenIfNotSeen bool) *meleeAttackGoal {
+	return &meleeAttackGoal{goalFlags: goalFlags{GoalMove | GoalLook}, SpeedModifier: speedModifier, FollowingTargetEvenIfNotSeen: followEvenIfNotSeen}
 }
 
-func (g *MeleeAttackGoal) CanUse(m *Mob) bool {
+func (g *meleeAttackGoal) CanUse(m *Mob) bool {
 	time := m.GameTime()
 	if g.hasLastCanUseCheck && time-g.lastCanUseCheck < 20 {
 		return false
@@ -312,7 +312,7 @@ func (g *MeleeAttackGoal) CanUse(m *Mob) bool {
 	return g.path != nil || m.WithinMeleeAttackRange(target)
 }
 
-func (g *MeleeAttackGoal) CanContinueToUse(m *Mob) bool {
+func (g *meleeAttackGoal) CanContinueToUse(m *Mob) bool {
 	target := m.Target()
 	if target == nil || !entityAlive(target) {
 		return false
@@ -323,13 +323,13 @@ func (g *MeleeAttackGoal) CanContinueToUse(m *Mob) bool {
 	return m.WithinHome(cube.PosFromVec3(target.Position())) && !creativeOrSpectator(target)
 }
 
-func (g *MeleeAttackGoal) Start(m *Mob) {
+func (g *meleeAttackGoal) Start(m *Mob) {
 	m.AI.nav.MoveTo(m, g.path, g.SpeedModifier)
 	m.SetAggressive(true)
 	g.ticksUntilNextPathRecalc, g.ticksUntilNextAttack = 0, 0
 }
 
-func (g *MeleeAttackGoal) Stop(m *Mob) {
+func (g *meleeAttackGoal) Stop(m *Mob) {
 	if target := m.Target(); target == nil || creativeOrSpectator(target) {
 		m.SetTarget(nil)
 	}
@@ -337,9 +337,9 @@ func (g *MeleeAttackGoal) Stop(m *Mob) {
 	m.AI.nav.Stop()
 }
 
-func (g *MeleeAttackGoal) RequiresUpdateEveryTick() bool { return true }
+func (g *meleeAttackGoal) RequiresUpdateEveryTick() bool { return true }
 
-func (g *MeleeAttackGoal) Tick(m *Mob) {
+func (g *meleeAttackGoal) Tick(m *Mob) {
 	defer func() {
 		if g.OnTick != nil {
 			g.OnTick(m, g)
@@ -371,7 +371,7 @@ func (g *MeleeAttackGoal) Tick(m *Mob) {
 	g.checkAndPerformAttack(m, target)
 }
 
-func (g *MeleeAttackGoal) checkAndPerformAttack(m *Mob, target world.Entity) {
+func (g *meleeAttackGoal) checkAndPerformAttack(m *Mob, target world.Entity) {
 	if g.CheckAttack != nil {
 		g.CheckAttack(m, g, target)
 		return
@@ -385,28 +385,24 @@ func (g *MeleeAttackGoal) checkAndPerformAttack(m *Mob, target world.Entity) {
 
 // CanPerformAttack ports MeleeAttackGoal.canPerformAttack: the attack is
 // ready and the target in reach and sight.
-func (g *MeleeAttackGoal) CanPerformAttack(m *Mob, target world.Entity) bool {
+func (g *meleeAttackGoal) CanPerformAttack(m *Mob, target world.Entity) bool {
 	return g.ticksUntilNextAttack <= 0 && m.WithinMeleeAttackRange(target) && m.HasLineOfSight(target)
 }
 
 // ResetAttackCooldown waits 20 ticks for the next attack.
-func (g *MeleeAttackGoal) ResetAttackCooldown() {
+func (g *meleeAttackGoal) ResetAttackCooldown() {
 	g.ticksUntilNextAttack = adjustedTickDelay(g, 20)
 }
 
 // TicksUntilNextAttack returns the ticks until the next attack.
-func (g *MeleeAttackGoal) TicksUntilNextAttack() int { return g.ticksUntilNextAttack }
+func (g *meleeAttackGoal) TicksUntilNextAttack() int { return g.ticksUntilNextAttack }
 
 // AttackInterval returns the ticks between attacks.
-func (g *MeleeAttackGoal) AttackInterval() int { return adjustedTickDelay(g, 20) }
+func (g *meleeAttackGoal) AttackInterval() int { return adjustedTickDelay(g, 20) }
 
 // swing shows the arm of the mob swinging to its viewers.
 func (m *Mob) swing() {
-	viewers := m.tx.Viewers(m.data.Pos)
-	for _, v := range viewers {
-		v.ViewEntityAction(m.Self, SwingArmAction{})
-	}
-	m.tx.ReleaseViewers(viewers)
+	world.BroadcastEntityAction(m.tx, m.Self, SwingArmAction{})
 }
 
 // targetGoal holds what Java's TargetGoal shares between target goals.
@@ -504,7 +500,7 @@ func (g *targetGoal) canReach(m *Mob, target world.Entity) bool {
 
 // NearestAttackableTargetGoal targets the nearest entity of a type that may
 // be attacked, ported from Java's NearestAttackableTargetGoal.
-type NearestAttackableTargetGoal struct {
+type nearestAttackableTargetGoal struct {
 	targetGoal
 	// IsType selects the entities targeted, players if nil.
 	IsType func(world.Entity) bool
@@ -518,26 +514,26 @@ type NearestAttackableTargetGoal struct {
 
 // NewNearestAttackableTargetGoal returns a NearestAttackableTargetGoal for
 // entities isType selects, or players if it is nil.
-func NewNearestAttackableTargetGoal(isType func(world.Entity) bool, mustSee bool) *NearestAttackableTargetGoal {
-	return &NearestAttackableTargetGoal{targetGoal: newTargetGoal(mustSee, false), IsType: isType, RandomInterval: reducedTickDelay(10)}
+func newNearestAttackableTargetGoal(isType func(world.Entity) bool, mustSee bool) *nearestAttackableTargetGoal {
+	return &nearestAttackableTargetGoal{targetGoal: newTargetGoal(mustSee, false), IsType: isType, RandomInterval: reducedTickDelay(10)}
 }
 
 // NewNearestAttackableTypesGoal returns a NearestAttackableTargetGoal for the
 // entities of types.
-func NewNearestAttackableTypesGoal(types entityTypes, mustSee bool) *NearestAttackableTargetGoal {
-	g := NewNearestAttackableTargetGoal(types.is, mustSee)
+func newNearestAttackableTypesGoal(types entityTypes, mustSee bool) *nearestAttackableTargetGoal {
+	g := newNearestAttackableTargetGoal(types.is, mustSee)
 	g.Types = types
 	return g
 }
 
-func (g *NearestAttackableTargetGoal) conditions(m *Mob) targeting {
+func (g *nearestAttackableTargetGoal) conditions(m *Mob) targeting {
 	c := forCombat()
 	c.rangeLimit = g.followDistance(m)
 	c.selector = g.Selector
 	return c
 }
 
-func (g *NearestAttackableTargetGoal) CanUse(m *Mob) bool {
+func (g *nearestAttackableTargetGoal) CanUse(m *Mob) bool {
 	if g.RandomInterval > 0 && m.Random().NextInt(int32(g.RandomInterval)) != 0 {
 		return false
 	}
@@ -561,9 +557,9 @@ func (g *NearestAttackableTargetGoal) CanUse(m *Mob) bool {
 	return true
 }
 
-func (g *NearestAttackableTargetGoal) CanContinueToUse(m *Mob) bool { return g.canContinue(m) }
+func (g *nearestAttackableTargetGoal) CanContinueToUse(m *Mob) bool { return g.canContinue(m) }
 
-func (g *NearestAttackableTargetGoal) Start(m *Mob) {
+func (g *nearestAttackableTargetGoal) Start(m *Mob) {
 	if g.target != nil {
 		if t, ok := g.target.Entity(m.tx); ok {
 			m.SetTarget(t)
@@ -572,11 +568,11 @@ func (g *NearestAttackableTargetGoal) Start(m *Mob) {
 	g.start()
 }
 
-func (g *NearestAttackableTargetGoal) Stop(m *Mob) { g.stop(m) }
+func (g *nearestAttackableTargetGoal) Stop(m *Mob) { g.stop(m) }
 
 // HurtByTargetGoal targets the entity that last hurt the mob, ported from
 // Java's HurtByTargetGoal.
-type HurtByTargetGoal struct {
+type hurtByTargetGoal struct {
 	targetGoal
 	// IgnoreDamageFrom selects attackers the mob doesn't fight back.
 	IgnoreDamageFrom func(world.Entity) bool
@@ -592,13 +588,13 @@ type HurtByTargetGoal struct {
 }
 
 // NewHurtByTargetGoal returns a HurtByTargetGoal.
-func NewHurtByTargetGoal() *HurtByTargetGoal {
+func newHurtByTargetGoal() *hurtByTargetGoal {
 	// Java starts the timestamp at 0, which misses damage taken before the
 	// first tick of the mob.
-	return &HurtByTargetGoal{targetGoal: newTargetGoal(true, false), timestamp: -1}
+	return &hurtByTargetGoal{targetGoal: newTargetGoal(true, false), timestamp: -1}
 }
 
-func (g *HurtByTargetGoal) CanUse(m *Mob) bool {
+func (g *hurtByTargetGoal) CanUse(m *Mob) bool {
 	attacker, timestamp := m.LastHurtBy()
 	if timestamp == g.timestamp || attacker == nil {
 		return false
@@ -614,9 +610,9 @@ func (g *HurtByTargetGoal) CanUse(m *Mob) bool {
 	return g.canAttack(m, attacker, c)
 }
 
-func (g *HurtByTargetGoal) CanContinueToUse(m *Mob) bool { return g.canContinue(m) }
+func (g *hurtByTargetGoal) CanContinueToUse(m *Mob) bool { return g.canContinue(m) }
 
-func (g *HurtByTargetGoal) Start(m *Mob) {
+func (g *hurtByTargetGoal) Start(m *Mob) {
 	attacker, timestamp := m.LastHurtBy()
 	m.SetTarget(attacker)
 	if t := m.Target(); t != nil {
@@ -630,10 +626,10 @@ func (g *HurtByTargetGoal) Start(m *Mob) {
 	g.start()
 }
 
-func (g *HurtByTargetGoal) Stop(m *Mob) { g.stop(m) }
+func (g *hurtByTargetGoal) Stop(m *Mob) { g.stop(m) }
 
 // alertOthers ports HurtByTargetGoal.alertOthers.
-func (g *HurtByTargetGoal) alertOthers(m *Mob, attacker world.Entity) {
+func (g *hurtByTargetGoal) alertOthers(m *Mob, attacker world.Entity) {
 	if attacker == nil {
 		return
 	}

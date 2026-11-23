@@ -76,7 +76,7 @@ func ominousBanner(s item.Stack) bool {
 // raiderCanBeLeader ports Raider.canBeLeader: ravagers and witches cannot.
 func raiderCanBeLeader(m *Mob) bool {
 	switch m.H().Type() {
-	case RavagerType, WitchType:
+	case ravagerType, entityWitchType:
 		return false
 	}
 	return true
@@ -104,7 +104,7 @@ func raiderWave(m *Mob) int {
 	if b, ok := m.Behaviour().(*hostileState); ok {
 		return b.raidWave
 	}
-	if b, ok := m.Behaviour().(*WitchBehaviour); ok {
+	if b, ok := m.Behaviour().(*witchBehaviour); ok {
 		return b.raidWave
 	}
 	return 0
@@ -130,11 +130,7 @@ func raiderPickUpItem(m *Mob, e world.Entity) {
 		m.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: m.data.Pos}, current))
 	}
 	if c, ok := m.Self.(Collector); ok {
-		viewers := m.tx.Viewers(e.Position())
-		for _, v := range viewers {
-			v.ViewEntityAction(e, PickedUpAction{Collector: c})
-		}
-		m.tx.ReleaseViewers(viewers)
+		world.BroadcastEntityAction(m.tx, e, PickedUpAction{Collector: c})
 	}
 	takeItemEntity(m, e, stack.Count())
 	// Raid.setLeader puts the banner on, sure to drop.

@@ -13,7 +13,7 @@ func TestDroppedItemNBTRoundTripUsesBlockRegistry(t *testing.T) {
 	t.Parallel()
 	registry, blockItem := entityTestBlockRegistry()
 	want := item.NewStack(blockItem, 2)
-	behaviour := ItemBehaviourConfig{Item: want}.New(registry)
+	behaviour := itemBehaviourConfig{Item: want}.New(registry)
 	encoded := ItemType.EncodeNBT(&world.EntityData{Data: behaviour})
 
 	decoded := new(world.EntityData)
@@ -33,15 +33,15 @@ func TestMinecartContainerNBTRoundTripUsesBlockRegistry(t *testing.T) {
 	if err := behaviour.inv.SetItem(8, want); err != nil {
 		t.Fatal(err)
 	}
-	encoded := ChestMinecartType.EncodeNBT(&world.EntityData{Data: behaviour})
+	encoded := entityChestMinecartType.EncodeNBT(&world.EntityData{Data: behaviour})
 	// Display tiles still use the legacy default registry path and are unrelated to nested inventory decoding.
 	delete(encoded, "CustomDisplayTile")
 	delete(encoded, "DisplayTile")
 	delete(encoded, "DisplayOffset")
 
 	decoded := new(world.EntityData)
-	world.DecodeEntityNBT(ChestMinecartType, encoded, decoded, registry)
-	got, err := decoded.Data.(*MinecartContainerBehaviour).inv.Item(8)
+	world.DecodeEntityNBT(entityChestMinecartType, encoded, decoded, registry)
+	got, err := decoded.Data.(*minecartContainerBehaviour).inv.Item(8)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestMinecartContainerNBTRoundTripUsesBlockRegistry(t *testing.T) {
 func TestFallingBlockNBTUsesBlockRegistry(t *testing.T) {
 	t.Parallel()
 	registry, blockItem := entityTestBlockRegistry()
-	encoded := FallingBlockType.EncodeNBT(&world.EntityData{Data: FallingBlockBehaviourConfig{Block: blockItem}.New()})
+	encoded := FallingBlockType.EncodeNBT(&world.EntityData{Data: fallingBlockBehaviourConfig{Block: blockItem}.New()})
 
 	decoded := new(world.EntityData)
 	world.DecodeEntityNBT(FallingBlockType, encoded, decoded, registry)

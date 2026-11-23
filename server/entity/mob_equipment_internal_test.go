@@ -12,7 +12,7 @@ import (
 func TestMobEquipmentSurvivesSaving(t *testing.T) {
 	t.Parallel()
 	var data, restored world.EntityData
-	HuskType.DecodeNBT(map[string]any{
+	huskType.DecodeNBT(map[string]any{
 		"equipment": map[string]any{
 			"mainhand": map[string]any{"id": "minecraft:iron_sword", "count": int32(1)},
 			"offhand":  map[string]any{"id": "minecraft:shield", "count": int32(1)},
@@ -23,7 +23,7 @@ func TestMobEquipmentSurvivesSaving(t *testing.T) {
 		},
 		"drop_chances": map[string]any{"chest": float32(2), "head": float32(0)},
 	}, &data)
-	HuskType.DecodeNBT(HuskType.EncodeNBT(&data), &restored)
+	huskType.DecodeNBT(huskType.EncodeNBT(&data), &restored)
 	b := restored.Data.(*hostileState)
 	want := map[int]world.Item{
 		slotMainhand: item.Sword{Tier: item.ToolTierIron}, slotOffhand: item.Shield{},

@@ -12,7 +12,7 @@ import (
 )
 
 // BreezeType is the world entity type for the trial-chamber breeze.
-var BreezeType breezeType
+var entityBreezeType breezeType
 
 type breezeType struct{}
 
@@ -20,14 +20,14 @@ func (breezeType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.Ent
 	if data.Data == nil {
 		breezeConfig{}.Apply(data)
 	}
-	return &Breeze{Ent: &Ent{tx: tx, handle: handle, data: data}}
+	return &breeze{Ent: &Ent{tx: tx, handle: handle, data: data}}
 }
 
 func (breezeType) EncodeEntity() string        { return "minecraft:breeze" }
 func (breezeType) BBox(world.Entity) cube.BBox { return cube.Box(-.3, 0, -.3, .3, 1.77, .3) }
 func (breezeType) DecodeNBT(n map[string]any, data *world.EntityData) {
 	conf := breezeConfig{}
-	for _, attr := range ReadNativeMobAttributes(n) {
+	for _, attr := range readNativeMobAttributes(n) {
 		switch attr.Name {
 		case "minecraft:health":
 			conf.health, conf.healthSet = attr.Current, true
@@ -46,13 +46,13 @@ func (breezeType) DecodeNBT(n map[string]any, data *world.EntityData) {
 }
 func (breezeType) EncodeNBT(data *world.EntityData) map[string]any {
 	b := data.Data.(*breezeState)
-	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(data.NativeNBT), []NativeMobAttribute{
+	attrs := encodeNativeMobAttributes(readNativeMobAttributes(data.NativeNBT), []nativeMobAttr{
 		{Name: "minecraft:health", Base: 30, Current: b.health.Health(), DefaultMin: 0, DefaultMax: 30, Min: 0, Max: 30},
 		{Name: "minecraft:movement", Base: .63, Current: b.speed, DefaultMin: 0, DefaultMax: .63, Min: 0, Max: .63},
 		{Name: "minecraft:follow_range", Base: 24, Current: 24, DefaultMin: 0, DefaultMax: 2048, Min: 0, Max: 2048},
 		{Name: "minecraft:attack_damage", Base: 3, Current: 3, DefaultMin: 0, DefaultMax: 2048, Min: 0, Max: 2048},
 	})
-	native := CloneNativeMobNBT(data.NativeNBT)
+	native := cloneNativeMobNBT(data.NativeNBT)
 	if native == nil {
 		native = make(map[string]any)
 	}
@@ -96,34 +96,34 @@ type breezeState struct {
 	health  *HealthManager
 	effects *EffectManager
 	ai      MobAI
-	br      *Brain
+	br      *brain
 	speed   float64
 	dead    bool
 	pose    breezePose
 }
 
-type Breeze struct{ *Ent }
+type breeze struct{ *Ent }
 
 // NewBreeze creates a Breeze with the source attributes and no equipment.
 func NewBreeze(opts world.EntitySpawnOpts) *world.EntityHandle {
-	return opts.New(BreezeType, breezeConfig{})
+	return opts.New(entityBreezeType, breezeConfig{})
 }
-func (*Breeze) SpeciesType() world.EntityType { return BreezeType }
-func (b *Breeze) state() *breezeState         { return b.Behaviour().(*breezeState) }
-func (b *Breeze) Tick(tx *world.Tx, current int64) {
+func (*breeze) SpeciesType() world.EntityType { return entityBreezeType }
+func (b *breeze) state() *breezeState         { return b.Behaviour().(*breezeState) }
+func (b *breeze) Tick(tx *world.Tx, current int64) {
 	b.state().effects.Tick(b, tx)
 	b.Ent.Tick(tx, current)
 }
 
 func (s *breezeState) mobAI() *MobAI { return &s.ai }
-func (s *breezeState) brain() *Brain { return s.br }
+func (s *breezeState) brain() *brain { return s.br }
 
 // Tick runs the MobAI of the breeze with its brain.
 func (s *breezeState) Tick(e *Ent, tx *world.Tx) *Movement {
 	// Breeze.createAttributes, getMaxHeadYRot and getHeadRotSpeed.
 	s.ai.MovementSpeed, s.ai.FollowRange, s.ai.EyeHeight = s.speed, 24, float64(float32(1.3452))
 	s.ai.MaxHeadYaw, s.ai.HeadRotSpeed = 30, 25
-	return s.ai.Tick(e, &Breeze{Ent: e}, func(m *Mob) {
+	return s.ai.Tick(e, &breeze{Ent: e}, func(m *Mob) {
 		m.AI.SetPathfindingMalus(PathOnTopOfTrapdoor, -1)
 		m.AI.SetPathfindingMalus(PathFire, -1)
 	})
@@ -155,13 +155,13 @@ func (s *breezeState) setPose(m *Mob, pose breezePose) {
 
 // Shooting reports if the breeze shoots at its target, which Bedrock shows
 // as facing its target to attack from range.
-func (b *Breeze) Shooting() bool { return b.state().pose == breezeShooting }
+func (b *breeze) Shooting() bool { return b.state().pose == breezeShooting }
 
 // JumpGoalJumping reports if the breeze long jumps.
-func (b *Breeze) JumpGoalJumping() bool { return b.state().pose == breezeLongJumping }
+func (b *breeze) JumpGoalJumping() bool { return b.state().pose == breezeLongJumping }
 
 // ShootTargetHandle returns the target of the breeze while it shoots.
-func (b *Breeze) ShootTargetHandle() *world.EntityHandle {
+func (b *breeze) ShootTargetHandle() *world.EntityHandle {
 	s := b.state()
 	if s.pose != breezeShooting {
 		return nil
@@ -171,18 +171,18 @@ func (b *Breeze) ShootTargetHandle() *world.EntityHandle {
 	return h
 }
 
-func (b *Breeze) Health() float64        { return b.state().health.Health() }
-func (b *Breeze) MaxHealth() float64     { return b.state().health.MaxHealth() }
-func (b *Breeze) SetMaxHealth(v float64) { b.state().health.SetMaxHealth(v) }
-func (b *Breeze) Dead() bool             { return b.state().dead || b.Health() <= 0 }
+func (b *breeze) Health() float64        { return b.state().health.Health() }
+func (b *breeze) MaxHealth() float64     { return b.state().health.MaxHealth() }
+func (b *breeze) SetMaxHealth(v float64) { b.state().health.SetMaxHealth(v) }
+func (b *breeze) Dead() bool             { return b.state().dead || b.Health() <= 0 }
 
 // Hurt ports Breeze.isInvulnerableTo: a breeze takes no damage from
 // breezes.
-func (b *Breeze) Hurt(damage float64, src world.DamageSource) (float64, bool) {
+func (b *breeze) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	if b.Dead() || damage <= 0 {
 		return 0, false
 	}
-	if killer := mobKiller(src); killer != nil && killer.H().Type() == BreezeType {
+	if killer := mobKiller(src); killer != nil && killer.H().Type() == entityBreezeType {
 		return 0, false
 	}
 	s := b.state()
@@ -206,7 +206,7 @@ func (b *Breeze) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	return damage, true
 }
 
-func (b *Breeze) Heal(amount float64, _ world.HealingSource) float64 {
+func (b *breeze) Heal(amount float64, _ world.HealingSource) float64 {
 	if amount <= 0 || b.Dead() {
 		return 0
 	}
@@ -214,24 +214,20 @@ func (b *Breeze) Heal(amount float64, _ world.HealingSource) float64 {
 	b.state().health.AddHealth(amount)
 	return b.Health() - old
 }
-func (b *Breeze) KnockBack(source mgl64.Vec3, force, height float64) {
+func (b *breeze) KnockBack(source mgl64.Vec3, force, height float64) {
 	knockBack(b, source, force, height)
 }
-func (b *Breeze) AddEffect(e effect.Effect)  { b.state().effects.Add(e, b) }
-func (b *Breeze) RemoveEffect(t effect.Type) { b.state().effects.Remove(t, b) }
-func (b *Breeze) Effects() []effect.Effect   { return b.state().effects.Effects() }
-func (b *Breeze) Speed() float64             { return b.state().speed }
-func (b *Breeze) SetSpeed(speed float64)     { b.state().speed = speed }
-func (b *Breeze) viewAction(action world.EntityAction) {
-	viewers := b.tx.Viewers(b.Position())
-	for _, viewer := range viewers {
-		viewer.ViewEntityAction(b, action)
-	}
-	b.tx.ReleaseViewers(viewers)
+func (b *breeze) AddEffect(e effect.Effect)  { b.state().effects.Add(e, b) }
+func (b *breeze) RemoveEffect(t effect.Type) { b.state().effects.Remove(t, b) }
+func (b *breeze) Effects() []effect.Effect   { return b.state().effects.Effects() }
+func (b *breeze) Speed() float64             { return b.state().speed }
+func (b *breeze) SetSpeed(speed float64)     { b.state().speed = speed }
+func (b *breeze) viewAction(action world.EntityAction) {
+	world.BroadcastEntityAction(b.tx, b, action)
 }
 
 // DeflectProjectile reverses incoming projectiles except both wind-charge types, as in Breeze.deflection().
-func (b *Breeze) DeflectProjectile(projectile *Ent, movement *Movement, velocity mgl64.Vec3) bool {
+func (b *breeze) DeflectProjectile(projectile *Ent, movement *Movement, velocity mgl64.Vec3) bool {
 	if projectile.H().Type().EncodeEntity() == "minecraft:breeze_wind_charge" || projectile.H().Type().EncodeEntity() == "minecraft:wind_charge_projectile" {
 		return false
 	}
@@ -254,7 +250,7 @@ func (b *Breeze) DeflectProjectile(projectile *Ent, movement *Movement, velocity
 	return true
 }
 
-var _ Living = (*Breeze)(nil)
+var _ Living = (*breeze)(nil)
 var _ world.EntityType = breezeType{}
 
 func (b *breezeState) effectManager() *EffectManager { return b.effects }

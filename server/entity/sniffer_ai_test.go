@@ -28,9 +28,9 @@ func snifferTestWorld(t *testing.T) (*world.World, *world.EntityHandle) {
 	return w, sniffer
 }
 
-func snifferOf(tx *world.Tx, h *world.EntityHandle) *Sniffer {
+func snifferOf(tx *world.Tx, h *world.EntityHandle) *sniffer {
 	e, _ := h.Entity(tx)
-	return e.(*Sniffer)
+	return e.(*sniffer)
 }
 
 // TestSniffersDigUpSeeds checks Sniffing, Searching, Digging and
@@ -99,10 +99,10 @@ func TestHurtSniffersStopDigging(t *testing.T) {
 func TestSniffersSaveExploredBlocks(t *testing.T) {
 	t.Parallel()
 	data := &world.EntityData{}
-	SnifferConfig{Explored: []cube.Pos{{1, 2, 3}, {4, 5, 6}}}.Apply(data)
+	snifferConfig{Explored: []cube.Pos{{1, 2, 3}, {4, 5, 6}}}.Apply(data)
 	loaded := &world.EntityData{}
-	SnifferType.DecodeNBT(SnifferType.EncodeNBT(data), loaded)
-	if got := loaded.Data.(*SnifferBehaviour).explored(); len(got) != 2 || got[0] != (cube.Pos{1, 2, 3}) || got[1] != (cube.Pos{4, 5, 6}) {
+	entitySnifferType.DecodeNBT(entitySnifferType.EncodeNBT(data), loaded)
+	if got := loaded.Data.(*snifferBehaviour).explored(); len(got) != 2 || got[0] != (cube.Pos{1, 2, 3}) || got[1] != (cube.Pos{4, 5, 6}) {
 		t.Fatalf("loaded sniffer remembers %v", got)
 	}
 }

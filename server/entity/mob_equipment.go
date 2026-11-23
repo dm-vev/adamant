@@ -229,11 +229,7 @@ func pickUpLoot(m *Mob, h equipmentHolder, wants func(item.Stack) bool, preferre
 			continue
 		}
 		if c, ok := m.Self.(Collector); ok {
-			viewers := m.tx.Viewers(e.Position())
-			for _, v := range viewers {
-				v.ViewEntityAction(e, PickedUpAction{Collector: c})
-			}
-			m.tx.ReleaseViewers(viewers)
+			world.BroadcastEntityAction(m.tx, e, PickedUpAction{Collector: c})
 		}
 		takeItemEntity(m, e, equipped.Count())
 	}
@@ -242,9 +238,15 @@ func pickUpLoot(m *Mob, h equipmentHolder, wants func(item.Stack) bool, preferre
 // viewEquipment shows the viewers of a mob what it holds and wears.
 func viewEquipment(tx *world.Tx, e world.Entity) {
 	viewers := tx.Viewers(e.Position())
+	var itemsB, armourB world.Broadcast
 	for _, v := range viewers {
-		v.ViewEntityItems(e)
-		v.ViewEntityArmour(e)
+		if bv, ok := v.(world.EntityBroadcastViewer); ok {
+			bv.ViewEntityItemsShared(e, &itemsB)
+			bv.ViewEntityArmourShared(e, &armourB)
+		} else {
+			v.ViewEntityItems(e)
+			v.ViewEntityArmour(e)
+		}
 	}
 	tx.ReleaseViewers(viewers)
 }
@@ -390,7 +392,7 @@ func decodeGear(n map[string]any) mobGear {
 			}
 		}
 	}
-	equipment := ReadNativeMobEquipment(n)
+	equipment := readNativeMobEquipment(n)
 	if _, ok := n["Mainhand"]; ok && len(equipment.Mainhand) > 0 {
 		g.items[slotMainhand] = hostileStackFromNative(equipment.Mainhand[0])
 	}
@@ -403,7 +405,7 @@ func decodeGear(n map[string]any) mobGear {
 		}
 	}
 	g.dropChances = readDropChances(n)
-	if java := ReadNativeMobJavaState(n); java != nil {
+	if java := readNativeMobJavaState(n); java != nil {
 		if g.dropChances == nil {
 			g.dropChances = readDropChances(java)
 		}
@@ -417,29 +419,29 @@ func decodeGear(n map[string]any) mobGear {
 // what the previous native NBT knew of its items, and returns the Java state
 // to keep with it.
 func (g *mobGear) encodeGear(previous, out map[string]any) map[string]any {
-	equipment := ReadNativeMobEquipment(previous)
-	var prevMain, prevOff NativeMobItem
+	equipment := readNativeMobEquipment(previous)
+	var prevMain, prevOff nativeMobItem
 	if len(equipment.Mainhand) > 0 {
 		prevMain = equipment.Mainhand[0]
 	}
 	if len(equipment.Offhand) > 0 {
 		prevOff = equipment.Offhand[0]
 	}
-	native := func(stack item.Stack, prev NativeMobItem) NativeMobItem {
+	native := func(stack item.Stack, prev nativeMobItem) nativeMobItem {
 		if stack.Empty() {
 			return nativeMobItemFromStack(stack)
 		}
 		return hostileNativeStack(stack, prev)
 	}
-	equipment.Mainhand = []NativeMobItem{native(g.items[slotMainhand], prevMain)}
-	equipment.Offhand = []NativeMobItem{native(g.items[slotOffhand], prevOff)}
-	armor := make([]NativeMobItem, 4)
+	equipment.Mainhand = []nativeMobItem{native(g.items[slotMainhand], prevMain)}
+	equipment.Offhand = []nativeMobItem{native(g.items[slotOffhand], prevOff)}
+	armor := make([]nativeMobItem, 4)
 	copy(armor, equipment.Armor)
 	for i := range armor {
 		armor[i] = native(g.items[slotHead-i], armor[i])
 	}
 	equipment.Armor = armor
-	for k, v := range EncodeNativeMobEquipment(equipment) {
+	for k, v := range encodeNativeMobEquipment(equipment) {
 		out[k] = v
 	}
 	out["CanPickUpLoot"] = byte(boolByte(g.pickUpLoot))
@@ -594,7 +596,7 @@ func oceanStackEnchantmentLevel(main item.Stack, nativeName, sourceID string) in
 	return level
 }
 
-func hostileNativeStack(s item.Stack, previous NativeMobItem) NativeMobItem {
+func hostileNativeStack(s item.Stack, previous nativeMobItem) nativeMobItem {
 	entry := mountNativeStack(s, previous)
 	if banner, ok := s.Item().(block.Banner); ok {
 		if entry.Raw == nil {
@@ -609,7 +611,7 @@ func hostileNativeStack(s item.Stack, previous NativeMobItem) NativeMobItem {
 	return entry
 }
 
-func hostileStackFromNative(native NativeMobItem) item.Stack {
+func hostileStackFromNative(native nativeMobItem) item.Stack {
 	if native.Name == "" || native.Count == 0 {
 		return item.Stack{}
 	}
@@ -630,8 +632,8 @@ func hostileStackFromNative(native NativeMobItem) item.Stack {
 	return item.NewStack(it, int(native.Count))
 }
 
-func mountNativeStack(s item.Stack, previous NativeMobItem) NativeMobItem {
-	out := NativeMobItem{Raw: previous.Raw, Slot: previous.Slot}
+func mountNativeStack(s item.Stack, previous nativeMobItem) nativeMobItem {
+	out := nativeMobItem{Raw: previous.Raw, Slot: previous.Slot}
 	if s.Empty() {
 		return out
 	}

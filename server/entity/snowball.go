@@ -12,7 +12,7 @@ func NewSnowball(opts world.EntitySpawnOpts, owner world.Entity) *world.EntityHa
 	if owner != nil {
 		conf.Owner = owner.H()
 	}
-	return opts.New(SnowballType, conf)
+	return opts.New(entitySnowballType, conf)
 }
 
 var snowballConf = ProjectileBehaviourConfig{
@@ -30,7 +30,7 @@ var snowballConf = ProjectileBehaviourConfig{
 }
 
 // SnowballType is a world.EntityType implementation for snowballs.
-var SnowballType snowballType
+var entitySnowballType snowballType
 
 type snowballType struct{}
 

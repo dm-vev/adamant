@@ -11,7 +11,7 @@ import (
 
 func TestBossSpeedEffectsAndZeroPersistence(t *testing.T) {
 	t.Parallel()
-	for _, kind := range []world.EntityType{WardenType, PhantomType, WitherType} {
+	for _, kind := range []world.EntityType{entityWardenType, entityPhantomType, entityWitherType} {
 		t.Run(kind.EncodeEntity(), func(t *testing.T) {
 			var data world.EntityData
 			kind.DecodeNBT(map[string]any{"Attributes": []any{
@@ -20,7 +20,7 @@ func TestBossSpeedEffectsAndZeroPersistence(t *testing.T) {
 			mob := kind.Open(nil, nil, &data).(Living)
 			mob.AddEffect(effect.New(effect.Speed, 1, time.Second))
 			want := .15
-			if kind == WitherType {
+			if kind == entityWitherType {
 				// WitherBoss.addEffect refuses every effect.
 				want = .125
 			}
@@ -44,8 +44,8 @@ func TestBossSpeedEffectsAndZeroPersistence(t *testing.T) {
 func TestPhantomSizeDoesNotScaleHealth(t *testing.T) {
 	t.Parallel()
 	var data world.EntityData
-	PhantomType.DecodeNBT(map[string]any{"Size": int32(64)}, &data)
-	phantom := PhantomType.Open(nil, nil, &data).(*Phantom)
+	entityPhantomType.DecodeNBT(map[string]any{"Size": int32(64)}, &data)
+	phantom := entityPhantomType.Open(nil, nil, &data).(*phantom)
 	if phantom.Health() != 20 || phantom.MaxHealth() != 20 {
 		t.Fatalf("size-64 phantom health = %g/%g, want 20/20", phantom.Health(), phantom.MaxHealth())
 	}

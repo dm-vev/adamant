@@ -153,11 +153,11 @@ func TestActivatorCartEffectsMatchBDS(t *testing.T) {
 						opts := world.EntitySpawnOpts{Position: trace.Spawn.Body.Position.vec()}
 						switch c.Entity {
 						case "minecraft:minecart":
-							handle = opts.New(MinecartType, minecartConf)
+							handle = opts.New(entityMinecartType, minecartConf)
 						case "minecraft:tnt_minecart":
-							handle = opts.New(TNTMinecartType, tntMinecartConf)
+							handle = opts.New(entityTNTMinecartType, tntMinecartConf)
 						case "minecraft:hopper_minecart":
-							handle = opts.New(HopperMinecartType, hopperMinecartConf)
+							handle = opts.New(entityHopperMinecartType, hopperMinecartConf)
 						default:
 							t.Fatal("unknown native activator cart")
 						}
@@ -165,7 +165,7 @@ func TestActivatorCartEffectsMatchBDS(t *testing.T) {
 						previous = e.Position()
 						if c.Rider {
 							rider := tx.AddEntity(world.EntitySpawnOpts{Position: p.Vec3Centre()}.New(seatTestRiderType{}, seatTestRiderConfig{}))
-							if !e.(*Minecart).Behaviour().(*MinecartBehaviour).Mount(e.(*Minecart).Ent, tx, rider) {
+							if !e.(*minecart).Behaviour().(*minecartBehaviour).Mount(e.(*minecart).Ent, tx, rider) {
 								t.Fatal("test rider rejected")
 							}
 						}

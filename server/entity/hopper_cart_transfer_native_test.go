@@ -115,7 +115,7 @@ func replayHopperCartTransfersBDS(t *testing.T, filename string, count int) {
 						if !ok {
 							t.Fatal("hopper cart disappeared")
 						}
-						got := inventoryCount(e.(*MinecartContainer).Inventory().Slots())
+						got := inventoryCount(e.(*minecartContainer).Inventory().Slots())
 						if got != *frame.Cart {
 							t.Errorf("tick %d cart=%d, native=%d", frame.Tick, got, *frame.Cart)
 						}
@@ -148,8 +148,8 @@ func replayHopperCartTransfersBDS(t *testing.T, filename string, count int) {
 						}
 					}
 					if frame.Tick == trace.Spawn.Tick {
-						handle = world.EntitySpawnOpts{Position: trace.Spawn.Position.vec()}.New(HopperMinecartType, hopperMinecartConf)
-						e := tx.AddEntity(handle).(*MinecartContainer)
+						handle = world.EntitySpawnOpts{Position: trace.Spawn.Position.vec()}.New(entityHopperMinecartType, hopperMinecartConf)
+						e := tx.AddEntity(handle).(*minecartContainer)
 						if c.Initial > 0 {
 							n, err := e.Inventory().AddItem(item.NewStack(item.Diamond{}, c.Initial))
 							if n != c.Initial || err != nil {

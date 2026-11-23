@@ -19,13 +19,13 @@ import (
 )
 
 // VillagerType stores a Java villager's trade career and villager identity.
-var VillagerType villagerType
+var entityVillagerType villagerType
 
 type villagerType struct{}
 
 func (villagerType) Open(tx *world.Tx, h *world.EntityHandle, data *world.EntityData) world.Entity {
 	if data.Data == nil {
-		VillagerBehaviourConfig{}.Apply(data)
+		villagerBehaviourConfig{}.Apply(data)
 	}
 	return &Villager{Ent: &Ent{tx: tx, handle: h, data: data}}
 }
@@ -41,11 +41,11 @@ func (villagerType) BBox(e world.Entity) cube.BBox {
 	return cube.Box(-.3, 0, -.3, .3, 1.95, .3)
 }
 func (villagerType) DecodeNBT(nbt map[string]any, data *world.EntityData) {
-	source := ReadNativeMobJavaState(nbt)
+	source := readNativeMobJavaState(nbt)
 	if source == nil {
 		source = nbt
 	}
-	c := VillagerBehaviourConfig{}
+	c := villagerBehaviourConfig{}
 	if _, ok := source["Health"]; ok {
 		c.Health, c.healthSet = float64(nbtconv.Float32(source, "Health")), true
 	}
@@ -116,7 +116,7 @@ func (villagerType) DecodeNBT(nbt map[string]any, data *world.EntityData) {
 	data.Data = c.New()
 }
 func (villagerType) EncodeNBT(data *world.EntityData) map[string]any {
-	b := data.Data.(*VillagerBehaviour)
+	b := data.Data.(*villagerBehaviour)
 	rows := writeMerchantOffers(b.offers)
 	gossips := make([]any, 0)
 	inventoryRows := make([]any, 0)
@@ -154,23 +154,23 @@ func (villagerType) EncodeNBT(data *world.EntityData) map[string]any {
 	}
 	health := b.health
 	maxHealth := health.MaxHealth()
-	attributes := EncodeNativeMobAttributes(ReadNativeMobAttributes(data.NativeNBT), []NativeMobAttribute{
+	attributes := encodeNativeMobAttributes(readNativeMobAttributes(data.NativeNBT), []nativeMobAttr{
 		{Name: "minecraft:health", Base: maxHealth, Current: health.Health(), DefaultMin: 0, DefaultMax: maxHealth, Min: 0, Max: maxHealth},
 	})
-	native := MergeNativeMobNBT(data.NativeNBT, map[string]any{"Health": float32(health.Health()), "Attributes": attributes})
-	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(data.NativeNBT), result)
+	native := mergeNativeMobNBT(data.NativeNBT, map[string]any{"Health": float32(health.Health()), "Attributes": attributes})
+	javaState := mergeNativeMobNBT(readNativeMobJavaState(data.NativeNBT), result)
 	for key, has := range map[string]bool{"VillagerJobSite": mem.hasJobSite, "VillagerHome": mem.hasHome,
 		"VillagerPotentialJobSite": mem.hasPotentialJobSite, "VillagerMeetingPoint": mem.hasMeetingPoint} {
 		if !has {
 			delete(javaState, key)
 		}
 	}
-	return MergeNativeMobJavaState(native, javaState)
+	return mergeNativeMobJavaState(native, javaState)
 }
 
 // savedMemories returns the memories of the villager to save: those of its
 // brain once it started, or those read from NBT.
-func (b *VillagerBehaviour) savedMemories() villagerPendingMemories {
+func (b *villagerBehaviour) savedMemories() villagerPendingMemories {
 	if !b.ai.started {
 		return b.pending
 	}
@@ -337,7 +337,7 @@ type villagerInventorySlot struct {
 }
 
 // VillagerBehaviourConfig stores Java villager state decoded from NBT.
-type VillagerBehaviourConfig struct {
+type villagerBehaviourConfig struct {
 	Health                                                                                                     float64
 	XP, Level, FoodLevel, RestocksToday, Age                                                                   int
 	Profession, Type                                                                                           string
@@ -350,8 +350,8 @@ type VillagerBehaviourConfig struct {
 	HasJobSite, HasPotentialJobSite, HasHome, HasMeetingPoint, HasSlept, Finalized, OffersGenerated, healthSet bool
 }
 
-func (c VillagerBehaviourConfig) Apply(data *world.EntityData) { data.Data = c.New() }
-func (c VillagerBehaviourConfig) New() *VillagerBehaviour {
+func (c villagerBehaviourConfig) Apply(data *world.EntityData) { data.Data = c.New() }
+func (c villagerBehaviourConfig) New() *villagerBehaviour {
 	if c.Level < 1 || c.Level > 5 {
 		c.Level = 1
 	}
@@ -379,7 +379,7 @@ func (c VillagerBehaviourConfig) New() *VillagerBehaviour {
 		}
 	}
 	age, finalized := c.Age, c.Finalized
-	b := &VillagerBehaviour{health: NewHealthManager(health, 20), effects: NewEffectManager(),
+	b := &villagerBehaviour{health: NewHealthManager(health, 20), effects: NewEffectManager(),
 		speed:      villagerSpeed,
 		profession: c.Profession, villagerType: c.Type, level: c.Level, xp: max(0, c.XP), foodLevel: max(0, c.FoodLevel), age: age, finalized: finalized, inventory: inv,
 		offers: append([]MerchantOffer(nil), c.Offers...), offersGenerated: c.OffersGenerated, gossips: gossips, lastGossipDecay: c.LastGossipDecay,
@@ -401,11 +401,11 @@ type villagerPendingMemories struct {
 	hasSlept                                                  bool
 }
 
-type VillagerBehaviour struct {
+type villagerBehaviour struct {
 	health                   *HealthManager
 	effects                  *EffectManager
 	ai                       MobAI
-	br                       *Brain
+	br                       *brain
 	pending                  villagerPendingMemories
 	speed                    float64
 	profession, villagerType string
@@ -431,11 +431,11 @@ type VillagerBehaviour struct {
 	lastTick int64
 }
 
-func (b *VillagerBehaviour) Baby() bool { return b.age < 0 }
+func (b *villagerBehaviour) Baby() bool { return b.age < 0 }
 
 type Villager struct{ *Ent }
 
-func (v *Villager) behaviour() *VillagerBehaviour { return v.Behaviour().(*VillagerBehaviour) }
+func (v *Villager) behaviour() *villagerBehaviour { return v.Behaviour().(*villagerBehaviour) }
 func (v *Villager) Tick(tx *world.Tx, current int64) {
 	b := v.behaviour()
 	b.effects.Tick(v, tx)
@@ -471,11 +471,11 @@ func (v *Villager) StartTrading(user *world.EntityHandle) bool {
 // StopTrading ends a trade with user.
 func (v *Villager) StopTrading(user *world.EntityHandle) { v.behaviour().trading.stop(user) }
 
-func (b *VillagerBehaviour) mobAI() *MobAI { return &b.ai }
-func (b *VillagerBehaviour) brain() *Brain { return b.br }
+func (b *villagerBehaviour) mobAI() *MobAI { return &b.ai }
+func (b *villagerBehaviour) brain() *brain { return b.br }
 
 // Tick runs the MobAI of the villager with its brain.
-func (b *VillagerBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (b *villagerBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	v, ok := e.living().(*Villager)
 	if !ok {
 		v = &Villager{Ent: e}
@@ -495,7 +495,7 @@ func (b *VillagerBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 }
 
 // applyPendingMemories puts the memories read from NBT into the brain.
-func (b *VillagerBehaviour) applyPendingMemories(m *Mob) {
+func (b *villagerBehaviour) applyPendingMemories(m *Mob) {
 	p, dim := b.pending, m.tx.World().Dimension()
 	set := func(has bool, mem memoryType, pos cube.Pos) {
 		if has {
@@ -516,7 +516,7 @@ func (b *VillagerBehaviour) applyPendingMemories(m *Mob) {
 
 // customServerAiStep ports Villager.customServerAiStep: a villager without
 // offers stops trading.
-func (b *VillagerBehaviour) customServerAiStep(m *Mob) {
+func (b *villagerBehaviour) customServerAiStep(m *Mob) {
 	b.br.tick(m)
 	if len(b.offers) == 0 && b.offersGenerated && b.trading.user != nil {
 		b.trading.user = nil
@@ -527,7 +527,7 @@ func (b *VillagerBehaviour) customServerAiStep(m *Mob) {
 }
 
 // afterAiStep ports Mob.aiStep picking up items for a villager.
-func (b *VillagerBehaviour) afterAiStep(m *Mob) { b.pickUpItems(m) }
+func (b *villagerBehaviour) afterAiStep(m *Mob) { b.pickUpItems(m) }
 
 // HeldItems returns the item the villager shows in its hand.
 func (v *Villager) HeldItems() (item.Stack, item.Stack) { return v.behaviour().held, item.Stack{} }
@@ -584,7 +584,7 @@ func (v *Villager) Hurt(d float64, src world.DamageSource) (float64, bool) {
 		// that stays.
 		v.releasePOIs(v.tx)
 		opts := world.EntitySpawnOpts{Position: v.Position(), Rotation: v.Rotation(), SpawnReason: "conversion"}
-		witch := convertMob(v.tx, v, opts.New(WitchType, WitchConfig{}), conversion{})
+		witch := convertMob(v.tx, v, opts.New(entityWitchType, witchConfig{}), conversion{})
 		if p, ok := witch.(interface{ SetPersistenceRequired(bool) }); ok {
 			p.SetPersistenceRequired(true)
 		}
@@ -684,8 +684,8 @@ func (v *Villager) BreedWith(tx *world.Tx, partner *Villager, random *vanilla.Ra
 	if roll >= .75 {
 		variant = partner.Variant()
 	}
-	conf := VillagerBehaviourConfig{Profession: "minecraft:none", Type: variant, Level: 1, Age: -24000, Finalized: true}
-	return world.EntitySpawnOpts{Position: v.Position()}.New(VillagerType, conf)
+	conf := villagerBehaviourConfig{Profession: "minecraft:none", Type: variant, Level: 1, Age: -24000, Finalized: true}
+	return world.EntitySpawnOpts{Position: v.Position()}.New(entityVillagerType, conf)
 }
 
 // FinalizeSpawn applies Java's one-time villager variant/profession finalization.
@@ -747,7 +747,7 @@ func villagerFoodPoints(stack item.Stack) int {
 	}
 	return 0
 }
-func (b *VillagerBehaviour) foodPoints() int {
+func (b *villagerBehaviour) foodPoints() int {
 	points := 0
 	for _, stack := range b.inventory.Items() {
 		points += villagerFoodPoints(stack)
@@ -906,7 +906,7 @@ func spawnTradeXP(tx *world.Tx, pos mgl64.Vec3, amount int) {
 		tx.AddEntity(orb)
 	}
 }
-func (b *VillagerBehaviour) reputation(target string) int {
+func (b *villagerBehaviour) reputation(target string) int {
 	values := b.gossips[target]
 	return -5*values["major_negative"] - values["minor_negative"] + values["minor_positive"] + 5*values["major_positive"] + values["trading"]
 }
@@ -933,7 +933,7 @@ func (v *Villager) OnReputationEventFrom(kind string, source world.Entity) {
 		b.addGossip(source.H().UUID().String(), "major_negative", 25)
 	}
 }
-func (b *VillagerBehaviour) addGossip(target, kind string, amount int) {
+func (b *villagerBehaviour) addGossip(target, kind string, amount int) {
 	if target == "" || !villagerGossipType(kind) || amount == 0 {
 		return
 	}
@@ -951,7 +951,7 @@ func (b *VillagerBehaviour) addGossip(target, kind string, amount int) {
 		delete(b.gossips, target)
 	}
 }
-func (b *VillagerBehaviour) tickGossip(current int64) {
+func (b *villagerBehaviour) tickGossip(current int64) {
 	if b.lastGossipDecay == 0 {
 		b.lastGossipDecay = current
 		return
@@ -1071,14 +1071,10 @@ func (v *Villager) Interact(tx *world.Tx, user item.User, _ *item.UseContext) bo
 	return true
 }
 func (v *Villager) viewAction(a world.EntityAction) {
-	vs := v.tx.Viewers(v.Position())
-	for _, viewer := range vs {
-		viewer.ViewEntityAction(v, a)
-	}
-	v.tx.ReleaseViewers(vs)
+	world.BroadcastEntityAction(v.tx, v, a)
 }
 func NewVillager(opts world.EntitySpawnOpts) *world.EntityHandle {
-	return opts.New(VillagerType, VillagerBehaviourConfig{})
+	return opts.New(entityVillagerType, villagerBehaviourConfig{})
 }
 
 var _ world.EntityType = villagerType{}
@@ -1087,4 +1083,4 @@ var _ Merchant = (*Villager)(nil)
 var _ Interactable = (*Villager)(nil)
 var _ Collector = (*Villager)(nil)
 
-func (b *VillagerBehaviour) effectManager() *EffectManager { return b.effects }
+func (b *villagerBehaviour) effectManager() *EffectManager { return b.effects }

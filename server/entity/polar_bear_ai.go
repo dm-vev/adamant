@@ -14,12 +14,12 @@ func (s *polarBearState) mobAI() *MobAI { return &s.ai }
 func (s *polarBearState) registerGoals(m *Mob) {
 	ai := m.AI
 	ai.FollowRange = 20
-	ai.Goals.Add(0, NewFloatGoal(m))
-	melee := NewMeleeAttackGoal(1.25, true)
+	ai.Goals.Add(0, newFloatGoal(m))
+	melee := newMeleeAttackGoal(1.25, true)
 	melee.CheckAttack = s.checkAndPerformAttack
 	ai.Goals.Add(1, polarBearMeleeAttackGoal{melee, s})
 	// Cubs panic from any danger, adults only from fire and other hazards.
-	s.panic = NewPanicGoal(2)
+	s.panic = newPanicGoal(2)
 	s.panic.Causes = func(src world.DamageSource) bool {
 		if s.age < 0 {
 			return panicCause(src)
@@ -27,21 +27,21 @@ func (s *polarBearState) registerGoals(m *Mob) {
 		return panicEnvironmentalCause(src)
 	}
 	ai.Goals.Add(1, s.panic)
-	ai.Goals.Add(4, NewFollowParentGoal(1.25))
-	ai.Goals.Add(5, NewRandomStrollGoal(1))
-	ai.Goals.Add(6, NewLookAtPlayerGoal(6))
-	ai.Goals.Add(7, NewRandomLookAroundGoal())
-	hurt := NewHurtByTargetGoal()
+	ai.Goals.Add(4, newFollowParentGoal(1.25))
+	ai.Goals.Add(5, newRandomStrollGoal(1))
+	ai.Goals.Add(6, newLookAtPlayerGoal(6))
+	ai.Goals.Add(7, newRandomLookAroundGoal())
+	hurt := newHurtByTargetGoal()
 	hurt.AlertIgnore = func(e world.Entity) bool { b, ok := e.(*PolarBear); return !ok || b.b().age < 0 }
 	ai.Targets.Add(1, polarBearHurtByTargetGoal{hurt, s})
-	players := &NearestAttackableTargetGoal{targetGoal: newTargetGoal(true, true), RandomInterval: reducedTickDelay(20)}
+	players := &nearestAttackableTargetGoal{targetGoal: newTargetGoal(true, true), RandomInterval: reducedTickDelay(20)}
 	players.followScale = .5
 	ai.Targets.Add(2, polarBearAttackPlayersGoal{players, s})
-	angry := NewNearestAttackableTargetGoal(nil, true)
+	angry := newNearestAttackableTargetGoal(nil, true)
 	angry.Selector = func(m *Mob, target world.Entity) bool { return s.angryAt(m, target) }
 	ai.Targets.Add(3, angry)
-	foxes := &NearestAttackableTargetGoal{targetGoal: newTargetGoal(true, true), RandomInterval: reducedTickDelay(10),
-		IsType:   func(e world.Entity) bool { return e.H().Type() == FoxType },
+	foxes := &nearestAttackableTargetGoal{targetGoal: newTargetGoal(true, true), RandomInterval: reducedTickDelay(10),
+		IsType:   func(e world.Entity) bool { return e.H().Type() == entityFoxType },
 		Selector: func(*Mob, world.Entity) bool { return s.age >= 0 }}
 	ai.Targets.Add(4, foxes)
 	ai.Targets.Add(5, &resetUniversalAngerTargetGoal{lastHurtByPlayer: -1})
@@ -50,7 +50,7 @@ func (s *polarBearState) registerGoals(m *Mob) {
 // checkAndPerformAttack ports PolarBearMeleeAttackGoal.checkAndPerformAttack:
 // a polar bear in reach swipes its target, and one close to it rears up and
 // growls half a second before it may swipe.
-func (s *polarBearState) checkAndPerformAttack(m *Mob, g *MeleeAttackGoal, target world.Entity) {
+func (s *polarBearState) checkAndPerformAttack(m *Mob, g *meleeAttackGoal, target world.Entity) {
 	switch {
 	case g.CanPerformAttack(m, target):
 		g.ResetAttackCooldown()
@@ -100,29 +100,29 @@ func (s *polarBearState) waterSlowDown() float64 { return .98 }
 // polarBearMeleeAttackGoal ports PolarBearMeleeAttackGoal, which lowers the
 // bear when it stops.
 type polarBearMeleeAttackGoal struct {
-	*MeleeAttackGoal
+	*meleeAttackGoal
 	bear *polarBearState
 }
 
 func (g polarBearMeleeAttackGoal) Stop(m *Mob) {
 	g.bear.standing = false
-	g.MeleeAttackGoal.Stop(m)
+	g.meleeAttackGoal.Stop(m)
 }
 
 // polarBearHurtByTargetGoal ports PolarBearHurtByTargetGoal: a hurt cub
 // calls the adults around to its aid and flees.
 type polarBearHurtByTargetGoal struct {
-	*HurtByTargetGoal
+	*hurtByTargetGoal
 	bear *polarBearState
 }
 
 func (g polarBearHurtByTargetGoal) Start(m *Mob) {
-	g.HurtByTargetGoal.Start(m)
+	g.hurtByTargetGoal.Start(m)
 	if g.bear.age < 0 {
 		if attacker, _ := m.LastHurtBy(); attacker != nil {
 			g.alertOthers(m, attacker)
 		}
-		g.HurtByTargetGoal.Stop(m)
+		g.hurtByTargetGoal.Stop(m)
 	}
 }
 
@@ -130,12 +130,12 @@ func (g polarBearHurtByTargetGoal) Start(m *Mob) {
 // a cub within eight blocks attacks players within half its follow range
 // it can reach.
 type polarBearAttackPlayersGoal struct {
-	*NearestAttackableTargetGoal
+	*nearestAttackableTargetGoal
 	bear *polarBearState
 }
 
 func (g polarBearAttackPlayersGoal) CanUse(m *Mob) bool {
-	if g.bear.age < 0 || !g.NearestAttackableTargetGoal.CanUse(m) {
+	if g.bear.age < 0 || !g.nearestAttackableTargetGoal.CanUse(m) {
 		return false
 	}
 	for e := range m.tx.EntitiesWithin(m.BBox().GrowVec3(mgl64.Vec3{8, 4, 8})) {

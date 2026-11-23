@@ -14,7 +14,7 @@ import (
 )
 
 // BeeType is the source minecraft:bee species.
-var BeeType beeType
+var entityBeeType beeType
 
 type beeType struct{}
 
@@ -28,18 +28,18 @@ func (beeType) BBox(e world.Entity) cube.BBox {
 }
 func (beeType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
-		BeeConfig{}.Apply(d)
+		beeConfig{}.Apply(d)
 	}
 	return &Bee{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
 func (beeType) DecodeNBT(n map[string]any, d *world.EntityData) {
-	c := BeeConfig{Health: 10}
-	for _, a := range ReadNativeMobAttributes(n) {
+	c := beeConfig{Health: 10}
+	for _, a := range readNativeMobAttributes(n) {
 		if a.Name == "minecraft:health" {
 			c.Health = a.Current
 		}
 	}
-	j := ReadNativeMobJavaState(n)
+	j := readNativeMobJavaState(n)
 	if j != nil {
 		c.HasNectar = nbtconv.Bool(j, "HasNectar")
 		c.HasStung = nbtconv.Bool(j, "HasStung")
@@ -58,8 +58,8 @@ func (beeType) DecodeNBT(n map[string]any, d *world.EntityData) {
 func (beeType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*beeBehaviour)
 	h := b.health
-	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: 10, Current: h.Health(), DefaultMin: 0, DefaultMax: 10, Min: 0, Max: 10}, {Name: "minecraft:movement", Base: .3, Current: .3, DefaultMin: 0, DefaultMax: .3, Min: 0, Max: .3}, {Name: "minecraft:flying_speed", Base: .6, Current: .6, DefaultMin: 0, DefaultMax: .6, Min: 0, Max: .6}, {Name: "minecraft:attack_damage", Base: 2, Current: 2, DefaultMin: 0, DefaultMax: 2, Min: 0, Max: 2}})
-	m := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs})
+	attrs := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: 10, Current: h.Health(), DefaultMin: 0, DefaultMax: 10, Min: 0, Max: 10}, {Name: "minecraft:movement", Base: .3, Current: .3, DefaultMin: 0, DefaultMax: .3, Min: 0, Max: .3}, {Name: "minecraft:flying_speed", Base: .6, Current: .6, DefaultMin: 0, DefaultMax: .6, Min: 0, Max: .6}, {Name: "minecraft:attack_damage", Base: 2, Current: 2, DefaultMin: 0, DefaultMax: 2, Min: 0, Max: 2}})
+	m := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs})
 	target := ""
 	if b.angerTarget != uuid.Nil {
 		target = b.angerTarget.String()
@@ -71,7 +71,7 @@ func (beeType) EncodeNBT(d *world.EntityData) map[string]any {
 	if b.flower != nil {
 		j["flower_pos"] = encodeBeePos(*b.flower)
 	}
-	return MergeNativeMobJavaState(m, j)
+	return mergeNativeMobJavaState(m, j)
 }
 
 // decodeBeePos reads a block position saved as a compound, or nil if there
@@ -91,7 +91,7 @@ func encodeBeePos(p cube.Pos) map[string]any {
 // BeeConfig is the configuration of a bee: its health, age, whether it
 // carries nectar or stung something, how long it stays out of hives and the
 // hive and flower it remembers.
-type BeeConfig struct {
+type beeConfig struct {
 	Health              float64
 	HasNectar, HasStung bool
 	StayOutOfHive, Age  int
@@ -102,8 +102,8 @@ type BeeConfig struct {
 	noGravity                        bool
 }
 
-func (c BeeConfig) Apply(d *world.EntityData) { d.Data = c.New() }
-func (c BeeConfig) New() *beeBehaviour {
+func (c beeConfig) Apply(d *world.EntityData) { d.Data = c.New() }
+func (c beeConfig) New() *beeBehaviour {
 	if c.Health <= 0 {
 		c.Health = 10
 	}
@@ -142,8 +142,8 @@ type beeShownState struct{ angry, nectar bool }
 
 type Bee struct{ *Ent }
 
-func NewBee(opts world.EntitySpawnOpts) *world.EntityHandle { return opts.New(BeeType, BeeConfig{}) }
-func (b *Bee) SpeciesType() world.EntityType                { return BeeType }
+func NewBee(opts world.EntitySpawnOpts) *world.EntityHandle { return opts.New(entityBeeType, beeConfig{}) }
+func (b *Bee) SpeciesType() world.EntityType                { return entityBeeType }
 func (b *Bee) state() *beeBehaviour                         { return b.Behaviour().(*beeBehaviour) }
 func (b *Bee) Tick(tx *world.Tx, n int64)                   { b.state().effects.Tick(b, tx); b.Ent.Tick(tx, n) }
 func (b *beeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
@@ -205,11 +205,7 @@ func (b *Bee) Effects() []effect.Effect   { return b.state().effects.Effects() }
 func (b *Bee) Speed() float64             { return b.state().speed }
 func (b *Bee) SetSpeed(v float64)         { b.state().speed = v }
 func (b *Bee) viewAction(a world.EntityAction) {
-	vs := b.tx.Viewers(b.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(b, a)
-	}
-	b.tx.ReleaseViewers(vs)
+	world.BroadcastEntityAction(b.tx, b, a)
 }
 func (b *Bee) die(src world.DamageSource) {
 	s := b.state()
@@ -289,7 +285,7 @@ func (b *Bee) ageTicks() *int           { return &b.state().age }
 func (b *Bee) breedingFood(stack item.Stack) bool { return blockItemInTag(stack, "bee_attractive") }
 
 func (b *Bee) breedOffspring(_ *world.Tx, _ breeder) *world.EntityHandle {
-	return babyAt(b).New(BeeType, BeeConfig{Age: babyStartAge})
+	return babyAt(b).New(entityBeeType, beeConfig{Age: babyStartAge})
 }
 
 var _ world.EntityType = beeType{}

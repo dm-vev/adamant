@@ -104,7 +104,7 @@ func TestCurrentsCarryItemsAndMobs(t *testing.T) {
 			t.Fatalf("cow in the stream got velocity %v, want a push east", v)
 		}
 
-		fish := tx.AddEntity(NewCod(world.EntitySpawnOpts{Position: mgl64.Vec3{1.5, 64, .5}})).(*Cod)
+		fish := tx.AddEntity(NewCod(world.EntitySpawnOpts{Position: mgl64.Vec3{1.5, 64, .5}})).(*cod)
 		fishAI, _ := fish.Ent.mobAI()
 		fishAI.updateFluids(fishAI.Mob(fish.Ent, fish))
 		if v := fish.Velocity(); v != (mgl64.Vec3{}) {

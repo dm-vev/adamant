@@ -12,7 +12,7 @@ import (
 // SpawnOriginalMobs ports NaturalSpawner.spawnMobsForChunkGeneration: a newly
 // generated chunk spawns groups of the creatures of its biome while a random
 // draw stays below the biome's creature spawn probability.
-func SpawnOriginalMobs(tx *world.Tx, chunk world.ChunkPos) {
+func spawnOriginalMobs(tx *world.Tx, chunk world.ChunkPos) {
 	w := tx.World()
 	if !w.SpawnMobsEnabled() {
 		return

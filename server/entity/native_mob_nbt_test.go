@@ -16,15 +16,15 @@ func TestMergeNativeMobNBTPreservesUnknownActorState(t *testing.T) {
 		"Armor":            []any{map[string]any{"Slot": int8(0), "Name": "minecraft:custom_wolf_armor", "Count": byte(1), "NativeExtension": "preserve"}},
 		"FutureActorField": map[string]any{"Enabled": byte(1)},
 	}
-	retained := CloneNativeMobNBT(loaded)
+	retained := cloneNativeMobNBT(loaded)
 	retained["FutureActorField"].(map[string]any)["Enabled"] = byte(0)
 	if loaded["FutureActorField"].(map[string]any)["Enabled"] != byte(1) {
 		t.Fatal("clone shared nested actor data with source map")
 	}
 
-	attrs := ReadNativeMobAttributes(retained)
-	encodedAttrs := EncodeNativeMobAttributes(attrs, []NativeMobAttribute{{Name: "minecraft:health", Base: 8, Current: 3, DefaultMin: 0, DefaultMax: 8, Min: 0, Max: 8}})
-	encoded := MergeNativeMobNBT(retained, map[string]any{
+	attrs := readNativeMobAttributes(retained)
+	encodedAttrs := encodeNativeMobAttributes(attrs, []nativeMobAttr{{Name: "minecraft:health", Base: 8, Current: 3, DefaultMin: 0, DefaultMax: 8, Min: 0, Max: 8}})
+	encoded := mergeNativeMobNBT(retained, map[string]any{
 		"Attributes": encodedAttrs,
 		"OwnerNew":   int64(9001),
 		"Armor":      []any{map[string]any{"Slot": int8(0), "Name": "minecraft:iron_horse_armor", "Count": byte(1)}},
@@ -35,7 +35,7 @@ func TestMergeNativeMobNBTPreservesUnknownActorState(t *testing.T) {
 	if encoded["FutureActorField"].(map[string]any)["Enabled"] != byte(0) {
 		t.Fatalf("unknown actor compound lost: %#v", encoded["FutureActorField"])
 	}
-	gotAttrs := ReadNativeMobAttributes(encoded)
+	gotAttrs := readNativeMobAttributes(encoded)
 	if len(gotAttrs) != 3 || gotAttrs[0].Current != 3 || gotAttrs[0].Raw["NativeExtension"] != int32(71) || gotAttrs[2].Raw["Extension"] != "keep" {
 		t.Fatalf("native attributes were not merged by Name: %#v", gotAttrs)
 	}
@@ -48,11 +48,11 @@ func TestMergeNativeMobNBTPreservesUnknownActorState(t *testing.T) {
 func TestNativeMobJavaStateUsesSeparateNamespace(t *testing.T) {
 	t.Parallel()
 	native := map[string]any{"UniqueID": int64(4), "OwnerNew": int64(-1)}
-	java := MergeNativeMobJavaState(native, map[string]any{"AngerTime": int32(17), "AngryAt": "java-player-uuid"})
+	java := mergeNativeMobJavaState(native, map[string]any{"AngerTime": int32(17), "AngryAt": "java-player-uuid"})
 	if _, ok := java["AngerTime"]; ok {
 		t.Fatal("Java anger leaked into native actor fields")
 	}
-	state := ReadNativeMobJavaState(java)
+	state := readNativeMobJavaState(java)
 	if state["AngerTime"] != int32(17) || state["AngryAt"] != "java-player-uuid" || java["OwnerNew"] != int64(-1) {
 		t.Fatalf("Java-only state did not round-trip independently: native=%#v java=%#v", java, state)
 	}
@@ -70,12 +70,12 @@ func TestNativeMobEquipmentAndActorFieldCodecs(t *testing.T) {
 		"Mainhand":   []any{map[string]any{"Name": "", "Count": byte(0), "Damage": int32(0), "WasPickedUp": byte(0)}},
 		"ChestItems": []any{map[string]any{"Slot": byte(0), "Name": "", "Count": byte(0), "Damage": int32(0), "WasPickedUp": byte(0)}},
 	}
-	equipment := ReadNativeMobEquipment(raw)
+	equipment := readNativeMobEquipment(raw)
 	equipment.Armor[0].Name, equipment.Armor[0].Count = "minecraft:wolf_armor", 1
 	equipment.Mainhand[0].Name, equipment.Mainhand[0].Count = "minecraft:bone", 1
 	slot := int32(0)
 	equipment.ChestItems[0].Slot = &slot
-	encoded := MergeNativeMobNBT(raw, EncodeNativeMobEquipment(equipment))
+	encoded := mergeNativeMobNBT(raw, encodeNativeMobEquipment(equipment))
 	armor := encoded["Armor"].([]any)[0].(map[string]any)
 	if armor["Name"] != "minecraft:wolf_armor" || armor["Count"] != byte(1) || armor["NativeExtension"] != "kept" {
 		t.Fatalf("native armor slot did not preserve/update fields: %#v", armor)
@@ -84,26 +84,26 @@ func TestNativeMobEquipmentAndActorFieldCodecs(t *testing.T) {
 	if chestItem["Slot"] != byte(0) {
 		t.Fatalf("native ChestItems Slot must remain a byte: %#v", chestItem["Slot"])
 	}
-	if id, ok := NativeMobUniqueID(encoded); !ok || id != -4294967294 {
+	if id, ok := nativeMobUniqueID(encoded); !ok || id != -4294967294 {
 		t.Fatalf("native UniqueID=%d, ok=%t", id, ok)
 	}
-	if owner, ok := NativeMobOwnerID(encoded); !ok || owner != -1 {
+	if owner, ok := nativeMobOwnerID(encoded); !ok || owner != -1 {
 		t.Fatalf("native owner=%d, ok=%t", owner, ok)
 	}
-	if angry := NativeMobAngry(encoded); angry {
+	if angry := nativeMobAngry(encoded); angry {
 		t.Fatal("zero native IsAngry decoded as true")
 	}
-	encoded = SetNativeMobOwnerID(encoded, 1234)
-	encoded = SetNativeMobAngry(encoded, true)
-	encoded = SetNativeMobVariant(encoded, 3)
-	encoded = SetNativeMobColor(encoded, 5)
-	if owner, ok := NativeMobOwnerID(encoded); !ok || owner != 1234 || !NativeMobAngry(encoded) {
+	encoded = setNativeMobOwnerID(encoded, 1234)
+	encoded = setNativeMobAngry(encoded, true)
+	encoded = setNativeMobVariant(encoded, 3)
+	encoded = setNativeMobColor(encoded, 5)
+	if owner, ok := nativeMobOwnerID(encoded); !ok || owner != 1234 || !nativeMobAngry(encoded) {
 		t.Fatalf("native owner/anger setters did not preserve native types: %#v", encoded)
 	}
-	if variant, ok := NativeMobVariant(encoded); !ok || variant != 3 {
+	if variant, ok := nativeMobVariant(encoded); !ok || variant != 3 {
 		t.Fatalf("native Variant=%d, ok=%t", variant, ok)
 	}
-	if color, ok := NativeMobColor(encoded); !ok || color != 5 {
+	if color, ok := nativeMobColor(encoded); !ok || color != 5 {
 		t.Fatalf("native Color=%d, ok=%t", color, ok)
 	}
 }

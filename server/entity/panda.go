@@ -11,11 +11,11 @@ import (
 )
 
 // PandaType is the registered Java panda species.
-var PandaType pandaType
+var entityPandaType pandaType
 
 type pandaType struct{}
 type Panda struct{ *Ent }
-type PandaConfig struct {
+type pandaConfig struct {
 	Health, MaxHealth             float64
 	Age, Variant                  int
 	Gene, HiddenGene              int
@@ -46,11 +46,11 @@ type pandaState struct {
 // pandaShownState are the flags of a panda viewers were last shown.
 type pandaShownState struct{ sitting, rolling, lying, sneezing, eating, scared bool }
 
-func NewPanda(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(PandaType, PandaConfig{}) }
+func NewPanda(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(entityPandaType, pandaConfig{}) }
 func (pandaType) EncodeEntity() string                     { return "minecraft:panda" }
 func (pandaType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
-		PandaConfig{}.Apply(d)
+		pandaConfig{}.Apply(d)
 	}
 	return &Panda{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
@@ -60,8 +60,8 @@ func (pandaType) BBox(e world.Entity) cube.BBox {
 	}
 	return cube.Box(-.65, 0, -.65, .65, 1.25, .65)
 }
-func (c PandaConfig) Apply(d *world.EntityData) { d.Data = c.New() }
-func (c PandaConfig) New() *pandaState {
+func (c pandaConfig) Apply(d *world.EntityData) { d.Data = c.New() }
+func (c pandaConfig) New() *pandaState {
 	variant := max(0, min(c.Variant, 6))
 	m := c.MaxHealth
 	if m <= 0 {
@@ -94,16 +94,16 @@ func (s *pandaState) setAttributes() {
 func (pandaType) EncodeNBT(d *world.EntityData) map[string]any {
 	s := d.Data.(*pandaState)
 	m := s.health.MaxHealth()
-	a := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: m, Current: s.health.Health(), DefaultMin: 0, DefaultMax: m, Min: 0, Max: m}})
+	a := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: m, Current: s.health.Health(), DefaultMin: 0, DefaultMax: m, Min: 0, Max: m}})
 	state := s.breeding.encodeNBT(map[string]any{"Age": int32(s.age), "Variant": int32(s.variant), "MainGene": int32(s.gene), "HiddenGene": int32(s.hiddenGene), "SneezeTicks": int32(s.sneezeCounter), "UnhappyTicks": int32(s.unhappy), "Rolling": s.rolling, "Sitting": s.sitting, "LyingOnBack": s.lying})
-	return MergeNativeMobJavaState(map[string]any{"Attributes": a}, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), state))
+	return mergeNativeMobJavaState(map[string]any{"Attributes": a}, mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), state))
 }
 func (pandaType) DecodeNBT(n map[string]any, d *world.EntityData) {
-	s := ReadNativeMobJavaState(n)
+	s := readNativeMobJavaState(n)
 	if s == nil {
 		s = n
 	}
-	c := PandaConfig{Age: int(nbtconv.Int32(s, "Age")), Variant: int(nbtconv.Int32(s, "Variant")), Gene: int(nbtconv.Int32(s, "MainGene")), HiddenGene: int(nbtconv.Int32(s, "HiddenGene")), SneezeTicks: int(nbtconv.Int32(s, "SneezeTicks")), UnhappyTicks: int(nbtconv.Int32(s, "UnhappyTicks")), Rolling: nbtconv.Bool(s, "Rolling"), Sitting: nbtconv.Bool(s, "Sitting"), LyingOnBack: nbtconv.Bool(s, "LyingOnBack")}
+	c := pandaConfig{Age: int(nbtconv.Int32(s, "Age")), Variant: int(nbtconv.Int32(s, "Variant")), Gene: int(nbtconv.Int32(s, "MainGene")), HiddenGene: int(nbtconv.Int32(s, "HiddenGene")), SneezeTicks: int(nbtconv.Int32(s, "SneezeTicks")), UnhappyTicks: int(nbtconv.Int32(s, "UnhappyTicks")), Rolling: nbtconv.Bool(s, "Rolling"), Sitting: nbtconv.Bool(s, "Sitting"), LyingOnBack: nbtconv.Bool(s, "LyingOnBack")}
 	if a, ok := nativeMobAttribute(n, "minecraft:health"); ok {
 		c.Health, c.MaxHealth = a.Current, a.Base
 	}
@@ -194,11 +194,7 @@ func (p *Panda) KnockBack(src mgl64.Vec3, k, h float64) {
 	knockBack(p, src, k, h)
 }
 func (p *Panda) view(a world.EntityAction) {
-	v := p.tx.Viewers(p.Position())
-	for _, x := range v {
-		x.ViewEntityAction(p, a)
-	}
-	p.tx.ReleaseViewers(v)
+	world.BroadcastEntityAction(p.tx, p, a)
 }
 func (p *Panda) Variant() int    { return p.b().variant }
 func (p *Panda) Gene() int       { return p.b().gene }
@@ -312,7 +308,7 @@ func (p *Panda) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle
 	if r.NextInt(32) == 0 {
 		hidden = pandaRandomGene(r)
 	}
-	return babyAt(p).New(PandaType, PandaConfig{Age: babyStartAge, Variant: pandaVariant(main, hidden), Gene: main, HiddenGene: hidden})
+	return babyAt(p).New(entityPandaType, pandaConfig{Age: babyStartAge, Variant: pandaVariant(main, hidden), Gene: main, HiddenGene: hidden})
 }
 
 // pandaGroup is the AgeableMobGroupData of naturally spawned pandas.

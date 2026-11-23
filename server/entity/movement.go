@@ -59,12 +59,17 @@ func (m *Movement) Send() {
 	posChanged := !m.dpos.ApproxEqualThreshold(zeroVec3, epsilon)
 	velChanged := !m.dvel.ApproxEqualThreshold(zeroVec3, epsilon)
 
+	var velB world.Broadcast
 	for _, v := range m.v {
 		if posChanged || m.rotChanged {
 			v.ViewEntityMovement(m.e, m.pos, m.rot, m.onGround)
 		}
 		if velChanged {
-			v.ViewEntityVelocity(m.e, m.vel)
+			if bv, ok := v.(world.EntityBroadcastViewer); ok {
+				bv.ViewEntityVelocityShared(m.e, m.vel, &velB)
+			} else {
+				v.ViewEntityVelocity(m.e, m.vel)
+			}
 		}
 	}
 	m.releaseViewers()

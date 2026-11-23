@@ -21,7 +21,7 @@ func (nearestLivingEntitySensor) requires() []memoryType {
 	return []memoryType{memNearestLivingEntities, memNearestVisibleLivingEntities}
 }
 
-func (nearestLivingEntitySensor) doTick(m *Mob, b *Brain) {
+func (nearestLivingEntitySensor) doTick(m *Mob, b *brain) {
 	r := m.AI.FollowRange
 	box := m.BBox().Grow(r)
 	type found struct {
@@ -49,7 +49,7 @@ func (nearestLivingEntitySensor) doTick(m *Mob, b *Brain) {
 
 // nearestLiving returns the living entities near the mob, nearest first.
 func nearestLiving(m *Mob) []world.Entity {
-	v, ok := m.Brain().get(memNearestLivingEntities)
+	v, ok := m.brain().get(memNearestLivingEntities)
 	if !ok {
 		return nil
 	}
@@ -68,7 +68,7 @@ func nearestLiving(m *Mob) []world.Entity {
 func sensorAttackable(m *Mob, e world.Entity) bool {
 	c := forCombat()
 	c.rangeLimit = m.AI.FollowRange
-	if v, ok := m.Brain().get(memAttackTarget); ok && v == e.H() {
+	if v, ok := m.brain().get(memAttackTarget); ok && v == e.H() {
 		c.ignoreInvis = true
 	}
 	return c.test(m, e)
@@ -81,7 +81,7 @@ type hurtBySensor struct{}
 func (hurtBySensor) scanRate() int          { return 0 }
 func (hurtBySensor) requires() []memoryType { return []memoryType{memHurtBy, memHurtByEntity} }
 
-func (hurtBySensor) doTick(m *Mob, b *Brain) {
+func (hurtBySensor) doTick(m *Mob, b *brain) {
 	if src := m.LastDamage(); src != nil {
 		b.set(memHurtBy, src)
 		if attacker := mobKiller(src); attacker != nil {
@@ -110,7 +110,7 @@ type temptingSensor struct {
 func (temptingSensor) scanRate() int          { return 0 }
 func (temptingSensor) requires() []memoryType { return []memoryType{memTemptingPlayer} }
 
-func (s temptingSensor) doTick(m *Mob, b *Brain) {
+func (s temptingSensor) doTick(m *Mob, b *brain) {
 	c := forNonCombat()
 	c.ignoreSight, c.rangeLimit = true, 10
 	if s.rangeLimit > 0 {
@@ -156,7 +156,7 @@ func (adultSensor) requires() []memoryType {
 	return []memoryType{memNearestVisibleAdult, memNearestVisibleLivingEntities}
 }
 
-func (s adultSensor) doTick(m *Mob, b *Brain) {
+func (s adultSensor) doTick(m *Mob, b *brain) {
 	v := visibleLiving(m)
 	if v == nil {
 		return
@@ -182,7 +182,7 @@ type mobSensor struct {
 func (s mobSensor) scanRate() int          { return s.rate }
 func (s mobSensor) requires() []memoryType { return []memoryType{memNearestLivingEntities, s.mem} }
 
-func (s mobSensor) doTick(m *Mob, b *Brain) {
+func (s mobSensor) doTick(m *Mob, b *brain) {
 	if !s.ready(m) {
 		b.erase(s.mem)
 		return
@@ -203,7 +203,7 @@ type isInWaterSensor struct{}
 
 func (isInWaterSensor) scanRate() int          { return 0 }
 func (isInWaterSensor) requires() []memoryType { return []memoryType{memIsInWater} }
-func (isInWaterSensor) doTick(m *Mob, b *Brain) {
+func (isInWaterSensor) doTick(m *Mob, b *brain) {
 	if m.InWater() {
 		b.set(memIsInWater, true)
 	} else {
@@ -221,7 +221,7 @@ func (playerSensor) requires() []memoryType {
 	return []memoryType{memNearestPlayers, memNearestVisiblePlayer, memNearestVisibleAttackablePlayer, memNearestVisibleAttackablePlayers}
 }
 
-func (playerSensor) doTick(m *Mob, b *Brain) {
+func (playerSensor) doTick(m *Mob, b *brain) {
 	r := m.AI.FollowRange
 	type found struct {
 		e    world.Entity
@@ -277,7 +277,7 @@ type nearestItemSensor struct {
 func (nearestItemSensor) scanRate() int          { return 0 }
 func (nearestItemSensor) requires() []memoryType { return []memoryType{memNearestVisibleWantedItem} }
 
-func (s nearestItemSensor) doTick(m *Mob, b *Brain) {
+func (s nearestItemSensor) doTick(m *Mob, b *brain) {
 	box := m.BBox().GrowVec3(mgl64.Vec3{32, 16, 32})
 	var best world.Entity
 	bestDist := 0.0

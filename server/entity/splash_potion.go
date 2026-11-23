@@ -21,7 +21,7 @@ func NewSplashPotion(opts world.EntitySpawnOpts, t potion.Potion, owner world.En
 	conf.Hit = potionSplash(1, t, false)
 	conf.Owner = ownerHandle(owner)
 
-	return opts.New(SplashPotionType, conf)
+	return opts.New(entitySplashPotionType, conf)
 }
 
 var splashPotionConf = ProjectileBehaviourConfig{
@@ -32,7 +32,7 @@ var splashPotionConf = ProjectileBehaviourConfig{
 }
 
 // SplashPotionType is a world.EntityType implementation for SplashPotion.
-var SplashPotionType splashPotionType
+var entitySplashPotionType splashPotionType
 
 type splashPotionType struct{}
 

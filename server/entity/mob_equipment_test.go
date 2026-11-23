@@ -9,9 +9,9 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-func husk(tx *world.Tx, h *world.EntityHandle) *entity.HostileMob {
+func husk(tx *world.Tx, h *world.EntityHandle) *entity.Husk {
 	e, _ := h.Entity(tx)
-	return e.(*entity.Husk).HostileMob
+	return e.(*entity.Husk)
 }
 
 // TestMobsPickUpAndWearLoot checks Mob.aiStep and equipItemIfPossible: a

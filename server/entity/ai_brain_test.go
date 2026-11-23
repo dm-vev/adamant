@@ -180,7 +180,7 @@ func TestEntUpdateStateUsesSharedBroadcast(t *testing.T) {
 			t.Fatal("zombie missing from world")
 		}
 		v1.sharedCalls, v2.sharedCalls, v1.plainCalls, v2.plainCalls = 0, 0, 0, 0
-		e.(*Zombie).SetNameTag("Shared")
+		e.(*zombie).SetNameTag("Shared")
 	})
 	<-w.Exec(func(tx *world.Tx) {
 		l1.Close(tx)
