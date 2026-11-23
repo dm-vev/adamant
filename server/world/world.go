@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/ecs"
+	"github.com/df-mc/dragonfly/server/event"
 )
 
 // World implements a Minecraft world. It manages all aspects of what players
@@ -43,7 +45,10 @@ type World struct {
 	ra                   cube.Range
 	weather
 	// stats is what the world counts of itself, for metrics.
-	stats *Stats
+	stats      *Stats
+	components ecs.Bag
+	events     *event.Bus
+	systems    tickSystemRegistry
 }
 
 // New creates a new initialised world. The world may be used right away, but
@@ -159,6 +164,23 @@ func (w *World) Handler() Handler {
 		}
 	}
 	return h
+}
+
+// Components returns the ECS component bag attached to the World, or nil if w
+// is nil.
+func (w *World) Components() *ecs.Bag {
+	if w == nil {
+		return nil
+	}
+	return &w.components
+}
+
+// Events returns the prioritized event bus of the World, or nil if w is nil.
+func (w *World) Events() *event.Bus {
+	if w == nil {
+		return nil
+	}
+	return w.events
 }
 
 // Column represents the data of a chunk including the (block) entities and

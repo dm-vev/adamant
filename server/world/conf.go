@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/event"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/google/uuid"
@@ -359,6 +360,7 @@ func newWorldState(conf Config, s *Settings, providerUse *providerRef) *World {
 		queue:               make(chan transaction, 128),
 		generatorQueue:      newGenerationQueue(),
 		stats:               newStats(),
+		events:              event.NewBus(),
 		made:                time.Now(),
 		r:                   rand.New(conf.RandSource),
 		conf:                conf,

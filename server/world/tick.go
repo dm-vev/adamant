@@ -12,6 +12,7 @@ import (
 
 	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/event"
 	"github.com/df-mc/dragonfly/server/internal/parallel"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/go-gl/mathgl/mgl64"
@@ -235,35 +236,46 @@ func (t ticker) tickWorld(tx *Tx) {
 		}
 	}
 	if !w.tickFrozen.Load() || runStep {
-		if clock.thunder {
-			w.step(tx, tick, "lightning", w.tickLightning)
-		}
-		if w.dragonFight != nil {
-			w.step(tx, tick, "dragon fight", w.dragonFight.Tick)
-		}
-		t.tickEntities(tx, tick)
-		if collide := w.EntityRegistry().Config().EntityCollisions; collide != nil {
-			w.step(tx, tick, "entity collisions", collide)
-		}
-		if spawnTick := w.EntityRegistry().Config().NaturalSpawnTick; spawnTick != nil {
-			w.step(tx, tick, "natural spawning", spawnTick)
-		}
-		w.step(tx, tick, "raids", func(tx *Tx) { tx.Raids().Tick() })
-		w.scheduledBlockTicks.tickNonCircuits(tx, tick, loaders...)
-		w.scheduledFluidTicks.tick(tx, tick, loaders...)
-		t.tickBlocksRandomly(tx, loaders, tick)
-		t.performNeighbourUpdates(tx, tick)
-		if !w.step(tx, tick, "redstone", func(tx *Tx) { w.redstone.tick(tx, tick) }) {
-			// The same input would panic again.
-			w.redstone.dropDirty()
-		}
-		t.tickQueuedEntities(tx, tick)
-		t.tickEntitiesInPhase(tx, tick, true)
+		t.tickSimulation(tx, tick, clock, loaders)
 	}
 	if w.sprintTicks.Load() > 0 {
 		w.sprintTicks.Add(-1)
 	}
+}
 
+func (t ticker) tickSimulation(tx *Tx, tick int64, clock tickClock, loaders []*Loader) {
+	w := tx.World()
+	if event.HasListeners[WorldTickEvent](w.events) {
+		ev := WorldTickEvent{Tx: tx, Tick: tick}
+		event.Emit(w.events, &ev)
+	}
+	if clock.thunder {
+		w.step(tx, tick, "lightning", w.tickLightning)
+	}
+	if w.dragonFight != nil {
+		w.step(tx, tick, "dragon fight", w.dragonFight.Tick)
+	}
+	w.runSystems(tx, PhasePreEntities, tick)
+	t.tickEntities(tx, tick)
+	w.runSystems(tx, PhasePostEntities, tick)
+	if collide := w.EntityRegistry().Config().EntityCollisions; collide != nil {
+		w.step(tx, tick, "entity collisions", collide)
+	}
+	if spawnTick := w.EntityRegistry().Config().NaturalSpawnTick; spawnTick != nil {
+		w.step(tx, tick, "natural spawning", spawnTick)
+	}
+	w.step(tx, tick, "raids", func(tx *Tx) { tx.Raids().Tick() })
+	w.scheduledBlockTicks.tickNonCircuits(tx, tick, loaders...)
+	w.scheduledFluidTicks.tick(tx, tick, loaders...)
+	t.tickBlocksRandomly(tx, loaders, tick)
+	t.performNeighbourUpdates(tx, tick)
+	if !w.step(tx, tick, "redstone", func(tx *Tx) { w.redstone.tick(tx, tick) }) {
+		// The same input would panic again.
+		w.redstone.dropDirty()
+	}
+	t.tickQueuedEntities(tx, tick)
+	t.tickEntitiesInPhase(tx, tick, true)
+	w.runSystems(tx, PhasePostTick, tick)
 }
 
 // resolveSpawnY sets the height of a spawn of the Overworld at the top of

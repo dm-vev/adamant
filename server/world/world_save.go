@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/event"
 	"github.com/df-mc/dragonfly/server/internal/parallel"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -311,6 +312,10 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 		c.waitReady()
 	}
 	w.finishGeneration(tx, c)
+	if event.HasListeners[ChunkUnloadEvent](w.events) {
+		ev := ChunkUnloadEvent{Tx: tx, Pos: pos, Column: c}
+		event.Emit(w.events, &ev)
+	}
 	// An entity moved by a teleport stays listed in its old chunk until its
 	// next tick. It moves to the chunk it is in now rather than closing with
 	// the chunk it left: a teleported player would otherwise be kicked.
@@ -328,15 +333,7 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 			continue
 		}
 		if c.removeEntity(e) {
-			if state, ok := w.entities[e]; ok {
-				w.removePendingRider(e)
-				w.forgetEntity(e, state)
-				delete(w.entities, e)
-				w.untrackPlayer(e)
-				delete(w.entitiesByUUID, e.id)
-				delete(w.entitiesByUniqueID, e.UniqueID())
-				w.entityCount.Add(-1)
-			}
+			w.unlinkEntityHandle(e)
 		}
 	}
 	// A failed write of the column marks it modified again, so that
@@ -360,6 +357,33 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 		// Prevent shutdown from blocking on unfinished generation.
 		c.markReady()
 	}
+	w.closeChunkEntities(tx, c, ready)
+	c.resetEntities()
+	c.releaseWireCache()
+	w.chunkCache.invalidate(pos)
+	w.chunksVersion++
+	if _, ok := w.chunks[pos]; ok {
+		delete(w.chunks, pos)
+		delete(w.pendingLight, pos)
+		w.chunkCount.Add(-1)
+		w.stats.ChunksUnloaded.Inc()
+		w.columnLeft(pos)
+	}
+}
+
+func (w *World) unlinkEntityHandle(e *EntityHandle) {
+	if state, ok := w.entities[e]; ok {
+		w.removePendingRider(e)
+		w.forgetEntity(e, state)
+		delete(w.entities, e)
+		w.untrackPlayer(e)
+		delete(w.entitiesByUUID, e.id)
+		delete(w.entitiesByUniqueID, e.UniqueID())
+		w.entityCount.Add(-1)
+	}
+}
+
+func (w *World) closeChunkEntities(tx *Tx, c *Column, ready bool) {
 	for _, e := range slices.Clone(c.Entities) {
 		ent, ok := e.Entity(tx)
 		if !ok {
@@ -374,35 +398,18 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 			}
 			continue
 		}
-
 		w.Handler().HandleEntityDespawn(tx, ent)
+		if event.HasListeners[EntityDespawnEvent](w.events) {
+			ev := EntityDespawnEvent{Tx: tx, Entity: ent}
+			event.Emit(w.events, &ev)
+		}
 		for v := range c.viewers {
 			v.HideEntity(ent)
 		}
-		if state, ok := w.entities[e]; ok {
-			w.removePendingRider(e)
-			w.forgetEntity(e, state)
-			delete(w.entities, e)
-			w.untrackPlayer(e)
-			delete(w.entitiesByUUID, e.id)
-			delete(w.entitiesByUniqueID, e.UniqueID())
-			w.entityCount.Add(-1)
-		}
+		w.unlinkEntityHandle(e)
 		e.state = nil
 		e.unsetAndLockWorld()
 		_ = e.Close()
-	}
-	c.resetEntities()
-	c.releaseWireCache()
-	if w.lastChunkPos == pos {
-		w.lastChunk = nil
-	}
-	if _, ok := w.chunks[pos]; ok {
-		delete(w.chunks, pos)
-		delete(w.pendingLight, pos)
-		w.chunkCount.Add(-1)
-		w.stats.ChunksUnloaded.Inc()
-		w.columnLeft(pos)
 	}
 }
 

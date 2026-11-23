@@ -78,9 +78,9 @@ var worldReads = map[string][]string{
 	},
 	"Tx": {
 		"Biome", "Block", "BlockFaceSturdy", "BlockLight", "BlockLoaded", "BlockRID", "BlockStateID", "CaptureStructure",
-		"ChunkLoaded", "ChunkReadySignal", "ChunkState", "Closed", "ColumnBlockVersion", "CurrentTick", "Defer", "DeferErr",
+		"ChunkComponents", "ChunkLoaded", "ChunkReadySignal", "ChunkState", "Closed", "ColumnBlockVersion", "CurrentTick", "Defer", "DeferErr",
 		"Entities", "EntitiesOfType", "EntitiesOfTypesWithin", "EntitiesWithin", "EntityByUUID", "EntityByUniqueID",
-		"EntityChunk", "EntityTicking", "Features", "HasScheduledBlockUpdate", "HighestBlock",
+		"EntityChunk", "EntityTicking", "Events", "Features", "HasScheduledBlockUpdate", "HighestBlock",
 		"HighestLightBlocker", "IsDarkOutside", "Light", "LightBlockedInto", "Liquid", "LiquidRID",
 		"LoadedBlockEntities", "LocalDifficulty", "Maps", "MayContainLiquid", "MovementBlockProperties", "NativeState", "POIs",
 		"PlayerSpawnPosition", "Players", "PlayersNear", "Raids", "Raining", "RainingAt", "Range", "RawBrightness",
@@ -89,8 +89,8 @@ var worldReads = map[string][]string{
 		"World",
 	},
 	"World": {
-		"AutoSaveEnabled", "BlockRegistry", "Border", "ClampToBorder", "CreakingActive", "CurrentTick",
-		"DefaultGameMode", "Difficulty", "Dimension", "Do", "DoAfter", "EntityCount", "EntityRegistry", "Exec",
+		"AutoSaveEnabled", "BlockRegistry", "Border", "ClampToBorder", "Components", "CreakingActive", "CurrentTick",
+		"DefaultGameMode", "Difficulty", "Dimension", "Do", "DoAfter", "EntityCount", "EntityRegistry", "Events", "Exec",
 		"FallDamage", "ForcedChunks", "Frozen", "GameRule", "GameRuleBool", "GameRuleInt", "Handler",
 		"HighestLightBlocker", "IsChunkForced", "LoadedChunkCount", "MapData", "MapDataByJavaID", "MapIDByJavaID",
 		"MonsterSpawningEnabled", "MoonBrightness", "Name", "PlayerSpawn", "PlayersSleepingPercentage", "Range",

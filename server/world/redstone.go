@@ -991,11 +991,6 @@ func (e *redstoneEngine) redstoneUpdateAllowed(tx *Tx, update RedstoneUpdate) bo
 	return !ctx.Cancelled()
 }
 
-// redstoneLightDiffuser is the local subset needed to exclude transparent conductors.
-type redstoneLightDiffuser interface {
-	LightDiffusionLevel() uint8
-}
-
 // redstoneStrongPowerConductor reports whether b can conduct strong power through face.
 func redstoneStrongPowerConductor(pos cube.Pos, b Block, tx *Tx, face cube.Face) bool {
 	if !b.Model().FaceSolid(pos, face, tx) {
@@ -1004,7 +999,7 @@ func redstoneStrongPowerConductor(pos cube.Pos, b Block, tx *Tx, face cube.Face)
 	if _, ok := b.(RedstoneNonConductive); ok {
 		return false
 	}
-	if diffuser, ok := b.(redstoneLightDiffuser); ok && diffuser.LightDiffusionLevel() == 0 {
+	if diffuser, ok := b.(lightDiffuser); ok && diffuser.LightDiffusionLevel() == 0 {
 		return false
 	}
 	return true

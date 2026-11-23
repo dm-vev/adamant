@@ -240,7 +240,7 @@ func (w *World) regionOwnerAmong(pos ChunkPos, r *region) bool {
 func TestRegionPhasesSplitCrowdedRegions(t *testing.T) {
 	t.Parallel()
 	ref := func(cx, cz int32, entities int) columnRef {
-		pos := ChunkPos{cx*regionCell + 3, cz*regionCell + 5}
+		pos := ChunkPos{cx*regionCell + min(3, regionCell-1), cz*regionCell + min(3, regionCell-1)}
 		return columnRef{pos: pos, col: &Column{Entities: make([]*EntityHandle, entities)}}
 	}
 	check := func(name string, refs []columnRef, phases [][][]columnRef) {

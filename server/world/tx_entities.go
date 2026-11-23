@@ -154,3 +154,76 @@ func BroadcastEntityState(tx *Tx, e Entity) {
 	}
 	tx.ReleaseViewers(viewers)
 }
+
+// BroadcastEntityAction notifies all viewers of e of an entity action, sharing
+// cached broadcast state across viewers that implement EntityBroadcastViewer.
+func BroadcastEntityAction(tx *Tx, e Entity, a EntityAction) {
+	if tx == nil || tx.Closed() || e == nil {
+		return
+	}
+	viewers := tx.Viewers(e.Position())
+	var b Broadcast
+	for _, viewer := range viewers {
+		if bv, ok := viewer.(EntityBroadcastViewer); ok {
+			bv.ViewEntityActionShared(e, a, &b)
+		} else {
+			viewer.ViewEntityAction(e, a)
+		}
+	}
+	tx.ReleaseViewers(viewers)
+}
+
+// BroadcastEntityVelocity notifies all viewers of e of its velocity, sharing
+// cached broadcast state across viewers that implement EntityBroadcastViewer.
+func BroadcastEntityVelocity(tx *Tx, e Entity, vel mgl64.Vec3) {
+	if tx == nil || tx.Closed() || e == nil {
+		return
+	}
+	viewers := tx.Viewers(e.Position())
+	var b Broadcast
+	for _, viewer := range viewers {
+		if bv, ok := viewer.(EntityBroadcastViewer); ok {
+			bv.ViewEntityVelocityShared(e, vel, &b)
+		} else {
+			viewer.ViewEntityVelocity(e, vel)
+		}
+	}
+	tx.ReleaseViewers(viewers)
+}
+
+// BroadcastEntityItems notifies all viewers of e of its held items, sharing
+// cached broadcast state across viewers that implement EntityBroadcastViewer.
+func BroadcastEntityItems(tx *Tx, e Entity) {
+	if tx == nil || tx.Closed() || e == nil {
+		return
+	}
+	viewers := tx.Viewers(e.Position())
+	var b Broadcast
+	for _, viewer := range viewers {
+		if bv, ok := viewer.(EntityBroadcastViewer); ok {
+			bv.ViewEntityItemsShared(e, &b)
+		} else {
+			viewer.ViewEntityItems(e)
+		}
+	}
+	tx.ReleaseViewers(viewers)
+}
+
+// BroadcastEntityArmour notifies all viewers of e of its equipped armour,
+// sharing cached broadcast state across viewers that implement
+// EntityBroadcastViewer.
+func BroadcastEntityArmour(tx *Tx, e Entity) {
+	if tx == nil || tx.Closed() || e == nil {
+		return
+	}
+	viewers := tx.Viewers(e.Position())
+	var b Broadcast
+	for _, viewer := range viewers {
+		if bv, ok := viewer.(EntityBroadcastViewer); ok {
+			bv.ViewEntityArmourShared(e, &b)
+		} else {
+			viewer.ViewEntityArmour(e)
+		}
+	}
+	tx.ReleaseViewers(viewers)
+}

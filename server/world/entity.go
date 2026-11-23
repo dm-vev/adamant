@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/ecs"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -259,6 +260,15 @@ func entityFromData(t EntityType, id int64, data map[string]any) *EntityHandle {
 // Type returns the EntityType of the EntityHandle.
 func (e *EntityHandle) Type() EntityType {
 	return e.t
+}
+
+// Components returns the ECS component bag attached to the entity handle's
+// data, or nil if e is nil.
+func (e *EntityHandle) Components() *ecs.Bag {
+	if e == nil {
+		return nil
+	}
+	return &e.data.Components
 }
 
 // Entity attempts to convert an EntityHandle to an Entity using the Tx passed.
@@ -687,6 +697,9 @@ func (e *EntityHandle) decodeNBT(m map[string]any) {
 			}
 		}
 	}
+	if ecsNBT, ok := m["adamant:ecs"].(map[string]any); ok {
+		e.data.Components.DecodeNBT(ecsNBT)
+	}
 }
 
 // clampEntityPos clamps the position of an entity being loaded into the
@@ -770,6 +783,11 @@ func (e *EntityHandle) encodeNBT() map[string]any {
 		}
 		data["adamant:java"] = javaData
 	}
+	if ecsNBT := e.data.Components.EncodeNBT(); len(ecsNBT) > 0 {
+		data["adamant:ecs"] = ecsNBT
+	} else {
+		delete(data, "adamant:ecs")
+	}
 	return data
 }
 
@@ -807,6 +825,9 @@ type EntityData struct {
 	// Moves holds what the viewers of the entity were last shown of its
 	// movement.
 	Moves MoveTracker
+
+	// Components stores typed ECS components attached to this entity.
+	Components ecs.Bag
 
 	Data any
 }

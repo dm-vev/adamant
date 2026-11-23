@@ -71,6 +71,8 @@ func (w *World) placeColumn(pos ChunkPos, col *Column) {
 	col.pos, col.dirty = pos, &w.dirty
 	col.attachWireCache(&w.wireCache)
 	w.chunks[pos] = col
+	w.chunkCache.invalidate(pos)
+	w.chunksVersion++
 	if col.needsSave() {
 		col.enlist()
 	}

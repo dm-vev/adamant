@@ -20,10 +20,9 @@ import (
 // A ReadView must only be used within the parallel phase of the world it was
 // made for.
 type ReadView struct {
-	w       *World
-	lastPos ChunkPos
-	last    *Column
-	missed  bool
+	w      *World
+	cache  chunkCache
+	missed bool
 	// tracking makes the view list the columns it reads in tracked.
 	tracking bool
 	tracked  []ChunkPos
@@ -49,9 +48,6 @@ func (v *ReadView) Reset() {
 // their block versions later.
 func (v *ReadView) Track() {
 	v.tracking, v.tracked = true, v.tracked[:0]
-	if v.last != nil {
-		v.tracked = append(v.tracked, v.lastPos)
-	}
 }
 
 // Tracked returns the columns read since Track. The slice is reused by the
@@ -92,15 +88,20 @@ func (v *ReadView) Missed() bool {
 
 // column returns the settled column at pos, or nil if there is none.
 func (v *ReadView) column(pos ChunkPos) *Column {
-	if v.last != nil && v.lastPos == pos {
-		return v.last
+	for i := range v.cache.slots {
+		if v.cache.slots[i].col != nil && v.cache.slots[i].pos == pos {
+			if v.tracking && !slices.Contains(v.tracked, pos) {
+				v.tracked = append(v.tracked, pos)
+			}
+			return v.cache.slots[i].col
+		}
 	}
 	c, ok := v.w.chunks[pos]
 	if !ok || !c.settled {
 		v.missed = true
 		return nil
 	}
-	v.lastPos, v.last = pos, c
+	v.cache.put(pos, c)
 	if v.tracking && !slices.Contains(v.tracked, pos) {
 		v.tracked = append(v.tracked, pos)
 	}

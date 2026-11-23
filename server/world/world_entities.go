@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/event"
 	"github.com/google/uuid"
 )
 
@@ -183,6 +184,10 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 			e := state.entity(tx, handle)
 			handle.finalizeSpawn(e)
 			w.Handler().HandleEntitySpawn(tx, e)
+			if event.HasListeners[EntitySpawnEvent](w.events) {
+				ev := EntitySpawnEvent{Tx: tx, Entity: e}
+				event.Emit(w.events, &ev)
+			}
 			handle.markWorldReady(w)
 			r.deferWork(func(tx *Tx) {
 				if handle.state != state || handle.w != w {
@@ -205,6 +210,10 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 		showEntity(e, v)
 	}
 	w.Handler().HandleEntitySpawn(tx, e)
+	if event.HasListeners[EntitySpawnEvent](w.events) {
+		ev := EntitySpawnEvent{Tx: tx, Entity: e}
+		event.Emit(w.events, &ev)
+	}
 	handle.markWorldReady(w)
 	return e
 }
@@ -251,6 +260,10 @@ func (w *World) removeEntity(e Entity, tx *Tx) *EntityHandle {
 	}
 	pos := state.pos
 	w.Handler().HandleEntityDespawn(tx, e)
+	if event.HasListeners[EntityDespawnEvent](w.events) {
+		ev := EntityDespawnEvent{Tx: tx, Entity: e}
+		event.Emit(w.events, &ev)
+	}
 
 	// The entity's chunk is loaded, though it may still be generating if the
 	// entity was teleported there. In a region phase, an entity whose column

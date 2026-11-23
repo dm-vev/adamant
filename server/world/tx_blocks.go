@@ -1,9 +1,12 @@
 package world
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/event"
+	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
 // block reads a block from the position passed. If a chunk is not yet loaded
@@ -78,25 +81,49 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 		// Fast way out.
 		return
 	}
-	if tx.region != nil {
-		if !tx.regionWrites(pos) {
-			tx.deferToOwner(func(tx *Tx) { tx.setBlock(pos, b, opts) })
-			return
-		}
-		tx.lockShared()
-		defer tx.unlockShared()
+	if tx.region != nil && !tx.regionWrites(pos) {
+		tx.deferToOwner(func(tx *Tx) { tx.setBlock(pos, b, opts) })
+		return
 	}
 	if b == nil {
 		b = w.conf.Blocks.Air()
 	}
+	rid := w.conf.Blocks.BlockRuntimeID(b)
+	tx.applyBlock(pos, rid, b, true, opts)
+}
+
+// SetBlockRID sets the block at pos directly from a registered runtime ID rid,
+// avoiding BlockHash and runtime-ID map lookup overhead.
+func (tx *Tx) SetBlockRID(pos cube.Pos, rid uint32, opts *SetOpts) {
+	w := tx.World()
+	if pos.OutOfBounds(w.Range()) {
+		return
+	}
+	b, ok := w.conf.Blocks.BlockByRuntimeID(rid)
+	if !ok {
+		panic(fmt.Sprintf("world.SetBlockRID: unknown block runtime ID %d", rid))
+	}
+	if tx.region != nil && !tx.regionWrites(pos) {
+		tx.deferToOwner(func(tx *Tx) { tx.SetBlockRID(pos, rid, opts) })
+		return
+	}
+	tx.applyBlock(pos, rid, b, false, opts)
+}
+
+func (tx *Tx) applyBlock(pos cube.Pos, rid uint32, b Block, customBlock bool, opts *SetOpts) {
+	w := tx.World()
+	if tx.region != nil {
+		tx.lockShared()
+		defer tx.unlockShared()
+	}
+	var defaultOpts SetOpts
 	if opts == nil {
-		opts = &SetOpts{}
+		opts = &defaultOpts
 	}
 
 	x, y, z := uint8(pos[0]), int16(pos[1]), uint8(pos[2])
 	c := tx.chunk(chunkPosFromBlockPos(pos))
 
-	rid := w.conf.Blocks.BlockRuntimeID(b)
 	oldRID := c.Block(x, y, z, 0)
 	if opts.nativeState == nil && w.sameBlockState(c, pos, rid) {
 		return
@@ -104,12 +131,32 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	afterFlags := w.conf.Blocks.BlockFlags(rid)
 	oldFlags := w.conf.Blocks.BlockFlags(oldRID)
 	newIsNBT := afterFlags.IsNBT()
+	if !customBlock && newIsNBT {
+		b = DecodeNBT(b.(NBTer), map[string]any{}, w.conf.Blocks).(Block)
+	}
 
 	oldBlock := w.conf.Blocks.BlockByRuntimeIDOrAir(oldRID)
-	oldEntity, hadBlockEntity := c.BlockEntities[pos]
-	if hadBlockEntity {
-		oldBlock = oldEntity
+	var hadBlockEntity bool
+	if len(c.BlockEntities) != 0 {
+		if oldEntity, ok := c.BlockEntities[pos]; ok {
+			oldBlock = oldEntity
+			hadBlockEntity = true
+		}
 	}
+	if event.HasListeners[BlockChangeEvent](w.events) {
+		ev := BlockChangeEvent{
+			Tx:     tx,
+			Pos:    pos,
+			Old:    oldBlock,
+			New:    b,
+			OldRID: oldRID,
+			NewRID: rid,
+		}
+		if !event.Emit(w.events, &ev) {
+			return
+		}
+	}
+
 	b = w.replacePositionTrackingBlock(tx, pos, oldBlock, b)
 	if handler, ok := oldBlock.(BlockRemovalHandler); ok && !opts.disableRemovalHandler {
 		handler.Removed(pos, tx, b)
@@ -144,6 +191,11 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	if !opts.DisableLiquidDisplacement {
 		b = w.displaceLiquidOnSet(c, pos, b, rid, before)
 	}
+	tx.postApplyBlock(c, pos, oldLight, oldBlock, b, oldFlags, afterFlags, opts)
+}
+
+func (tx *Tx) postApplyBlock(c *Column, pos cube.Pos, oldLight chunk.LightProperties, oldBlock, b Block, oldFlags, afterFlags BlockFlags, opts *SetOpts) {
+	w := tx.World()
 	w.relightIfChanged(c, pos, oldLight)
 	if afterFlags.IsRedstoneRelevant() || oldFlags.IsRedstoneRelevant() {
 		w.redstone.forget(pos)
@@ -615,12 +667,17 @@ func (tx *Tx) chunk(pos ChunkPos) *Column {
 		return r.columnOrVoid(tx.w, pos)
 	}
 	w := tx.World()
-	if w.lastChunk != nil && w.lastChunkPos == pos {
-		return w.lastChunk
+	if tx.cacheVersion != w.chunksVersion {
+		tx.chunkCache.clear()
+		tx.cacheVersion = w.chunksVersion
+	}
+	if c := tx.chunkCache.get(pos); c != nil {
+		return c
 	}
 	c, ok := w.chunks[pos]
 	if ok && c.settled {
-		w.lastChunkPos, w.lastChunk = pos, c
+		tx.chunkCache.put(pos, c)
+		w.chunkCache.put(pos, c)
 		return c
 	}
 	if ok {
@@ -629,6 +686,8 @@ func (tx *Tx) chunk(pos ChunkPos) *Column {
 		w.finishChunkRequest(tx, pos, c)
 		if c.settled = c.Ready() && c.poisIndexed && c.circuitsIndexed; c.settled {
 			delete(w.unsettled, pos)
+			tx.chunkCache.put(pos, c)
+			w.chunkCache.put(pos, c)
 		}
 		return c
 	}
@@ -704,6 +763,166 @@ func (tx *Tx) LoadArea(min, max cube.Pos) <-chan struct{} {
 // instead.
 func (tx *Tx) SetBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	tx.setBlock(pos, b, opts)
+}
+
+// FillRID fills the inclusive box [lo, hi] with the registered block runtime ID
+// rid, updating heightmaps, wire caches, dirty flags, lighting, and viewers once
+// per chunk/subchunk instead of per block. It returns the number of blocks
+// whose state changed.
+func (tx *Tx) FillRID(lo, hi cube.Pos, rid uint32) int {
+	w := tx.World()
+	r := w.Range()
+	lo[1], hi[1] = max(lo[1], r[0]), min(hi[1], r[1])
+	if lo[0] > hi[0] || lo[1] > hi[1] || lo[2] > hi[2] {
+		return 0
+	}
+	proto, ok := w.conf.Blocks.BlockByRuntimeID(rid)
+	if !ok {
+		panic(fmt.Sprintf("world.FillRID: unknown block runtime ID %d", rid))
+	}
+	if tx.region != nil {
+		tx.deferToOwner(func(tx *Tx) { tx.FillRID(lo, hi, rid) })
+		return 0
+	}
+	flags := w.conf.Blocks.BlockFlags(rid)
+	minCX, maxCX := int32(lo[0]>>4), int32(hi[0]>>4)
+	minCZ, maxCZ := int32(lo[2]>>4), int32(hi[2]>>4)
+	touched := make([]ChunkPos, 0, int(maxCX-minCX+1)*int(maxCZ-minCZ+1))
+	total := 0
+	for cx := minCX; cx <= maxCX; cx++ {
+		for cz := minCZ; cz <= maxCZ; cz++ {
+			chunkPos := ChunkPos{cx, cz}
+			c := tx.chunk(chunkPos)
+			if n := tx.fillChunkRID(c, chunkPos, lo, hi, rid, proto, flags); n > 0 {
+				total += n
+				touched = append(touched, chunkPos)
+			}
+		}
+	}
+	if len(touched) > 0 {
+		w.relightChunks(touched)
+	}
+	return total
+}
+
+func (tx *Tx) fillChunkRID(c *Column, chunkPos ChunkPos, lo, hi cube.Pos, rid uint32, proto Block, flags BlockFlags) int {
+	w := tx.World()
+	baseX, baseZ := int(chunkPos[0]<<4), int(chunkPos[1]<<4)
+	x0, x1 := byte(max(0, lo[0]-baseX)), byte(min(15, hi[0]-baseX))
+	z0, z1 := byte(max(0, lo[2]-baseZ)), byte(min(15, hi[2]-baseZ))
+
+	beInvalidated := tx.clearFillChunkState(c, chunkPos, lo, hi, proto, flags)
+	changed := 0
+	minSub, maxSub := c.SubIndex(int16(lo[1])), c.SubIndex(int16(hi[1]))
+	subs := c.Sub()
+	for subIdx := minSub; subIdx <= maxSub; subIdx++ {
+		subY := int(c.SubY(subIdx))
+		y0, y1 := byte(max(0, lo[1]-subY)), byte(min(15, hi[1]-subY))
+		if n := subs[subIdx].Fill(x0, y0, z0, x1, y1, z1, rid); n > 0 {
+			changed += n
+			c.invalidateSubChunk(subIdx)
+		}
+		if flags.IsNBT() {
+			tx.populateFillBlockEntities(c, baseX, subY, baseZ, x0, y0, z0, x1, y1, z1, proto)
+			beInvalidated = true
+		}
+	}
+	if beInvalidated {
+		c.invalidateBlockEntityPayloads()
+	}
+	if changed == 0 && !beInvalidated {
+		return 0
+	}
+	c.Chunk.InvalidateHeightMap()
+	c.surface = nil
+	c.blockVersion = blockVersionClock.Add(1)
+	c.invalidateRandomTickSubChunks()
+	c.invalidateSubChunkHeightMaps()
+	c.setModified()
+	clearPendingBlocksInBox(c, lo, hi)
+	tx.refreshFillChunkIndices(c, chunkPos, flags, rid)
+	for viewer := range c.viewers {
+		w.view(viewer, func(v Viewer) { v.ViewChunk(chunkPos, w.Dimension(), c) })
+	}
+	return changed
+}
+
+func (tx *Tx) clearFillChunkState(c *Column, chunkPos ChunkPos, lo, hi cube.Pos, proto Block, flags BlockFlags) bool {
+	w := tx.World()
+	beInvalidated := false
+	for pos, old := range c.BlockEntities {
+		if !posInBox(pos, lo, hi) {
+			continue
+		}
+		_ = w.replacePositionTrackingBlock(tx, pos, old, proto)
+		if handler, ok := old.(BlockRemovalHandler); ok {
+			handler.Removed(pos, tx, proto)
+		}
+		c.updateBlockEntity(pos, nil)
+		w.forgetReplacedFaultyActor(c, pos)
+		if len(w.blockFaults.m) != 0 {
+			w.blockSet(pos, proto)
+		}
+		beInvalidated = true
+	}
+	for pos := range c.missingBlockStates {
+		if posInBox(pos, lo, hi) {
+			delete(c.missingBlockStates, pos)
+		}
+	}
+	for pos := range w.pois {
+		if int32(pos[0]>>4) == chunkPos[0] && int32(pos[2]>>4) == chunkPos[1] && posInBox(pos, lo, hi) {
+			delete(w.pois, pos)
+		}
+	}
+	return beInvalidated
+}
+
+func (tx *Tx) populateFillBlockEntities(c *Column, baseX, subY, baseZ int, x0, y0, z0, x1, y1, z1 byte, proto Block) {
+	w := tx.World()
+	nb := proto.(NBTer)
+	for x := x0; x <= x1; x++ {
+		for z := z0; z <= z1; z++ {
+			for y := y0; y <= y1; y++ {
+				pos := cube.Pos{baseX + int(x), subY + int(y), baseZ + int(z)}
+				b := DecodeNBT(nb, map[string]any{}, w.conf.Blocks).(Block)
+				c.updateBlockEntity(pos, b)
+			}
+		}
+	}
+}
+
+func (tx *Tx) refreshFillChunkIndices(c *Column, chunkPos ChunkPos, flags BlockFlags, rid uint32) {
+	w := tx.World()
+	if _, isPOI := w.poiTypeOf(rid); isPOI {
+		w.indexPOIChunk(chunkPos, c)
+	}
+	re := w.redstone
+	if re != nil && (flags.IsRedstoneRelevant() || len(re.power) > 0 || len(re.output) > 0 || len(re.circuits) > 0 || len(re.producers) > 0) {
+		re.removeChunk(chunkPos)
+		w.indexCircuitChunk(chunkPos, c)
+	}
+}
+
+func posInBox(pos, lo, hi cube.Pos) bool {
+	return pos[0] >= lo[0] && pos[0] <= hi[0] && pos[1] >= lo[1] && pos[1] <= hi[1] && pos[2] >= lo[2] && pos[2] <= hi[2]
+}
+
+func clearPendingBlocksInBox(c *Column, lo, hi cube.Pos) {
+	p := &c.pendingBlocks
+	if len(p.updates) == 0 {
+		return
+	}
+	kept := p.updates[:0]
+	clear(p.index)
+	for _, u := range p.updates {
+		if posInBox(u.Pos, lo, hi) {
+			continue
+		}
+		p.index[blockUpdateKey{pos: u.Pos, layer: uint8(u.Layer)}] = len(kept)
+		kept = append(kept, u)
+	}
+	p.updates = kept
 }
 
 func (tx *Tx) ChunkLoaded(pos ChunkPos) bool {

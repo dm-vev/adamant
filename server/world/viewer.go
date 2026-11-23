@@ -116,6 +116,21 @@ type EntityStateSharedViewer interface {
 	ViewEntityStateShared(e Entity, b *Broadcast)
 }
 
+// EntityBroadcastViewer is a Viewer shown entity state, actions, velocities,
+// items, and armour through a shared Broadcast so encoded packets or payloads
+// can be reused across viewers.
+type EntityBroadcastViewer interface {
+	EntityStateSharedViewer
+	// ViewEntityActionShared views an action performed by an entity using b to share work across viewers.
+	ViewEntityActionShared(e Entity, a EntityAction, b *Broadcast)
+	// ViewEntityVelocityShared views the velocity of an entity using b to share work across viewers.
+	ViewEntityVelocityShared(e Entity, vel mgl64.Vec3, b *Broadcast)
+	// ViewEntityItemsShared views the items held by an entity using b to share work across viewers.
+	ViewEntityItemsShared(e Entity, b *Broadcast)
+	// ViewEntityArmourShared views the armour equipped by an entity using b to share work across viewers.
+	ViewEntityArmourShared(e Entity, b *Broadcast)
+}
+
 // BatchViewer is a Viewer that may hold what it is shown while its world
 // ticks and pass it on at once when the tick ends, as Java flushes the
 // connection of a player once a tick rather than with every packet.

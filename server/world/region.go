@@ -44,8 +44,8 @@ import (
 // something to every viewer of the world, it leaves to the owner, which
 // does it after the phase, region after region.
 const (
-	regionCell  = 16
-	regionReach = 8
+	regionCell  = 4
+	regionReach = 2
 )
 
 // regionCellPos is the position of a cell of regionCell by regionCell
@@ -71,11 +71,8 @@ type region struct {
 	index int
 	refs  []columnRef
 	tx    *Tx
-	// columns caches the owned settled columns the region read, and last the
-	// one read last, at lastPos.
+	// columns caches the owned settled columns the region read.
 	columns map[ChunkPos]*Column
-	lastPos ChunkPos
-	last    *Column
 	// void is the column of air the region reads where it has no column.
 	void *Column
 	// locked counts the lockShared calls of the region not unlocked yet.
@@ -150,7 +147,7 @@ func (tx *Tx) unlockShared() {
 
 // PlayersElsewhere reports whether players that are not spectators are in
 // the world of tx without Players yielding them: in a region phase, those of
-// other regions, every one further than 256 blocks from the entities of the
+// other regions, further than the region reach from the entities of the
 // region. It is always false for a transaction of the world owner. Checks
 // for the nearest player at any distance, as a mob despawning far from
 // players, use it.
@@ -222,8 +219,8 @@ func (r *region) loaded(w *World, pos ChunkPos) (*Column, bool) {
 // column returns the owned column at pos if it is loaded and settled, or
 // nil.
 func (r *region) column(w *World, pos ChunkPos) *Column {
-	if r.last != nil && r.lastPos == pos {
-		return r.last
+	if c := r.tx.chunkCache.get(pos); c != nil {
+		return c
 	}
 	c, ok := r.columns[pos]
 	if !ok {
@@ -231,7 +228,7 @@ func (r *region) column(w *World, pos ChunkPos) *Column {
 			return nil
 		}
 	}
-	r.lastPos, r.last = pos, c
+	r.tx.chunkCache.put(pos, c)
 	return c
 }
 
@@ -605,10 +602,18 @@ func (tx *Tx) readyColumn(pos ChunkPos) (*Column, bool) {
 		return c, c != nil
 	}
 	w := tx.w
-	if w.lastChunk != nil && w.lastChunkPos == pos {
-		return w.lastChunk, true
+	if tx.cacheVersion != w.chunksVersion {
+		tx.chunkCache.clear()
+		tx.cacheVersion = w.chunksVersion
+	}
+	if c := tx.chunkCache.get(pos); c != nil {
+		return c, true
 	}
 	c, ok := w.chunks[pos]
+	if ok && c.settled {
+		tx.chunkCache.put(pos, c)
+		w.chunkCache.put(pos, c)
+	}
 	return c, ok && c.Ready()
 }
 

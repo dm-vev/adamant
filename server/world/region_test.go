@@ -38,14 +38,14 @@ func TestRegionGroups(t *testing.T) {
 		columns []world.ChunkPos
 		want    int
 	}{
-		{"one cell", []world.ChunkPos{{0, 0}, {15, 15}}, 1},
-		{"touching cells", []world.ChunkPos{{0, 0}, {16, 0}}, 1},
-		{"diagonal cells", []world.ChunkPos{{15, 15}, {16, 16}}, 1},
+		{"one cell", []world.ChunkPos{{0, 0}, {3, 3}}, 1},
+		{"touching cells", []world.ChunkPos{{0, 0}, {4, 0}}, 1},
+		{"diagonal cells", []world.ChunkPos{{3, 3}, {4, 4}}, 1},
 		{"negative cells", []world.ChunkPos{{-1, -1}, {0, 0}}, 1},
-		{"cell apart", []world.ChunkPos{{0, 0}, {32, 0}}, 2},
-		{"cells apart", []world.ChunkPos{{0, 0}, {64, 64}, {-64, 0}}, 3},
-		{"cells beside, as entities 300 blocks apart", []world.ChunkPos{{0, 0}, {19, 0}}, 1},
-		{"chain", []world.ChunkPos{{0, 0}, {16, 0}, {32, 0}, {48, 0}}, 1},
+		{"cell apart", []world.ChunkPos{{0, 0}, {8, 0}}, 2},
+		{"cells apart", []world.ChunkPos{{0, 0}, {16, 16}, {-16, 0}}, 3},
+		{"cells beside", []world.ChunkPos{{0, 0}, {5, 0}}, 1},
+		{"chain", []world.ChunkPos{{0, 0}, {4, 0}, {8, 0}, {12, 0}}, 1},
 	}
 	for _, c := range cases {
 		groups := sorted(world.RegionGroups(c.columns))
@@ -84,7 +84,7 @@ func TestCrowdedRegionsTickWithoutRaces(t *testing.T) {
 	var centres []cube.Pos
 	for x := range 3 {
 		for z := range 3 {
-			centres = append(centres, cube.Pos{x * 256, 0, z * 256})
+			centres = append(centres, cube.Pos{x * 64, 0, z * 64})
 		}
 	}
 	tickAreasWithoutRaces(t, centres, 4)

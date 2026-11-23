@@ -621,6 +621,12 @@ func (chunk *Chunk) HighestBlocks(heights *[256]int16) {
 	}
 }
 
+// InvalidateHeightMap marks the chunk's height map as needing recalculation on
+// the next call to HeightMap.
+func (chunk *Chunk) InvalidateHeightMap() {
+	chunk.recalculateHeightMap = true
+}
+
 // HeightMap returns the height map of the chunk. If the chunk is edited, the height map will be recalculated on the
 // next call to this function.
 func (chunk *Chunk) HeightMap() HeightMap {

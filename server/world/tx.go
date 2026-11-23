@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/ecs"
+	"github.com/df-mc/dragonfly/server/event"
 )
 
 // Tx is the owner transaction handle passed to world callbacks. It is the
@@ -19,8 +21,10 @@ type Tx struct {
 	rebound []rebinding
 	// region is the region the transaction ticks the entities of in a
 	// region phase, or nil for a transaction of the world owner.
-	region    *region
-	lastLocal lastLocal
+	region       *region
+	chunkCache   chunkCache
+	cacheVersion uint64
+	lastLocal    lastLocal
 }
 
 // Context is a cancellable event scope passed to Handler events. It embeds the
@@ -32,7 +36,11 @@ type Context struct {
 
 // newTx returns a fresh transaction on World w.
 func newTx(w *World) *Tx {
-	return &Tx{w: w}
+	return &Tx{
+		w:            w,
+		chunkCache:   w.chunkCache,
+		cacheVersion: w.chunksVersion,
+	}
 }
 
 // Event returns a fresh Context for dispatching one Handler event on this
@@ -62,6 +70,27 @@ func (tx *Tx) Defer(f func(tx *Tx)) *Task {
 // completes, recording any returned error on the Task.
 func (tx *Tx) DeferErr(f func(tx *Tx) error) *Task {
 	return tx.deferTask(f)
+}
+
+// Events returns the prioritized event bus of the transaction's World.
+func (tx *Tx) Events() *event.Bus {
+	return tx.World().Events()
+}
+
+// ChunkComponents returns the ECS component bag attached to the chunk at pos.
+// Outside a region phase it loads the chunk if needed; during a region phase it
+// returns nil if the column is not settled and owned by the transaction's
+// region.
+func (tx *Tx) ChunkComponents(pos ChunkPos) *ecs.Bag {
+	w := tx.World()
+	if tx.region != nil {
+		c := tx.region.column(w, pos)
+		if c == nil {
+			return nil
+		}
+		return &c.components
+	}
+	return &tx.chunk(pos).components
 }
 
 // Range returns the lower and upper bounds of the World that the Tx is

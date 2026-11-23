@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/ecs"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
@@ -152,11 +153,22 @@ type Column struct {
 	// generationAbandoned once nothing wanted it before one did.
 	generationState atomic.Uint32
 
-	ready           atomic.Bool
-	readyCh         chan struct{}
-	lightOnce       sync.Once
-	lightSpreadOnce sync.Once
-	lightReady      atomic.Bool
+	ready            atomic.Bool
+	readyCh          chan struct{}
+	lightOnce        sync.Once
+	lightSpreadOnce  sync.Once
+	lightReady       atomic.Bool
+	loadEventEmitted bool
+	components       ecs.Bag
+}
+
+// Components returns the ECS component bag attached to this Column, or nil if
+// c is nil.
+func (c *Column) Components() *ecs.Bag {
+	if c == nil {
+		return nil
+	}
+	return &c.components
 }
 
 // newColumn returns a new Column wrapper around the chunk.Chunk passed.

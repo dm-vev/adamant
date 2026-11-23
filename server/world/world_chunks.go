@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/event"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/goleveldb/leveldb"
 )
@@ -16,11 +17,11 @@ type chunkStore struct {
 	// chunks holds a cache of chunks currently loaded. These chunks are cleared
 	// from this map after some time of not being used.
 	chunks map[ChunkPos]*Column
-	// lastChunk caches the settled column most recently read at
-	// lastChunkPos, as ServerChunkCache keeps its last chunks. It is cleared
-	// whenever the column at a position is replaced or removed.
-	lastChunkPos  ChunkPos
-	lastChunk     *Column
+	// chunkCache caches the settled columns most recently read, and
+	// chunksVersion increments whenever columns in chunks are replaced or
+	// removed so transaction caches stay consistent.
+	chunkCache    chunkCache
+	chunksVersion uint64
 	chunkRequests map[ChunkPos][]chunkRequest
 	// unsettled holds the columns in chunks that were not settled yet when
 	// last seen, so that a region phase may settle them first.
@@ -119,40 +120,10 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		}
 		w.placeColumn(pos, col)
 		w.markUnsettled(pos, col)
-		if w.lastChunkPos == pos {
-			w.lastChunk = nil
-		}
 		w.indexPOIChunk(pos, col)
 		w.indexCircuitChunk(pos, col)
 		w.reconcileMissingBlockStates(pos)
-
-		// Register all entities contained in this column into the world.
-		w.set.Lock()
-		currentTick := w.currentTickLocked()
-		w.set.Unlock()
-		for _, e := range col.Entities {
-			e.setAndUnlockWorld(w)
-			if _, ok := w.entities[e]; !ok {
-				w.entityCount.Add(1)
-			}
-			state := &entityState{
-				pos:               pos,
-				lastTick:          currentTick,
-				lastProcessedTick: currentTick,
-				isItem:            e.t.EncodeEntity() == "minecraft:item",
-			}
-			w.entities[e] = state
-			w.trackPlayer(e)
-			w.entitiesByUUID[e.id] = e
-			w.entitiesByUniqueID[e.UniqueID()] = e
-			e.state = state
-			w.resolveEntityRiding(e)
-			e.markWorldReady(w)
-		}
-
-		if len(col.Entities) > 0 {
-			w.addEntityColumn(pos, col)
-		}
+		w.attachLoadedColumnEntities(pos, col)
 		if async {
 			w.fillLightAsync(pos, col)
 		}
@@ -168,9 +139,6 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		}
 		w.placeColumn(pos, col)
 		w.markUnsettled(pos, col)
-		if w.lastChunkPos == pos {
-			w.lastChunk = nil
-		}
 
 		// Schedule asynchronous generation.
 		// generateChunkAsync is shutdown-safe and will mark ready if closing.
@@ -197,10 +165,35 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		}
 		w.placeColumn(pos, col)
 		w.markUnsettled(pos, col)
-		if w.lastChunkPos == pos {
-			w.lastChunk = nil
-		}
 		return col, err
+	}
+}
+
+func (w *World) attachLoadedColumnEntities(pos ChunkPos, col *Column) {
+	w.set.Lock()
+	currentTick := w.currentTickLocked()
+	w.set.Unlock()
+	for _, e := range col.Entities {
+		e.setAndUnlockWorld(w)
+		if _, ok := w.entities[e]; !ok {
+			w.entityCount.Add(1)
+		}
+		state := &entityState{
+			pos:               pos,
+			lastTick:          currentTick,
+			lastProcessedTick: currentTick,
+			isItem:            e.t.EncodeEntity() == "minecraft:item",
+		}
+		w.entities[e] = state
+		w.trackPlayer(e)
+		w.entitiesByUUID[e.id] = e
+		w.entitiesByUniqueID[e.UniqueID()] = e
+		e.state = state
+		w.resolveEntityRiding(e)
+		e.markWorldReady(w)
+	}
+	if len(col.Entities) > 0 {
+		w.addEntityColumn(pos, col)
 	}
 }
 
@@ -280,6 +273,13 @@ func (w *World) finishChunkRequest(tx *Tx, pos ChunkPos, c *Column) {
 		w.indexCircuitChunk(pos, c)
 	}
 	w.finishGeneration(tx, c)
+	if !c.loadEventEmitted {
+		c.loadEventEmitted = true
+		if event.HasListeners[ChunkLoadEvent](w.events) {
+			ev := ChunkLoadEvent{Tx: tx, Pos: pos, Column: c}
+			event.Emit(w.events, &ev)
+		}
+	}
 	requests := w.chunkRequests[pos]
 	if len(requests) == 0 {
 		return
@@ -385,9 +385,8 @@ func (w *World) abandonColumn(pos ChunkPos, c *Column) bool {
 	delete(w.chunks, pos)
 	delete(w.unsettled, pos)
 	delete(w.pendingLight, pos)
-	if w.lastChunkPos == pos {
-		w.lastChunk = nil
-	}
+	w.chunkCache.invalidate(pos)
+	w.chunksVersion++
 	w.chunkCount.Add(-1)
 	w.stats.ChunksUnloaded.Inc()
 	w.columnLeft(pos)
