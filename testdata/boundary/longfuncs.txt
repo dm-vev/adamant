@@ -38,9 +38,7 @@ server/checkpoint.go checkpointer.checkpoint 101
 server/entity/ai_behaviors.go newMoveToTargetSink 112
 server/entity/ai_behaviors_jump.go newLongJumpToPreferredBlock 111
 server/entity/goat.go newPrepareRamNearestTarget 110
-server/entity/hostile_mobs.go HostileMob.FinalizeSpawn 103
 server/entity/hostile_mobs.go hostileMobType.DecodeNBT 113
-server/entity/minecart_movement.go MinecartBehaviour.moveOnRails 108
 server/entity/piglin_ai.go newPiglinBrain 104
 server/entity/register.go init 132
 server/entity/template_spawn_zombie.go prepareZombieVillagerTemplateSpawn 125
@@ -71,7 +69,7 @@ server/world/generator/advanced/overworld/modern_feature_cave_vegetation.go plac
 server/world/generator/advanced/overworld/modern_feature_placement.go ModernFeatures.modifyPlacement 153 port
 server/world/generator/advanced/overworld/modern_feature_region.go ModernFeatures.placeConfiguredData 166 port
 server/world/generator/advanced/overworld/modern_feature_region.go featurePredicate 118 port
-server/world/generator/advanced/overworld/modern_feature_region.go placeModernOreRegion 124 port
+server/world/generator/advanced/overworld/modern_feature_region.go placeModernOreRegion 118 port
 server/world/generator/advanced/overworld/modern_feature_template.go placeModernTemplateFeature 158 port
 server/world/generator/advanced/overworld/modern_feature_template_fluids.go applyTemplateFluidsForStructureWrites 170 port
 server/world/generator/advanced/overworld/modern_feature_tree.go placeModernHugeFungus 121 port
@@ -98,6 +96,4 @@ server/world/redstone_circuit.go redstoneEngine.tickCircuits 211
 server/world/tick.go scheduledTickQueue.tickPhase 122
 server/world/tick.go ticker.tickBlocksRandomly 189
 server/world/tick.go ticker.tickEntityHandle 122
-server/world/tick.go ticker.tickWorld 116
 server/world/tx_blocks.go Tx.buildStructure 113
-server/world/world_chunks.go World.loadChunk 112
