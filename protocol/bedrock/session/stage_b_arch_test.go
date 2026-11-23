@@ -151,7 +151,7 @@ func TestMetaContributorAndECSMetaPatch(t *testing.T) {
 		// 3. Behaviour MetadataContributor on *entity.Ent.
 		var behPatch world.ActorMetaPatch
 		behPatch.SetScoreTag("BehScore")
-		bh := world.EntitySpawnOpts{Position: mgl64.Vec3{6.5, 100, 0.5}}.New(entity.SnowballType, metaContributorBehConfig{patch: behPatch})
+		bh := world.EntitySpawnOpts{Position: mgl64.Vec3{6.5, 100, 0.5}}.New(entity.TextType, metaContributorBehConfig{patch: behPatch})
 		behEnt := tx.AddEntity(bh)
 		if got := s.parseEntityMetadata(behEnt)[mc.EntityDataKeyScore]; got != "BehScore" {
 			t.Fatalf("behaviour MetadataContributor ScoreTag = %v, want BehScore", got)
