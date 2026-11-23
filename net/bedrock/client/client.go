@@ -186,6 +186,8 @@ func (c *Conn) join(cfg Config, request []byte) error {
 	switch settings.CompressionAlgorithm {
 	case bedrock.AlgorithmFlate:
 		c.b.EnableCompression(bedrock.Flate{})
+	case bedrock.AlgorithmSnappy:
+		c.b.EnableCompression(bedrock.Snappy{})
 	case bedrock.AlgorithmNone:
 		c.b.EnableCompression(bedrock.None{})
 	default:

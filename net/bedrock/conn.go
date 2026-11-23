@@ -97,6 +97,10 @@ const keptBuffer = 64 << 10
 // noneByte is the first byte of a batch sent as it is.
 const noneByte = byte(AlgorithmNone & 0xff)
 
+// segmentMinBytes is the minimum segment length between recorded boundaries so
+// sync-flush stored block headers never inflate small packet runs.
+const segmentMinBytes = 256
+
 // Conn reads and writes the packets of a Bedrock connection: a packet is
 // its header and fields, as a codec encodes them. Packets written gather in
 // a batch until Flush; packets are read a batch at a time. Its methods are
@@ -116,14 +120,64 @@ type Conn struct {
 	// packets and bytes meter what the peer sends against the rates.
 	inPackets, inBytes bucket
 
-	writeMu sync.Mutex
-	alg     Compression
-	body    []byte
+	writeMu     sync.Mutex
+	batchWriter BatchWriter
+	alg         Compression
+	body        []byte
+	segments    []int
 	// plain reports whether every packet of body is incompressible.
 	plain bool
 	out   []byte
 	// sent counts the packets of body for the metrics.
 	sent tally
+}
+
+// BatchWriter writes a sequence of packets, pre-framed payloads, and segment
+// marks to a Conn while holding its write lock once.
+type BatchWriter struct {
+	c *Conn
+}
+
+// WriteFramed appends an already length-prefixed packet to the current batch.
+func (w *BatchWriter) WriteFramed(framed []byte, id uint32, rawLen int) error {
+	if len(framed) == 0 || rawLen <= 0 {
+		return errEmptyPacket
+	}
+	return w.c.writeFramed(framed, id, rawLen)
+}
+
+// WritePacket appends a raw packet (header and fields) to the current batch.
+func (w *BatchWriter) WritePacket(raw []byte) error {
+	if len(raw) == 0 {
+		return errEmptyPacket
+	}
+	id, ok := packetID(raw)
+	return w.c.writePacket(raw, id, ok)
+}
+
+// MarkSegment records a segment boundary in the current batch if at least
+// segmentMinBytes have been buffered since the last mark.
+func (w *BatchWriter) MarkSegment() {
+	w.c.markSegment()
+}
+
+// SendBatch sends a pre-encoded batch after flushing any buffered packets.
+func (w *BatchWriter) SendBatch(msg []byte) error {
+	return w.c.sendBatch(msg)
+}
+
+// Flush sends the packets gathered so far as one batch.
+func (w *BatchWriter) Flush() error {
+	return w.c.flush()
+}
+
+// WriteBatch invokes fn with a BatchWriter while holding the connection's write
+// mutex once.
+func (c *Conn) WriteBatch(fn func(*BatchWriter) error) error {
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
+	c.batchWriter.c = c
+	return fn(&c.batchWriter)
 }
 
 // NewConn returns a Conn over a transport. Compression is off until
@@ -152,23 +206,53 @@ func (c *Conn) WritePacket(packet []byte) error {
 	}
 	id, ok := packetID(packet)
 	c.writeMu.Lock()
+	err := c.writePacket(packet, id, ok)
+	c.writeMu.Unlock()
+	return err
+}
+
+func (c *Conn) writePacket(packet []byte, id uint16, ok bool) error {
 	if len(c.body) > 0 && len(c.body)+len(packet) > c.cfg.MaxBody {
 		if err := c.flush(); err != nil {
-			c.writeMu.Unlock()
 			return err
 		}
 	}
-	if c.plain && c.cfg.Incompressible != nil {
-		c.plain = c.cfg.Incompressible(uint32(id))
-	} else {
-		c.plain = false
-	}
+	c.markPlain(uint32(id))
 	c.body = AppendPacket(c.body, packet)
 	if ok {
 		c.sent.addID(packetsSent, packetBytesSent, id, uint64(len(packet)))
 	}
-	c.writeMu.Unlock()
 	return nil
+}
+
+func (c *Conn) writeFramed(framed []byte, id uint32, rawLen int) error {
+	if len(c.body) > 0 && len(c.body)+len(framed) > c.cfg.MaxBody {
+		if err := c.flush(); err != nil {
+			return err
+		}
+	}
+	c.markPlain(id)
+	c.body = append(c.body, framed...)
+	c.sent.addID(packetsSent, packetBytesSent, uint16(id&(maxPacketID-1)), uint64(rawLen))
+	return nil
+}
+
+func (c *Conn) markPlain(id uint32) {
+	if c.plain && c.cfg.Incompressible != nil {
+		c.plain = c.cfg.Incompressible(id)
+		return
+	}
+	c.plain = false
+}
+
+func (c *Conn) markSegment() {
+	last := 0
+	if n := len(c.segments); n > 0 {
+		last = c.segments[n-1]
+	}
+	if len(c.body)-last >= segmentMinBytes {
+		c.segments = append(c.segments, len(c.body))
+	}
 }
 
 // encodeBatchBufs pools temporary body buffers for EncodeBatch.
@@ -219,6 +303,10 @@ func EncodeBatch(comp Compression, packets ...[]byte) ([]byte, error) {
 func (c *Conn) SendBatch(msg []byte) error {
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
+	return c.sendBatch(msg)
+}
+
+func (c *Conn) sendBatch(msg []byte) error {
 	if c.alg == nil || len(msg) == 0 || msg[0] != byte(c.alg.Algorithm()) && msg[0] != noneByte {
 		return errors.New("bedrock: batch of another compression")
 	}
@@ -246,6 +334,10 @@ func (c *Conn) flush() error {
 		var err error
 		if len(c.body) < c.cfg.Threshold || c.plain || c.alg.Algorithm() == AlgorithmNone {
 			c.out = append(append(c.out[:0], noneByte), c.body...)
+		} else if fl, ok := asFlate(c.alg); ok && c.cfg.Cache != nil && len(c.segments) >= 1 && allSegmentsBelow(c.segments, len(c.body), fl.fixedBelow()) {
+			if err = c.flushSegmented(fl); err != nil {
+				return err
+			}
 		} else if c.cfg.Cache != nil {
 			if c.out, err = c.cfg.Cache.compress(c.out[:0], c.alg, c.body); err != nil {
 				return err
@@ -260,14 +352,67 @@ func (c *Conn) flush() error {
 	batchBytesSent.Add(uint64(len(msg)))
 	c.sent.flush(packetsSent, packetBytesSent)
 	err := c.transport.Send(msg)
-	c.body, c.plain = c.body[:0], true
+	c.body, c.plain, c.segments = c.body[:0], true, c.segments[:0]
 	if cap(c.body) > keptBuffer {
 		c.body = nil
 	}
 	if cap(c.out) > keptBuffer {
 		c.out = nil
 	}
+	if cap(c.segments) > 256 {
+		c.segments = nil
+	}
 	return err
+}
+
+func (c *Conn) flushSegmented(fl Flate) error {
+	bc := c.cfg.Cache
+	if out, ok := bc.lookup(c.out[:0], AlgorithmFlate, c.body); ok {
+		c.out = out
+		return nil
+	}
+	out := append(c.out[:0], byte(AlgorithmFlate))
+	prev := 0
+	var err error
+	for _, end := range c.segments {
+		if out, err = bc.compressSegment(out, fl, c.body[prev:end]); err != nil {
+			return err
+		}
+		prev = end
+	}
+	if prev < len(c.body) {
+		if out, err = bc.compressSegment(out, fl, c.body[prev:]); err != nil {
+			return err
+		}
+	}
+	c.out = append(out, deflateFinalEmpty[:]...)
+	return nil
+}
+
+func asFlate(comp Compression) (Flate, bool) {
+	switch c := comp.(type) {
+	case Flate:
+		return c, true
+	case *Flate:
+		if c != nil {
+			return *c, true
+		}
+	}
+	return Flate{}, false
+}
+
+func allSegmentsBelow(segments []int, bodyLen, limit int) bool {
+	if limit <= 0 {
+		return false
+	}
+	prev := 0
+	for _, end := range segments {
+		if end-prev >= limit {
+			return false
+		}
+		prev = end
+	}
+	return bodyLen-prev < limit
 }
 
 // ReadPacket returns the next packet received. It is the caller's to keep.

@@ -212,7 +212,7 @@ type Config struct {
 	// NameCheckLenient.
 	NameCheck NameCheck
 	// Compression compresses the batches of the connections: bedrock.Flate
-	// (at level 1 if nil) or bedrock.None.
+	// (at level 1 if nil), bedrock.Snappy, or bedrock.None.
 	Compression bedrock.Compression
 	// Interceptors are installed on every session accepted by the adapter's
 	// Listener.

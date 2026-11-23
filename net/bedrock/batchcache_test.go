@@ -210,3 +210,143 @@ func TestBatchCacheAlgorithmsAndStress(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestBatchCacheSegmentedWriteBatch(t *testing.T) {
+	cache := NewBatchCache()
+	shared1 := packet(18, bytes.Repeat([]byte("shared-crowd-seg-1 "), 18))
+	shared2 := packet(18, bytes.Repeat([]byte("shared-crowd-seg-2 "), 18))
+	personalA := packet(9, bytes.Repeat([]byte("personal-alpha "), 20))
+	personalB := packet(9, bytes.Repeat([]byte("personal-bravo "), 20))
+
+	// Check algFlateSegment isolation from AlgorithmFlate for identical payload.
+	fullMsg, err := cache.compress(nil, Flate{}, shared1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	segMsg, err := cache.compressSegment(nil, Flate{}, shared1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Equal(fullMsg[1:], segMsg) {
+		t.Fatal("segment compressed bytes collided with full-body entry")
+	}
+
+	a1, b1 := pipes()
+	a2, b2 := pipes()
+	c1, r1 := NewConn(a1, Config{Cache: cache}), NewConn(b1, Config{})
+	c2, r2 := NewConn(a2, Config{Cache: cache}), NewConn(b2, Config{})
+	for _, c := range []*Conn{c1, r1, c2, r2} {
+		c.EnableCompression(Flate{})
+	}
+
+	before := batchCacheHits.Load()
+	writeCrowd := func(c *Conn, personal []byte) {
+		err := c.WriteBatch(func(bw *BatchWriter) error {
+			// < 256B MarkSegment is ignored; >= 256B records boundary.
+			if err := bw.WritePacket(personal[:20]); err != nil {
+				return err
+			}
+			bw.MarkSegment() // ignored (<256B)
+			if err := bw.WriteFramed(AppendPacket(nil, shared1), 18, len(shared1)); err != nil {
+				return err
+			}
+			bw.MarkSegment() // recorded (>=256B)
+			if err := bw.WriteFramed(AppendPacket(nil, shared2), 18, len(shared2)); err != nil {
+				return err
+			}
+			bw.MarkSegment() // recorded (>=256B)
+			if err := bw.WritePacket(personal); err != nil {
+				return err
+			}
+			return bw.Flush()
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// First connection misses segments (note first seg includes personalA[:20],
+	// while shared2 is purely shared!).
+	writeCrowd(c1, personalA)
+	// Second connection misses personal-mixed first seg & personal tail, hits shared2!
+	writeCrowd(c2, personalB)
+	if hits := batchCacheHits.Load() - before; hits != 1 {
+		t.Fatalf("hits = %d, want 1 (shared2 segment)", hits)
+	}
+
+	// Third batch with identical body to c1 hits full-body or all segments.
+	writeCrowd(c1, personalA)
+	if hits := batchCacheHits.Load() - before; hits < 4 {
+		t.Fatalf("expected segment hits on replay, got %d total hits", hits)
+	}
+
+	for _, tc := range []struct {
+		r        *Conn
+		personal []byte
+	}{
+		{r1, personalA},
+		{r2, personalB},
+		{r1, personalA},
+	} {
+		for _, want := range [][]byte{tc.personal[:20], shared1, shared2, tc.personal} {
+			got, err := tc.r.ReadPacket()
+			if err != nil || !bytes.Equal(got, want) {
+				t.Fatalf("read len=%d err=%v, want len=%d", len(got), err, len(want))
+			}
+		}
+	}
+}
+
+func TestConnWriteBatchFallbacksAndFullBodyHit(t *testing.T) {
+	cache := NewBatchCache()
+	p1 := packet(18, bytes.Repeat([]byte("seg-fallback-1 "), 22))
+	p2 := packet(18, bytes.Repeat([]byte("seg-fallback-2 "), 22))
+
+	// 1. Pre-populate full-body cache hit; WriteBatch checks full-body first.
+	body := AppendPacket(AppendPacket(nil, p1), p2)
+	cachedFull, err := cache.compress(nil, Flate{}, body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, b := pipes()
+	ca, cb := NewConn(a, Config{Cache: cache}), NewConn(b, Config{})
+	ca.EnableCompression(Flate{})
+	cb.EnableCompression(Flate{})
+
+	before := batchCacheHits.Load()
+	if err := ca.WriteBatch(func(bw *BatchWriter) error {
+		_ = bw.WritePacket(p1)
+		bw.MarkSegment()
+		_ = bw.WritePacket(p2)
+		return bw.Flush()
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(a.sent[0], cachedFull) || batchCacheHits.Load()-before != 1 {
+		t.Fatalf("expected full-body cache hit; hits=%d", batchCacheHits.Load()-before)
+	}
+	for _, want := range [][]byte{p1, p2} {
+		if got, err := cb.ReadPacket(); err != nil || !bytes.Equal(got, want) {
+			t.Fatalf("full-body hit read failed: err=%v", err)
+		}
+	}
+
+	// 2. Segment >= FixedBelow falls back to whole-body compression cleanly.
+	a2, b2 := pipes()
+	ca2, cb2 := NewConn(a2, Config{Cache: cache}), NewConn(b2, Config{})
+	ca2.EnableCompression(Flate{FixedBelow: 200})
+	cb2.EnableCompression(Flate{})
+	if err := ca2.WriteBatch(func(bw *BatchWriter) error {
+		_ = bw.WritePacket(p1)
+		bw.MarkSegment()
+		_ = bw.WritePacket(p2)
+		return bw.Flush()
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range [][]byte{p1, p2} {
+		if got, err := cb2.ReadPacket(); err != nil || !bytes.Equal(got, want) {
+			t.Fatalf("fixedBelow fallback read failed: err=%v", err)
+		}
+	}
+}

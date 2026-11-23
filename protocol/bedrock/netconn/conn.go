@@ -20,6 +20,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unsafe"
 
 	"github.com/df-mc/dragonfly/internal/faultcheck"
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
@@ -89,6 +90,12 @@ type Conn struct {
 	writeMu sync.Mutex
 	// w encodes the packets written.
 	w wire.Writer
+	// bw, batchFn, writeBatchFn, pendingBatch and pendingPanic are guarded by writeMu during WriteBatch.
+	bw           *bedrock.BatchWriter
+	batchFn      func(*bedrock.BatchWriter) error
+	writeBatchFn func(proto.Packet) error
+	pendingBatch []proto.Packet
+	pendingPanic func(proto.Packet, any)
 
 	closeOnce sync.Once
 	connected time.Time
@@ -237,8 +244,8 @@ func (c *Conn) WritePacket(pk proto.Packet) error {
 		return c.b.SendBatch(msg)
 	}
 	if sh, ok := pk.(*Shared); ok {
-		for _, raw := range sh.encoded(c.proto) {
-			if err := c.b.WritePacket(raw); err != nil {
+		for _, sp := range sh.encoded(c.proto) {
+			if err := c.b.WritePacket(sp.raw); err != nil {
 				return err
 			}
 		}
@@ -250,6 +257,121 @@ func (c *Conn) WritePacket(pk proto.Packet) error {
 		return p.Encode(pk, Unwrap(pk), c.write)
 	}
 	return c.write(pk)
+}
+
+// WriteBatch writes batch and flushes it while holding c's write lock and the
+// underlying bedrock.Conn write lock once. Pre-framed *Shared packets are
+// written directly and split at deterministic shared-pointer hash boundaries,
+// personal packet runs are bracketed by segment marks, Static packets go in
+// their own batches, and encoding panics invoke onPanic and resume at i+1.
+func (c *Conn) WriteBatch(batch []proto.Packet, onPanic func(pk proto.Packet, r any)) error {
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
+	if c.writeBatchFn == nil {
+		c.writeBatchFn = c.writeInBatch
+	}
+	if c.batchFn == nil {
+		c.batchFn = c.runBatch
+	}
+	c.pendingBatch = batch
+	c.pendingPanic = onPanic
+	defer func() {
+		c.bw = nil
+		c.pendingBatch = nil
+		c.pendingPanic = nil
+	}()
+	return c.b.WriteBatch(c.batchFn)
+}
+
+func (c *Conn) runBatch(bw *bedrock.BatchWriter) error {
+	c.bw = bw
+	batch, onPanic := c.pendingBatch, c.pendingPanic
+	inPersonal := false
+	for i := 0; i < len(batch); {
+		next, nextPersonal, err := c.writeBatchFrom(bw, batch, i, inPersonal, onPanic)
+		if err != nil {
+			return err
+		}
+		i, inPersonal = next, nextPersonal
+	}
+	return bw.Flush()
+}
+
+func (c *Conn) writeBatchFrom(bw *bedrock.BatchWriter, batch []proto.Packet, start int, inPersonal bool, onPanic func(pk proto.Packet, r any)) (next int, nextPersonal bool, err error) {
+	i := start
+	defer func() {
+		if r := recover(); r != nil {
+			if onPanic != nil {
+				onPanic(batch[i], r)
+			} else {
+				faultcheck.Report("netconn packet encode", r)
+			}
+			next, nextPersonal, err = i+1, inPersonal, nil
+		}
+	}()
+	for ; i < len(batch); i++ {
+		if err = c.writeBatchPacket(bw, batch[i], &inPersonal); err != nil {
+			return len(batch), inPersonal, err
+		}
+	}
+	return len(batch), inPersonal, nil
+}
+
+func (c *Conn) writeBatchPacket(bw *bedrock.BatchWriter, pk proto.Packet, inPersonal *bool) error {
+	if st, ok := pk.(Static); ok {
+		if c.comp == nil {
+			return errors.New("netconn: Static written before the login")
+		}
+		msg, err := c.l.static(st, c.proto, c.shieldID.Load(), c.comp)
+		if err != nil || msg == nil {
+			return err
+		}
+		*inPersonal = false
+		return bw.SendBatch(msg)
+	}
+	if sh, ok := pk.(*Shared); ok {
+		encoded := sh.encoded(c.proto)
+		if *inPersonal {
+			bw.MarkSegment()
+			*inPersonal = false
+		}
+		for _, sp := range encoded {
+			if err := bw.WriteFramed(sp.framed, sp.id, len(sp.raw)); err != nil {
+				return err
+			}
+		}
+		if ((uint64(uintptr(unsafe.Pointer(sh))) >> 6) * 0x9e3779b97f4a7c15) >> 61 == 0 {
+			bw.MarkSegment()
+		}
+		return nil
+	}
+	if !*inPersonal {
+		bw.MarkSegment()
+		*inPersonal = true
+	}
+	if p := c.proto; p != nil {
+		return p.Encode(pk, Unwrap(pk), c.writeBatchFn)
+	}
+	return c.writeInBatch(pk)
+}
+
+func (c *Conn) writeInBatch(pk proto.Packet) error {
+	err := c.bw.WritePacket(c.encodePacket(pk))
+	c.trimWriteBuf()
+	return err
+}
+
+func (c *Conn) encodePacket(pk proto.Packet) []byte {
+	c.w.B = bedrock.AppendHeader(c.w.B[:0], bedrock.Header{ID: pk.ID()})
+	pk.Encode(&c.w)
+	return c.w.B
+}
+
+func (c *Conn) trimWriteBuf() {
+	if cap(c.w.B) > keptBuffer {
+		// Large packets are rare: the buffer is not kept for them.
+		c.w.B = nil
+	}
 }
 
 // Wrapper is a packet of the model that wraps another to be written in its
@@ -276,13 +398,8 @@ func Unwrap(pk proto.Packet) proto.Packet {
 func (c *Conn) write(pk proto.Packet) error {
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
-	c.w.B = bedrock.AppendHeader(c.w.B[:0], bedrock.Header{ID: pk.ID()})
-	pk.Encode(&c.w)
-	err := c.b.WritePacket(c.w.B)
-	if cap(c.w.B) > keptBuffer {
-		// Large packets are rare: the buffer is not kept for them.
-		c.w.B = nil
-	}
+	err := c.b.WritePacket(c.encodePacket(pk))
+	c.trimWriteBuf()
 	return err
 }
 

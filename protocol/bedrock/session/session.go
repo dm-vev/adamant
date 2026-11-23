@@ -53,6 +53,7 @@ type Session struct {
 	conn    Conn
 	// connWriteMu serializes connection writes to avoid concurrent WritePacket/Flush calls.
 	connWriteMu   sync.Mutex
+	onPanic       func(proto.Packet, any)
 	handlers      map[uint32]packetHandler
 	bossBarMu     sync.Mutex
 	bossBarIDs    map[string]int64

@@ -155,3 +155,70 @@ func BenchmarkDeflate(b *testing.B) {
 	})
 	b.Run("fixed", func(b *testing.B) { run(b, fixedDeflate) })
 }
+
+func TestFixedDeflateBlockSyncFlushAllLengths(t *testing.T) {
+	rng := rand.New(rand.NewPCG(19, 23))
+	var block, stream []byte
+	for n := 0; n <= 4096; n++ {
+		src := make([]byte, n)
+		for i := range src {
+			if i%7 == 0 {
+				src[i] = byte(rng.Uint32())
+			} else {
+				src[i] = byte(i * 11)
+			}
+		}
+		block = fixedDeflateBlock(append(block[:0], 0x55), src, false)
+		if block[0] != 0x55 {
+			t.Fatalf("n=%d: prefix overwritten", n)
+		}
+		seg := block[1:]
+		// Verify sync-flush trailer (0x00 0x00 0xFF 0xFF).
+		if len(seg) < 6 || !bytes.Equal(seg[len(seg)-4:], []byte{0x00, 0x00, 0xff, 0xff}) {
+			t.Fatalf("n=%d: missing sync-flush trailer: % x", n, seg)
+		}
+		stream = append(append(stream[:0], seg...), deflateFinalEmpty[:]...)
+
+		if got := inflate(t, stream); !bytes.Equal(got, src) {
+			t.Fatalf("n=%d: stdlib flate.NewReader mismatch: got %d want %d", n, len(got), len(src))
+		}
+		got2, err := (Flate{}).Decompress([]byte("HDR"), stream, n)
+		if err != nil || !bytes.HasPrefix(got2, []byte("HDR")) || !bytes.Equal(got2[3:], src) {
+			t.Fatalf("n=%d: Flate.Decompress mismatch: len=%d err=%v", n, len(got2), err)
+		}
+	}
+}
+
+func TestFixedDeflateBlockMultiSegment(t *testing.T) {
+	rng := rand.New(rand.NewPCG(31, 37))
+	segSizes := [][]int{
+		{0, 0, 0},
+		{1, 2, 3, 4, 5, 6, 7, 8, 9},
+		{256, 512, 1024, 4096, 17},
+		{1500, 0, 1500, 300, 29, 2000},
+	}
+	for tcIdx, sizes := range segSizes {
+		var combined, want []byte
+		for sIdx, sz := range sizes {
+			seg := make([]byte, sz)
+			for i := range seg {
+				if sIdx%2 == 0 {
+					seg[i] = byte('a' + (i % 13))
+				} else {
+					seg[i] = byte(rng.Uint32())
+				}
+			}
+			want = append(want, seg...)
+			combined = fixedDeflateBlock(combined, seg, false)
+		}
+		combined = append(combined, deflateFinalEmpty[:]...)
+
+		if got := inflate(t, combined); !bytes.Equal(got, want) {
+			t.Fatalf("tc %d: stdlib inflate mismatch len=%d want=%d", tcIdx, len(got), len(want))
+		}
+		got2, err := (Flate{}).Decompress(nil, combined, len(want))
+		if err != nil || !bytes.Equal(got2, want) {
+			t.Fatalf("tc %d: Flate.Decompress mismatch len=%d want=%d err=%v", tcIdx, len(got2), len(want), err)
+		}
+	}
+}
