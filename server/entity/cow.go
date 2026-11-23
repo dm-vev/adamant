@@ -167,8 +167,14 @@ func (c *Cow) Tick(tx *world.Tx, current int64) {
 }
 
 func (b *CowBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	cow := &Cow{Ent: e}
+	cow, ok := e.living().(*Cow)
+	if !ok {
+		cow = &Cow{Ent: e}
+	}
 	b.ai.MovementSpeed, b.ai.EyeHeight = b.speed, animalEyeHeight(1.3, b.ageTicks < 0)
+	if b.ai.started {
+		return animalTick(e, tx, cow, &b.animalAI, nil)
+	}
 	return animalTick(e, tx, cow, &b.animalAI, func(m *Mob) {
 		registerAnimalGoals(m, &b.animalAI, animalSpec{panic: 2, breed: 1, tempt: 1.25, tempting: cow.breedingFood, parent: 1.25, stroll: 1}, nil)
 	})

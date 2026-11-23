@@ -36,7 +36,7 @@ func TestCollisionFetchCellsMatchExecutedClient(t *testing.T) {
 		t.Run(fmt.Sprint(n), func(t *testing.T) {
 			source := &collisionFetchCellRecorder{}
 			bounds := c.Bounds
-			boxes := nativeBlockBBoxsAround(source, cube.Box(bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]), native.WorldRange)
+			boxes := nativeBlockBBoxsAround(source, cube.Box(bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]), native.WorldRange, nil)
 			if len(boxes) != 0 || !slices.Equal(source.cells, c.Cells) {
 				t.Fatalf("query=%v: cells=%v, original=%v", bounds, source.cells, c.Cells)
 			}

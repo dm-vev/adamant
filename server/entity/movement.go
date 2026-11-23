@@ -34,15 +34,6 @@ type MovementComputer struct {
 	nativeBoxSet         bool
 }
 
-// blockBBoxPool caches scratch slices used while expanding collision boxes around an entity during movement
-// resolution. The collider path runs every tick for every moving entity, so eliminating these temporary allocations
-// materially reduces GC churn in crowded areas.
-var blockBBoxPool = sync.Pool{
-	New: func() any {
-		return make([]cube.BBox, 0, 16)
-	},
-}
-
 // Movement represents the movement of a world.Entity as a result of a call to MovementComputer.TickMovement. The
 // resulting position and velocity can be obtained by calling Position and Velocity. These can be sent to viewers by
 // calling Send.
@@ -300,13 +291,14 @@ func (c *MovementComputer) checkCollision(tx *world.Tx, e world.Entity, pos, vel
 
 	// Entities only ever have a single bounding box.
 	entityBBox := e.H().Type().BBox(e).Translate(pos)
+	var stackBlocks [32]cube.BBox
 	var blocks []cube.BBox
 	if !c.NoBlockCollisions {
 		source := c.blockSource
 		if source == nil {
 			source = tx
 		}
-		blocks = blockBBoxsAround(source, entityBBox.Extend(vel))
+		blocks = blockBBoxsAround(source, entityBBox.Extend(vel), stackBlocks[:0])
 	}
 	var entities []cube.BBox
 	if c.CollideEntities {
@@ -363,18 +355,14 @@ func (c *MovementComputer) checkCollision(tx *world.Tx, e world.Entity, pos, vel
 	if !mgl64.FloatEqual(deltaZ, vel[2]) {
 		vel[2] = 0
 	}
-	if blocks != nil {
-		blockBBoxPool.Put(blocks[:0]) //nolint:staticcheck // SA6002: boxing the slice costs 24 bytes, less than the boxes it reuses; pointers would change every caller of blockBBoxsAround.
-	}
 	if c.CollideEntities {
 		entityBBoxPool.Put(entities[:0]) //nolint:staticcheck // SA6002: boxing the slice costs 24 bytes, less than the boxes it reuses; pointers would change every caller of entityBBoxsAround.
 	}
 	return mgl64.Vec3{deltaX, deltaY, deltaZ}, vel
 }
 
-// blockBBoxsAround returns all blocks around the entity passed, using the BBox passed to make a prediction of
-// what blocks need to have their BBox returned.
-func blockBBoxsAround(source world.BlockSource, box cube.BBox) []cube.BBox {
+// blockBBoxsAround appends the collision boxes of all blocks around box to buf and returns the resulting slice.
+func blockBBoxsAround(source world.BlockSource, box cube.BBox, buf []cube.BBox) []cube.BBox {
 	grown := box.Grow(0.25)
 	min, max := grown.Min(), grown.Max()
 	minX, minY, minZ := int(math.Floor(min[0])), int(math.Floor(min[1])), int(math.Floor(min[2]))
@@ -382,49 +370,111 @@ func blockBBoxsAround(source world.BlockSource, box cube.BBox) []cube.BBox {
 	// maximum cannot collide with it.
 	maxX, maxY, maxZ := int(math.Ceil(max[0])), int(math.Ceil(max[1])), int(math.Ceil(max[2]))
 
-	// Allocate the pooled result only if the scan finds a collision box.
-	predicted := (maxX-minX)*(maxY-minY)*(maxZ-minZ) + 2
-	var blockBBoxs []cube.BBox
+	if tx, ok := source.(*world.Tx); ok {
+		return blockBBoxsAroundTx(tx, minX, minY, minZ, maxX, maxY, maxZ, buf)
+	}
+	if rv, ok := source.(*world.ReadView); ok {
+		return blockBBoxsAroundView(rv, minX, minY, minZ, maxX, maxY, maxZ, buf)
+	}
 	for y := minY; y < maxY; y++ {
 		for x := minX; x < maxX; x++ {
 			for z := minZ; z < maxZ; z++ {
 				pos := cube.Pos{x, y, z}
-				block := source.Block(pos)
-				// We deliberately avoid caching bounding boxes across different positions. Many
-				// block models (for example fences, walls, or trapdoors) inspect neighbouring
-				// blocks through the BlockSource passed to BBox in order to decide which collision
-				// shape to expose. Two blocks with the same runtime hash can therefore still
-				// produce different shapes when their surroundings diverge, so memoising purely by
-				// BlockHash would leak the first configuration into subsequent checks within the
-				// same sweep. The extra allocations here are negligible compared to the correctness
-				// issues introduced by reusing the wrong shape.
-				boxes := block.Model().BBox(pos, source)
+				boxes := source.Block(pos).Model().BBox(pos, source)
 				if len(boxes) == 0 {
 					continue
 				}
-				if blockBBoxs == nil {
-					blockBBoxs = blockBBoxPool.Get().([]cube.BBox)
-					if cap(blockBBoxs) < predicted {
-						blockBBoxPool.Put(blockBBoxs[:0]) //nolint:staticcheck // SA6002: boxing the slice costs 24 bytes, less than the boxes it reuses; pointers would change every caller of blockBBoxsAround.
-						blockBBoxs = make([]cube.BBox, 0, predicted)
-					} else {
-						blockBBoxs = blockBBoxs[:0]
-					}
-				}
 				offset := mgl64.Vec3{float64(x), float64(y), float64(z)}
-				for _, box := range boxes {
-					blockBBoxs = append(blockBBoxs, box.Translate(offset))
+				for _, bb := range boxes {
+					buf = append(buf, bb.Translate(offset))
 				}
 			}
 		}
 	}
-	return blockBBoxs
+	return buf
+}
+
+func blockBBoxsAroundTx(tx *world.Tx, minX, minY, minZ, maxX, maxY, maxZ int, buf []cube.BBox) []cube.BBox {
+	reg := tx.World().BlockRegistry()
+	rng := tx.Range()
+	minY = max(minY, rng[0])
+	maxY = min(maxY, rng[1]+1)
+	for y := minY; y < maxY; y++ {
+		fy := float64(y)
+		for x := minX; x < maxX; x++ {
+			fx := float64(x)
+			for z := minZ; z < maxZ; z++ {
+				pos := cube.Pos{x, y, z}
+				if rid, ok := tx.BlockRID(pos); ok {
+					flags := reg.BlockFlags(rid)
+					if flags.EmptyCollision() {
+						continue
+					}
+					if flags.FullCubeCollision() {
+						fz := float64(z)
+						buf = append(buf, cube.Box(fx, fy, fz, fx+1, fy+1, fz+1))
+						continue
+					}
+				}
+				boxes := tx.Block(pos).Model().BBox(pos, tx)
+				if len(boxes) == 0 {
+					continue
+				}
+				offset := mgl64.Vec3{fx, fy, float64(z)}
+				for _, bb := range boxes {
+					buf = append(buf, bb.Translate(offset))
+				}
+			}
+		}
+	}
+	return buf
+}
+
+func blockBBoxsAroundView(v *world.ReadView, minX, minY, minZ, maxX, maxY, maxZ int, buf []cube.BBox) []cube.BBox {
+	reg := v.World().BlockRegistry()
+	rng := v.Range()
+	minY = max(minY, rng[0])
+	maxY = min(maxY, rng[1]+1)
+	for y := minY; y < maxY; y++ {
+		fy := float64(y)
+		for x := minX; x < maxX; x++ {
+			fx := float64(x)
+			for z := minZ; z < maxZ; z++ {
+				pos := cube.Pos{x, y, z}
+				rid, ok := v.BlockRID(pos)
+				if !ok {
+					continue
+				}
+				flags := reg.BlockFlags(rid)
+				if flags.EmptyCollision() {
+					continue
+				}
+				if flags.FullCubeCollision() {
+					fz := float64(z)
+					buf = append(buf, cube.Box(fx, fy, fz, fx+1, fy+1, fz+1))
+					continue
+				}
+				boxes := v.Block(pos).Model().BBox(pos, v)
+				if len(boxes) == 0 {
+					continue
+				}
+				offset := mgl64.Vec3{fx, fy, float64(z)}
+				for _, bb := range boxes {
+					buf = append(buf, bb.Translate(offset))
+				}
+			}
+		}
+	}
+	return buf
 }
 
 // blockReader reads blocks and liquids: a world transaction, or the read
 // view of a world during a parallel phase of its owner.
 type blockReader interface {
 	world.BlockSource
+	World() *world.World
+	BlockRID(pos cube.Pos) (uint32, bool)
+	LiquidRID(pos cube.Pos) (uint32, bool)
 	Liquid(pos cube.Pos) (world.Liquid, bool)
 	MayContainLiquid(lo, hi cube.Pos) bool
 }

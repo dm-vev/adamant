@@ -188,10 +188,6 @@ func (e *Ent) BottleDragonBreath(tx *world.Tx) bool {
 		return false
 	}
 	a.SetRadius(a.radius - .5)
-	viewers := tx.Viewers(e.Position())
-	for _, v := range viewers {
-		v.ViewEntityState(e)
-	}
-	tx.ReleaseViewers(viewers)
+	world.BroadcastEntityState(tx, e)
 	return true
 }

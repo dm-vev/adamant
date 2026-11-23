@@ -512,11 +512,7 @@ func (s *Shulker) Effects() []effect.Effect               { return s.behaviour()
 func (s *Shulker) Speed() float64                         { return 0 }
 func (s *Shulker) SetSpeed(float64)                       {}
 func (s *Shulker) updateState() {
-	viewers := s.tx.Viewers(s.Position())
-	for _, viewer := range viewers {
-		viewer.ViewEntityState(s)
-	}
-	s.tx.ReleaseViewers(viewers)
+	world.BroadcastEntityState(s.tx, s)
 }
 func (s *Shulker) viewAction(action world.EntityAction) {
 	viewers := s.tx.Viewers(s.Position())

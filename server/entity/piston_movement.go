@@ -134,22 +134,21 @@ func (c *MovementComputer) checkNativeCollision(tx *world.Tx, e world.Entity, po
 		lo, hi := b.Min(), b.Max()
 		return cube.Box32(float32(lo[0]), float32(lo[1]), float32(lo[2]), float32(hi[0]), float32(hi[1]), float32(hi[2]))
 	}
+	var stackBoxes [32]cube.BBox
 	var boxes []cube.BBox
 	if !c.NoBlockCollisions {
 		source := c.blockSource
 		if source == nil {
 			source = tx
 		}
-		boxes = nativeBlockBBoxsAround(source, query, tx.Range())
+		boxes = nativeBlockBBoxsAround(source, query, tx.Range(), stackBoxes[:0])
 	}
-	obstacles := make([]cube.BBox32, 0, len(boxes))
+	var stackObstacles [32]cube.BBox32
+	obstacles := stackObstacles[:0]
 	for _, box := range boxes {
 		if box.IntersectsWith(query) {
 			obstacles = append(obstacles, to32(box))
 		}
-	}
-	if boxes != nil {
-		blockBBoxPool.Put(boxes[:0]) //nolint:staticcheck // SA6002: boxing the slice costs 24 bytes, less than the boxes it reuses; pointers would change every caller of blockBBoxsAround.
 	}
 	requested := mgl32.Vec3{float32(vel[0]), float32(vel[1]), float32(vel[2])}
 	result := pistonSweep([]mgl32.Vec3{{0, requested[1], 0}, {requested[0], 0, 0}, {0, 0, requested[2]}},
@@ -197,7 +196,7 @@ func (c *MovementComputer) checkNativeCollision(tx *world.Tx, e world.Entity, po
 // nativeBlockBBoxsAround follows BlockSource's collision fetch cell order and
 // binary32 bounds. Moving blocks may expose shapes one cell outside their
 // stored position, so the ordinary quarter-block movement margin is too small.
-func nativeBlockBBoxsAround(source world.BlockSource, query cube.BBox, bounds cube.Range) []cube.BBox {
+func nativeBlockBBoxsAround(source world.BlockSource, query cube.BBox, bounds cube.Range, buf []cube.BBox) []cube.BBox {
 	lo, hi := query.Min(), query.Max()
 	var first, last cube.Pos
 	for axis := range 3 {
@@ -205,11 +204,28 @@ func nativeBlockBBoxsAround(source world.BlockSource, query cube.BBox, bounds cu
 		last[axis] = int(math.Floor(float64(float32(hi[axis]) + 1)))
 	}
 	first[1], last[1] = max(first[1], bounds[0]), min(last[1], bounds[1])
-	var boxes []cube.BBox
+	tx, isTx := source.(*world.Tx)
+	var reg world.BlockRegistry
+	if isTx {
+		reg = tx.World().BlockRegistry()
+	}
 	for x := first[0]; x <= last[0]; x++ {
 		for z := first[2]; z <= last[2]; z++ {
 			for y := first[1]; y <= last[1]; y++ {
 				pos := cube.Pos{x, y, z}
+				if isTx {
+					if rid, ok := tx.BlockRID(pos); ok {
+						flags := reg.BlockFlags(rid)
+						if flags.EmptyCollision() {
+							continue
+						}
+						if flags.FullCubeCollision() {
+							fx, fy, fz := float32(x), float32(y), float32(z)
+							buf = append(buf, cube.Box(float64(fx), float64(fy), float64(fz), float64(fx+1), float64(fy+1), float64(fz+1)))
+							continue
+						}
+					}
+				}
 				for _, shape := range source.Block(pos).Model().BBox(pos, source) {
 					lo, hi := shape.Min(), shape.Max()
 					valid := true
@@ -221,13 +237,10 @@ func nativeBlockBBoxsAround(source world.BlockSource, query cube.BBox, bounds cu
 					if !valid {
 						continue
 					}
-					if boxes == nil {
-						boxes = blockBBoxPool.Get().([]cube.BBox)[:0]
-					}
-					boxes = append(boxes, cube.Box(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]))
+					buf = append(buf, cube.Box(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]))
 				}
 			}
 		}
 	}
-	return boxes
+	return buf
 }

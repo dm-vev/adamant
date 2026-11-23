@@ -16,25 +16,35 @@ func CheckEntityInsiders(tx *world.Tx, box cube.BBox, e world.Entity) {
 
 func checkEntityInsidersFiltered(tx *world.Tx, box cube.BBox, e world.Entity, include func(world.Block) bool) {
 	low, high := cube.PosFromVec3(box.Min()), cube.PosFromVec3(box.Max())
+	reg := tx.World().BlockRegistry()
 
 	for y := low[1]; y <= high[1]; y++ {
 		for x := low[0]; x <= high[0]; x++ {
 			for z := low[2]; z <= high[2]; z++ {
 				blockPos := cube.Pos{x, y, z}
-				b, loaded := tx.BlockLoaded(blockPos)
+				rid, loaded := tx.BlockRID(blockPos)
 				if !loaded {
 					continue
 				}
-				if collide, ok := b.(block.EntityInsider); ok && (include == nil || include(b)) {
-					collide.EntityInside(blockPos, tx, e)
-					if _, liquid := b.(world.Liquid); liquid {
-						continue
+				flags := reg.BlockFlags(rid)
+				if flags.HasEntityInsider() {
+					if b, ok := tx.BlockLoaded(blockPos); ok {
+						if collide, ok := b.(block.EntityInsider); ok && (include == nil || include(b)) {
+							collide.EntityInside(blockPos, tx, e)
+							if flags.IsLiquid() {
+								continue
+							}
+						}
 					}
 				}
-
-				if l, ok := tx.Liquid(blockPos); ok {
-					if collide, ok := l.(block.EntityInsider); ok && (include == nil || include(l)) {
-						collide.EntityInside(blockPos, tx, e)
+				if flags.IsLiquid() {
+					continue
+				}
+				if lrid, ok := tx.LiquidRID(blockPos); ok && reg.BlockFlags(lrid).HasEntityInsider() {
+					if l, ok := tx.Liquid(blockPos); ok {
+						if collide, ok := l.(block.EntityInsider); ok && (include == nil || include(l)) {
+							collide.EntityInside(blockPos, tx, e)
+						}
 					}
 				}
 			}
@@ -82,8 +92,9 @@ func buttonProjectile(e world.Entity) bool {
 // entity on the ground acts on the block it stands on, as magma burns it
 // and redstone ore lights up.
 func stepOnBlock(tx *world.Tx, e world.Entity) {
-	pos, ok := onPosLegacy(tx, e)
-	if !ok {
+	reg := tx.World().BlockRegistry()
+	pos, rid, ok := onPosLegacy(tx, reg, e)
+	if !ok || !reg.BlockFlags(rid).HasEntityStepper() {
 		return
 	}
 	if b, loaded := tx.BlockLoaded(pos); loaded {
@@ -96,33 +107,31 @@ func stepOnBlock(tx *world.Tx, e world.Entity) {
 // onPosLegacy ports Entity.getOnPosLegacy: the block 0.2 below the feet of
 // an entity, or of the block that supports it if it stands on the edge of
 // one.
-func onPosLegacy(tx *world.Tx, e world.Entity) (cube.Pos, bool) {
+func onPosLegacy(tx *world.Tx, reg world.BlockRegistry, e world.Entity) (cube.Pos, uint32, bool) {
 	p := e.Position()
 	y := int(math.Floor(p[1] - .2))
+	airRID := reg.AirRuntimeID()
 	centre := cube.Pos{int(math.Floor(p[0])), y, int(math.Floor(p[2]))}
-	if b, loaded := tx.BlockLoaded(centre); !loaded {
-		return centre, false
-	} else if _, air := b.(block.Air); !air {
-		return centre, true
+	if rid, loaded := tx.BlockRID(centre); !loaded {
+		return centre, 0, false
+	} else if rid != airRID {
+		return centre, rid, true
 	}
 	// Entity.checkSupportingBlock: the nearest block under the box that
 	// supports the entity.
 	box := e.H().Type().BBox(e).Translate(p)
-	best, bestDist, found := centre, math.MaxFloat64, false
+	best, bestRID, bestDist, found := centre, uint32(0), math.MaxFloat64, false
 	for x := int(math.Floor(box.Min()[0])); x <= int(math.Floor(box.Max()[0])); x++ {
 		for z := int(math.Floor(box.Min()[2])); z <= int(math.Floor(box.Max()[2])); z++ {
 			pos := cube.Pos{x, y, z}
-			b, loaded := tx.BlockLoaded(pos)
-			if !loaded {
-				continue
-			}
-			if _, air := b.(block.Air); air {
+			rid, loaded := tx.BlockRID(pos)
+			if !loaded || rid == airRID {
 				continue
 			}
 			if d := pos.Vec3Centre().Sub(mgl64.Vec3{p[0], pos.Vec3Centre()[1], p[2]}).LenSqr(); d < bestDist {
-				best, bestDist, found = pos, d, true
+				best, bestRID, bestDist, found = pos, rid, d, true
 			}
 		}
 	}
-	return best, found
+	return best, bestRID, found
 }

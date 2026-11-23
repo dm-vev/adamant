@@ -31,6 +31,9 @@ func hostileSkeleton(kind string) bool {
 
 // hostileSelf returns the entity of a hostile mob for the species of kind.
 func hostileSelf(e *Ent, kind string) world.Entity {
+	if w := e.living(); w != e {
+		return w
+	}
 	return hostileSpecies(&HostileMob{Ent: e}, kind)
 }
 
@@ -73,7 +76,11 @@ func (b *hostileState) aiTick(e *Ent) *Movement {
 	if hostileSkeleton(b.kind) && ai.started && (!b.weaponSet || b.weaponBow != b.holdingBow()) {
 		b.reassessWeaponGoal(ai.Mob(e, self))
 	}
-	mov := ai.Tick(e, self, b.registerGoals)
+	var register func(m *Mob)
+	if !ai.started {
+		register = b.registerGoals
+	}
+	mov := ai.Tick(e, self, register)
 	if !b.dead {
 		switch b.kind {
 		case "minecraft:ravager":

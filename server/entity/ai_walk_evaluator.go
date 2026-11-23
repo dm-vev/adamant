@@ -347,6 +347,15 @@ func (w *walkNodeEvaluator) floorLevel(pos cube.Pos) float64 {
 // the collision shape of the block below.
 func pathFloorLevel(tx pathWorld, pos cube.Pos) float64 {
 	below := pos.Side(cube.FaceDown)
+	if rid, ok := tx.BlockRID(below); ok {
+		flags := tx.World().BlockRegistry().BlockFlags(rid)
+		if flags.EmptyCollision() {
+			return float64(below.Y())
+		}
+		if flags.FullCubeCollision() {
+			return float64(below.Y()) + 1
+		}
+	}
 	b := pathBlockAt(tx, below)
 	if isAir(b) {
 		return float64(below.Y())
@@ -491,10 +500,29 @@ func (w *walkNodeEvaluator) hasCollisions(box cube.BBox) bool {
 func boxFree(tx pathWorld, box cube.BBox) bool {
 	minX, minY, minZ := int(math.Floor(box.Min()[0])), int(math.Floor(box.Min()[1]))-1, int(math.Floor(box.Min()[2]))
 	maxX, maxY, maxZ := int(math.Floor(box.Max()[0])), int(math.Floor(box.Max()[1])), int(math.Floor(box.Max()[2]))
+	reg := tx.World().BlockRegistry()
+	rng := tx.Range()
+	minY = max(minY, rng[0])
+	maxY = min(maxY, rng[1])
 	for x := minX; x <= maxX; x++ {
+		fx := float64(x)
 		for y := minY; y <= maxY; y++ {
+			fy := float64(y)
 			for z := minZ; z <= maxZ; z++ {
 				pos := cube.Pos{x, y, z}
+				if rid, ok := tx.BlockRID(pos); ok {
+					flags := reg.BlockFlags(rid)
+					if flags.EmptyCollision() {
+						continue
+					}
+					if flags.FullCubeCollision() {
+						fz := float64(z)
+						if cube.Box(fx, fy, fz, fx+1, fy+1, fz+1).IntersectsWith(box) {
+							return false
+						}
+						continue
+					}
+				}
 				b := pathBlockAt(tx, pos)
 				if isAir(b) {
 					continue
@@ -1143,8 +1171,12 @@ func isAir(b world.Block) bool {
 
 // pathWater reports if a position holds water.
 func pathWater(tx pathWorld, pos cube.Pos) bool {
-	l, ok := tx.Liquid(pos)
-	return ok && l.LiquidType() == "water"
+	rid, ok := tx.LiquidRID(pos)
+	if !ok {
+		return false
+	}
+	kind, _, _ := tx.World().BlockRegistry().LiquidInfo(rid)
+	return kind == liquidKindWater
 }
 
 // maxFallDistance ports Mob.getMaxFallDistance: how far a mob drops down a

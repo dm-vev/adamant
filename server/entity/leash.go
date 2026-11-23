@@ -48,14 +48,7 @@ func (e *Ent) setLeashHolder(id int64) {
 }
 
 func (e *Ent) refreshLeashMetadata(tx *world.Tx) {
-	if tx == nil {
-		return
-	}
-	viewers := tx.Viewers(e.Position())
-	for _, viewer := range viewers {
-		viewer.ViewEntityState(e)
-	}
-	tx.ReleaseViewers(viewers)
+	world.BroadcastEntityState(tx, e)
 }
 
 // DetachLeash removes the leash, optionally dropping its lead.

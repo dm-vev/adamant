@@ -78,6 +78,17 @@ type MobAI struct {
 	entityID int
 	started  bool
 
+	// caps caches interface capability bits for m.Behaviour() on first use to
+	// avoid repeated per-tick runtime interface assertions.
+	caps        uint32
+	capsBrain   mobBrain
+	capsCustom  mobCustomStep
+	capsSelf    world.Entity
+	capsLiving  Living
+	capsEffect  mobEffectHolder
+	javaID      string
+	despawnDist float64
+
 	tickCount    int
 	noActionTime int
 	home         mobHome
@@ -196,7 +207,124 @@ func (ai *MobAI) start(m *Mob) {
 	ai.headYaw, ai.bodyYaw = m.data.Rot.Yaw(), m.data.Rot.Yaw()
 	ai.prevPos = m.data.Pos
 	ai.onGround = m.data.OnGround
+	ai.initCaps(m)
 	ai.nav.init(m)
+}
+
+const (
+	mobCapInitialized uint32 = 1 << 31
+
+	mobCapImmobile uint32 = 1 << iota
+	mobCapSteeredByPlayer
+	mobCapJumper
+	mobCapTraveller
+	mobCapJumpControl
+	mobCapCustomStep
+	mobCapWaterSlowDown
+	mobCapAirMover
+	mobCapFluidStander
+	mobCapAfterAiStep
+	mobCapBrain
+	mobCapFluidPusher
+	mobCapWallClimber
+	mobCapFluidJumpThreshold
+	mobCapPathfindingListener
+	mobCapTargetListener
+	mobCapAttackRestrictor
+	mobCapNotInPeaceful
+	mobCapPersister
+	mobCapPersistenceRequired
+)
+
+type mobPersistenceRequired interface {
+	PersistenceRequired() bool
+}
+
+type mobFluidJumpThreshold interface {
+	fluidJumpThreshold(m *Mob) float64
+}
+
+func (ai *MobAI) initCaps(m *Mob) {
+	b := m.Behaviour()
+	caps := mobCapInitialized
+	if _, ok := b.(mobImmobileChecker); ok {
+		caps |= mobCapImmobile
+	}
+	if _, ok := b.(mobPlayerSteered); ok {
+		caps |= mobCapSteeredByPlayer
+	}
+	if _, ok := b.(mobJumper); ok {
+		caps |= mobCapJumper
+	}
+	if _, ok := b.(mobTraveller); ok {
+		caps |= mobCapTraveller
+	}
+	if _, ok := b.(mobJumpControl); ok {
+		caps |= mobCapJumpControl
+	}
+	if c, ok := b.(mobCustomStep); ok {
+		caps |= mobCapCustomStep
+		ai.capsCustom = c
+	}
+	if _, ok := b.(mobWaterSlowDown); ok {
+		caps |= mobCapWaterSlowDown
+	}
+	if _, ok := b.(mobAirMover); ok {
+		caps |= mobCapAirMover
+	}
+	if _, ok := b.(mobFluidStander); ok {
+		caps |= mobCapFluidStander
+	}
+	if _, ok := b.(mobAfterAiStep); ok {
+		caps |= mobCapAfterAiStep
+	}
+	if br, ok := b.(mobBrain); ok {
+		caps |= mobCapBrain
+		ai.capsBrain = br
+	}
+	if _, ok := b.(mobFluidPusher); ok {
+		caps |= mobCapFluidPusher
+	}
+	if _, ok := b.(mobWallClimber); ok {
+		caps |= mobCapWallClimber
+	}
+	if _, ok := b.(mobFluidJumpThreshold); ok {
+		caps |= mobCapFluidJumpThreshold
+	}
+	if _, ok := b.(mobPathfindingListener); ok {
+		caps |= mobCapPathfindingListener
+	}
+	if _, ok := b.(mobTargetListener); ok {
+		caps |= mobCapTargetListener
+	}
+	if _, ok := b.(mobAttackRestrictor); ok {
+		caps |= mobCapAttackRestrictor
+	}
+	if _, ok := b.(mobPersister); ok {
+		caps |= mobCapPersister
+	}
+	if m.Self != nil {
+		id := world.JavaEntityID(m.Self)
+		ai.javaID = id
+		ai.despawnDist = despawnDistance(id)
+		if notInPeaceful[id] {
+			caps |= mobCapNotInPeaceful
+		}
+		if _, ok := m.Self.(mobPersistenceRequired); ok {
+			caps |= mobCapPersistenceRequired
+		}
+	}
+	ai.caps = caps
+	ai.capsSelf = m.Self
+	ai.capsLiving, _ = m.Self.(Living)
+	ai.capsEffect, _ = m.Self.(mobEffectHolder)
+}
+
+func (ai *MobAI) hasCap(m *Mob, bit uint32) bool {
+	if ai.caps == 0 {
+		ai.initCaps(m)
+	}
+	return ai.caps&bit != 0
 }
 
 // Random returns the random source of the mob, Java's Mob.getRandom. Like
@@ -283,8 +411,8 @@ func (m *Mob) InLiquid() bool { return m.InWater() || m.InLava() }
 // FluidJumpThreshold returns how deep a mob may stand in a fluid before it
 // swims up instead of jumping, as Entity.getFluidJumpThreshold.
 func (m *Mob) FluidJumpThreshold() float64 {
-	if f, ok := m.Behaviour().(interface{ fluidJumpThreshold(m *Mob) float64 }); ok {
-		return f.fluidJumpThreshold(m)
+	if m.AI.hasCap(m, mobCapFluidJumpThreshold) {
+		return m.Behaviour().(mobFluidJumpThreshold).fluidJumpThreshold(m)
 	}
 	if m.EyeY()-m.data.Pos[1] < .4 {
 		return 0
@@ -332,7 +460,18 @@ func (m *Mob) StopInPlace() {
 }
 
 // Alive reports if the mob is alive.
-func (m *Mob) Alive() bool { return entityAlive(m.Self) }
+func (m *Mob) Alive() bool {
+	if m.Self == nil {
+		return false
+	}
+	if m.AI.capsSelf == m.Self {
+		if m.AI.capsLiving != nil {
+			return !m.AI.capsLiving.Dead()
+		}
+		return !m.Self.H().Closed()
+	}
+	return entityAlive(m.Self)
+}
 
 // entityAlive reports if an entity is alive, as Entity.isAlive.
 func entityAlive(e world.Entity) bool {
@@ -427,8 +566,8 @@ func (m *Mob) SetTarget(t world.Entity) {
 	t = m.asValidTarget(t)
 	// The listener runs before the target changes, so it still sees the
 	// target the mob had.
-	if l, ok := m.Behaviour().(mobTargetListener); ok {
-		l.targetSet(m, t)
+	if m.AI.hasCap(m, mobCapTargetListener) {
+		m.Behaviour().(mobTargetListener).targetSet(m, t)
 	}
 	if t == nil {
 		m.AI.target = nil
@@ -480,8 +619,8 @@ func (m *Mob) CanAttack(t world.Entity) bool {
 	if _, player := t.(interface{ GameMode() world.GameMode }); player && m.tx.World().Difficulty() == world.DifficultyPeaceful {
 		return false
 	}
-	if r, ok := m.Behaviour().(mobAttackRestrictor); ok {
-		return r.canAttackEntity(m, t)
+	if m.AI.hasCap(m, mobCapAttackRestrictor) {
+		return m.Behaviour().(mobAttackRestrictor).canAttackEntity(m, t)
 	}
 	return true
 }

@@ -349,9 +349,14 @@ func (b *wanderingTraderBehaviour) tickUsingItem(t *WanderingTrader, tx *world.T
 // viewItems shows the item in the trader's hand and whether it is drinking.
 func (t *WanderingTrader) viewItems(tx *world.Tx) {
 	viewers := tx.Viewers(t.Position())
+	var b world.Broadcast
 	for _, v := range viewers {
 		v.ViewEntityItems(t)
-		v.ViewEntityState(t)
+		if sv, ok := v.(world.EntityStateSharedViewer); ok {
+			sv.ViewEntityStateShared(t, &b)
+		} else {
+			v.ViewEntityState(t)
+		}
 	}
 	tx.ReleaseViewers(viewers)
 }

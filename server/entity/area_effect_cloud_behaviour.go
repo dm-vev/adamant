@@ -173,11 +173,7 @@ func (a *AreaEffectCloudBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 
 // viewState shows viewers the cloud's new radius.
 func (a *AreaEffectCloudBehaviour) viewState(e *Ent, tx *world.Tx) {
-	viewers := tx.Viewers(e.Position())
-	for _, v := range viewers {
-		v.ViewEntityState(e)
-	}
-	tx.ReleaseViewers(viewers)
+	world.BroadcastEntityState(tx, e)
 }
 
 // applyEffects gives the cloud's effects to the living entities whose box

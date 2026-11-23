@@ -65,13 +65,23 @@ type mobPersister interface {
 // checkDespawn ports Mob.checkDespawn. It reports whether the mob left the
 // world.
 func (ai *MobAI) checkDespawn(m *Mob) bool {
-	id := world.JavaEntityID(m.Self)
-	if m.tx.World().Difficulty() == world.DifficultyPeaceful && notInPeaceful[id] {
+	if ai.caps == 0 {
+		ai.initCaps(m)
+	}
+	id := ai.javaID
+	if id == "" {
+		id = world.JavaEntityID(m.Self)
+	}
+	if ai.caps&mobCapNotInPeaceful != 0 && m.tx.World().Difficulty() == world.DifficultyPeaceful {
 		discardMob(m)
 		return true
 	}
 	persistent := ai.persistent || mobRequiresCustomPersistence(m)
-	if p, ok := m.Self.(interface{ PersistenceRequired() bool }); ok && p.PersistenceRequired() {
+	if ai.capsSelf == m.Self {
+		if ai.caps&mobCapPersistenceRequired != 0 && m.Self.(mobPersistenceRequired).PersistenceRequired() {
+			persistent = true
+		}
+	} else if p, ok := m.Self.(mobPersistenceRequired); ok && p.PersistenceRequired() {
 		persistent = true
 	}
 	if persistent && ai.noActionTime == 0 {
@@ -95,11 +105,14 @@ func (ai *MobAI) checkDespawn(m *Mob) bool {
 			nearest = d
 		}
 	}
+	far := ai.despawnDist
+	if far == 0 {
+		far = despawnDistance(id)
+	}
 	if nearest < 0 {
 		if persistent {
 			return false
 		}
-		far := despawnDistance(id)
 		farSqr := far * far
 		// Pass 2: check within this mob's instant-despawn radius. Since Pass 1
 		// found no player at or within 32 blocks, any player within far blocks
@@ -133,7 +146,6 @@ func (ai *MobAI) checkDespawn(m *Mob) bool {
 			nearest = math.MaxFloat64
 		}
 	}
-	far := despawnDistance(id)
 	if !persistent && nearest > far*far && mobRemoveWhenFarAway(m, id, nearest) {
 		discardMob(m)
 		return true
@@ -191,10 +203,14 @@ func mobRequiresCustomPersistence(m *Mob) bool {
 	if m.data.Riding != nil || m.HolderLeashID() != 0 {
 		return true
 	}
-	if p, ok := m.Behaviour().(mobPersister); ok && p.requiresCustomPersistence(m) {
+	if m.AI.hasCap(m, mobCapPersister) && m.Behaviour().(mobPersister).requiresCustomPersistence(m) {
 		return true
 	}
-	switch world.JavaEntityID(m.Self) {
+	id := m.AI.javaID
+	if id == "" {
+		id = world.JavaEntityID(m.Self)
+	}
+	switch id {
 	case "minecraft:elder_guardian":
 		// ElderGuardian sets persistenceRequired when it is made.
 		return true

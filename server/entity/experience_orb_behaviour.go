@@ -93,9 +93,11 @@ func (exp *ExperienceOrbBehaviour) move(e *Ent, tx *world.Tx, mc *MovementComput
 	} else if !colliding {
 		vel[1] -= exp.conf.Gravity
 	}
-	if l, ok := tx.Liquid(cube.PosFromVec3(pos)); ok && l.LiquidType() == "lava" {
-		r := tx.RegionRandom()
-		vel = mgl64.Vec3{float64((r.NextFloat() - r.NextFloat()) * .2), float64(float32(.2)), float64((r.NextFloat() - r.NextFloat()) * .2)}
+	if lrid, ok := tx.LiquidRID(cube.PosFromVec3(pos)); ok {
+		if kind, _, _ := tx.World().BlockRegistry().LiquidInfo(lrid); kind == liquidKindLava {
+			r := tx.RegionRandom()
+			vel = mgl64.Vec3{float64((r.NextFloat() - r.NextFloat()) * .2), float64(float32(.2)), float64((r.NextFloat() - r.NextFloat()) * .2)}
+		}
 	}
 	vel = exp.follow(e, tx, vel)
 
@@ -126,14 +128,20 @@ func (exp *ExperienceOrbBehaviour) move(e *Ent, tx *world.Tx, mc *MovementComput
 func orbEyeInWater(tx *world.Tx, pos mgl64.Vec3, bbox cube.BBox) bool {
 	eyeY := pos[1] + bbox.Height()*.85
 	eye := cube.PosFromVec3(mgl64.Vec3{pos[0], eyeY, pos[2]})
-	l, ok := tx.Liquid(eye)
-	return ok && l.LiquidType() == "water" && eyeY <= float64(eye[1])+liquidHeight(tx, eye, l)
+	lrid, ok := tx.LiquidRID(eye)
+	if !ok {
+		return false
+	}
+	reg := tx.World().BlockRegistry()
+	kind, depth, falling := reg.LiquidInfo(lrid)
+	return kind == liquidKindWater && eyeY <= float64(eye[1])+liquidHeightInfo(tx, reg, eye, kind, depth, falling)
 }
 
 // boxCollides reports if box overlaps a collision box of a block, as
 // Level.noCollision reports the opposite.
 func boxCollides(tx *world.Tx, box cube.BBox) bool {
-	for _, b := range blockBBoxsAround(tx, box) {
+	var stackBoxes [16]cube.BBox
+	for _, b := range blockBBoxsAround(tx, box, stackBoxes[:0]) {
 		if b.IntersectsWith(box) {
 			return true
 		}
