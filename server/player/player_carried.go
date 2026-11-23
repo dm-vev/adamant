@@ -77,6 +77,9 @@ func (p *Player) ReleaseShoulderParrots() {
 }
 
 func (p *Player) tickCarriedMaps(current int64) {
+	if p.carriedMaps.Load() <= 0 {
+		return
+	}
 	var seen [64]int64
 	seenCount := 0
 	for _, inv := range [...]*inventory.Inventory{p.inv, p.offHand, p.armour.Inventory()} {
@@ -129,9 +132,10 @@ func (p *Player) tickCarriedMapStack(stack item.Stack, current int64, seen *[64]
 // updatesMapFrames reports whether the player updates the map frames of
 // its world for the players: the living player with the lowest UUID does.
 func (p *Player) updatesMapFrames() bool {
+	ownID := p.UUID()
 	for e := range p.tx.Players() {
-		if other, ok := e.(*Player); ok && !other.Dead() {
-			otherID, ownID := other.UUID(), p.UUID()
+		if other, ok := e.(*Player); ok && other != p && !other.Dead() {
+			otherID := other.UUID()
 			if bytes.Compare(otherID[:], ownID[:]) < 0 {
 				return false
 			}

@@ -3,7 +3,6 @@ package player
 import (
 	"time"
 
-	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/player/anticheat"
 	"github.com/go-gl/mathgl/mgl64"
@@ -55,8 +54,6 @@ type acState struct {
 	support       mgl64.Vec3
 	supported     bool
 	supportResent int64
-	// mc sweeps the paths of moves through the blocks for Phase.
-	mc entity.MovementComputer
 	// timer is what Timer keeps, and now the wall clock it reads, nil for
 	// time.Now: a test sets it.
 	timer timerState
@@ -163,6 +160,9 @@ func (ac *acState) liveImpulses(now int64) []impulse {
 // still apply: the most of their horizontal lengths as X, the most of their
 // upward speeds as Y.
 func (p *Player) pendingImpulse(ac *acState) mgl64.Vec3 {
+	if len(ac.impulses) == 0 {
+		return mgl64.Vec3{}
+	}
 	var largest mgl64.Vec3
 	for _, i := range ac.liveImpulses(p.tickCount) {
 		largest[0] = max(largest[0], mgl64.Vec2{i.vel[0], i.vel[2]}.Len())
@@ -174,15 +174,23 @@ func (p *Player) pendingImpulse(ac *acState) mgl64.Vec3 {
 // heldSpeed returns the most the speed of the player was over the round
 // trip to its client.
 func (p *Player) heldSpeed(ac *acState) float64 {
-	return ac.speed.observe(p.tickCount, p.Speed(), p.latencyTicks(ac))
+	return p.heldSpeedWithLatency(ac, p.latencyTicks(ac))
+}
+
+func (p *Player) heldSpeedWithLatency(ac *acState, latency int64) float64 {
+	return ac.speed.observe(p.tickCount, p.Speed(), latency)
 }
 
 // heldEffect returns the most the level of an effect of the player was
 // over the round trip to its client.
 func (p *Player) heldEffect(ac *acState, h *held, t effect.Type) int {
+	return p.heldEffectWithLatency(ac, h, t, p.latencyTicks(ac))
+}
+
+func (p *Player) heldEffectWithLatency(ac *acState, h *held, t effect.Type, latency int64) int {
 	level := 0
 	if e, ok := p.Effect(t); ok {
 		level = e.Level()
 	}
-	return int(h.observe(p.tickCount, float64(level), p.latencyTicks(ac)))
+	return int(h.observe(p.tickCount, float64(level), latency))
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/internal/txguard"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -64,9 +63,8 @@ func (p *Player) Sleep(pos cube.Pos) {
 		return
 	}
 
-	if ok := txguard.Run(p.tx, func() {
+	if p.tx != nil && !p.tx.Closed() {
 		p.sleepInTx(p.tx, pos)
-	}); ok {
 		return
 	}
 
@@ -135,9 +133,8 @@ func (p *Player) Wake() {
 		return
 	}
 
-	if ok := txguard.Run(p.tx, func() {
+	if p.tx != nil && !p.tx.Closed() {
 		p.wakeInTx(p.tx)
-	}); ok {
 		return
 	}
 

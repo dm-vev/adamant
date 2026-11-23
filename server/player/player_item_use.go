@@ -644,7 +644,7 @@ func (p *Player) UseItemOnEntity(e world.Entity) bool {
 
 func (p *Player) tickItemUse(current int64) {
 	p.useCountTick(current)
-	held, _ := p.HeldItems()
+	held, _ := p.inv.Item(int(atomic.LoadUint32(p.heldSlot)))
 	if !p.itemUseMatches(held) {
 		p.cancelItemUse()
 		return

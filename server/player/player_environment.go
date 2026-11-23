@@ -155,18 +155,17 @@ func (p *Player) WearingCreakingDisguise() bool {
 // touchingWater reports if water touches the box of the player, as
 // Entity.isInWater.
 func (p *Player) touchingWater() bool {
-	box := p.H().Type().BBox(p).Translate(p.Position()).Grow(-.001)
-	for x := int(math.Floor(box.Min()[0])); x <= int(math.Floor(box.Max()[0])); x++ {
-		for y := int(math.Floor(box.Min()[1])); y <= int(math.Floor(box.Max()[1])); y++ {
-			for z := int(math.Floor(box.Min()[2])); z <= int(math.Floor(box.Max()[2])); z++ {
-				pos := cube.Pos{x, y, z}
-				if !p.movementChunkReady(pos) {
-					// Looking for water in a chunk the world lacks would load it,
-					// and wait for its generation.
-					continue
-				}
-				if l, ok := p.tx.Liquid(pos); ok && l.LiquidType() == "water" {
-					return true
+	reg := p.tx.World().BlockRegistry()
+	box := Type.BBox(p).Translate(p.Position()).Grow(-.001)
+	minX, minY, minZ := int(math.Floor(box.Min()[0])), int(math.Floor(box.Min()[1])), int(math.Floor(box.Min()[2]))
+	maxX, maxY, maxZ := int(math.Floor(box.Max()[0])), int(math.Floor(box.Max()[1])), int(math.Floor(box.Max()[2]))
+	for x := minX; x <= maxX; x++ {
+		for y := minY; y <= maxY; y++ {
+			for z := minZ; z <= maxZ; z++ {
+				if rid, ok := p.tx.LiquidRID(cube.Pos{x, y, z}); ok {
+					if kind, _, _ := reg.LiquidInfo(rid); kind == 1 {
+						return true
+					}
 				}
 			}
 		}
@@ -216,11 +215,16 @@ func (p *Player) SetMaxAirSupply(duration time.Duration) {
 
 // canBreathe returns true if the player can currently breathe.
 func (p *Player) canBreathe() bool {
-	canTakeDamage := p.GameMode().AllowsTakingDamage()
+	if !p.GameMode().AllowsTakingDamage() {
+		return true
+	}
+	if !p.insideOfWater() && !p.insideOfSolid() {
+		return true
+	}
 	_, waterBreathing := p.effects.Effect(effect.WaterBreathing)
 	_, conduitPower := p.effects.Effect(effect.ConduitPower)
 	_, nautilus := p.effects.Effect(effect.BreathOfTheNautilus)
-	return airNeedless(canTakeDamage, waterBreathing, conduitPower, nautilus) || (!p.insideOfWater() && !p.insideOfSolid())
+	return airNeedless(true, waterBreathing, conduitPower, nautilus)
 }
 
 // airFrozen ports MobEffectUtil.shouldEffectsRefillAirsupply: underwater,
@@ -240,19 +244,20 @@ const breathingDistanceBelowEyes = 0.11111111
 // insideOfWater returns true if the player is currently underwater.
 func (p *Player) insideOfWater() bool {
 	pos := cube.PosFromVec3(entity.EyePosition(p))
-	if !p.movementChunkReady(pos) {
+	rid, ok := p.tx.LiquidRID(pos)
+	if !ok {
 		return false
 	}
-	if l, ok := p.tx.Liquid(pos); ok {
-		if _, ok := l.(block.Water); ok {
-			d := float64(l.SpreadDecay()) + 1
-			if l.LiquidFalling() {
-				d = 1
-			}
-			return p.Position().Y() < (pos.Side(cube.FaceUp).Vec3().Y())-(d/9-breathingDistanceBelowEyes)
-		}
+	kind, _, falling := p.tx.World().BlockRegistry().LiquidInfo(rid)
+	if kind != 1 {
+		return false
 	}
-	return false
+	// block.Water.SpreadDecay() is 1.
+	d := 2.0
+	if falling {
+		d = 1
+	}
+	return p.Position().Y() < float64(pos[1]+1)-(d/9-breathingDistanceBelowEyes)
 }
 
 // insideOfSolid returns true if the player is inside a solid block.
@@ -261,31 +266,27 @@ func (p *Player) insideOfSolid() bool {
 		return false
 	}
 	pos := cube.PosFromVec3(entity.EyePosition(p))
-	b, loaded := p.tx.BlockLoaded(pos)
+	rid, loaded := p.tx.BlockRID(pos)
 	if !loaded {
 		return false
 	}
-	box := p.handle.Type().BBox(p).Translate(p.Position())
-
-	_, solid := b.Model().(model.Solid)
-	if !solid {
-		// Not solid.
+	reg := p.tx.World().BlockRegistry()
+	flags := reg.BlockFlags(rid)
+	if flags.EmptyCollision() || (!flags.FullCubeCollision() && !flags.IsNBT()) || reg.FilteringBlock(rid) == 0 {
 		return false
 	}
-	d, diffuses := b.(block.LightDiffuser)
-	if diffuses && d.LightDiffusionLevel() == 0 {
-		// Transparent.
+	b, ok := p.blockAtRID(pos, rid, flags, reg)
+	if !ok {
+		return false
+	}
+	if _, solid := b.Model().(model.Solid); !solid {
 		return false
 	}
 	if immune, ok := b.(block.NonSuffocating); ok && immune.PreventsSuffocation() {
 		return false
 	}
-	for _, blockBox := range b.Model().BBox(pos, p.tx) {
-		if blockBox.Translate(pos.Vec3()).IntersectsWith(box) {
-			return true
-		}
-	}
-	return false
+	box := Type.BBox(p).Translate(p.Position())
+	return cube.Box(float64(pos[0]), float64(pos[1]), float64(pos[2]), float64(pos[0]+1), float64(pos[1]+1), float64(pos[2]+1)).IntersectsWith(box)
 }
 
 // Breathing checks if the player is currently able to breathe. If it's underwater and the player does not

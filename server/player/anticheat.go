@@ -174,19 +174,27 @@ func (p *Player) setBack(ac *acState, pos mgl64.Vec3, tick uint64) {
 // back.
 func (p *Player) movedTooQuickly(ac *acState, delta mgl64.Vec3) (tooQuick bool, dist, bound float64) {
 	limit := 10.0
-	if p.Gliding() {
-		limit = math.Sqrt(300)
-	}
-	expected := p.Velocity().Len()
 	if ac != nil {
 		limit = ac.conf.MovedTooQuickly.Limit
 		if p.Gliding() {
 			limit = ac.conf.MovedTooQuickly.LimitGliding
 		}
+	} else if p.Gliding() {
+		limit = math.Sqrt(300)
+	}
+	lenSqr := delta.LenSqr()
+	limitSqr := limit * limit
+	if lenSqr <= limitSqr {
+		return false, 0, 0
+	}
+	expected := p.Velocity().Len()
+	if ac != nil {
 		expected += p.pendingImpulse(ac).Len()
 	}
-	dist = delta.Len()
-	return delta.LenSqr()-expected*expected > limit*limit, dist, math.Sqrt(limit*limit + expected*expected)
+	if lenSqr-expected*expected <= limitSqr {
+		return false, 0, 0
+	}
+	return true, math.Sqrt(lenSqr), math.Sqrt(limitSqr + expected*expected)
 }
 
 // clientInput reports whether what the player is asked comes from its

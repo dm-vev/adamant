@@ -5,7 +5,6 @@ import (
 
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/internal/txguard"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -100,17 +99,22 @@ func (p *Player) Handler() Handler {
 	return p.h
 }
 
+// hasNopHandler reports whether the player uses the default no-op Handler.
+func (p *Player) hasNopHandler() bool {
+	_, ok := p.h.(NopHandler)
+	return ok
+}
+
 func borrowViewers(tx *world.Tx, pos mgl64.Vec3) (viewers []world.Viewer, ok bool) {
-	return txguard.Value(tx, func() []world.Viewer {
-		return tx.Viewers(pos)
-	})
+	if tx == nil || tx.Closed() {
+		return nil, false
+	}
+	return tx.Viewers(pos), true
 }
 
 func releaseBorrowedViewers(tx *world.Tx, viewers []world.Viewer, ok bool) {
-	if !ok || tx == nil {
+	if !ok || tx == nil || tx.Closed() {
 		return
 	}
-	txguard.Run(tx, func() {
-		tx.ReleaseViewers(viewers)
-	})
+	tx.ReleaseViewers(viewers)
 }

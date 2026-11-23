@@ -23,12 +23,16 @@ type cooldownState struct {
 	cooldowns map[string]time.Time
 	// cooldownsMu guards the cooldowns map, which is accessed from gameplay and
 	// network goroutines.
-	cooldownsMu sync.Mutex
+	cooldownsMu  sync.Mutex
+	hasCooldowns atomic.Bool
 }
 
 // cooldownActive reports if the item of the name passed has a cooldown that
 // has not run out at the time passed. A cooldown that has is deleted.
 func (s *cooldownState) cooldownActive(name string, now time.Time) bool {
+	if !s.hasCooldowns.Load() {
+		return false
+	}
 	s.cooldownsMu.Lock()
 	defer s.cooldownsMu.Unlock()
 
@@ -38,6 +42,7 @@ func (s *cooldownState) cooldownActive(name string, now time.Time) bool {
 	}
 	if now.After(otherTime) {
 		delete(s.cooldowns, name)
+		s.hasCooldowns.Store(len(s.cooldowns) > 0)
 		return false
 	}
 	return true
@@ -48,11 +53,15 @@ func (s *cooldownState) cooldownActive(name string, now time.Time) bool {
 func (s *cooldownState) cooldownSet(name string, cooldown time.Duration) {
 	s.cooldownsMu.Lock()
 	s.cooldowns[name] = time.Now().Add(cooldown)
+	s.hasCooldowns.Store(true)
 	s.cooldownsMu.Unlock()
 }
 
 // cooldownExpire deletes the cooldowns that have run out at the time passed.
 func (s *cooldownState) cooldownExpire(now time.Time) {
+	if !s.hasCooldowns.Load() {
+		return
+	}
 	s.cooldownsMu.Lock()
 	defer s.cooldownsMu.Unlock()
 	for it, ti := range s.cooldowns {
@@ -60,6 +69,7 @@ func (s *cooldownState) cooldownExpire(now time.Time) {
 			delete(s.cooldowns, it)
 		}
 	}
+	s.hasCooldowns.Store(len(s.cooldowns) > 0)
 }
 
 // inventoryState is the inventories of the player and the menu it has open.
@@ -79,6 +89,58 @@ type inventoryState struct {
 	inv, offHand, enderChest, ui *inventory.Inventory
 	armour                       *inventory.Armour
 	heldSlot                     *uint32
+	// carriedMaps tracks how many slots across inv, offHand and armour hold a
+	// FilledMap, avoiding a 41-slot scan every tick when none are carried.
+	carriedMaps atomic.Int32
+	// hasTurtleHelmet tracks whether the helmet slot currently holds a TurtleShell.
+	hasTurtleHelmet atomic.Bool
+	// invVersion increments on every mutation to inv so tickAttackStrength can
+	// skip inventory locks and EncodeItem when the main hand is unchanged.
+	invVersion atomic.Uint64
+}
+
+func isFilledMapStack(s item.Stack) bool {
+	if s.Empty() {
+		return false
+	}
+	_, ok := s.Item().(item.FilledMap)
+	return ok
+}
+
+func (pd *playerData) trackMapSlot(before, after item.Stack) {
+	wasMap, isMap := isFilledMapStack(before), isFilledMapStack(after)
+	if wasMap == isMap {
+		return
+	}
+	if isMap {
+		pd.carriedMaps.Add(1)
+	} else {
+		pd.carriedMaps.Add(-1)
+	}
+}
+
+func (pd *playerData) refreshTurtleHelmet() {
+	helmet := pd.armour.Helmet()
+	if helmet.Empty() {
+		pd.hasTurtleHelmet.Store(false)
+		return
+	}
+	_, ok := helmet.Item().(item.TurtleShell)
+	pd.hasTurtleHelmet.Store(ok)
+}
+
+func (pd *playerData) initInventoryTracking() {
+	var maps int32
+	for _, inv := range [...]*inventory.Inventory{pd.inv, pd.offHand, pd.armour.Inventory()} {
+		for slot := range inv.Size() {
+			if s, err := inv.Item(slot); err == nil && isFilledMapStack(s) {
+				maps++
+			}
+		}
+	}
+	pd.carriedMaps.Store(maps)
+	pd.refreshTurtleHelmet()
+	pd.invVersion.Add(1)
 }
 
 // MoveItemsToInventory moves items kept in 'temporary' slots, such as the
@@ -363,6 +425,9 @@ func (p *Player) closeMenu(tx *world.Tx, clientRequested bool) {
 
 // expireCooldowns removes the cooldowns of items that have run out.
 func (p *Player) expireCooldowns() {
+	if !p.hasCooldowns.Load() {
+		return
+	}
 	p.cooldownExpire(time.Now())
 }
 

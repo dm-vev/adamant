@@ -299,23 +299,43 @@ func (p *Player) showMove() {
 	}
 	byServer := p.movedByServer
 	p.moved, p.movedByServer = false, false
-	pos, rot := p.Position(), p.Rotation()
-	move, teleport := p.data.Moves.Move(pos, rot, rot.Yaw(), mgl64.Vec3{}, p.OnGround(), true, 0)
+	pos, rot, onGround := p.Position(), p.Rotation(), p.OnGround()
+	move, teleport := p.data.Moves.Move(pos, rot, rot.Yaw(), mgl64.Vec3{}, onGround, true, 0)
 	visible := move != nil || teleport
 	if !visible && !byServer {
 		return
 	}
-	shown := &world.EntityMove{Pos: pos, Rot: rot, OnGround: p.OnGround(), Absolute: true}
-	viewers, release := p.viewers()
+	shown := move
+	if shown != nil {
+		*shown = world.EntityMove{Pos: pos, Rot: rot, OnGround: onGround, Absolute: true}
+	} else {
+		shown = &world.EntityMove{Pos: pos, Rot: rot, OnGround: onGround, Absolute: true}
+	}
+	viewers, ok := borrowViewers(p.tx, pos)
+	if !ok {
+		if byServer && p.c != nil {
+			p.c.ViewEntityMove(p, shown)
+		}
+		return
+	}
+	seenSelf := false
 	for _, v := range viewers {
 		// Its own client is shown only where the server put it, the other
 		// viewers only a move they can see.
-		if self := p.c != nil && v == world.Viewer(p.c); self && !byServer || !self && !visible {
+		if self := p.c != nil && v == world.Viewer(p.c); self {
+			seenSelf = true
+			if !byServer {
+				continue
+			}
+		} else if !visible {
 			continue
 		}
 		v.ViewEntityMove(p, shown)
 	}
-	releaseBorrowedViewers(p.tx, viewers, release)
+	if byServer && p.c != nil && !seenSelf {
+		p.c.ViewEntityMove(p, shown)
+	}
+	releaseBorrowedViewers(p.tx, viewers, true)
 }
 
 // Move moves the player from one position to another in the world, by adding the delta passed to the current
@@ -339,14 +359,16 @@ func (p *Player) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 		pos         = p.Position()
 		res, resRot = pos.Add(deltaPos), p.Rotation().Add(cube.Rotation{deltaYaw, deltaPitch})
 	)
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleMove(ctx, res, resRot); ctx.Cancelled() {
-		if p.hasClient() && pos.ApproxEqual(p.Position()) {
-			// The position of the player was changed and the event cancelled. This means we still need to notify the
-			// player of this movement change.
-			p.teleport(pos)
+	if !p.hasNopHandler() {
+		ctx := NewEventContext(p.tx, p)
+		if p.Handler().HandleMove(ctx, res, resRot); ctx.Cancelled() {
+			if p.hasClient() && pos.ApproxEqual(p.Position()) {
+				// The position of the player was changed and the event cancelled. This means we still need to notify the
+				// player of this movement change.
+				p.teleport(pos)
+			}
+			return
 		}
-		return
 	}
 	// The viewers are shown the move with the next tick, as Java's
 	// ServerEntity shows that of a player, so that the moves of a crowd go
@@ -383,12 +405,13 @@ func (p *Player) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 		}
 	}
 
-	beforePos := cube.PosFromVec3(pos.Add(mgl64.Vec3{0, p.EyeHeight()}))
-	afterPos := cube.PosFromVec3(res.Add(mgl64.Vec3{0, p.EyeHeight()}))
-	if p.movementChunkReady(beforePos) && p.movementChunkReady(afterPos) {
-		_, submergedBefore := p.tx.Liquid(beforePos)
-		_, submergedAfter := p.tx.Liquid(afterPos)
-		if submergedBefore != submergedAfter {
+	eyeH := p.EyeHeight()
+	beforePos := cube.PosFromVec3(pos.Add(mgl64.Vec3{0, eyeH}))
+	afterPos := cube.PosFromVec3(res.Add(mgl64.Vec3{0, eyeH}))
+	if beforePos != afterPos {
+		_, submergedBefore := p.tx.LiquidRID(beforePos)
+		_, submergedAfter := p.tx.LiquidRID(afterPos)
+		if submergedBefore != submergedAfter && p.movementChunkReady(beforePos) && p.movementChunkReady(afterPos) {
 			// Player wasn't either breathing before and no longer isn't, or wasn't breathing before and now is,
 			// so send the updated metadata.
 			p.client().ViewEntityState(p)
@@ -406,18 +429,18 @@ func (p *Player) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 // ServerPlayer.checkMovementStatistics: 0.01 per metre swimming, under water
 // or wading, 0.1 per metre sprinting on the ground and none otherwise.
 func (p *Player) checkMovementStatistics(delta mgl64.Vec3) {
-	if p.Riding() != nil || delta == (mgl64.Vec3{}) {
+	if p.Riding() != nil || delta == (mgl64.Vec3{}) || !p.GameMode().AllowsTakingDamage() {
 		return
 	}
-	full := float32(math.Round(float64(float32(delta.Len()) * 100)))
-	horizontal := float32(math.Round(float64(float32(math.Hypot(delta[0], delta[2])) * 100)))
 	switch {
 	case p.Swimming() || p.insideOfWater():
+		full := float32(math.Round(float64(float32(delta.Len()) * 100)))
 		p.Exhaust(float64(0.01 * full * 0.01))
 	case p.touchingWater():
+		horizontal := float32(math.Round(float64(float32(math.Hypot(delta[0], delta[2])) * 100)))
 		p.Exhaust(float64(0.01 * horizontal * 0.01))
-	case p.onClimbable():
-	case p.onGround && p.Sprinting():
+	case p.onGround && p.Sprinting() && !p.onClimbable():
+		horizontal := float32(math.Round(float64(float32(math.Hypot(delta[0], delta[2])) * 100)))
 		p.Exhaust(float64(0.1 * horizontal * 0.01))
 	}
 }
@@ -429,6 +452,24 @@ func (p *Player) onClimbable() bool {
 		return false
 	}
 	pos := cube.PosFromVec3(p.Position())
+	rid, loaded := p.tx.BlockRID(pos)
+	if !loaded {
+		return false
+	}
+	flags := p.tx.World().BlockRegistry().BlockFlags(rid)
+	if flags.IsClimbable() {
+		if !p.Gliding() {
+			return true
+		}
+		return p.onClimbableSlow(pos)
+	}
+	if flags.EmptyCollision() || flags.FullCubeCollision() {
+		return false
+	}
+	return p.onClimbableSlow(pos)
+}
+
+func (p *Player) onClimbableSlow(pos cube.Pos) bool {
 	b, loaded := p.tx.BlockLoaded(pos)
 	if !loaded {
 		return false
@@ -562,6 +603,14 @@ func (p *Player) TravelThroughPortal(tx *world.Tx, target world.Dimension) {
 	p.portalTravel.EnterPortal(p, tx, target)
 }
 
+// blockAtRID resolves the world.Block for a known loaded runtime ID, fetching the block entity only for NBT blocks.
+func (p *Player) blockAtRID(pos cube.Pos, rid uint32, flags world.BlockFlags, reg world.BlockRegistry) (world.Block, bool) {
+	if flags.IsNBT() {
+		return p.tx.BlockLoaded(pos)
+	}
+	return reg.BlockByRuntimeIDOrAir(rid), true
+}
+
 // checkCollisions checks the player's block collisions.
 func (p *Player) checkBlockCollisions(vel mgl64.Vec3) {
 	if p.GameMode() == world.GameModeSpectator {
@@ -572,47 +621,78 @@ func (p *Player) checkBlockCollisions(vel mgl64.Vec3) {
 
 	entity.CheckEntityInsiders(p.tx, entityBBox.Grow(-0.0001), p)
 
-	grown := entityBBox.Extend(vel).Grow(0.25)
+	// epsilon is the epsilon used for thresholds for change used for change in position and velocity.
+	const epsilon = 0.001
+
+	moveY := !mgl64.FloatEqualThreshold(deltaY, 0, epsilon)
+	moveX := !mgl64.FloatEqualThreshold(deltaX, 0, epsilon)
+	moveZ := !mgl64.FloatEqualThreshold(deltaZ, 0, epsilon)
+	if !moveX && !moveY && !moveZ {
+		p.collidedHorizontally = false
+		p.collidedVertically = false
+		return
+	}
+
+	swept := entityBBox.Extend(vel)
+	sweptMin, sweptMax := swept.Min(), swept.Max()
+	grown := swept.Grow(0.25)
 	low, high := grown.Min(), grown.Max()
 	minX, minY, minZ := int(math.Floor(low[0])), int(math.Floor(low[1])), int(math.Floor(low[2]))
+	// Maximum bounds are exclusive: a block starting at max >= sweptMax+0.25 cannot collide with swept.
 	maxX, maxY, maxZ := int(math.Ceil(high[0])), int(math.Ceil(high[1])), int(math.Ceil(high[2]))
 
-	// A prediction of one BBox per block, plus an additional 2, in case
-	blocks := make([]cube.BBox, 0, (maxX-minX)*(maxY-minY)*(maxZ-minZ)+2)
-	for y := minY; y <= maxY; y++ {
-		for x := minX; x <= maxX; x++ {
-			for z := minZ; z <= maxZ; z++ {
+	reg := p.tx.World().BlockRegistry()
+	var stackBlocks [64]cube.BBox
+	blocks := stackBlocks[:0]
+	for x := minX; x < maxX; x++ {
+		for z := minZ; z < maxZ; z++ {
+			for y := minY; y < maxY; y++ {
 				pos := cube.Pos{x, y, z}
-				b, loaded := p.tx.BlockLoaded(pos)
-				// BlockLoaded never waits; unready positions have no collision shape to apply yet.
+				rid, loaded := p.tx.BlockRID(pos)
+				// BlockRID never waits; unready positions have no collision shape to apply yet.
 				if !loaded {
 					continue
 				}
-				for _, box := range b.Model().BBox(pos, p.tx) {
-					blocks = append(blocks, box.Translate(pos.Vec3()))
+				flags := reg.BlockFlags(rid)
+				if flags.EmptyCollision() {
+					continue
+				}
+				if flags.FullCubeCollision() {
+					fx, fy, fz := float64(x), float64(y), float64(z)
+					if fx+1 > sweptMin[0] && fx < sweptMax[0] && fy+1 > sweptMin[1] && fy < sweptMax[1] && fz+1 > sweptMin[2] && fz < sweptMax[2] {
+						blocks = append(blocks, cube.Box(fx, fy, fz, fx+1, fy+1, fz+1))
+					}
+					continue
+				}
+				if b, ok := p.blockAtRID(pos, rid, flags, reg); ok {
+					for _, box := range b.Model().BBox(pos, p.tx) {
+						blocks = append(blocks, box.Translate(pos.Vec3()))
+					}
 				}
 			}
 		}
 	}
+	if len(blocks) == 0 {
+		p.collidedHorizontally = false
+		p.collidedVertically = false
+		return
+	}
 
-	// epsilon is the epsilon used for thresholds for change used for change in position and velocity.
-	const epsilon = 0.001
-
-	if !mgl64.FloatEqualThreshold(deltaY, 0, epsilon) {
+	if moveY {
 		// First we move the entity BBox on the Y axis.
 		for _, blockBBox := range blocks {
 			deltaY = entityBBox.YOffset(blockBBox, deltaY)
 		}
 		entityBBox = entityBBox.Translate(mgl64.Vec3{0, deltaY})
 	}
-	if !mgl64.FloatEqualThreshold(deltaX, 0, epsilon) {
+	if moveX {
 		// Then on the X axis.
 		for _, blockBBox := range blocks {
 			deltaX = entityBBox.XOffset(blockBBox, deltaX)
 		}
 		entityBBox = entityBBox.Translate(mgl64.Vec3{deltaX})
 	}
-	if !mgl64.FloatEqualThreshold(deltaZ, 0, epsilon) {
+	if moveZ {
 		// And finally on the Z axis.
 		for _, blockBBox := range blocks {
 			deltaZ = entityBBox.ZOffset(blockBBox, deltaZ)
@@ -634,12 +714,21 @@ func (p *Player) checkEntitySteppers() {
 	if !p.OnGround() {
 		return
 	}
+	reg := p.tx.World().BlockRegistry()
 	low, high := p.blocksUnder()
 	for x := low[0]; x <= high[0]; x++ {
 		for z := low[2]; z <= high[2]; z++ {
 			pos := cube.Pos{x, low[1], z}
-			b, loaded := p.tx.BlockLoaded(pos)
+			rid, loaded := p.tx.BlockRID(pos)
 			if !loaded {
+				continue
+			}
+			flags := reg.BlockFlags(rid)
+			if !flags.HasEntityStepper() {
+				continue
+			}
+			b, ok := p.blockAtRID(pos, rid, flags, reg)
+			if !ok {
 				continue
 			}
 			stepper, ok := b.(block.EntityStepper)
@@ -665,24 +754,48 @@ func (p *Player) checkOnGround(deltaPos mgl64.Vec3) bool {
 	// whole movement, so a block the player falls past at its side is not ground.
 	// The descent is bound: a move of any length must not make the probe, a
 	// loop over blocks, run long.
-	box := Type.BBox(p).Translate(p.Position()).Extend(mgl64.Vec3{0, -0.05}).Extend(mgl64.Vec3{0, max(math.Min(deltaPos[1], 0), -maxGroundProbe)})
+	posVec := p.Position()
+	box := Type.BBox(p).Translate(posVec).Extend(mgl64.Vec3{0, -0.05}).Extend(mgl64.Vec3{0, max(math.Min(deltaPos[1], 0), -maxGroundProbe)})
 	b := box.Grow(1)
 	epsilon := mgl64.Vec3{mgl64.Epsilon, mgl64.Epsilon, mgl64.Epsilon}
 	low, high := cube.PosFromVec3(b.Min().Add(epsilon)), cube.PosFromVec3(b.Max().Sub(epsilon))
+	reg := p.tx.World().BlockRegistry()
+
+	// Fast path: check the block directly below the player's centre first.
+	cx, cy, cz := int(math.Floor(posVec[0])), int(math.Floor(box.Min()[1])), int(math.Floor(posVec[2]))
+	if cx >= low[0] && cx <= high[0] && cy >= low[1] && cy < high[1] && cz >= low[2] && cz <= high[2] {
+		if rid, loaded := p.tx.BlockRID(cube.Pos{cx, cy, cz}); loaded && reg.BlockFlags(rid).FullCubeCollision() {
+			if cube.Box(float64(cx), float64(cy), float64(cz), float64(cx+1), float64(cy+1), float64(cz+1)).IntersectsWith(box) {
+				return true
+			}
+		}
+	}
 
 	unavailable := false
 	for x := low[0]; x <= high[0]; x++ {
 		for z := low[2]; z <= high[2]; z++ {
 			for y := low[1]; y < high[1]; y++ {
 				pos := cube.Pos{x, y, z}
-				b, loaded := p.tx.BlockLoaded(pos)
+				rid, loaded := p.tx.BlockRID(pos)
 				if !loaded {
 					unavailable = true
 					continue
 				}
-				for _, bb := range b.Model().BBox(pos, p.tx) {
-					if bb.Translate(pos.Vec3()).IntersectsWith(box) {
+				flags := reg.BlockFlags(rid)
+				if flags.EmptyCollision() {
+					continue
+				}
+				if flags.FullCubeCollision() {
+					if cube.Box(float64(x), float64(y), float64(z), float64(x+1), float64(y+1), float64(z+1)).IntersectsWith(box) {
 						return true
+					}
+					continue
+				}
+				if blk, ok := p.blockAtRID(pos, rid, flags, reg); ok {
+					for _, bb := range blk.Model().BBox(pos, p.tx) {
+						if bb.Translate(pos.Vec3()).IntersectsWith(box) {
+							return true
+						}
 					}
 				}
 			}

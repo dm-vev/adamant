@@ -23,9 +23,12 @@ type combatState struct {
 	// Java's Player.attackStrengthTicker (tickAttackStrength), and
 	// lastMainHand is that item, by name and meta.
 	attackStrengthTicks int
-	lastMainHand        struct {
-		name string
-		meta int16
+	lastMainHand struct {
+		name  string
+		meta  int16
+		slot  uint32
+		ver   uint64
+		valid bool
 	}
 	lastDamage  float64
 	immuneUntil time.Time
