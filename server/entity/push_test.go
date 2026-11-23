@@ -447,3 +447,71 @@ func TestTickEntityCollisionsConcurrentWorldsAndPoolReset(t *testing.T) {
 		}
 	}
 }
+
+func TestTickEntityCollisionsParallelMatchesSerial(t *testing.T) {
+	t.Parallel()
+	spawnCrowd := func(tx *world.Tx) []*Cow {
+		if err := tx.World().SetGameRule("max_entity_cramming", 6); err != nil {
+			t.Fatal(err)
+		}
+		cows := make([]*Cow, 0, 320)
+		for i := range 320 {
+			// Pack entities across a single chunk + boundary with dense overlapping clusters.
+			x := float64(i%20)*0.75 + 0.2
+			z := float64(i/20)*0.75 + 0.2
+			if i%40 < 8 {
+				// Dense cramming sub-cluster where some mobs die mid-pass.
+				x = 15.8 + float64(i%4)*0.05
+				z = 15.8 + float64((i/4)%2)*0.05
+			}
+			c := tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{x, 64, z}})).(*Cow)
+			if i%40 < 4 {
+				c.SetMaxHealth(4)
+			}
+			*randomOf(tx, c) = vanilla.NewXoroshiroRandom(int64(i + 1))
+			cows = append(cows, c)
+		}
+		tx.AddEntity((world.EntitySpawnOpts{Position: mgl64.Vec3{3.5, 64, 3.5}}).New(
+			pushPlayerStubType{}, pushStubConfig{state: &pushStubState{mode: world.GameModeSurvival}},
+		))
+		return cows
+	}
+
+	wPar := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
+	defer wPar.Close()
+	wSer := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
+	defer wSer.Close()
+
+	var parCows, serCows []*Cow
+	<-wPar.Exec(func(tx *world.Tx) { parCows = spawnCrowd(tx) })
+	<-wSer.Exec(func(tx *world.Tx) { serCows = spawnCrowd(tx) })
+
+	for tick := range 3 {
+		<-wPar.Exec(func(tx *world.Tx) {
+			tickEntityCollisions(tx)
+		})
+		<-wSer.Exec(func(tx *world.Tx) {
+			maxCramming := tx.World().GameRuleInt("max_entity_cramming")
+			s := pushScratchPool.Get().(*pushScratch)
+			defer s.release()
+			s.mutGen = 1
+			s.collect(tx)
+			s.runSerial(tx, maxCramming)
+		})
+		<-wPar.Exec(func(parTx *world.Tx) {
+			<-wSer.Exec(func(serTx *world.Tx) {
+				for i := range parCows {
+					if parCows[i].Velocity() != serCows[i].Velocity() ||
+						parCows[i].Health() != serCows[i].Health() ||
+						parCows[i].Dead() != serCows[i].Dead() ||
+						parCows[i].Position() != serCows[i].Position() {
+						t.Fatalf("tick %d cow %d diverged: par=(vel=%v hp=%v dead=%v) ser=(vel=%v hp=%v dead=%v)",
+							tick, i,
+							parCows[i].Velocity(), parCows[i].Health(), parCows[i].Dead(),
+							serCows[i].Velocity(), serCows[i].Health(), serCows[i].Dead())
+					}
+				}
+			})
+		})
+	}
+}

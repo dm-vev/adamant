@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/ecs"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -381,13 +382,19 @@ type pathSearchScratch struct {
 	reader     pathStateReader
 }
 
+type livingEntityDist struct {
+	h    *world.EntityHandle
+	dist float64
+}
+
 // pathWorldLocal bundles per-goroutine pathfinding caches stored in Tx.Local
 // and ReadView.Local so both the world owner and each parallel prefetch worker
 // get lock-free, L1-warm reuse.
 type pathWorldLocal struct {
-	typeCache pathTypeCache
-	scratch   pathSearchScratch
-	ground    groundPathScratch
+	typeCache   pathTypeCache
+	scratch     pathSearchScratch
+	ground      groundPathScratch
+	livingFound []livingEntityDist
 }
 
 type pathWorldLocalKey struct{}
@@ -432,6 +439,7 @@ func releasePathScratch(s *pathSearchScratch) {
 		clear(s.collisions)
 	}
 	s.reader.pw, s.reader.tx, s.reader.rv, s.reader.cache = nil, nil, nil, nil
+	s.reader.tracking = false
 	s.inUse = false
 	if s.fromPool {
 		s.fromPool = false
@@ -678,14 +686,34 @@ func selectBestMobPath(ts []pathTarget, reached bool) *mobPath {
 // findPath finds a path from the mob to one of the targets with the A*
 // search of Java's PathFinder.findPath.
 func findPath(m *Mob, eval nodeEvaluator, targets []cube.Pos, maxPathLength float32, reachRange int, maxVisitedNodes int) *mobPath {
+	return findPathOpt(m, eval, targets, maxPathLength, reachRange, maxVisitedNodes, true)
+}
+
+func findPathUncached(m *Mob, eval nodeEvaluator, targets []cube.Pos, maxPathLength float32, reachRange int, maxVisitedNodes int) *mobPath {
+	return findPathOpt(m, eval, targets, maxPathLength, reachRange, maxVisitedNodes, false)
+}
+
+func findPathOpt(m *Mob, eval nodeEvaluator, targets []cube.Pos, maxPathLength float32, reachRange int, maxVisitedNodes int, useCache bool) *mobPath {
 	scratch, typeCache := acquirePathScratch(eval.pathWorld(m))
 	defer releasePathScratch(scratch)
+	walkEval, isWalk := eval.(*walkNodeEvaluator)
+	cacheEligible := useCache && isWalk && len(targets) == 1 && len(m.AI.maluses) == 0 && walkEval.blocked == nil
 	eval.prepare(m, scratch, typeCache)
 	defer eval.done()
 
 	from := eval.start()
 	if from == nil {
 		return nil
+	}
+	var cache *sharedPathCache
+	var key sharedPathKey
+	if cacheEligible {
+		var cached *mobPath
+		var hit bool
+		cached, cache, key, hit = trySharedPathLookup(walkEval, from, targets[0], reachRange, maxPathLength, maxVisitedNodes)
+		if hit {
+			return cached
+		}
 	}
 	var targetBuf [4]pathTarget
 	var ts []pathTarget
@@ -754,7 +782,255 @@ func findPath(m *Mob, eval nodeEvaluator, targets []cube.Pos, maxPathLength floa
 			}
 		}
 	}
-	return selectBestMobPath(ts, reached)
+	best := selectBestMobPath(ts, reached)
+	if cache != nil && best != nil {
+		storeSharedPath(cache, key, walkEval, scratch, best)
+	}
+	return best
+}
+
+const (
+	sharedPathShards     = 64
+	sharedPathWays       = 4
+	sharedPathMaxTracked = 16
+)
+
+var sharedPathCacheKey = ecs.NewKey[*sharedPathCache]("entity:shared_path_cache")
+
+type sharedPathKey struct {
+	start      cube.Pos
+	target     cube.Pos
+	reach      int32
+	maxLenBits uint32
+	maxFall    int32
+	visited    int32
+	entityW    int32
+	entityH    int32
+	mobWBits   uint64
+	mobHBits   uint64
+	stepBits   uint64
+	config     walkNodeConfig
+}
+
+func (k sharedPathKey) hash() uint64 {
+	h := uint64(k.start[0])*0x9e3779b97f4a7c15 ^ uint64(k.start[1])*0xbf58476d1ce4e5b9 ^ uint64(k.start[2])*0x94d049bb133111eb
+	h ^= uint64(k.target[0])*0x517cc1b727220a95 ^ uint64(k.target[1])*0x2545f4914f6cdd1d ^ uint64(k.target[2])*0x85ebca6b
+	h ^= uint64(k.reach)*0xc2b2ae35 ^ uint64(k.maxLenBits)*0x27d4eb2f ^ uint64(k.maxFall)*0x165667b1
+	h ^= uint64(k.visited)*0x9e3779b97f4a7c15 ^ uint64(k.entityW)<<16 ^ uint64(k.entityH)<<24
+	h ^= k.mobWBits ^ (k.mobHBits * 0xbf58476d1ce4e5b9) ^ (k.stepBits * 0x94d049bb133111eb)
+	cfg := k.config
+	var cfgBits uint64
+	if cfg.canPassDoors {
+		cfgBits |= 1 << 0
+	}
+	if cfg.canOpenDoors {
+		cfgBits |= 1 << 1
+	}
+	if cfg.canFloat {
+		cfgBits |= 1 << 2
+	}
+	if cfg.canWalkOverFences {
+		cfgBits |= 1 << 3
+	}
+	if cfg.amphibious {
+		cfgBits |= 1 << 4
+	}
+	if cfg.prefersShallow {
+		cfgBits |= 1 << 5
+	}
+	if cfg.frog {
+		cfgBits |= 1 << 6
+	}
+	if cfg.fly {
+		cfgBits |= 1 << 7
+	}
+	h ^= cfgBits * 0x9e3779b97f4a7c15
+	h ^= h >> 30
+	h *= 0xbf58476d1ce4e5b9
+	h ^= h >> 27
+	return h
+}
+
+type sharedPathEntry struct {
+	key          sharedPathKey
+	valid        bool
+	colCount     uint8
+	reached      bool
+	distToTarget float32
+	lastUse      uint64
+	cols         [sharedPathMaxTracked]world.ChunkPos
+	vers         [sharedPathMaxTracked]uint64
+	nodes        []*pathNodeData
+}
+
+type sharedPathShard struct {
+	mu    sync.Mutex
+	clock uint64
+	ways  [sharedPathWays]sharedPathEntry
+}
+
+type sharedPathCache struct {
+	shards [sharedPathShards]sharedPathShard
+}
+
+func ensureSharedPathCache(tx *world.Tx) *sharedPathCache {
+	if tx == nil {
+		return nil
+	}
+	w := tx.World()
+	if w == nil {
+		return nil
+	}
+	if c, ok := ecs.Get(w.Components(), sharedPathCacheKey); ok {
+		return c
+	}
+	c := &sharedPathCache{}
+	ecs.Set(w.Components(), sharedPathCacheKey, c)
+	return c
+}
+
+func sharedPathCacheFor(pw pathWorld) *sharedPathCache {
+	switch w := pw.(type) {
+	case *world.Tx:
+		return ensureSharedPathCache(w)
+	case *world.ReadView:
+		if wr := w.World(); wr != nil {
+			c, _ := ecs.Get(wr.Components(), sharedPathCacheKey)
+			return c
+		}
+	}
+	return nil
+}
+
+func makeSharedPathKey(from *pathNodeData, target cube.Pos, reach int, maxLen float32, visited int, w *walkNodeEvaluator) sharedPathKey {
+	return sharedPathKey{
+		start:      cube.Pos{from.x, from.y, from.z},
+		target:     target,
+		reach:      int32(reach),
+		maxLenBits: math.Float32bits(maxLen),
+		maxFall:    int32(w.maxFall),
+		visited:    int32(visited),
+		entityW:    int32(w.entityWidth),
+		entityH:    int32(w.entityHeight),
+		mobWBits:   math.Float64bits(w.mobWidth),
+		mobHBits:   math.Float64bits(w.mobHeight),
+		stepBits:   math.Float64bits(w.maxStepUp),
+		config:     w.config(),
+	}
+}
+
+func clonePathNodes(src []*pathNodeData) []*pathNodeData {
+	if len(src) == 0 {
+		return nil
+	}
+	backing := make([]pathNodeData, len(src))
+	nodes := make([]*pathNodeData, len(src))
+	for i, n := range src {
+		backing[i] = *n
+		nodes[i] = &backing[i]
+	}
+	return nodes
+}
+
+func (c *sharedPathCache) lookup(pw pathWorld, key sharedPathKey) (*mobPath, bool) {
+	if c == nil {
+		return nil, false
+	}
+	shard := &c.shards[key.hash()&(sharedPathShards-1)]
+	shard.mu.Lock()
+	defer shard.mu.Unlock()
+	for i := range shard.ways {
+		w := &shard.ways[i]
+		if !w.valid || w.key != key {
+			continue
+		}
+		stale := false
+		for ci := range int(w.colCount) {
+			ver, ok := columnBlockVersion(pw, w.cols[ci])
+			if !ok || ver != w.vers[ci] {
+				stale = true
+				break
+			}
+		}
+		if stale {
+			w.valid = false
+			return nil, false
+		}
+		shard.clock++
+		w.lastUse = shard.clock
+		return &mobPath{
+			nodes:        clonePathNodes(w.nodes),
+			target:       key.target,
+			distToTarget: w.distToTarget,
+			reached:      w.reached,
+		}, true
+	}
+	return nil, false
+}
+
+func (c *sharedPathCache) store(key sharedPathKey, path *mobPath, cols []world.ChunkPos, vers []uint64) {
+	if c == nil || path == nil || len(cols) == 0 || len(cols) > sharedPathMaxTracked || len(cols) != len(vers) {
+		return
+	}
+	nodes := clonePathNodes(path.nodes)
+	shard := &c.shards[key.hash()&(sharedPathShards-1)]
+	shard.mu.Lock()
+	defer shard.mu.Unlock()
+	slot := 0
+	bestUse := ^uint64(0)
+	for i := range shard.ways {
+		w := &shard.ways[i]
+		if w.valid && w.key == key {
+			slot = i
+			break
+		}
+		if !w.valid {
+			slot = i
+			break
+		}
+		if w.lastUse < bestUse {
+			bestUse = w.lastUse
+			slot = i
+		}
+	}
+	shard.clock++
+	e := &shard.ways[slot]
+	e.key = key
+	e.valid = true
+	e.colCount = uint8(len(cols))
+	e.reached = path.reached
+	e.distToTarget = path.distToTarget
+	e.lastUse = shard.clock
+	e.nodes = nodes
+	copy(e.cols[:], cols)
+	copy(e.vers[:], vers)
+}
+
+func trySharedPathLookup(w *walkNodeEvaluator, from *pathNodeData, target cube.Pos, reach int, maxLen float32, visited int) (*mobPath, *sharedPathCache, sharedPathKey, bool) {
+	pw := w.pw
+	if rv, isRV := pw.(*world.ReadView); isRV && rv.Missed() {
+		return nil, nil, sharedPathKey{}, false
+	}
+	cache := sharedPathCacheFor(pw)
+	if cache == nil {
+		return nil, nil, sharedPathKey{}, false
+	}
+	key := makeSharedPathKey(from, target, reach, maxLen, visited, w)
+	if p, ok := cache.lookup(pw, key); ok {
+		return p, nil, sharedPathKey{}, true
+	}
+	return nil, cache, key, false
+}
+
+func storeSharedPath(cache *sharedPathCache, key sharedPathKey, w *walkNodeEvaluator, scratch *pathSearchScratch, path *mobPath) {
+	r := &scratch.reader
+	if r.trackOverflow || r.trackCount == 0 {
+		return
+	}
+	if rv, isRV := w.pw.(*world.ReadView); isRV && rv.Missed() {
+		return
+	}
+	cache.store(key, path, r.trackCols[:r.trackCount], r.trackVers[:r.trackCount])
 }
 
 func reconstructMobPath(closest *pathNodeData, target cube.Pos, reached bool) *mobPath {

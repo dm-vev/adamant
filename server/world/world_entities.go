@@ -91,6 +91,9 @@ func (s *entityState) entity(tx *Tx, handle *EntityHandle) Entity {
 	if s == nil {
 		return nil
 	}
+	if !tx.closed && s.ent != nil && s.tickerChecked && s.touchedIn == tx.w.saveEpoch+1 && (!s.binds || s.bound == tx) {
+		return s.ent
+	}
 	tx.World().touchEntity(s)
 	if s.ent == nil {
 		s.ent = handle.mustEntity(tx)
@@ -126,8 +129,8 @@ func (s *entityState) bind(tx *Tx) {
 			tx.rebound = append(tx.rebound, rebinding{s: s, prev: prev})
 		}
 		s.bound = tx
+		s.binder.BindTransaction(tx)
 	}
-	s.binder.BindTransaction(tx)
 }
 
 // EntityCount returns the number of entities tracked by the world.
@@ -156,7 +159,7 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 		lastTick:          currentTick,
 		lastProcessedTick: currentTick,
 		firstTickPending:  true,
-		isItem:            handle.t.EncodeEntity() == "minecraft:item",
+		isItem:            handle.typeID == "minecraft:item",
 	}
 	if _, ok := w.entities[handle]; !ok {
 		w.entityCount.Add(1)
@@ -317,8 +320,13 @@ func (w *World) removeEntityFromViewLayers(e Entity) {
 // the cube.BBox passed.
 func (w *World) entitiesWithin(tx *Tx, box cube.BBox) iter.Seq[Entity] {
 	return func(yield func(Entity) bool) {
+		var iterCol *Column
+		defer func() {
+			if iterCol != nil {
+				iterCol.entityIterators--
+			}
+		}()
 		minPos, maxPos := chunkPosFromVec3(box.Min()), chunkPosFromVec3(box.Max())
-
 		for x := minPos[0]; x <= maxPos[0]; x++ {
 			for z := minPos[1]; z <= maxPos[1]; z++ {
 				c, ok := tx.loadedColumn(ChunkPos{x, z})
@@ -326,21 +334,25 @@ func (w *World) entitiesWithin(tx *Tx, box cube.BBox) iter.Seq[Entity] {
 					// The chunk wasn't loaded, so there are no entities here.
 					continue
 				}
-				more := c.iterateEntities(func(handle *EntityHandle) bool {
+				entities := c.Entities
+				c.entityIterators++
+				iterCol = c
+				for _, handle := range entities {
 					if !box.Vec3Within(handle.data.Pos) {
-						return true
+						continue
 					}
 					// An entity removed while the column is walked has no
 					// state any more.
 					state := handle.state
 					if state == nil {
-						return true
+						continue
 					}
-					return yield(state.entity(tx, handle))
-				})
-				if !more {
-					return
+					if !yield(state.entity(tx, handle)) {
+						return
+					}
 				}
+				iterCol = nil
+				c.entityIterators--
 			}
 		}
 	}
@@ -351,26 +363,53 @@ func (w *World) entitiesWithin(tx *Tx, box cube.BBox) iter.Seq[Entity] {
 // the others.
 func (w *World) entitiesOfTypesWithin(tx *Tx, box cube.BBox, types []string) iter.Seq[Entity] {
 	return func(yield func(Entity) bool) {
+		if len(types) == 0 {
+			return
+		}
+		single := len(types) == 1
+		var singleType string
+		var itemsOnly bool
+		if single {
+			singleType = types[0]
+			itemsOnly = singleType == "minecraft:item"
+		}
+		var iterCol *Column
+		defer func() {
+			if iterCol != nil {
+				iterCol.entityIterators--
+			}
+		}()
 		minPos, maxPos := chunkPosFromVec3(box.Min()), chunkPosFromVec3(box.Max())
 		for x := minPos[0]; x <= maxPos[0]; x++ {
 			for z := minPos[1]; z <= maxPos[1]; z++ {
 				c, ok := tx.loadedColumn(ChunkPos{x, z})
-				if !ok || len(c.Entities) == 0 {
+				if !ok || len(c.Entities) == 0 || (itemsOnly && c.itemCount == 0) {
 					continue
 				}
-				more := c.iterateEntities(func(handle *EntityHandle) bool {
-					if !box.Vec3Within(handle.data.Pos) || !slices.Contains(types, handle.t.EncodeEntity()) {
-						return true
+				entities := c.Entities
+				c.entityIterators++
+				iterCol = c
+				for _, handle := range entities {
+					if !box.Vec3Within(handle.data.Pos) {
+						continue
+					}
+					if single {
+						if handle.typeID != singleType {
+							continue
+						}
+					} else if !slices.Contains(types, handle.typeID) {
+						continue
 					}
 					state := handle.state
 					if state == nil {
-						return true
+						continue
 					}
-					return yield(state.entity(tx, handle))
-				})
-				if !more {
-					return
+					if !yield(state.entity(tx, handle)) {
+						return
+					}
 				}
+				iterCol = nil
+				c.entityIterators--
 			}
 		}
 	}
@@ -470,7 +509,7 @@ func (w *World) allPlayers(tx *Tx) iter.Seq[Entity] {
 
 // trackPlayer records a handle just put in entities if it is a player.
 func (w *World) trackPlayer(handle *EntityHandle) {
-	if _, ok := w.players[handle]; ok || handle.t.EncodeEntity() != "minecraft:player" {
+	if _, ok := w.players[handle]; ok || handle.typeID != "minecraft:player" {
 		return
 	}
 	w.players[handle] = struct{}{}

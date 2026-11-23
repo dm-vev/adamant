@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"cmp"
+	"slices"
 	"sort"
 
 	"github.com/df-mc/dragonfly/server/item"
@@ -24,11 +26,11 @@ func (nearestLivingEntitySensor) requires() []memoryType {
 func (nearestLivingEntitySensor) doTick(m *Mob, b *brain) {
 	r := m.AI.FollowRange
 	box := m.BBox().Grow(r)
-	type found struct {
-		h    *world.EntityHandle
-		dist float64
+	local := worldLocalFor(m.tx)
+	var all []livingEntityDist
+	if local != nil {
+		all = local.livingFound[:0]
 	}
-	var all []found
 	for e := range m.tx.EntitiesWithin(box.Grow(2)) {
 		if e.H() == m.H() || !entityAlive(e) {
 			continue
@@ -36,15 +38,23 @@ func (nearestLivingEntitySensor) doTick(m *Mob, b *brain) {
 		if _, living := e.(Living); !living || !e.H().Type().BBox(e).Translate(e.Position()).IntersectsWith(box) {
 			continue
 		}
-		all = append(all, found{e.H(), m.DistanceToSqr(e)})
+		all = append(all, livingEntityDist{e.H(), m.DistanceToSqr(e)})
 	}
-	sort.SliceStable(all, func(i, j int) bool { return all[i].dist < all[j].dist })
+	if len(all) > 1 {
+		slices.SortStableFunc(all, func(a, b livingEntityDist) int {
+			return cmp.Compare(a.dist, b.dist)
+		})
+	}
 	handles := make([]*world.EntityHandle, len(all))
 	for i, f := range all {
 		handles[i] = f.h
 	}
+	if local != nil {
+		clear(all)
+		local.livingFound = all[:0]
+	}
 	b.set(memNearestLivingEntities, handles)
-	b.set(memNearestVisibleLivingEntities, &nearestVisibleLiving{entities: handles, seen: map[*world.EntityHandle]bool{}, mob: m.H()})
+	b.set(memNearestVisibleLivingEntities, &nearestVisibleLiving{entities: handles, mob: m.H()})
 }
 
 // nearestLiving returns the living entities near the mob, nearest first.

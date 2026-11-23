@@ -3,6 +3,7 @@ package entity
 import (
 	"fmt"
 	"math"
+	"slices"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -351,7 +352,7 @@ func (n *PathNavigation) createPath(m *Mob, targets []cube.Pos, reachRange int, 
 	if listens || !prefetched {
 		path = findPath(m, eval, targets, float32(maxPathLength), reachRange, visited)
 	} else if verifyPrefetch {
-		if live := findPath(m, eval, targets, float32(maxPathLength), reachRange, visited); !pathsIdentical(live, path) {
+		if live := findPathUncached(m, eval, targets, float32(maxPathLength), reachRange, visited); !pathsIdentical(live, path) {
 			panic(fmt.Sprintf("prefetched path %v differs from %v", path, live))
 		}
 		verifiedPaths++
@@ -376,7 +377,10 @@ func (n *PathNavigation) createPath(m *Mob, targets []cube.Pos, reachRange int, 
 }
 
 func chunkBlockVersion(pw pathWorld, pos cube.Pos) (uint64, bool) {
-	cp := world.ChunkPos{int32(pos[0]) >> 4, int32(pos[2]) >> 4}
+	return columnBlockVersion(pw, world.ChunkPos{int32(pos[0]) >> 4, int32(pos[2]) >> 4})
+}
+
+func columnBlockVersion(pw pathWorld, cp world.ChunkPos) (uint64, bool) {
 	switch w := pw.(type) {
 	case *world.Tx:
 		return w.ColumnBlockVersion(cp)
@@ -403,6 +407,7 @@ func (n *PathNavigation) unreachableBackedOff(pw pathWorld, mobPos, target cube.
 		return nil, true
 	}
 	cp := *n.failPath
+	cp.nodes = slices.Clone(n.failPath.nodes)
 	cp.next = 0
 	return &cp, true
 }
@@ -436,6 +441,7 @@ func (n *PathNavigation) recordUnreachable(tx *world.Tx, mobPos, target cube.Pos
 	n.failConfig = cfg
 	if path != nil {
 		cp := *path
+		cp.nodes = slices.Clone(path.nodes)
 		cp.next = 0
 		n.failPath = &cp
 	} else {

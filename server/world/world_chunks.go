@@ -182,7 +182,7 @@ func (w *World) attachLoadedColumnEntities(pos ChunkPos, col *Column) {
 			pos:               pos,
 			lastTick:          currentTick,
 			lastProcessedTick: currentTick,
-			isItem:            e.t.EncodeEntity() == "minecraft:item",
+			isItem:            e.typeID == "minecraft:item",
 		}
 		w.entities[e] = state
 		w.trackPlayer(e)

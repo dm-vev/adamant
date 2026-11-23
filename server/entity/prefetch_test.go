@@ -9,6 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/parallel"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -352,5 +353,176 @@ func TestPrefetchedPathsMatchFindingThem(t *testing.T) {
 	t.Logf("verified %d prefetched paths", verifiedPaths)
 	if verifiedPaths < 50 {
 		t.Fatalf("only %d prefetched paths were used", verifiedPaths)
+	}
+}
+
+// TestMultiGoalAndBrainWalkPrefetch verifies parallel prefetching for
+// rangedBowAttackGoal, rangedAttackGoal (reach=1), and brain memWalkTarget
+// (reach=0, including blockPosTracker and *entityTracker without mutating
+// et.last), and exercises them in a full parallel tick under verifyPrefetch.
+func TestMultiGoalAndBrainWalkPrefetch(t *testing.T) {
+	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
+	defer w.Close()
+	w.SetDifficulty(world.DifficultyHard)
+	w.SetTime(18000)
+
+	var (
+		skelH, golemH, vilBlockH, vilEntH *world.EntityHandle
+		et                                *entityTracker
+		sentinel                          = mgl64.Vec3{777.5, 64, 777.5}
+		wantPos                           = cube.Pos{18, 64, 0}
+	)
+	<-w.Exec(func(tx *world.Tx) {
+		for x := -4; x <= 28; x++ {
+			for z := -12; z <= 12; z++ {
+				tx.SetBlock(cube.Pos{x, 63, z}, block.Stone{}, nil)
+				tx.SetBlock(cube.Pos{x, 70, z}, block.Stone{}, nil)
+			}
+		}
+		// Place a pillar wall so ranged mobs need to pathfind around it.
+		for z := -4; z <= 4; z++ {
+			tx.SetBlock(cube.Pos{10, 64, z}, block.Stone{}, nil)
+			tx.SetBlock(cube.Pos{10, 65, z}, block.Stone{}, nil)
+		}
+		targetZ := tx.AddEntity(NewZombie(world.EntitySpawnOpts{Position: mgl64.Vec3{20.5, 64, 0.5}}))
+		targetH := targetZ.H()
+		if tm, ok := mobOf(targetZ); ok {
+			tm.AI.NoAI = true
+		}
+
+		skel := tx.AddEntity(NewSkeleton(world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 64, -2.5}}))
+		skel.(*skeleton).SetHeldItems(item.NewStack(item.Bow{}, 1), item.Stack{})
+		golem := tx.AddEntity(NewSnowGolem(world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 64, 2.5}}))
+		vilBlock := tx.AddEntity(NewVillager(world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 64, -6.5}}))
+		vilEnt := tx.AddEntity(NewVillager(world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 64, 6.5}}))
+		skelH, golemH, vilBlockH, vilEntH = skel.H(), golem.H(), vilBlock.H(), vilEnt.H()
+
+		for _, e := range []world.Entity{skel, golem, vilBlock, vilEnt} {
+			if ticker, ok := e.(interface{ Tick(*world.Tx, int64) }); ok {
+				ticker.Tick(tx, 1)
+			}
+		}
+		sm, _ := mobOf(skel)
+		sm.AI.tickCount = 0
+		sm.AI.onGround = true
+		sm.SetTarget(targetZ)
+		if bow, _ := sm.AI.findRangedBowAttackGoal(); bow == nil {
+			t.Fatal("expected skeleton to have rangedBowAttackGoal")
+		}
+
+		gm, _ := mobOf(golem)
+		gm.AI.tickCount = 0
+		gm.AI.onGround = true
+		gm.SetTarget(targetZ)
+		if rng, _ := gm.AI.findRangedAttackGoal(); rng == nil {
+			t.Fatal("expected snow golem to have rangedAttackGoal")
+		}
+
+		vbm, _ := mobOf(vilBlock)
+		vbm.AI.tickCount = 0
+		vbm.AI.onGround = true
+		vbm.brain().set(memWalkTarget, walkTarget{target: blockPosTracker{pos: wantPos}, speed: 1, closeEnough: 0})
+
+		vem, _ := mobOf(vilEnt)
+		vem.AI.tickCount = 0
+		vem.AI.onGround = true
+		et = newEntityTracker(targetZ, false)
+		et.last = sentinel
+		vem.brain().set(memWalkTarget, walkTarget{target: et, speed: 1, closeEnough: 0})
+		_ = targetH
+
+		prefetched := []world.Entity{skel, golem, vilBlock, vilEnt}
+		parallel.ForWorkers(len(prefetched), 4, func(_, i int) {
+			e := prefetched[i]
+			_, ent := e.(interface{ mobAI() (*MobAI, *Ent) }).mobAI()
+			ent.Prefetch(e, tx.NewReadView())
+		})
+
+		checkMobPrefetch := func(name string, h *world.EntityHandle, wantTarget cube.Pos, wantReach int) {
+			e, ok := h.Entity(tx)
+			if !ok {
+				t.Fatalf("%s missing", name)
+			}
+			m, ok := mobOf(e)
+			if !ok {
+				t.Fatalf("%s has no Mob", name)
+			}
+			p := &m.AI.pre.path
+			prePath := p.path
+			if !p.ok || prePath == nil {
+				t.Fatalf("%s expected prefetched path, got ok=%v path=%v", name, p.ok, prePath)
+			}
+			if p.reach != wantReach || p.target != wantTarget {
+				t.Fatalf("%s got target=%v reach=%d, want target=%v reach=%d", name, p.target, p.reach, wantTarget, wantReach)
+			}
+			m.AI.nav.path = nil
+			live := m.AI.nav.CreatePath(m, wantTarget, wantReach)
+			if p.path != nil {
+				t.Fatalf("%s expected takePath to consume prefetched path, still got %v", name, p.path)
+			}
+			if !pathsIdentical(live, prePath) {
+				t.Fatalf("%s prefetched path mismatch: prefetched=%v live=%v", name, prePath, live)
+			}
+		}
+		checkMobPrefetch("skeleton/rangedBowAttackGoal", skelH, cube.PosFromVec3(targetZ.Position()), 1)
+		checkMobPrefetch("snowGolem/rangedAttackGoal", golemH, cube.PosFromVec3(targetZ.Position()), 1)
+		checkMobPrefetch("villager/blockPosTracker", vilBlockH, wantPos, 0)
+		checkMobPrefetch("villager/entityTracker", vilEntH, cube.PosFromVec3(targetZ.Position()), 0)
+		if et.last != sentinel {
+			t.Fatalf("entityTracker.last mutated during Prefetch: got %v, want %v", et.last, sentinel)
+		}
+	})
+
+	// Part B: live world tick with > prefetchMinimum mobs and verifyPrefetch=true.
+	verifyPrefetch, verifiedPaths = true, 0
+	defer func() { verifyPrefetch = false }()
+	w2 := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
+	defer w2.Close()
+	w2.SetDifficulty(world.DifficultyHard)
+	w2.SetTime(18000)
+
+	<-w2.Exec(func(tx *world.Tx) {
+		for x := -36; x <= 36; x++ {
+			for z := -36; z <= 36; z++ {
+				tx.SetBlock(cube.Pos{x, 63, z}, block.Stone{}, nil)
+				tx.SetBlock(cube.Pos{x, 70, z}, block.Stone{}, nil)
+				if x%8 == 0 && z%4 != 0 {
+					tx.SetBlock(cube.Pos{x, 64, z}, block.WoodFence{Wood: block.OakWood()}, nil)
+				}
+			}
+		}
+		farZombie := tx.AddEntity(NewZombie(world.EntitySpawnOpts{Position: mgl64.Vec3{30.5, 64, 30.5}}))
+		if zm, ok := mobOf(farZombie); ok {
+			zm.AI.NoAI = true
+		}
+		for i := range 24 {
+			off := float64((i%6)*3 - 20)
+			zOff := float64((i/6)*3 - 20)
+			sk := tx.AddEntity(NewSkeleton(world.EntitySpawnOpts{Position: mgl64.Vec3{off + .5, 64, zOff + .5}}))
+			sk.(*skeleton).SetHeldItems(item.NewStack(item.Bow{}, 1), item.Stack{})
+			if m, ok := mobOf(sk); ok {
+				m.SetTarget(farZombie)
+			}
+			sg := tx.AddEntity(NewSnowGolem(world.EntitySpawnOpts{Position: mgl64.Vec3{off + 1.5, 64, zOff + .5}}))
+			if m, ok := mobOf(sg); ok {
+				m.SetTarget(farZombie)
+			}
+			v := tx.AddEntity(NewVillager(world.EntitySpawnOpts{Position: mgl64.Vec3{off + .5, 64, zOff + 1.5}}))
+			if m, ok := mobOf(v); ok {
+				target := cube.Pos{int(off) + 18, 64, int(zOff) + 18}
+				if i%2 == 0 {
+					m.brain().set(memWalkTarget, walkTarget{target: blockPosTracker{pos: target}, speed: 1, closeEnough: 0})
+				} else {
+					m.brain().set(memWalkTarget, walkTarget{target: newEntityTracker(farZombie, false), speed: 1, closeEnough: 0})
+				}
+			}
+		}
+	})
+	for range 60 {
+		w2.AdvanceTick()
+	}
+	t.Logf("verified %d multi-goal & brain prefetched paths", verifiedPaths)
+	if verifiedPaths < 30 {
+		t.Fatalf("only %d multi-goal & brain prefetched paths were verified", verifiedPaths)
 	}
 }

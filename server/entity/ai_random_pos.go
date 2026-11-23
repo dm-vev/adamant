@@ -67,8 +67,17 @@ func randomDirectionWithinRadians(m *Mob, minHorizontal, maxHorizontal float64, 
 }
 
 // solidAtWorld reports whether pos is legacy-solid without allocating a closure,
-// fast-pathing air blocks.
+// fast-pathing blocks with empty or full-cube collision via their runtime ID.
 func solidAtWorld(tx *world.Tx, pos cube.Pos) bool {
+	if rid, ok := tx.BlockRID(pos); ok {
+		flags := tx.World().BlockRegistry().BlockFlags(rid)
+		if flags.EmptyCollision() {
+			return false
+		}
+		if flags.FullCubeCollision() {
+			return true
+		}
+	}
 	b := pathBlockAt(tx, pos)
 	if isAir(b) {
 		return false

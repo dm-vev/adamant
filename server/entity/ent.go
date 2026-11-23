@@ -514,6 +514,9 @@ func (e *Ent) bindTx(tx *world.Tx) {
 // BindTransaction binds the Ent to tx for the duration of an owner callback.
 func (e *Ent) BindTransaction(tx *world.Tx) {
 	e.bindTx(tx)
+	if ai, _ := e.mobAI(); ai != nil {
+		ensureSharedPathCache(tx)
+	}
 }
 
 // CloseIn closes the Ent using the provided transaction and removes the associated entity from the world.

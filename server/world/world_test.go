@@ -1310,3 +1310,118 @@ func TestControllersActEachTick(t *testing.T) {
 		t.Fatalf("a controller acted for a player that left: %d times", len(c.controlled))
 	}
 }
+
+type countBindEntityType struct{ testEntityType }
+
+func (countBindEntityType) Open(_ *Tx, handle *EntityHandle, data *EntityData) Entity {
+	return &countBindEntity{testEntity: testEntity{handle: handle, data: data}}
+}
+
+type countBindEntity struct {
+	testEntity
+	binds int
+	tx    *Tx
+}
+
+func (e *countBindEntity) BindTransaction(tx *Tx) {
+	e.binds++
+	e.tx = tx
+}
+
+type itemStubType struct{ testEntityType }
+
+func (itemStubType) EncodeEntity() string { return "minecraft:item" }
+
+func TestEntityStateBindFastPathAndItemChunkSkip(t *testing.T) {
+	t.Parallel()
+	w := Config{Synchronous: true, RandomTickSpeed: -1}.New()
+	defer w.Close()
+
+	h := EntitySpawnOpts{Position: mgl64.Vec3{2, 64, 2}}.New(countBindEntityType{}, testEntityConfig{})
+	item1 := EntitySpawnOpts{Position: mgl64.Vec3{20, 64, 2}}.New(itemStubType{}, testEntityConfig{})
+	item2 := EntitySpawnOpts{Position: mgl64.Vec3{21, 64, 2}}.New(itemStubType{}, testEntityConfig{})
+	other := EntitySpawnOpts{Position: mgl64.Vec3{22, 64, 2}}.New(testEntityType{}, testEntityConfig{})
+
+	var ent *countBindEntity
+	<-w.Exec(func(tx *Tx) {
+		ent = tx.AddEntity(h).(*countBindEntity)
+		tx.AddEntity(item1)
+		tx.AddEntity(item2)
+		tx.AddEntity(other)
+		if ent.binds != 1 {
+			t.Fatalf("after AddEntity: binds=%d, want 1", ent.binds)
+		}
+		for range 5 {
+			got, ok := h.Entity(tx)
+			if !ok || got != ent {
+				t.Fatalf("Entity() mismatch: got=%v ok=%v", got, ok)
+			}
+			got2, ok2 := h.WorldEntity(tx)
+			if !ok2 || got2 != ent {
+				t.Fatalf("WorldEntity() mismatch: got=%v ok=%v", got2, ok2)
+			}
+		}
+		for e := range tx.EntitiesWithin(cube.Box(0, 60, 0, 25, 68, 10)) {
+			_ = e
+		}
+		if ent.binds != 1 {
+			t.Fatalf("same-tx fast-path called BindTransaction extra times: binds=%d, want 1", ent.binds)
+		}
+	})
+
+	<-w.Exec(func(tx *Tx) {
+		if _, ok := h.Entity(tx); !ok {
+			t.Fatal("h missing in tx2")
+		}
+		if ent.binds != 2 {
+			t.Fatalf("new-tx bind count=%d, want 2", ent.binds)
+		}
+		if _, ok := h.Entity(tx); !ok || ent.binds != 2 {
+			t.Fatalf("repeat call in tx2 re-bound entity: binds=%d", ent.binds)
+		}
+
+		c0 := tx.chunk(ChunkPos{0, 0})
+		c1 := tx.chunk(ChunkPos{1, 0})
+		if c0.itemCount != 0 || c1.itemCount != 2 {
+			t.Fatalf("itemCounts=(%d,%d), want (0,2)", c0.itemCount, c1.itemCount)
+		}
+
+		box := cube.Box(0, 60, 0, 25, 68, 10)
+		var foundItems []*EntityHandle
+		for e := range tx.EntitiesOfTypesWithin(box, []string{"minecraft:item"}) {
+			foundItems = append(foundItems, e.H())
+		}
+		if len(foundItems) != 2 {
+			t.Fatalf("found %d items, want 2", len(foundItems))
+		}
+
+		var foundMulti []*EntityHandle
+		for e := range tx.EntitiesOfTypesWithin(box, []string{"minecraft:item", "dragonfly:test_entity"}) {
+			foundMulti = append(foundMulti, e.H())
+		}
+		if len(foundMulti) != 4 {
+			t.Fatalf("found %d entities in multi-type query, want 4", len(foundMulti))
+		}
+
+		// Early break must release entityIterators on active chunk.
+		for range tx.EntitiesOfTypesWithin(box, []string{"minecraft:item"}) {
+			break
+		}
+		for range tx.EntitiesWithin(box) {
+			break
+		}
+		if c0.entityIterators != 0 || c1.entityIterators != 0 {
+			t.Fatalf("leaked entityIterators after early break: c0=%d c1=%d", c0.entityIterators, c1.entityIterators)
+		}
+
+		e1, _ := item1.Entity(tx)
+		tx.RemoveEntity(e1)
+		if c1.itemCount != 1 {
+			t.Fatalf("itemCount after remove = %d, want 1", c1.itemCount)
+		}
+		c1.resetEntities()
+		if c1.itemCount != 0 {
+			t.Fatalf("itemCount after resetEntities = %d, want 0", c1.itemCount)
+		}
+	})
+}

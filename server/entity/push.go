@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/internal/parallel"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -20,7 +21,8 @@ func (CrammingDamageSource) IgnoreTotem() bool         { return false }
 
 const (
 	pushScratchMaxEntities = 16384
-	pushScratchMaxCells    = 4096
+	pushScratchMaxCells    = 16384
+	pushParallelThreshold  = 256
 )
 
 const (
@@ -56,13 +58,23 @@ type pushMeta struct {
 	flags      uint8
 }
 
+// overlapSpan indexes one entity's broadphase overlaps inside a worker buffer.
+type overlapSpan struct {
+	worker int32
+	start  int32
+	count  int32
+}
+
 // pushScratch holds reusable per-tick buffers for TickEntityCollisions.
 type pushScratch struct {
-	spatial   []pushSpatial
-	meta      []pushMeta
-	cellSpans []pushCellSpan
-	cells     map[world.ChunkPos]int32
-	others    []int32
+	spatial      []pushSpatial
+	meta         []pushMeta
+	cellSpans    []pushCellSpan
+	cells        map[world.ChunkPos]int32
+	others       []int32
+	actOthers    []int32
+	spans        []overlapSpan
+	workerOthers [][]int32
 
 	actTx          *world.Tx
 	actIdx         int32
@@ -116,6 +128,11 @@ func (s *pushScratch) release() {
 		clear(s.cells)
 	}
 	s.others = s.others[:0]
+	s.actOthers = nil
+	s.spans = s.spans[:0]
+	for i := range s.workerOthers {
+		s.workerOthers[i] = s.workerOthers[i][:0]
+	}
 	s.actTx = nil
 	s.actIdx = 0
 	s.actMaxCramming = 0
@@ -191,6 +208,14 @@ func (s *pushScratch) collect(tx *world.Tx) {
 }
 
 func (s *pushScratch) run(tx *world.Tx, maxCramming int) {
+	if len(s.spatial) >= pushParallelThreshold {
+		s.runParallel(tx, maxCramming)
+		return
+	}
+	s.runSerial(tx, maxCramming)
+}
+
+func (s *pushScratch) runSerial(tx *world.Tx, maxCramming int) {
 	s.actTx = tx
 	s.actMaxCramming = maxCramming
 	for i := range len(s.spatial) {
@@ -209,9 +234,67 @@ func (s *pushScratch) run(tx *world.Tx, maxCramming int) {
 			}
 		}
 		s.others = others
+		s.actOthers = others
 		s.actIdx = int32(i)
 		// Java pushes in the tick of the entity, LivingEntity.pushEntities:
 		// a panic of it is the entity's.
+		if !tx.ActOn(m.e, s.actFn) {
+			s.mutGen++
+		}
+	}
+}
+
+func (s *pushScratch) computeOverlapsParallel() {
+	n := len(s.spatial)
+	if cap(s.spans) < n {
+		s.spans = make([]overlapSpan, n)
+	} else {
+		s.spans = s.spans[:n]
+	}
+	workers := max(1, parallel.Workers())
+	if len(s.workerOthers) < workers {
+		grown := make([][]int32, workers)
+		copy(grown, s.workerOthers)
+		s.workerOthers = grown
+	}
+	for w := range workers {
+		s.workerOthers[w] = s.workerOthers[w][:0]
+	}
+	parallel.ForWorkers(n, 16, func(worker, i int) {
+		buf := s.workerOthers[worker]
+		start := len(buf)
+		buf = s.appendOverlaps(i, buf)
+		s.workerOthers[worker] = buf
+		s.spans[i] = overlapSpan{
+			worker: int32(worker),
+			start:  int32(start),
+			count:  int32(len(buf) - start),
+		}
+	})
+}
+
+func (s *pushScratch) runParallel(tx *world.Tx, maxCramming int) {
+	s.computeOverlapsParallel()
+	s.actTx = tx
+	s.actMaxCramming = maxCramming
+	for i := range len(s.spatial) {
+		sp := s.spans[i]
+		if sp.count == 0 {
+			continue
+		}
+		m := &s.meta[i]
+		if !s.stillPushable(m) {
+			continue
+		}
+		others := s.workerOthers[sp.worker][sp.start : sp.start+sp.count]
+		if s.mutGen > 1 {
+			others = s.filterPushable(others)
+			if len(others) == 0 {
+				continue
+			}
+		}
+		s.actOthers = others
+		s.actIdx = int32(i)
 		if !tx.ActOn(m.e, s.actFn) {
 			s.mutGen++
 		}
@@ -302,10 +385,10 @@ func (s *pushScratch) filterPushable(others []int32) []int32 {
 }
 
 // pushEntities ports the end of LivingEntity.pushEntities for the entity at
-// index i overlapping s.others: cramming damage beyond maxCramming, then pushes.
+// index i overlapping s.actOthers: cramming damage beyond maxCramming, then pushes.
 func (s *pushScratch) pushEntities(tx *world.Tx, i int32, maxCramming int) {
 	a := &s.meta[i]
-	others := s.others
+	others := s.actOthers
 	if maxCramming > 0 && len(others) > maxCramming-1 && randInt(randomOf(tx, a.e), 4) == 0 {
 		count := 0
 		for _, j := range others {
@@ -389,9 +472,9 @@ func (s *pushScratch) ensureVehicleInfo(tx *world.Tx, m *pushMeta) {
 	}
 }
 
-// pushCell returns the chunk TickEntityCollisions files a position under.
+// pushCell returns the 4x4 sub-cell TickEntityCollisions files a position under.
 func pushCell(pos mgl64.Vec3) world.ChunkPos {
-	return world.ChunkPos{int32(math.Floor(pos[0])) >> 4, int32(math.Floor(pos[2])) >> 4}
+	return world.ChunkPos{int32(math.Floor(pos[0])) >> 2, int32(math.Floor(pos[2])) >> 2}
 }
 
 // pushable ports Entity.isPushable: living entities that are alive, not

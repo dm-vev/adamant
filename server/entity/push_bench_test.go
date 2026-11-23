@@ -139,4 +139,24 @@ func BenchmarkTickEntityCollisions(b *testing.B) {
 			b.StopTimer()
 		})
 	})
+
+	b.Run("SingleChunk/1000", func(b *testing.B) {
+		w := newPushBenchWorld(b, 24)
+		<-w.Exec(func(tx *world.Tx) {
+			for i := range 1000 {
+				x := float64(i%32)*0.48 + 0.25
+				z := float64(i/32)*0.48 + 0.25
+				c := tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{x, 64, z}})).(*Cow)
+				c.SetMaxHealth(1e9)
+				c.Heal(1e9, nil)
+			}
+			tickEntityCollisions(tx)
+			b.ReportAllocs()
+			b.ResetTimer()
+			for range b.N {
+				tickEntityCollisions(tx)
+			}
+			b.StopTimer()
+		})
+	})
 }

@@ -46,6 +46,8 @@ func bowUser(m *Mob) mobBowUser {
 	return u
 }
 
+func (g *rangedBowAttackGoal) asRangedBowAttackGoal() *rangedBowAttackGoal { return g }
+
 func (g *rangedBowAttackGoal) CanUse(m *Mob) bool {
 	u := bowUser(m)
 	return m.Target() != nil && u != nil && u.holdingBow()
@@ -329,6 +331,8 @@ func newRangedAttackGoal(speedModifier float64, interval int, radius float64, pe
 	return &rangedAttackGoal{goalFlags: goalFlags{GoalMove | GoalLook}, SpeedModifier: speedModifier, AttackIntervalMin: interval, AttackIntervalMax: interval,
 		AttackRadius: radius, Perform: perform, attackTime: -1}
 }
+
+func (g *rangedAttackGoal) asRangedAttackGoal() *rangedAttackGoal { return g }
 
 func (g *rangedAttackGoal) CanUse(m *Mob) bool {
 	target := m.Target()

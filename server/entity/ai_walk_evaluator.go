@@ -88,6 +88,7 @@ func (w *walkNodeEvaluator) prepare(m *Mob, scratch *pathSearchScratch, cache *p
 	scratch.types.reset()
 	scratch.floors.reset()
 	scratch.reader.init(w.pw, cache)
+	scratch.reader.startTracking()
 
 	bb := m.BBox()
 	w.mobWidth, w.mobHeight = bb.Width(), bb.Height()
@@ -172,6 +173,7 @@ func (w *walkNodeEvaluator) start() *pathNodeData {
 	}
 	pos := m.data.Pos
 	x, z := int(math.Floor(pos[0])), int(math.Floor(pos[2]))
+	w.scratch.reader.chunkVersion(int32(x>>4), int32(z>>4))
 	startY := int(math.Floor(pos[1]))
 	switch {
 	case w.canFloat && m.InWater():
@@ -329,6 +331,7 @@ func (w *walkNodeEvaluator) canReachWithoutCollision(to *pathNodeData) bool {
 // floorLevel ports WalkNodeEvaluator.getFloorLevel, caching per-position
 // results for the duration of one search.
 func (w *walkNodeEvaluator) floorLevel(pos cube.Pos) float64 {
+	w.scratch.reader.chunkVersion(int32(pos[0]>>4), int32(pos[2]>>4))
 	key := pathNodeKey(pos[0], pos[1], pos[2])
 	if fl, ok := w.scratch.floors.get(key); ok {
 		return fl
@@ -488,6 +491,7 @@ func (w *walkNodeEvaluator) hasCollisions(box cube.BBox) bool {
 			return c
 		}
 	}
+	w.scratch.reader.trackBox(box)
 	c := !boxFree(w.pw, box)
 	if w.scratch.collisions == nil {
 		w.scratch.collisions = make(map[cube.BBox]bool, 16)
@@ -641,6 +645,7 @@ func (w *walkNodeEvaluator) frogPreferJumpTo(below cube.Pos) bool {
 	if below[1] < w.scratch.reader.minY || below[1] > w.scratch.reader.maxY {
 		return false
 	}
+	w.scratch.reader.chunkVersion(int32(below[0]>>4), int32(below[2]>>4))
 	if id, err := w.pw.BlockStateID(below); err == nil && id != 0 {
 		in, _ := gamedata.BlockTagContainsID("frog_prefer_jump_to", id)
 		return in
@@ -695,20 +700,25 @@ type pathChunkVer struct {
 // lookups across an immutable read pass (one findPath, pathTypeStatic, or
 // RandomPos sampling call).
 type pathStateReader struct {
-	pw        pathWorld
-	tx        *world.Tx
-	rv        *world.ReadView
-	cache     *pathTypeCache
-	minY      int
-	maxY      int
-	keySafeY  bool
-	lastCX    int32
-	lastCZ    int32
-	lastVer   uint64
-	lastLoad  bool
-	hasLast   bool
-	validMask uint16
-	chunks    [16]pathChunkVer
+	pw            pathWorld
+	tx            *world.Tx
+	rv            *world.ReadView
+	cache         *pathTypeCache
+	minY          int
+	maxY          int
+	keySafeY      bool
+	lastCX        int32
+	lastCZ        int32
+	lastVer       uint64
+	lastLoad      bool
+	hasLast       bool
+	validMask     uint16
+	chunks        [16]pathChunkVer
+	tracking      bool
+	trackOverflow bool
+	trackCount    int
+	trackCols     [16]world.ChunkPos
+	trackVers     [16]uint64
 }
 
 func (r *pathStateReader) init(pw pathWorld, cache *pathTypeCache) {
@@ -716,6 +726,9 @@ func (r *pathStateReader) init(pw pathWorld, cache *pathTypeCache) {
 	r.cache = cache
 	r.hasLast = false
 	r.validMask = 0
+	r.tracking = false
+	r.trackOverflow = false
+	r.trackCount = 0
 	rng := pw.Range()
 	r.minY, r.maxY = rng.Min(), rng.Max()
 	r.keySafeY = r.minY >= -2048 && r.maxY <= 2047
@@ -725,6 +738,52 @@ func (r *pathStateReader) init(pw pathWorld, cache *pathTypeCache) {
 		r.tx = w
 	case *world.ReadView:
 		r.rv = w
+	}
+}
+
+func (r *pathStateReader) startTracking() {
+	r.tracking = true
+	r.trackOverflow = false
+	r.trackCount = 0
+}
+
+func (r *pathStateReader) recordTrackedChunk(cx, cz int32, ver uint64, loaded bool) {
+	if !r.tracking || r.trackOverflow {
+		return
+	}
+	if !loaded || ver == 0 {
+		r.trackOverflow = true
+		return
+	}
+	pos := world.ChunkPos{cx, cz}
+	for i := range r.trackCount {
+		if r.trackCols[i] == pos {
+			return
+		}
+	}
+	if r.trackCount >= len(r.trackCols) {
+		r.trackOverflow = true
+		return
+	}
+	r.trackCols[r.trackCount] = pos
+	r.trackVers[r.trackCount] = ver
+	r.trackCount++
+}
+
+func (r *pathStateReader) trackBox(box cube.BBox) {
+	if !r.tracking || r.trackOverflow {
+		return
+	}
+	minCX, minCZ := int32(math.Floor(box.Min()[0]))>>4, int32(math.Floor(box.Min()[2]))>>4
+	maxCX, maxCZ := int32(math.Floor(box.Max()[0]))>>4, int32(math.Floor(box.Max()[2]))>>4
+	if minCX == maxCX && minCZ == maxCZ {
+		r.chunkVersion(minCX, minCZ)
+		return
+	}
+	for cx := minCX; cx <= maxCX; cx++ {
+		for cz := minCZ; cz <= maxCZ; cz++ {
+			r.chunkVersion(cx, cz)
+		}
 	}
 }
 
@@ -742,6 +801,7 @@ func (r *pathStateReader) chunkVersionSlow(cx, cz int32) (uint64, bool) {
 	if r.validMask&(1<<slot) != 0 && r.chunks[slot].pos == chunk {
 		e := r.chunks[slot]
 		r.lastCX, r.lastCZ, r.lastVer, r.lastLoad, r.hasLast = cx, cz, e.version, e.loaded, true
+		r.recordTrackedChunk(cx, cz, e.version, e.loaded)
 		return e.version, e.loaded
 	}
 	var ver uint64
@@ -754,11 +814,15 @@ func (r *pathStateReader) chunkVersionSlow(cx, cz int32) (uint64, bool) {
 	r.chunks[slot] = pathChunkVer{pos: chunk, version: ver, loaded: loaded}
 	r.validMask |= 1 << slot
 	r.lastCX, r.lastCZ, r.lastVer, r.lastLoad, r.hasLast = cx, cz, ver, loaded, true
+	r.recordTrackedChunk(cx, cz, ver, loaded)
 	return ver, loaded
 }
 
 func (r *pathStateReader) chunkVersion(cx, cz int32) (uint64, bool) {
 	if r.hasLast && r.lastCX == cx && r.lastCZ == cz {
+		if r.tracking && r.trackCount == 0 && !r.trackOverflow {
+			r.recordTrackedChunk(cx, cz, r.lastVer, r.lastLoad)
+		}
 		return r.lastVer, r.lastLoad
 	}
 	return r.chunkVersionSlow(cx, cz)
@@ -778,6 +842,9 @@ func (r *pathStateReader) stateAt(x, y, z int) PathType {
 		return PathOpen
 	}
 	if r.cache == nil {
+		if r.tracking {
+			r.chunkVersion(int32(x>>4), int32(z>>4))
+		}
 		t, _ := computePathTypeFromState(r.pw, cube.Pos{x, y, z})
 		return t
 	}

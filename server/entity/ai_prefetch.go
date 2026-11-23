@@ -147,11 +147,7 @@ func (ai *MobAI) prefetch(e *Ent, self world.Entity, v *world.ReadView) {
 		}
 	}
 
-	if ai.target != nil {
-		ai.prefetchPath(e, self, v)
-	} else {
-		p.path.ok, p.path.path = false, nil
-	}
+	ai.prefetchPath(e, self, v)
 }
 
 // fluidReadRange returns the blocks measureFluids may read for box: those
@@ -299,58 +295,171 @@ func (ai *MobAI) findMeleeAttackGoal() (*meleeAttackGoal, *wrappedGoal) {
 	return nil, nil
 }
 
-// prefetchPath finds, on a worker, the path the melee attack goal of the
-// mob is expected to ask for this tick: when it checks whether it can start
-// or recalculates its path to its target. Only walking mobs whose paths
+func (ai *MobAI) findRangedBowAttackGoal() (*rangedBowAttackGoal, *wrappedGoal) {
+	for _, w := range ai.Goals.goals {
+		if g, ok := w.goal.(interface{ asRangedBowAttackGoal() *rangedBowAttackGoal }); ok {
+			return g.asRangedBowAttackGoal(), w
+		}
+	}
+	return nil, nil
+}
+
+func (ai *MobAI) findRangedAttackGoal() (*rangedAttackGoal, *wrappedGoal) {
+	for _, w := range ai.Goals.goals {
+		if g, ok := w.goal.(interface{ asRangedAttackGoal() *rangedAttackGoal }); ok {
+			return g.asRangedAttackGoal(), w
+		}
+	}
+	return nil, nil
+}
+
+func (ai *MobAI) meleePrefetchTarget(v *world.ReadView, tick int64, full bool) (cube.Pos, bool) {
+	melee, wrapped := ai.findMeleeAttackGoal()
+	if melee == nil || ai.target == nil {
+		return cube.Pos{}, false
+	}
+	targetPos, ok := v.EntityPosition(ai.target)
+	if !ok {
+		return cube.Pos{}, false
+	}
+	if wrapped.running {
+		vel, _ := v.EntityVelocity(ai.target)
+		reach := 1 - (math.Hypot(vel[0], vel[2])*2 + .05)
+		moving := melee.pathedTarget == (mgl64.Vec3{}) || reach <= 0 || targetPos.Sub(melee.pathedTarget).LenSqr() >= reach*reach
+		if melee.ticksUntilNextPathRecalc > 1 || !moving && ai.nav.path != nil && !ai.nav.path.Done() {
+			return cube.Pos{}, false
+		}
+	} else if !full || melee.hasLastCanUseCheck && tick-melee.lastCanUseCheck < 20 || wrapped.flags&ai.Goals.disabled != 0 || !ai.Goals.canReplaceAll(wrapped) {
+		return cube.Pos{}, false
+	}
+	return cube.PosFromVec3(targetPos), true
+}
+
+func (ai *MobAI) rangedBowPrefetchTarget(e *Ent, v *world.ReadView, full bool) (cube.Pos, bool) {
+	bow, wrapped := ai.findRangedBowAttackGoal()
+	if bow == nil || ai.target == nil {
+		return cube.Pos{}, false
+	}
+	u, ok := e.Behaviour().(mobBowUser)
+	if !ok || !u.holdingBow() {
+		return cube.Pos{}, false
+	}
+	if !wrapped.running && (!full || wrapped.flags&ai.Goals.disabled != 0 || !ai.Goals.canReplaceAll(wrapped)) {
+		return cube.Pos{}, false
+	}
+	targetPos, ok := v.EntityPosition(ai.target)
+	if !ok {
+		return cube.Pos{}, false
+	}
+	if wrapped.running && e.data.Pos.Sub(targetPos).LenSqr() <= bow.attackRadiusSqr && bow.seeTime >= 20 {
+		return cube.Pos{}, false
+	}
+	return cube.PosFromVec3(targetPos), true
+}
+
+func (ai *MobAI) rangedPrefetchTarget(e *Ent, v *world.ReadView, full bool) (cube.Pos, bool) {
+	ranged, wrapped := ai.findRangedAttackGoal()
+	if ranged == nil {
+		return cube.Pos{}, false
+	}
+	targetH := ai.target
+	if wrapped.running {
+		if ranged.target != nil {
+			targetH = ranged.target
+		}
+	} else if !full || wrapped.flags&ai.Goals.disabled != 0 || !ai.Goals.canReplaceAll(wrapped) {
+		return cube.Pos{}, false
+	}
+	if targetH == nil {
+		return cube.Pos{}, false
+	}
+	targetPos, ok := v.EntityPosition(targetH)
+	if !ok {
+		return cube.Pos{}, false
+	}
+	if wrapped.running && e.data.Pos.Sub(targetPos).LenSqr() <= ranged.AttackRadius*ranged.AttackRadius && ranged.seeTime >= 5 {
+		return cube.Pos{}, false
+	}
+	return cube.PosFromVec3(targetPos), true
+}
+
+func (ai *MobAI) brainWalkPrefetchTarget(e *Ent, v *world.ReadView) (cube.Pos, bool) {
+	if ai.capsBrain == nil {
+		return cube.Pos{}, false
+	}
+	br := ai.capsBrain.brain()
+	if br == nil {
+		return cube.Pos{}, false
+	}
+	wtVal, ok := br.get(memWalkTarget)
+	if !ok {
+		return cube.Pos{}, false
+	}
+	wt := wtVal.(walkTarget)
+	var raw cube.Pos
+	switch t := wt.target.(type) {
+	case blockPosTracker:
+		raw = t.pos
+	case *entityTracker:
+		pos, ok := v.EntityPosition(t.h)
+		if !ok {
+			return cube.Pos{}, false
+		}
+		raw = cube.PosFromVec3(pos)
+	default:
+		return cube.Pos{}, false
+	}
+	if !br.has(memPath) && manhattan(raw, cube.PosFromVec3(e.data.Pos)) <= wt.closeEnough {
+		return cube.Pos{}, false
+	}
+	return raw, true
+}
+
+func (ai *MobAI) selectPrefetchTarget(e *Ent, v *world.ReadView, tick int64) (cube.Pos, int, bool) {
+	next := ai.tickCount + 1
+	full := (next+ai.entityID)%2 == 0 || next <= 1
+	if pos, ok := ai.meleePrefetchTarget(v, tick, full); ok {
+		return pos, 0, true
+	}
+	if pos, ok := ai.rangedBowPrefetchTarget(e, v, full); ok {
+		return pos, 1, true
+	}
+	if pos, ok := ai.rangedPrefetchTarget(e, v, full); ok {
+		return pos, 1, true
+	}
+	if pos, ok := ai.brainWalkPrefetchTarget(e, v); ok {
+		return pos, 0, true
+	}
+	return cube.Pos{}, 0, false
+}
+
+// prefetchPath finds, on a worker, the path the mob's attack goal or brain
+// walk target is expected to ask for this tick. Only walking mobs whose paths
 // depend on nothing but blocks and their own state are covered.
 func (ai *MobAI) prefetchPath(e *Ent, self world.Entity, v *world.ReadView) {
 	p := &ai.pre.path
 	p.ok, p.path = false, nil
 	n := &ai.nav
-	if n.vehicle != nil || n.wallClimber || n.swim != nil || n.amphibious || n.eval.fly || n.eval.amphibious || n.eval.frog || n.eval.blocked != nil || ai.target == nil {
+	if n.vehicle != nil || n.wallClimber || n.swim != nil || n.amphibious || n.eval.fly || n.eval.amphibious || n.eval.frog || n.eval.blocked != nil {
 		return
 	}
 	if !ai.started || ai.caps&mobCapPathfindingListener != 0 {
 		// The id that staggers the goals and capability flags are known once the AI has started.
 		return
 	}
-	melee, wrapped := ai.findMeleeAttackGoal()
-	if melee == nil {
-		return
-	}
-	targetPos, ok := v.EntityPosition(ai.target)
+	tick := v.World().CurrentTick()
+	target, reach, ok := ai.selectPrefetchTarget(e, v, tick)
 	if !ok {
 		return
 	}
-	tick := v.World().CurrentTick()
-	if wrapped.running {
-		// MeleeAttackGoal.tick paths again once its delay runs out and the
-		// target moved a block from where it was pathed to, which it may
-		// still do this tick before the mob ticks.
-		// It also paths again at random, which only needs finding a path
-		// once the old one ran out, as next to the target, where paths are
-		// short.
-		vel, _ := v.EntityVelocity(ai.target)
-		reach := 1 - (math.Hypot(vel[0], vel[2])*2 + .05)
-		moving := melee.pathedTarget == (mgl64.Vec3{}) || reach <= 0 || targetPos.Sub(melee.pathedTarget).LenSqr() >= reach*reach
-		if melee.ticksUntilNextPathRecalc > 1 || !moving && n.path != nil && !n.path.Done() {
-			return
-		}
-	} else {
-		// The goals start on every other tick of the mob, and canUse paths
-		// at most once in 20 ticks, if no running goal holds its flags.
-		next := ai.tickCount + 1
-		full := (next+ai.entityID)%2 == 0 || next <= 1
-		if !full || melee.hasLastCanUseCheck && tick-melee.lastCanUseCheck < 20 || wrapped.flags&ai.Goals.disabled != 0 || !ai.Goals.canReplaceAll(wrapped) {
-			return
-		}
-	}
-	target := cube.PosFromVec3(targetPos)
 	if _, ok := v.BlockLoaded(target); !ok {
 		return
 	}
 	if !n.CanPathToTargetsBelowSurface {
 		target = surfacePosition(v, target)
+	}
+	if v.Missed() {
+		return
 	}
 	if n.path != nil && !n.path.Done() && n.targetPos != nil && *n.targetPos == target {
 		// createPath keeps following the path it has.
@@ -361,10 +470,13 @@ func (ai *MobAI) prefetchPath(e *Ent, self world.Entity, v *world.ReadView) {
 		return
 	}
 	m := &Mob{Ent: e, AI: ai, Self: self}
-	maxFall := 3 + max(int(l.Health()-l.MaxHealth()*.33)-(3-difficultyID(v.World().Difficulty()))*4, 0)
+	maxFall := 3
+	if ai.target != nil {
+		maxFall = 3 + max(int(l.Health()-l.MaxHealth()*.33)-(3-difficultyID(v.World().Difficulty()))*4, 0)
+	}
 	visited := int(float64(n.maxVisitedNodes) * n.maxVisitedNodesMultiplier)
 	maxPathLength := n.maxPathLength(m)
-	if _, backedOff := n.unreachableBackedOff(v, cube.PosFromVec3(e.data.Pos), target, 0, maxPathLength, tick); backedOff {
+	if _, backedOff := n.unreachableBackedOff(v, cube.PosFromVec3(e.data.Pos), target, reach, maxPathLength, tick); backedOff {
 		return
 	}
 
@@ -373,7 +485,7 @@ func (ai *MobAI) prefetchPath(e *Ent, self world.Entity, v *world.ReadView) {
 	ev := n.eval
 	ev.pw, ev.maxFall = v, maxFall
 	targets := [1]cube.Pos{target}
-	path := findPath(m, &ev, targets[:], float32(maxPathLength), 0, visited)
+	path := findPath(m, &ev, targets[:], float32(maxPathLength), reach, visited)
 	if v.Missed() {
 		return
 	}
@@ -386,7 +498,7 @@ func (ai *MobAI) prefetchPath(e *Ent, self world.Entity, v *world.ReadView) {
 		}
 		p.versions = append(p.versions, ver)
 	}
-	p.ok, p.tick, p.path, p.target, p.reach, p.maxPathLength, p.visited = true, tick, path, target, 0, maxPathLength, visited
+	p.ok, p.tick, p.path, p.target, p.reach, p.maxPathLength, p.visited = true, tick, path, target, reach, maxPathLength, visited
 	p.pos, p.box, p.onGround, p.inWater, p.step, p.maxFall = e.data.Pos, m.BBox(), ai.onGround, ai.waterHeight > 0, ai.StepHeight, maxFall
 	p.config = n.eval.config()
 	if len(p.maluses) > 0 {

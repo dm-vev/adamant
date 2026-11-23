@@ -49,8 +49,9 @@ type EntityConfig interface {
 // entity that can be transformed into an Entity implementation in the context
 // of a transaction.
 type EntityHandle struct {
-	id uuid.UUID
-	t  EntityType
+	id     uuid.UUID
+	t      EntityType
+	typeID string
 
 	cond         *sync.Cond
 	worldless    *atomic.Bool
@@ -168,9 +169,14 @@ func (opts EntitySpawnOpts) New(t EntityType, conf EntityConfig) *EntityHandle {
 		opts.ID = uuid.New()
 		clear(opts.ID[:8])
 	}
+	var typeID string
+	if t != nil {
+		typeID = t.EncodeEntity()
+	}
 	handle := &EntityHandle{
 		id:          opts.ID,
 		t:           t,
+		typeID:      typeID,
 		cond:        sync.NewCond(&sync.Mutex{}),
 		worldless:   &atomic.Bool{},
 		closed:      make(chan struct{}),
@@ -244,8 +250,13 @@ func entityFromData(t EntityType, id int64, data map[string]any) *EntityHandle {
 	if !entityNBTLoadable(data) {
 		return nil
 	}
+	var typeID string
+	if t != nil {
+		typeID = t.EncodeEntity()
+	}
 	handle := &EntityHandle{
 		t:         t,
+		typeID:    typeID,
 		cond:      sync.NewCond(&sync.Mutex{}),
 		worldless: &atomic.Bool{},
 		closed:    make(chan struct{}),

@@ -113,6 +113,7 @@ type Column struct {
 	*chunk.Chunk
 	Entities      []*EntityHandle
 	entityIndices map[*EntityHandle]int
+	itemCount     int32
 	// entityIterators counts the iterations over Entities in progress. While
 	// it is positive, changes copy the slice first, so iterations walk the
 	// list as it was when they began without copying it themselves.
@@ -216,6 +217,9 @@ func (c *Column) addEntity(handle *EntityHandle) {
 	c.detachIteratedEntities()
 	c.entityIndices[handle] = len(c.Entities)
 	c.Entities = append(c.Entities, handle)
+	if handle.typeID == "minecraft:item" {
+		c.itemCount++
+	}
 }
 
 // detachIteratedEntities gives the column a copy of its entity list before
@@ -263,6 +267,9 @@ func (c *Column) removeEntity(handle *EntityHandle) bool {
 	if len(c.Entities) == 0 {
 		clear(c.entityIndices)
 	}
+	if handle.typeID == "minecraft:item" {
+		c.itemCount--
+	}
 	return true
 }
 
@@ -277,6 +284,7 @@ func (c *Column) resetEntities() {
 	if len(c.entityIndices) > 0 {
 		clear(c.entityIndices)
 	}
+	c.itemCount = 0
 }
 
 func (c *Column) invalidateRandomTickSubChunks() {

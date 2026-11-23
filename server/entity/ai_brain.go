@@ -1128,6 +1128,9 @@ func (n *nearestVisibleLiving) visible(m *Mob, e world.Entity) bool {
 		c.ignoreInvis = true
 	}
 	v := c.test(m, e)
+	if n.seen == nil {
+		n.seen = make(map[*world.EntityHandle]bool, min(len(n.entities), 8))
+	}
 	n.seen[e.H()] = v
 	return v
 }
