@@ -149,50 +149,53 @@ func alliedTo(m *Mob, target world.Entity) bool {
 	return false
 }
 
-// nearestTarget returns the nearest of the candidates that meet the
-// conditions, as Level.getNearestEntity measured from the eyes of the mob.
-func nearestTarget(m *Mob, c targeting, candidates func(yield func(world.Entity) bool)) world.Entity {
-	eye := mgl64.Vec3{m.data.Pos[0], m.EyeY(), m.data.Pos[2]}
-	var best world.Entity
-	bestDist := -1.0
-	candidates(func(e world.Entity) bool {
-		if e == nil {
-			return true
-		}
-		d := e.Position().Sub(eye).LenSqr()
-		if bestDist != -1 && d >= bestDist {
-			return true
-		}
-		if !c.test(m, e) {
-			return true
-		}
-		best, bestDist = e, d
-		return true
-	})
-	return best
-}
-
 // nearestPlayer returns the nearest player that meets the conditions, as
 // Level.getNearestPlayer.
 func nearestPlayer(m *Mob, c targeting) world.Entity {
-	players := m.tx.Players()
+	eye := mgl64.Vec3{m.data.Pos[0], m.EyeY(), m.data.Pos[2]}
+	var best world.Entity
+	bestDist := -1.0
 	if c.rangeLimit > 0 {
 		// The range of the conditions is never more than max(rangeLimit, 2).
-		players = m.tx.PlayersNear(m.data.Pos, max(c.rangeLimit, 2))
+		for e := range m.tx.PlayersNear(m.data.Pos, max(c.rangeLimit, 2)) {
+			if e == nil {
+				continue
+			}
+			d := e.Position().Sub(eye).LenSqr()
+			if (bestDist == -1 || d < bestDist) && c.test(m, e) {
+				best, bestDist = e, d
+			}
+		}
+		return best
 	}
-	return nearestTarget(m, c, players)
+	for e := range m.tx.Players() {
+		if e == nil {
+			continue
+		}
+		d := e.Position().Sub(eye).LenSqr()
+		if (bestDist == -1 || d < bestDist) && c.test(m, e) {
+			best, bestDist = e, d
+		}
+	}
+	return best
 }
 
 // nearestOfTypes returns the nearest entity within a box of an entity type
 // for which isType returns true that meets the conditions.
 func nearestOfTypes(m *Mob, c targeting, box cube.BBox, isType func(world.Entity) bool) world.Entity {
-	return nearestTarget(m, c, func(yield func(world.Entity) bool) {
-		for e := range m.tx.EntitiesWithin(box) {
-			if isType(e) && !yield(e) {
-				return
-			}
+	eye := mgl64.Vec3{m.data.Pos[0], m.EyeY(), m.data.Pos[2]}
+	var best world.Entity
+	bestDist := -1.0
+	for e := range m.tx.EntitiesWithin(box) {
+		if e == nil || !isType(e) {
+			continue
 		}
-	})
+		d := e.Position().Sub(eye).LenSqr()
+		if (bestDist == -1 || d < bestDist) && c.test(m, e) {
+			best, bestDist = e, d
+		}
+	}
+	return best
 }
 
 // entityTypes is a set of entity type names. Its is method selects the
@@ -217,13 +220,19 @@ var (
 // nearestOfEntityTypes is nearestOfTypes for the entities of a set of
 // types, visiting only those.
 func nearestOfEntityTypes(m *Mob, c targeting, box cube.BBox, types entityTypes, isType func(world.Entity) bool) world.Entity {
-	return nearestTarget(m, c, func(yield func(world.Entity) bool) {
-		for e := range m.tx.EntitiesOfTypesWithin(box, types) {
-			if isType(e) && !yield(e) {
-				return
-			}
+	eye := mgl64.Vec3{m.data.Pos[0], m.EyeY(), m.data.Pos[2]}
+	var best world.Entity
+	bestDist := -1.0
+	for e := range m.tx.EntitiesOfTypesWithin(box, types) {
+		if e == nil || !isType(e) {
+			continue
 		}
-	})
+		d := e.Position().Sub(eye).LenSqr()
+		if (bestDist == -1 || d < bestDist) && c.test(m, e) {
+			best, bestDist = e, d
+		}
+	}
+	return best
 }
 
 // entityIs returns a function that reports if an entity has one of the

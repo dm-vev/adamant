@@ -476,8 +476,14 @@ func (b *VillagerBehaviour) brain() *Brain { return b.br }
 
 // Tick runs the MobAI of the villager with its brain.
 func (b *VillagerBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	v := &Villager{Ent: e}
+	v, ok := e.living().(*Villager)
+	if !ok {
+		v = &Villager{Ent: e}
+	}
 	b.ai.MovementSpeed = b.speed
+	if b.ai.started {
+		return b.ai.Tick(e, v, nil)
+	}
 	return b.ai.Tick(e, v, func(m *Mob) {
 		m.AI.nav.SetCanOpenDoors(true)
 		m.AI.nav.SetCanFloat(true)

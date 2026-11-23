@@ -120,7 +120,10 @@ func (f *Fox) Tick(tx *world.Tx, n int64) {
 }
 
 func (s *foxState) Tick(e *Ent, tx *world.Tx) *Movement {
-	f := &Fox{e}
+	f, ok := e.living().(*Fox)
+	if !ok {
+		f = &Fox{e}
+	}
 	ai := &s.ai
 	ai.MovementSpeed, ai.EyeHeight = s.speed, .4
 	if s.age < 0 {
@@ -130,7 +133,11 @@ func (s *foxState) Tick(e *Ent, tx *world.Tx) *Movement {
 	if ai.started && !f.Dead() {
 		s.beforeAiStep(m)
 	}
-	mv := animalTick(e, tx, f, &s.animalAI, s.registerGoals)
+	var register func(m *Mob)
+	if !ai.started {
+		register = s.registerGoals
+	}
+	mv := animalTick(e, tx, f, &s.animalAI, register)
 	if !f.Dead() {
 		s.afterTick(m)
 	}

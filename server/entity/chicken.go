@@ -123,11 +123,18 @@ func (c *Chicken) Tick(tx *world.Tx, current int64) {
 	c.Ent.Tick(tx, current)
 }
 func (b *ChickenBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	chicken := &Chicken{Ent: e}
+	chicken, ok := e.living().(*Chicken)
+	if !ok {
+		chicken = &Chicken{Ent: e}
+	}
 	b.ai.MovementSpeed, b.ai.EyeHeight = b.speed, animalEyeHeight(.644, b.ageTicks < 0)
-	mv := animalTick(e, tx, chicken, &b.animalAI, func(m *Mob) {
-		registerAnimalGoals(m, &b.animalAI, animalSpec{panic: 1.4, breed: 1, tempt: 1, tempting: chicken.breedingFood, parent: 1.1, stroll: 1}, nil)
-	})
+	var register func(m *Mob)
+	if !b.ai.started {
+		register = func(m *Mob) {
+			registerAnimalGoals(m, &b.animalAI, animalSpec{panic: 1.4, breed: 1, tempt: 1, tempting: chicken.breedingFood, parent: 1.1, stroll: 1}, nil)
+		}
+	}
+	mv := animalTick(e, tx, chicken, &b.animalAI, register)
 	// Chicken.aiStep: a chicken flaps its wings and falls slowly.
 	if !e.OnGround() && e.data.Vel[1] < 0 {
 		e.data.Vel[1] *= .6

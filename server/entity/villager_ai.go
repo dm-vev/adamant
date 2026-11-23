@@ -45,7 +45,7 @@ func newVillagerBrain(b *VillagerBehaviour) *Brain {
 	br.addActivityWith(activityPreRaid, villagerPreRaidPackage(speed), nil, nil)
 	br.addActivityWith(activityRaid, villagerRaidPackage(b, speed), nil, nil)
 	br.addActivityWith(activityHide, villagerHidePackage(speed), nil, nil)
-	br.core = []activity{activityCore}
+	br.coreMask = uint64(1) << activityCore
 	return br
 }
 
@@ -2281,9 +2281,7 @@ func (b *VillagerBehaviour) refreshBrain(m *Mob) {
 	b.br = newVillagerBrain(b)
 	for _, mem := range []memoryType{memHome, memJobSite, memPotentialJobSite, memMeetingPoint, memLastSlept, memLastWoken, memLastWorkedAtPoi,
 		memGolemDetectedRecently, memHurtBy, memHurtByEntity} {
-		if old.memories[mem] != nil {
-			b.br.memories[mem] = old.memories[mem]
-		}
+		b.br.copyMemoryFrom(old, mem)
 	}
 	b.br.start(m)
 	b.br.lastScheduleUpdate = -9999

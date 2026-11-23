@@ -70,6 +70,21 @@ type PathNavigation struct {
 	// Mob.getNavigation does, the navigation of the rider then hands each
 	// call to that of its vehicle.
 	vehicle *Mob
+
+	// Unreachable-target backoff caches a target that A* could not reach so
+	// repeated requests while mob, target and terrain are unchanged avoid
+	// burning a full search every few ticks.
+	failTarget    cube.Pos
+	failFrom      cube.Pos
+	failReach     int
+	failMaxLen    float64
+	failTick      int64
+	failUntil     int64
+	failStreak    int
+	failFromVer   uint64
+	failTargetVer uint64
+	failConfig    walkNodeConfig
+	failPath      *mobPath
 }
 
 func (n *PathNavigation) init(m *Mob) {
@@ -310,6 +325,15 @@ func (n *PathNavigation) createPath(m *Mob, targets []cube.Pos, reachRange int, 
 			}
 		}
 	}
+	listens := m.AI.hasCap(m, mobCapPathfindingListener)
+	now := m.GameTime()
+	mobPos := m.BlockPos()
+	canBackoff := len(targets) == 1 && !listens && n.eval.blocked == nil
+	if canBackoff {
+		if cached, backedOff := n.unreachableBackedOff(m.tx, mobPos, targets[0], reachRange, maxPathLength, now); backedOff {
+			return cached
+		}
+	}
 	visited := int(float64(n.maxVisitedNodes) * n.maxVisitedNodesMultiplier)
 	var eval nodeEvaluator = &n.eval
 	switch {
@@ -318,8 +342,9 @@ func (n *PathNavigation) createPath(m *Mob, targets []cube.Pos, reachRange int, 
 	case n.eval.fly:
 		eval = flyNodeEvaluator{&n.eval}
 	}
-	l, listens := m.Behaviour().(mobPathfindingListener)
+	var l mobPathfindingListener
 	if listens {
+		l = m.Behaviour().(mobPathfindingListener)
 		l.onPathfindingStart(m)
 	}
 	path, prefetched := m.AI.pre.path.takePath(m, eval, targets, maxPathLength, reachRange, visited)
@@ -334,6 +359,11 @@ func (n *PathNavigation) createPath(m *Mob, targets []cube.Pos, reachRange int, 
 	if listens {
 		l.onPathfindingDone(m)
 	}
+	if path != nil && path.CanReach() {
+		n.clearUnreachable()
+	} else if canBackoff {
+		n.recordUnreachable(m.tx, mobPos, targets[0], reachRange, maxPathLength, now, path)
+	}
 	if path != nil {
 		if n.targetPos == nil {
 			n.targetPos = new(cube.Pos)
@@ -343,6 +373,79 @@ func (n *PathNavigation) createPath(m *Mob, targets []cube.Pos, reachRange int, 
 		n.resetStuckTimeout()
 	}
 	return path
+}
+
+func chunkBlockVersion(pw pathWorld, pos cube.Pos) (uint64, bool) {
+	cp := world.ChunkPos{int32(pos[0]) >> 4, int32(pos[2]) >> 4}
+	switch w := pw.(type) {
+	case *world.Tx:
+		return w.ColumnBlockVersion(cp)
+	case *world.ReadView:
+		return w.ColumnBlockVersion(cp)
+	default:
+		return 0, false
+	}
+}
+
+func (n *PathNavigation) unreachableBackedOff(pw pathWorld, mobPos, target cube.Pos, reach int, maxLen float64, now int64) (*mobPath, bool) {
+	if n.failStreak == 0 || now <= n.failTick || now >= n.failUntil {
+		return nil, false
+	}
+	if mobPos != n.failFrom || target != n.failTarget || reach != n.failReach || maxLen != n.failMaxLen || n.eval.config() != n.failConfig {
+		return nil, false
+	}
+	fromVer, ok1 := chunkBlockVersion(pw, mobPos)
+	targetVer, ok2 := chunkBlockVersion(pw, target)
+	if !ok1 || !ok2 || fromVer != n.failFromVer || targetVer != n.failTargetVer {
+		return nil, false
+	}
+	if n.failPath == nil {
+		return nil, true
+	}
+	cp := *n.failPath
+	cp.next = 0
+	return &cp, true
+}
+
+func (n *PathNavigation) recordUnreachable(tx *world.Tx, mobPos, target cube.Pos, reach int, maxLen float64, now int64, path *mobPath) {
+	fromVer, ok1 := chunkBlockVersion(tx, mobPos)
+	targetVer, ok2 := chunkBlockVersion(tx, target)
+	if !ok1 || !ok2 {
+		n.clearUnreachable()
+		return
+	}
+	cfg := n.eval.config()
+	same := n.failStreak > 0 && mobPos == n.failFrom && target == n.failTarget &&
+		reach == n.failReach && maxLen == n.failMaxLen && cfg == n.failConfig &&
+		fromVer == n.failFromVer && targetVer == n.failTargetVer
+	if same && now > n.failTick {
+		n.failStreak++
+	} else if !same {
+		n.failStreak = 1
+	}
+	cooldown := int64(20)
+	if n.failStreak == 2 {
+		cooldown = 40
+	} else if n.failStreak >= 3 {
+		cooldown = 80
+	}
+	n.failFrom, n.failTarget = mobPos, target
+	n.failReach, n.failMaxLen = reach, maxLen
+	n.failTick, n.failUntil = now, now+cooldown
+	n.failFromVer, n.failTargetVer = fromVer, targetVer
+	n.failConfig = cfg
+	if path != nil {
+		cp := *path
+		cp.next = 0
+		n.failPath = &cp
+	} else {
+		n.failPath = nil
+	}
+}
+
+func (n *PathNavigation) clearUnreachable() {
+	n.failStreak = 0
+	n.failPath = nil
 }
 
 // MoveTo follows a path with the speed of the mob scaled by speedModifier
@@ -480,6 +583,19 @@ func (n *PathNavigation) groundY(m *Mob, target mgl64.Vec3) float64 {
 	}
 	pos := cube.PosFromVec3(target)
 	below := pos.Side(cube.FaceDown)
+	if rid, ok := m.tx.BlockRID(below); ok {
+		reg := m.tx.World().BlockRegistry()
+		flags := reg.BlockFlags(rid)
+		if flags.EmptyCollision() {
+			if rid == reg.AirRuntimeID() {
+				return target[1]
+			}
+			return float64(below.Y())
+		}
+		if flags.FullCubeCollision() {
+			return float64(below.Y()) + 1
+		}
+	}
 	b := pathBlockAt(m.tx, below)
 	if isAir(b) {
 		return target[1]

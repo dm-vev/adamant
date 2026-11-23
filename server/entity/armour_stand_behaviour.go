@@ -276,12 +276,5 @@ func (a *ArmourStandBehaviour) updateHeldItems(e *Ent) {
 
 // updateState updates the armour stand's state for all viewers.
 func (a *ArmourStandBehaviour) updateState(e *Ent) {
-	if e.tx == nil {
-		return
-	}
-	viewers := e.tx.Viewers(e.data.Pos)
-	for _, v := range viewers {
-		v.ViewEntityState(e)
-	}
-	e.tx.ReleaseViewers(viewers)
+	world.BroadcastEntityState(e.tx, e)
 }

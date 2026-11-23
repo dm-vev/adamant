@@ -35,18 +35,32 @@ func (e *Ent) HeadYaw() float64 {
 	return e.data.Rot.Yaw()
 }
 
+type mobImmobileChecker interface {
+	immobile() bool
+}
+
+type mobPlayerSteered interface {
+	steeredByPlayer(m *Mob) bool
+}
+
+type mobWallClimber interface {
+	climbingWall() bool
+}
+
+type mobEffectHolder interface {
+	Effect(effect.Type) (effect.Effect, bool)
+}
+
 // mobImmobile reports if a mob may not act, as LivingEntity.isImmobile: a
 // stunned or roaring ravager for one.
 func mobImmobile(m *Mob) bool {
-	i, ok := m.Behaviour().(interface{ immobile() bool })
-	return ok && i.immobile()
+	return m.AI.hasCap(m, mobCapImmobile) && m.Behaviour().(mobImmobileChecker).immobile()
 }
 
 // mobSteeredByPlayer reports if a player steers the mob, whose AI then
 // rests as Java leaves the AI of a mob to the client controlling it.
 func mobSteeredByPlayer(m *Mob) bool {
-	s, ok := m.Behaviour().(interface{ steeredByPlayer(m *Mob) bool })
-	return ok && s.steeredByPlayer(m)
+	return m.AI.hasCap(m, mobCapSteeredByPlayer) && m.Behaviour().(mobPlayerSteered).steeredByPlayer(m)
 }
 
 // mobMoveControl is a move control that replaces the MoveControl of a mob,
@@ -101,8 +115,7 @@ type mobFluidStander interface {
 
 // standsOnFluid reports if the mob may stand on the liquid l.
 func standsOnFluid(m *Mob, l world.Liquid) bool {
-	s, ok := m.Behaviour().(mobFluidStander)
-	return ok && s.canStandOnFluid(l)
+	return m.AI.hasCap(m, mobCapFluidStander) && m.Behaviour().(mobFluidStander).canStandOnFluid(l)
 }
 
 // mobAfterAiStep is implemented by behaviours of mobs whose aiStep does more
@@ -154,8 +167,8 @@ func (ai *MobAI) Tick(e *Ent, self world.Entity, register func(m *Mob)) *Movemen
 		return ai.riderMovement(m, prevPos, prevRot, prevHead)
 	}
 	ai.aiStep(m)
-	if a, ok := m.Behaviour().(mobAfterAiStep); ok {
-		a.afterAiStep(m)
+	if ai.hasCap(m, mobCapAfterAiStep) {
+		m.Behaviour().(mobAfterAiStep).afterAiStep(m)
 	}
 	if ai.bodyOverride != nil {
 		ai.bodyOverride.tick(m)
@@ -240,9 +253,9 @@ func (ai *MobAI) serverAiStep(m *Mob) {
 	}
 	ai.steer(nil)
 	ai.nav.tickNavigation(m)
-	if c, ok := m.Behaviour().(mobCustomStep); ok {
+	if ai.hasCap(m, mobCapCustomStep) {
 		ai.steer(vehicle)
-		c.customServerAiStep(m)
+		ai.capsCustom.customServerAiStep(m)
 		ai.steer(nil)
 	}
 	if ai.moveOverride != nil {
@@ -255,8 +268,8 @@ func (ai *MobAI) serverAiStep(m *Mob) {
 	} else {
 		ai.look.tick(m)
 	}
-	if j, ok := m.Behaviour().(mobJumpControl); ok {
-		j.tickJumpControl(m)
+	if ai.hasCap(m, mobCapJumpControl) {
+		m.Behaviour().(mobJumpControl).tickJumpControl(m)
 	} else {
 		ai.jump.tick(m)
 	}
@@ -265,7 +278,7 @@ func (ai *MobAI) serverAiStep(m *Mob) {
 // jumpInLiquid ports Mob.jumpInLiquid: mobs that float swim up slowly, the
 // others push off.
 func (ai *MobAI) jumpInLiquid(m *Mob, lava bool) {
-	if j, ok := m.Behaviour().(mobJumper); ok && j.jumpInLiquid(m, lava) {
+	if ai.hasCap(m, mobCapJumper) && m.Behaviour().(mobJumper).jumpInLiquid(m, lava) {
 		return
 	}
 	if ai.nav.CanFloat() {
@@ -277,7 +290,7 @@ func (ai *MobAI) jumpInLiquid(m *Mob, lava bool) {
 
 // jumpFromGround ports LivingEntity.jumpFromGround.
 func (ai *MobAI) jumpFromGround(m *Mob) {
-	if j, ok := m.Behaviour().(mobJumper); ok && j.jumpFromGround(m) {
+	if ai.hasCap(m, mobCapJumper) && m.Behaviour().(mobJumper).jumpFromGround(m) {
 		return
 	}
 	power := ai.jumpPower(m)
@@ -294,23 +307,35 @@ func (ai *MobAI) jumpPower(m *Mob) float64 {
 
 // jumpBoostPower ports LivingEntity.getJumpBoostPower.
 func jumpBoostPower(m *Mob) float64 {
-	if l, ok := m.Self.(interface {
-		Effect(effect.Type) (effect.Effect, bool)
-	}); ok {
-		if jump, ok := l.Effect(effect.JumpBoost); ok {
-			return .1 * float64(jump.Level())
-		}
+	if jump, ok := mobEffect(m, effect.JumpBoost); ok {
+		return .1 * float64(jump.Level())
 	}
 	return 0
 }
 
 // blockJumpFactor ports Entity.getBlockJumpFactor: honey halves jumps.
 func blockJumpFactor(m *Mob) float64 {
-	if _, honey := m.tx.Block(m.BlockPos()).(block.HoneyBlock); honey {
-		return .5
+	tx := m.tx
+	reg := tx.World().BlockRegistry()
+	pos := m.BlockPos()
+	if rid, ok := tx.BlockRID(pos); ok {
+		if reg.BlockFlags(rid).IsHoneyBlock() {
+			return .5
+		}
+	} else if !pos.OutOfBounds(tx.Range()) {
+		if _, honey := tx.Block(pos).(block.HoneyBlock); honey {
+			return .5
+		}
 	}
-	if _, honey := m.tx.Block(blockPosBelowMovement(m)).(block.HoneyBlock); honey {
-		return .5
+	below := blockPosBelowMovement(m)
+	if rid, ok := tx.BlockRID(below); ok {
+		if reg.BlockFlags(rid).IsHoneyBlock() {
+			return .5
+		}
+	} else if !below.OutOfBounds(tx.Range()) {
+		if _, honey := tx.Block(below).(block.HoneyBlock); honey {
+			return .5
+		}
 	}
 	return 1
 }
@@ -331,26 +356,41 @@ func blockFriction(m *Mob) float64 {
 // blockSpeedFactor ports Entity.getBlockSpeedFactor: soul sand and honey
 // slow walking.
 func blockSpeedFactor(m *Mob) float64 {
-	factor := func(b world.Block) float64 {
-		switch b.(type) {
+	tx := m.tx
+	reg := tx.World().BlockRegistry()
+	pos := m.BlockPos()
+	if lrid, ok := tx.LiquidRID(pos); ok {
+		if kind, _, _ := reg.LiquidInfo(lrid); kind == liquidKindWater {
+			return 1
+		}
+	}
+	if rid, ok := tx.BlockRID(pos); ok {
+		if reg.BlockFlags(rid).IsSlowBlock() {
+			return .4
+		}
+	} else if !pos.OutOfBounds(tx.Range()) {
+		switch tx.Block(pos).(type) {
 		case block.SoulSand, block.HoneyBlock:
 			return .4
 		}
-		return 1
 	}
-	pos := m.BlockPos()
-	if l, ok := m.tx.Liquid(pos); ok && l.LiquidType() == "water" {
-		return 1
+	below := blockPosBelowMovement(m)
+	if rid, ok := tx.BlockRID(below); ok {
+		if reg.BlockFlags(rid).IsSlowBlock() {
+			return .4
+		}
+	} else if !below.OutOfBounds(tx.Range()) {
+		switch tx.Block(below).(type) {
+		case block.SoulSand, block.HoneyBlock:
+			return .4
+		}
 	}
-	if f := factor(m.tx.Block(pos)); f != 1 {
-		return f
-	}
-	return factor(m.tx.Block(blockPosBelowMovement(m)))
+	return 1
 }
 
 // travel ports LivingEntity.travel.
 func (ai *MobAI) travel(m *Mob, input mgl64.Vec3) {
-	if t, ok := m.Behaviour().(mobTraveller); ok && t.travel(m, input) {
+	if ai.hasCap(m, mobCapTraveller) && m.Behaviour().(mobTraveller).travel(m, input) {
 		return
 	}
 	if ai.travelsInFluid(m) {
@@ -366,6 +406,9 @@ func (ai *MobAI) travel(m *Mob, input mgl64.Vec3) {
 func (ai *MobAI) travelsInFluid(m *Mob) bool {
 	if !m.InLiquid() {
 		return false
+	}
+	if !ai.hasCap(m, mobCapFluidStander) {
+		return true
 	}
 	l, ok := m.tx.Liquid(m.BlockPos())
 	return !ok || !standsOnFluid(m, l)
@@ -443,7 +486,7 @@ func modifiedFriction(friction, modifier float64) float64 {
 // air leaves the mob, as much as sideways for mobs that move alike in all
 // directions.
 func (ai *MobAI) airDrag(m *Mob) float64 {
-	if a, ok := m.Behaviour().(mobAirMover); ok && a.omnidirectionalAirMover() {
+	if ai.hasCap(m, mobCapAirMover) && m.Behaviour().(mobAirMover).omnidirectionalAirMover() {
 		return modifiedFriction(.91, ai.AirDragModifier)
 	}
 	return modifiedFriction(.98, ai.AirDragModifier)
@@ -473,9 +516,13 @@ func (ai *MobAI) effectiveGravity(m *Mob) float64 {
 }
 
 func mobEffect(m *Mob, t effect.Type) (effect.Effect, bool) {
-	if l, ok := m.Self.(interface {
-		Effect(effect.Type) (effect.Effect, bool)
-	}); ok {
+	if m.AI.capsSelf == m.Self {
+		if m.AI.capsEffect != nil {
+			return m.AI.capsEffect.Effect(t)
+		}
+		return effect.Effect{}, false
+	}
+	if l, ok := m.Self.(mobEffectHolder); ok {
 		return l.Effect(t)
 	}
 	return effect.Effect{}, false
@@ -488,8 +535,8 @@ func (ai *MobAI) travelInFluid(m *Mob, input mgl64.Vec3) {
 	gravity := ai.effectiveGravity(m)
 	if m.InWater() {
 		slowDown := .8
-		if s, ok := m.Behaviour().(mobWaterSlowDown); ok {
-			slowDown = s.waterSlowDown()
+		if ai.hasCap(m, mobCapWaterSlowDown) {
+			slowDown = m.Behaviour().(mobWaterSlowDown).waterSlowDown()
 		}
 		ai.moveRelative(m, .02, input)
 		ai.moveSelf(m, m.data.Vel)
@@ -542,7 +589,7 @@ func boxFreeOfLiquid(m *Mob, box cube.BBox) bool {
 	for x := minX; x < maxX; x++ {
 		for y := minY; y < maxY; y++ {
 			for z := minZ; z < maxZ; z++ {
-				if _, ok := m.tx.Liquid(cube.Pos{x, y, z}); ok {
+				if _, ok := m.tx.LiquidRID(cube.Pos{x, y, z}); ok {
 					return false
 				}
 			}
@@ -580,16 +627,28 @@ func (ai *MobAI) handleOnClimbable(m *Mob, v mgl64.Vec3) mgl64.Vec3 {
 // the climbable tag and open trapdoors above ladders, and spiders the walls
 // they walk into.
 func onClimbable(m *Mob) bool {
-	if c, ok := m.Behaviour().(interface{ climbingWall() bool }); ok && c.climbingWall() {
+	if m.AI.hasCap(m, mobCapWallClimber) && m.Behaviour().(mobWallClimber).climbingWall() {
 		return true
 	}
+	tx := m.tx
 	pos := m.BlockPos()
-	b := m.tx.Block(pos)
+	if rid, ok := tx.BlockRID(pos); ok {
+		flags := tx.World().BlockRegistry().BlockFlags(rid)
+		if flags.IsClimbable() {
+			return true
+		}
+		if flags.EmptyCollision() || flags.FullCubeCollision() {
+			return false
+		}
+	} else if pos.OutOfBounds(tx.Range()) {
+		return false
+	}
+	b := tx.Block(pos)
 	if blockInTag(b, "minecraft:climbable") {
 		return true
 	}
 	if t, ok := b.(block.WoodTrapdoor); ok && t.Open {
-		if l, ok := m.tx.Block(pos.Side(cube.FaceDown)).(block.Ladder); ok && l.Facing == t.Facing {
+		if l, ok := tx.Block(pos.Side(cube.FaceDown)).(block.Ladder); ok && l.Facing == t.Facing {
 			return true
 		}
 	}
@@ -645,11 +704,20 @@ func (ai *MobAI) restituteMovement(m *Mob, xCollision, zCollision bool, movement
 	if ai.collidedVertically {
 		gravity := ai.effectiveGravity(m)
 		if ai.collidedBelow {
-			effect := m.tx.Block(cube.PosFromVec3(m.data.Pos.Sub(mgl64.Vec3{0, .2})))
-			if _, honey := effect.(block.HoneyBlock); -cur[1] <= gravity || honey {
+			if -cur[1] <= gravity {
 				restitution = 0
 			} else {
-				restitution = math.Max(restitution, blockBounceRestitution(effect))
+				effectPos := cube.PosFromVec3(m.data.Pos.Sub(mgl64.Vec3{0, .2}))
+				if rid, ok := m.tx.BlockRID(effectPos); ok && m.tx.World().BlockRegistry().BlockFlags(rid).IsHoneyBlock() {
+					restitution = 0
+				} else {
+					effect := m.tx.Block(effectPos)
+					if _, honey := effect.(block.HoneyBlock); honey {
+						restitution = 0
+					} else {
+						restitution = math.Max(restitution, blockBounceRestitution(effect))
+					}
+				}
 			}
 		}
 		gravityCompensation, drag := 0.0, 1.0
@@ -681,30 +749,42 @@ func floatEqual(a, b float64) bool { return math.Abs(b-a) < 1e-5 }
 // collide ports Entity.collide: the movement of the mob through the blocks
 // around it, stepping up onto those as high as its step height.
 func (ai *MobAI) collide(m *Mob, movement mgl64.Vec3) mgl64.Vec3 {
+	if movement == (mgl64.Vec3{}) && ai.onGround {
+		return movement
+	}
 	box := m.BBox()
+	if movement[0] == 0 && movement[2] == 0 && movement[1] < 0 && !ai.hasCap(m, mobCapFluidStander) {
+		minY := box.Min()[1]
+		if minY == math.Floor(minY) {
+			floorPos := cube.Pos{int(math.Floor(box.Min()[0])), int(minY) - 1, int(math.Floor(box.Min()[2]))}
+			if rid, ok := m.tx.BlockRID(floorPos); ok && m.tx.World().BlockRegistry().BlockFlags(rid).FullCubeCollision() {
+				return mgl64.Vec3{}
+			}
+		}
+	}
 	step := ai.StepHeight
 	if ai.ridden {
 		// LivingEntity.getMaxUpStep: a mob a player steers steps up a block.
 		step = math.Max(step, 1)
 	}
-	area := box.Extend(movement).Extend(mgl64.Vec3{0, step})
-	colliders, ok := ai.pre.collisions.boxesAround(m.tx, area)
+	area := box.Extend(movement)
+	if movement[0] != 0 || movement[2] != 0 {
+		area = area.Extend(mgl64.Vec3{0, step})
+	}
+	var stackBoxes [32]cube.BBox
+	colliders, ok := ai.pre.collisions.boxesAround(m.tx, area, stackBoxes[:0])
 	if !ok {
-		colliders = blockBBoxsAround(m.tx, area)
+		colliders = blockBBoxsAround(m.tx, area, stackBoxes[:0])
 	} else if verifyPrefetch {
-		if live := blockBBoxsAround(m.tx, area); !slices.Equal(live, colliders) {
-			panic(fmt.Sprintf("prefetched collisions %v differ from %v for %v", colliders, live, area))
+		var liveStack [32]cube.BBox
+		if live := blockBBoxsAround(m.tx, area, liveStack[:0]); !slices.Equal(live, colliders) {
+			panic(fmt.Sprintf("prefetched collisions %v differ from %v for %v", slices.Clone(colliders), slices.Clone(live), area))
 		}
 		verifiedCollisions++
 	}
-	if _, ok := m.Behaviour().(mobFluidStander); ok {
-		colliders = fluidSurfaces(m, box.Extend(movement).Extend(mgl64.Vec3{0, step}), colliders)
+	if ai.hasCap(m, mobCapFluidStander) {
+		colliders = fluidSurfaces(m, area, colliders)
 	}
-	defer func() {
-		if colliders != nil {
-			blockBBoxPool.Put(colliders[:0]) //nolint:staticcheck // SA6002: boxing the slice costs 24 bytes, less than the boxes it reuses; pointers would change every caller of blockBBoxsAround.
-		}
-	}()
 	result := movement
 	if movement.LenSqr() != 0 {
 		result = collideWithBoxes(movement, box, colliders)
@@ -719,7 +799,8 @@ func (ai *MobAI) collide(m *Mob, movement mgl64.Vec3) mgl64.Vec3 {
 		grounded = box.Translate(mgl64.Vec3{0, result[1]})
 	}
 	skip := result[1]
-	var candidates []float64
+	var candBuf [16]float64
+	candidates := candBuf[:0]
 	for _, bb := range colliders {
 		for _, coord := range [2]float64{bb.Min()[1], bb.Max()[1]} {
 			rel := coord - grounded.Min()[1]
@@ -746,6 +827,7 @@ func (ai *MobAI) collide(m *Mob, movement mgl64.Vec3) mgl64.Vec3 {
 func fluidSurfaces(m *Mob, box cube.BBox, colliders []cube.BBox) []cube.BBox {
 	grown := box.Grow(.25)
 	bottom := m.data.Pos[1]
+	reg := m.tx.World().BlockRegistry()
 	for y := int(math.Floor(grown.Min()[1])); y < int(math.Ceil(grown.Max()[1])); y++ {
 		if bottom <= float64(y)+.5-1e-5 {
 			continue
@@ -753,11 +835,21 @@ func fluidSurfaces(m *Mob, box cube.BBox, colliders []cube.BBox) []cube.BBox {
 		for x := int(math.Floor(grown.Min()[0])); x < int(math.Ceil(grown.Max()[0])); x++ {
 			for z := int(math.Floor(grown.Min()[2])); z < int(math.Ceil(grown.Max()[2])); z++ {
 				pos := cube.Pos{x, y, z}
-				l, ok := m.tx.Liquid(pos)
-				if !ok || l.LiquidDepth() != 8 || l.LiquidFalling() || !standsOnFluid(m, l) {
+				lrid, ok := m.tx.LiquidRID(pos)
+				if !ok {
 					continue
 				}
-				if above, ok := m.tx.Liquid(pos.Side(cube.FaceUp)); ok && above.LiquidType() == l.LiquidType() {
+				kind, depth, falling := reg.LiquidInfo(lrid)
+				if kind == liquidKindNone || depth != 8 || falling {
+					continue
+				}
+				if arid, ok := m.tx.LiquidRID(pos.Side(cube.FaceUp)); ok {
+					if akind, _, _ := reg.LiquidInfo(arid); akind == kind {
+						continue
+					}
+				}
+				l, ok := m.tx.Liquid(pos)
+				if !ok || !standsOnFluid(m, l) {
 					continue
 				}
 				colliders = append(colliders, cube.Box(float64(x), float64(y), float64(z), float64(x+1), float64(y)+.5, float64(z+1)))
@@ -823,8 +915,8 @@ type mobFluidPusher interface {
 // it along their currents, as Entity.updateFluidInteraction does.
 func (ai *MobAI) updateFluids(m *Mob) {
 	pushed := true
-	if p, ok := m.Behaviour().(mobFluidPusher); ok {
-		pushed = p.pushedByFluid(m)
+	if ai.hasCap(m, mobCapFluidPusher) {
+		pushed = m.Behaviour().(mobFluidPusher).pushedByFluid(m)
 	}
 	box := m.BBox()
 	c, ok := ai.pre.prefetchedFluids(m.tx, box)
@@ -845,6 +937,10 @@ func (ai *MobAI) updateFluids(m *Mob) {
 // liquidHeight ports FlowingFluid.getHeight: a liquid under the same liquid
 // fills its block, others amount/9 of it.
 func liquidHeight(tx blockReader, pos cube.Pos, l world.Liquid) float64 {
+	kind := liquidKindOf(l.LiquidType())
+	if kind != liquidKindNone {
+		return liquidHeightInfo(tx, tx.World().BlockRegistry(), pos, kind, uint8(max(0, min(8, l.LiquidDepth()))), l.LiquidFalling())
+	}
 	if above, ok := tx.Liquid(pos.Side(cube.FaceUp)); ok && above.LiquidType() == l.LiquidType() {
 		return 1
 	}

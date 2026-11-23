@@ -107,24 +107,39 @@ func (ai *MobAI) prefetch(e *Ent, self world.Entity, v *world.ReadView) {
 	box := self.H().Type().BBox(self).Translate(e.data.Pos)
 
 	// updateFluids measures the fluids around the box the mob starts its
-	// tick with. Measuring with currents as well serves either case.
+	// tick with. Only prefetch fluids when the surrounding subchunks may
+	// contain liquid; otherwise the owner's MayContainLiquid check is cheaper.
+	shrunk := box.Grow(-.001)
+	minX, minY, minZ := int(math.Floor(shrunk.Min()[0])), int(math.Floor(shrunk.Min()[1])), int(math.Floor(shrunk.Min()[2]))
+	maxX, maxY, maxZ := int(math.Ceil(shrunk.Max()[0]))-1, int(math.Ceil(shrunk.Max()[1]))-1, int(math.Ceil(shrunk.Max()[2]))-1
+	fLo, fHi := cube.Pos{minX, minY, minZ}, cube.Pos{maxX, maxY, maxZ}
 	v.Reset()
-	fluid := measureFluids(v, box, true)
-	lo, hi := fluidReadRange(box)
-	if !v.Missed() && p.fluidCols.record(v, lo, hi) {
-		p.fluid, p.fluidBox, p.fluidOK = fluid, box, true
+	if v.MayContainLiquid(fLo, fHi) {
+		fluid := measureFluidsRange(v, box.Min()[1], shrunk.Min()[1], minX, minY, minZ, maxX, maxY, maxZ, true)
+		lo, hi := fLo, fHi
+		if fluid.waterHeight > 0 || fluid.lavaHeight > 0 {
+			lo, hi = fluidReadRange(box)
+		}
+		if !v.Missed() && p.fluidCols.record(v, lo, hi) {
+			p.fluid, p.fluidBox, p.fluidOK = fluid, box, true
+		}
 	}
 
 	// collide reads the blocks around the box extended by the movement of
-	// the tick and the step height. Read with room for the velocity the mob
-	// has now and for stepping up a block.
+	// the tick and the step height. Skip collision prefetch when the mob is
+	// stationary on the ground with no active navigation or steering input,
+	// because MobAI.collide resolves pure downward floor contact via a single
+	// RID lookup on the owner.
 	vel := e.data.Vel
-	horizontal := .75 + math.Max(math.Abs(vel[0]), math.Abs(vel[2]))
-	down := .75 + math.Abs(vel[1])
-	up := math.Max(ai.StepHeight, 1) + .5 + math.Abs(vel[1])
-	area := cube.Box(box.Min()[0]-horizontal, box.Min()[1]-down, box.Min()[2]-horizontal, box.Max()[0]+horizontal, box.Max()[1]+up, box.Max()[2]+horizontal)
-	v.Reset()
-	p.collisions.read(v, area)
+	stationary := vel[0] == 0 && vel[2] == 0 && (vel[1] == 0 || ai.onGround) && !ai.nav.InProgress() && ai.xxa == 0 && ai.zza == 0
+	if !stationary {
+		horizontal := .75 + math.Max(math.Abs(vel[0]), math.Abs(vel[2]))
+		down := .75 + math.Abs(vel[1])
+		up := math.Max(ai.StepHeight, 1) + .5 + math.Abs(vel[1])
+		area := cube.Box(box.Min()[0]-horizontal, box.Min()[1]-down, box.Min()[2]-horizontal, box.Max()[0]+horizontal, box.Max()[1]+up, box.Max()[2]+horizontal)
+		v.Reset()
+		p.collisions.read(v, area)
+	}
 
 	ai.prefetchPath(e, self, v)
 }
@@ -142,19 +157,39 @@ func fluidReadRange(box cube.BBox) (cube.Pos, cube.Pos) {
 func (c *collisionPrefetch) read(v *world.ReadView, area cube.BBox) {
 	c.ok = false
 	c.cells, c.boxes = c.cells[:0], c.boxes[:0]
-	min, max := area.Min(), area.Max()
-	c.lo = cube.Pos{int(math.Floor(min[0])), int(math.Floor(min[1])), int(math.Floor(min[2]))}
-	c.hi = cube.Pos{int(math.Ceil(max[0])), int(math.Ceil(max[1])), int(math.Ceil(max[2]))}
-	for y := c.lo[1]; y < c.hi[1]; y++ {
+	lo, hi := area.Min(), area.Max()
+	c.lo = cube.Pos{int(math.Floor(lo[0])), int(math.Floor(lo[1])), int(math.Floor(lo[2]))}
+	c.hi = cube.Pos{int(math.Ceil(hi[0])), int(math.Ceil(hi[1])), int(math.Ceil(hi[2]))}
+	reg := v.World().BlockRegistry()
+	rng := v.Range()
+	yStart := max(c.lo[1], rng[0])
+	yEnd := min(c.hi[1], rng[1]+1)
+	for y := yStart; y < yEnd; y++ {
+		fy := float64(y)
 		for x := c.lo[0]; x < c.hi[0]; x++ {
+			fx := float64(x)
 			for z := c.lo[2]; z < c.hi[2]; z++ {
 				pos := cube.Pos{x, y, z}
+				rid, ok := v.BlockRID(pos)
+				if !ok {
+					return
+				}
+				flags := reg.BlockFlags(rid)
+				if flags.EmptyCollision() {
+					continue
+				}
+				from := int32(len(c.boxes))
+				if flags.FullCubeCollision() {
+					fz := float64(z)
+					c.boxes = append(c.boxes, cube.Box(fx, fy, fz, fx+1, fy+1, fz+1))
+					c.cells = append(c.cells, collisionCell{pos: pos, from: from, to: int32(len(c.boxes))})
+					continue
+				}
 				boxes := v.Block(pos).Model().BBox(pos, v)
 				if len(boxes) == 0 {
 					continue
 				}
-				from := int32(len(c.boxes))
-				offset := mgl64.Vec3{float64(x), float64(y), float64(z)}
+				offset := mgl64.Vec3{fx, fy, float64(z)}
 				for _, bb := range boxes {
 					c.boxes = append(c.boxes, bb.Translate(offset))
 				}
@@ -168,42 +203,31 @@ func (c *collisionPrefetch) read(v *world.ReadView, area cube.BBox) {
 	}
 }
 
-// boxesAround returns what blockBBoxsAround(tx, box) returns, from the
-// prefetched boxes, if they cover it and are current.
-func (c *collisionPrefetch) boxesAround(tx *world.Tx, box cube.BBox) ([]cube.BBox, bool) {
+// boxesAround appends what blockBBoxsAround(tx, box, buf) returns from the
+// prefetched boxes, if they cover box and are current.
+func (c *collisionPrefetch) boxesAround(tx *world.Tx, box cube.BBox, buf []cube.BBox) ([]cube.BBox, bool) {
 	if !c.ok {
-		return nil, false
+		return buf, false
 	}
 	grown := box.Grow(0.25)
 	min, max := grown.Min(), grown.Max()
 	lo := cube.Pos{int(math.Floor(min[0])), int(math.Floor(min[1])), int(math.Floor(min[2]))}
 	hi := cube.Pos{int(math.Ceil(max[0])), int(math.Ceil(max[1])), int(math.Ceil(max[2]))}
 	if lo[0] < c.lo[0] || lo[1] < c.lo[1] || lo[2] < c.lo[2] || hi[0] > c.hi[0] || hi[1] > c.hi[1] || hi[2] > c.hi[2] {
-		return nil, false
+		return buf, false
 	}
 	if !c.cols.current(tx) {
 		c.ok = false
-		return nil, false
+		return buf, false
 	}
-	var out []cube.BBox
 	for _, cell := range c.cells {
 		p := cell.pos
 		if p[0] < lo[0] || p[0] >= hi[0] || p[1] < lo[1] || p[1] >= hi[1] || p[2] < lo[2] || p[2] >= hi[2] {
 			continue
 		}
-		if out == nil {
-			predicted := (hi[0]-lo[0])*(hi[1]-lo[1])*(hi[2]-lo[2]) + 2
-			out = blockBBoxPool.Get().([]cube.BBox)
-			if cap(out) < predicted {
-				blockBBoxPool.Put(out[:0]) //nolint:staticcheck // SA6002: boxing the slice costs 24 bytes, less than the boxes it reuses; pointers would change every caller of blockBBoxsAround.
-				out = make([]cube.BBox, 0, predicted)
-			} else {
-				out = out[:0]
-			}
-		}
-		out = append(out, c.boxes[cell.from:cell.to]...)
+		buf = append(buf, c.boxes[cell.from:cell.to]...)
 	}
-	return out, true
+	return buf, true
 }
 
 // prefetchedFluids returns the fluids prefetched for box if they are
@@ -276,12 +300,12 @@ func (ai *MobAI) prefetchPath(e *Ent, self world.Entity, v *world.ReadView) {
 	if n.vehicle != nil || n.wallClimber || n.swim != nil || n.amphibious || n.eval.fly || n.eval.amphibious || n.eval.frog || n.eval.blocked != nil || ai.target == nil {
 		return
 	}
-	if _, listens := e.Behaviour().(mobPathfindingListener); listens {
+	if !ai.started || ai.caps&mobCapPathfindingListener != 0 {
+		// The id that staggers the goals and capability flags are known once the AI has started.
 		return
 	}
 	melee, wrapped := ai.findMeleeAttackGoal()
-	if melee == nil || !ai.started {
-		// The id that staggers the goals is known once the AI has started.
+	if melee == nil {
 		return
 	}
 	targetPos, ok := v.EntityPosition(ai.target)
@@ -330,6 +354,9 @@ func (ai *MobAI) prefetchPath(e *Ent, self world.Entity, v *world.ReadView) {
 	maxFall := 3 + max(int(l.Health()-l.MaxHealth()*.33)-(3-difficultyID(v.World().Difficulty()))*4, 0)
 	visited := int(float64(n.maxVisitedNodes) * n.maxVisitedNodesMultiplier)
 	maxPathLength := n.maxPathLength(m)
+	if _, backedOff := n.unreachableBackedOff(v, cube.PosFromVec3(e.data.Pos), target, 0, maxPathLength, tick); backedOff {
+		return
+	}
 
 	v.Reset()
 	v.Track()

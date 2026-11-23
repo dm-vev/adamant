@@ -75,11 +75,7 @@ func (t *TNT) Tick(tx *world.Tx, current int64) {
 		return
 	}
 	if behaviour.remainingFuse%(time.Second/4) == 0 {
-		viewers := tx.Viewers(t.Position())
-		for _, viewer := range viewers {
-			viewer.ViewEntityState(t)
-		}
-		tx.ReleaseViewers(viewers)
+		world.BroadcastEntityState(tx, t)
 	}
 }
 

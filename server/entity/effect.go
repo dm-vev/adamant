@@ -75,11 +75,7 @@ func refreshEffectState(entity Living, action effectAction) {
 	if _, inWorld := entity.H().Entity(tx); !inWorld {
 		return
 	}
-	viewers := tx.Viewers(entity.Position())
-	for _, v := range viewers {
-		v.ViewEntityState(entity)
-	}
-	tx.ReleaseViewers(viewers)
+	world.BroadcastEntityState(tx, entity)
 }
 
 // Effect returns the effect instance and true if the entity has the effect. If not found, it will return an empty
@@ -168,11 +164,7 @@ func (m *EffectManager) Tick(entity Living, tx *world.Tx) {
 	}
 
 	if update {
-		viewers := tx.Viewers(entity.Position())
-		for _, v := range viewers {
-			v.ViewEntityState(entity)
-		}
-		tx.ReleaseViewers(viewers)
+		world.BroadcastEntityState(tx, entity)
 	}
 }
 

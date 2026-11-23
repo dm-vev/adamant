@@ -19,6 +19,9 @@ func (s *speciesState) mobAI() *MobAI { return &s.ai }
 
 // speciesSelf returns the entity of a species mob.
 func speciesSelf(e *Ent, k speciesKind) world.Entity {
+	if w := e.living(); w != e {
+		return w
+	}
 	m := &speciesMob{Ent: e, kind: k}
 	switch k {
 	case spiderSpecies:
@@ -66,7 +69,11 @@ func (s *speciesState) aiTick(e *Ent, tx *world.Tx) *Movement {
 	if s.kind == endermanSpecies {
 		s.updatePersistentAnger(ai.Mob(e, self), true)
 	}
-	mov := ai.Tick(e, self, s.registerGoals)
+	var register func(m *Mob)
+	if !ai.started {
+		register = s.registerGoals
+	}
+	mov := ai.Tick(e, self, register)
 	if s.kind == endermanSpecies && !s.dead {
 		tickWaterSensitive(ai.Mob(e, self))
 	}

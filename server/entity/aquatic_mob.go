@@ -335,11 +335,7 @@ func (b *AquaticMobBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 }
 
 func (b *AquaticMobBehaviour) viewPuffState(e *Ent) {
-	viewers := e.tx.Viewers(e.Position())
-	for _, v := range viewers {
-		v.ViewEntityState(aquaticWorldEntity(e))
-	}
-	e.tx.ReleaseViewers(viewers)
+	world.BroadcastEntityState(e.tx, aquaticWorldEntity(e))
 }
 func (a *AquaticMob) Health() float64        { return a.behaviour().health.Health() }
 func (a *AquaticMob) MaxHealth() float64     { return a.behaviour().health.MaxHealth() }

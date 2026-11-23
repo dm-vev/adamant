@@ -348,10 +348,15 @@ func (lt *ProjectileBehaviour) hitBlockSurviving(e *Ent, r trace.BlockResult, m 
 		viewers := tx.Viewers(m.pos)
 		// Reuse the pooled buffer to broadcast the collision feedback, then hand it back so other projectiles
 		// in flight can benefit from the same allocation.
+		var b world.Broadcast
 		for _, v := range viewers {
 			v.ViewEntityTeleport(e, m.pos)
 			v.ViewEntityAction(e, ArrowShakeAction{Duration: time.Millisecond * 350})
-			v.ViewEntityState(e)
+			if sv, ok := v.(world.EntityStateSharedViewer); ok {
+				sv.ViewEntityStateShared(e, &b)
+			} else {
+				v.ViewEntityState(e)
+			}
 		}
 		tx.ReleaseViewers(viewers)
 		return

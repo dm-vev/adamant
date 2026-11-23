@@ -103,11 +103,7 @@ func (p *PassiveBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	}
 
 	if p.Fuse()%(time.Second/4) == 0 {
-		viewers := tx.Viewers(m.pos)
-		for _, v := range viewers {
-			v.ViewEntityState(e)
-		}
-		tx.ReleaseViewers(viewers)
+		world.BroadcastEntityState(tx, e)
 	}
 
 	if e.Age() > p.conf.ExistenceDuration {

@@ -119,13 +119,8 @@ func canTeleportTo(m *Mob, pos cube.Pos, canFly bool) bool {
 // boxCollidesWithBlocks reports if a box overlaps the collision box of a
 // block.
 func boxCollidesWithBlocks(tx *world.Tx, box cube.BBox) bool {
-	boxes := blockBBoxsAround(tx, box)
-	defer func() {
-		if boxes != nil {
-			blockBBoxPool.Put(boxes[:0]) //nolint:staticcheck // SA6002: boxing the slice costs 24 bytes, less than the boxes it reuses; pointers would change every caller of blockBBoxsAround.
-		}
-	}()
-	for _, b := range boxes {
+	var stackBoxes [32]cube.BBox
+	for _, b := range blockBBoxsAround(tx, box, stackBoxes[:0]) {
 		if b.IntersectsWith(box) {
 			return true
 		}

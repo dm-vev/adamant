@@ -620,11 +620,7 @@ func (b *BoatBehaviour) broadcastLink(e *Ent, tx *world.Tx, passenger *world.Ent
 }
 
 func (b *BoatBehaviour) broadcastState(e *Ent, tx *world.Tx) {
-	viewers := tx.Viewers(e.data.Pos)
-	for _, v := range viewers {
-		v.ViewEntityState(e)
-	}
-	tx.ReleaseViewers(viewers)
+	world.BroadcastEntityState(tx, e)
 }
 
 func (b *BoatBehaviour) broadcastPassengerState(tx *world.Tx, passenger *world.EntityHandle) {
@@ -635,11 +631,7 @@ func (b *BoatBehaviour) broadcastPassengerState(tx *world.Tx, passenger *world.E
 	if !ok {
 		return
 	}
-	viewers := tx.Viewers(ent.Position())
-	for _, v := range viewers {
-		v.ViewEntityState(ent)
-	}
-	tx.ReleaseViewers(viewers)
+	world.BroadcastEntityState(tx, ent)
 }
 
 func (b *BoatBehaviour) newMovement(e *Ent, tx *world.Tx, prevPos, prevVel mgl64.Vec3, prevRot cube.Rotation) *Movement {

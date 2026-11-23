@@ -304,12 +304,7 @@ func viewBreederAction(a breeder, action world.EntityAction) {
 }
 
 func viewBreederState(a breeder) {
-	tx := a.currentTx()
-	viewers := tx.Viewers(a.Position())
-	for _, v := range viewers {
-		v.ViewEntityState(a)
-	}
-	tx.ReleaseViewers(viewers)
+	world.BroadcastEntityState(a.currentTx(), a)
 }
 
 // mixedDyeColour ports DyeColor.getMixedColor: the colour of the dye a

@@ -291,11 +291,7 @@ func (m *Mount) b() *MountBehaviour { return m.Behaviour().(*MountBehaviour) }
 
 // updateState shows viewers the mount's flags and inventory.
 func (m *Mount) updateState() {
-	viewers := m.tx.Viewers(m.Position())
-	for _, v := range viewers {
-		v.ViewEntityState(m)
-	}
-	m.tx.ReleaseViewers(viewers)
+	world.BroadcastEntityState(m.tx, m)
 }
 func (m *Mount) SetVehicleInput(strafe, forward float64) {
 	b := m.b()

@@ -256,8 +256,12 @@ func (e *Ent) tickFire(tx *world.Tx) {
 		return
 	}
 	if ticks := int64(e.data.FireDuration / (time.Second / 20)); ticks%20 == 0 {
-		l, inLiquid := tx.Liquid(cube.PosFromVec3(e.data.Pos))
-		if living, ok := e.living().(Living); ok && !(inLiquid && l.LiquidType() == "lava") {
+		inLava := false
+		if lrid, ok := tx.LiquidRID(cube.PosFromVec3(e.data.Pos)); ok {
+			kind, _, _ := tx.World().BlockRegistry().LiquidInfo(lrid)
+			inLava = kind == liquidKindLava
+		}
+		if living, ok := e.living().(Living); ok && !inLava {
 			living.Hurt(1, block.FireDamageSource{})
 		}
 	}
@@ -334,11 +338,7 @@ func (e *Ent) updateState() {
 	if ent, ok := e.handle.WorldEntity(e.tx); ok {
 		self = ent
 	}
-	viewers := e.tx.Viewers(e.data.Pos)
-	for _, v := range viewers {
-		v.ViewEntityState(self)
-	}
-	e.tx.ReleaseViewers(viewers)
+	world.BroadcastEntityState(e.tx, self)
 }
 
 // AcceptItem returns whether the entity accepts the item stack passed. This may be called when a player tries to
@@ -386,7 +386,8 @@ func (e *Ent) TickBeforeBlockUpdates(tx *world.Tx, _ int64) {
 // in the void.
 func (e *Ent) Tick(tx *world.Tx, current int64) {
 	e.bindTx(tx)
-	if tc := e.portalTravelComputer(); tc != nil {
+	tc := e.portalTravelComputer()
+	if tc != nil {
 		tc.deferred = true
 		defer func() {
 			tc.deferred = false
@@ -405,7 +406,9 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 		e.data.Vel = mgl64.Vec3{}
 	}
 
-	checkButtonContactsBeforeMovement(tx, e.living())
+	if buttonProjectile(e) {
+		checkButtonContactsBeforeMovement(tx, e.living())
+	}
 	m := e.Behaviour().Tick(e, tx)
 	if e.handle.Closed() {
 		// The behaviour removed the entity, as an item merging into another
@@ -422,21 +425,22 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 	tickLeash(e, tx, m)
 	// The blocks act on the concrete mob, whose Hurt and SetOnFire may
 	// differ from those of Ent, as a strider is immune to fire.
+	living := e.living()
 	if e.data.OnGround && !e.handle.Closed() {
-		stepOnBlock(tx, e.living())
+		stepOnBlock(tx, living)
 	}
-	checkEntityInsiders(tx, e.living())
+	checkEntityInsiders(tx, living)
 	if e.data.FireDuration > 0 && e.inRain(tx) {
 		// Entity.move: rain puts out the fire of an entity.
 		e.SetOnFire(0)
 	}
 	if frozen := e.data.FrozenTicks; frozen > 0 || e.data.InPowderSnow || e.data.WasInPowderSnow {
-		TickFreezing(tx, e.living(), e.data)
+		TickFreezing(tx, living, e.data)
 		if e.data.FrozenTicks != frozen {
 			e.updateState()
 		}
 	}
-	if e.finishPendingPortalTravel(tx) {
+	if tc != nil && tc.finishPendingPortalTravel(e, tx) {
 		if m != nil {
 			m.releaseViewers()
 		}
@@ -450,7 +454,9 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 		}
 		m.Send()
 	}
-	e.stopPortalContact()
+	if tc != nil {
+		tc.StopPortalContact()
+	}
 	e.data.Age += time.Second / 20
 }
 
@@ -475,19 +481,6 @@ func (e *Ent) portalTravelComputer() *PortalTravelComputer {
 		return b.PortalTravelComputer()
 	}
 	return nil
-}
-
-func (e *Ent) stopPortalContact() {
-	if tc := e.portalTravelComputer(); tc != nil {
-		tc.StopPortalContact()
-	}
-}
-
-func (e *Ent) finishPendingPortalTravel(tx *world.Tx) bool {
-	if tc := e.portalTravelComputer(); tc != nil {
-		return tc.finishPendingPortalTravel(e, tx)
-	}
-	return false
 }
 
 // Close closes the Ent and removes the associated entity from the world.

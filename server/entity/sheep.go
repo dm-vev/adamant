@@ -100,8 +100,14 @@ func (s *Sheep) Tick(tx *world.Tx, current int64) {
 	s.Ent.Tick(tx, current)
 }
 func (b *SheepBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	sheep := &Sheep{Ent: e}
+	sheep, ok := e.living().(*Sheep)
+	if !ok {
+		sheep = &Sheep{Ent: e}
+	}
 	b.ai.MovementSpeed, b.ai.EyeHeight = b.speed, animalEyeHeight(1.235, b.ageTicks < 0)
+	if b.ai.started {
+		return animalTick(e, tx, sheep, &b.animalAI, nil)
+	}
 	return animalTick(e, tx, sheep, &b.animalAI, func(m *Mob) {
 		registerAnimalGoals(m, &b.animalAI, animalSpec{panic: 1.25, breed: 1, tempt: 1.1, tempting: sheep.breedingFood, parent: 1.1, stroll: 1}, NewEatBlockGoal(b.ate))
 	})

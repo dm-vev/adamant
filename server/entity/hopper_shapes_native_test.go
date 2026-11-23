@@ -55,10 +55,8 @@ func TestHopperCollisionShapesMatchExecutedClient(t *testing.T) {
 				}
 				source := hopperShapeSource{position: c.Position, block: b}
 				query := cube.Box(-1, -1, -1, 2, 2, 2).Translate(c.Position.Vec3())
-				got := nativeBlockBBoxsAround(source, query, cube.Range{-64, 319})
-				if got != nil {
-					defer blockBBoxPool.Put(got[:0]) //nolint:staticcheck // SA6002: a test hands back what blockBBoxsAround lent, as its callers do.
-				}
+				var buf [16]cube.BBox
+				got := nativeBlockBBoxsAround(source, query, cube.Range{-64, 319}, buf[:0])
 				if len(got) != len(c.Boxes) {
 					t.Fatalf("shape count=%d, native=%d", len(got), len(c.Boxes))
 				}

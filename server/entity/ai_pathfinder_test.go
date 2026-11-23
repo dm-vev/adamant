@@ -391,3 +391,108 @@ func TestFindGroundPathWaterFireAndReuse(t *testing.T) {
 		}
 	})
 }
+
+func TestUnreachablePathBackoffAndInvalidation(t *testing.T) {
+	t.Parallel()
+	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
+	defer w.Close()
+
+	var zombieH *world.EntityHandle
+	target := cube.Pos{10, 64, 0}
+	<-w.Exec(func(tx *world.Tx) {
+		for x := -4; x <= 14; x++ {
+			for z := -6; z <= 6; z++ {
+				tx.SetBlock(cube.Pos{x, 63, z}, block.Stone{}, nil)
+			}
+		}
+		// Enclose target in a 3x3 stone box.
+		for x := 9; x <= 11; x++ {
+			for z := -1; z <= 1; z++ {
+				if x == 10 && z == 0 {
+					continue
+				}
+				tx.SetBlock(cube.Pos{x, 64, z}, block.Stone{}, nil)
+				tx.SetBlock(cube.Pos{x, 65, z}, block.Stone{}, nil)
+				tx.SetBlock(cube.Pos{x, 66, z}, block.Stone{}, nil)
+			}
+		}
+		m := testSpawnMob(t, tx, NewZombie(world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 64, 0.5}}))
+		m.AI.NoAI = true
+		m.AI.onGround = true
+		zombieH = m.H()
+
+		p := m.AI.nav.CreatePath(m, target, 0)
+		if p == nil || p.CanReach() {
+			t.Fatalf("expected unreachable partial path, got %v", p)
+		}
+		if m.AI.nav.failStreak != 1 {
+			t.Fatalf("failStreak = %d, want 1", m.AI.nav.failStreak)
+		}
+		firstFailTick := m.AI.nav.failTick
+		if m.AI.nav.failUntil != firstFailTick+20 {
+			t.Fatalf("failUntil = %d, want %d", m.AI.nav.failUntil, firstFailTick+20)
+		}
+	})
+
+	// Advance 5 ticks (within 20-tick backoff): CreatePath should return cached unreachable path without escalating streak.
+	for range 5 {
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		e, _ := zombieH.Entity(tx)
+		z := e.(*Zombie)
+		ai, _ := z.Ent.mobAI()
+		m := ai.Mob(z.Ent, z)
+		m.AI.onGround = true
+		m.AI.nav.path = nil
+		prevTick := m.AI.nav.failTick
+		p := m.AI.nav.CreatePath(m, target, 0)
+		if p == nil || p.CanReach() {
+			t.Fatalf("expected backed-off partial path, got %v", p)
+		}
+		if m.AI.nav.failStreak != 1 || m.AI.nav.failTick != prevTick {
+			t.Fatalf("expected backoff hit (streak=1, failTick=%d), got streak=%d failTick=%d", prevTick, m.AI.nav.failStreak, m.AI.nav.failTick)
+		}
+	})
+
+	// Advance past initial 20-tick cooldown: retry should escalate streak to 2 with 40-tick cooldown.
+	for range 16 {
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		e, _ := zombieH.Entity(tx)
+		z := e.(*Zombie)
+		ai, _ := z.Ent.mobAI()
+		m := ai.Mob(z.Ent, z)
+		m.AI.onGround = true
+		m.AI.nav.path = nil
+		p := m.AI.nav.CreatePath(m, target, 0)
+		if p == nil || p.CanReach() {
+			t.Fatalf("expected unreachable path on retry, got %v", p)
+		}
+		if m.AI.nav.failStreak != 2 || m.AI.nav.failUntil != m.GameTime()+40 {
+			t.Fatalf("expected escalated streak=2 and +40 cooldown, got streak=%d until=%d now=%d", m.AI.nav.failStreak, m.AI.nav.failUntil, m.GameTime())
+		}
+
+		// Break the wall in the same chunk: backoff must invalidate immediately on the next tick.
+		tx.SetBlock(cube.Pos{9, 64, 0}, block.Air{}, nil)
+		tx.SetBlock(cube.Pos{9, 65, 0}, block.Air{}, nil)
+	})
+
+	w.AdvanceTick()
+	<-w.Exec(func(tx *world.Tx) {
+		e, _ := zombieH.Entity(tx)
+		z := e.(*Zombie)
+		ai, _ := z.Ent.mobAI()
+		m := ai.Mob(z.Ent, z)
+		m.AI.onGround = true
+		m.AI.nav.path = nil
+		p := m.AI.nav.CreatePath(m, target, 0)
+		if p == nil || !p.CanReach() {
+			t.Fatalf("expected newly reachable path after breaking wall, got %v", p)
+		}
+		if m.AI.nav.failStreak != 0 {
+			t.Fatalf("expected failStreak cleared after reachable path, got %d", m.AI.nav.failStreak)
+		}
+	})
+}

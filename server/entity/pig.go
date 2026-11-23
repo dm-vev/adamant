@@ -146,8 +146,14 @@ func (p *Pig) Tick(tx *world.Tx, t int64) {
 	}
 }
 func (b *PigBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	pig := &Pig{Ent: e}
+	pig, ok := e.living().(*Pig)
+	if !ok {
+		pig = &Pig{Ent: e}
+	}
 	b.ai.MovementSpeed, b.ai.EyeHeight = b.speed, animalEyeHeight(.765, b.age < 0)
+	if b.ai.started {
+		return animalTick(e, tx, pig, &b.animalAI, nil)
+	}
 	return animalTick(e, tx, pig, &b.animalAI, func(m *Mob) { b.registerGoals(m, pig) })
 }
 
