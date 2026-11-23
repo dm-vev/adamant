@@ -151,6 +151,28 @@ type Mob struct {
 	Self world.Entity
 }
 
+// AddGoal registers g in the mob's goal selector with the priority given.
+func (ai *MobAI) AddGoal(priority int, g Goal) {
+	ai.Goals.Add(priority, g)
+}
+
+// AddTargetGoal registers g in the mob's target goal selector with the priority
+// given.
+func (ai *MobAI) AddTargetGoal(priority int, g Goal) {
+	ai.Targets.Add(priority, g)
+}
+
+// AddGoal registers g in the mob's goal selector with the priority given.
+func (m *Mob) AddGoal(priority int, g Goal) {
+	m.AI.Goals.Add(priority, g)
+}
+
+// AddTargetGoal registers g in the mob's target goal selector with the priority
+// given.
+func (m *Mob) AddTargetGoal(priority int, g Goal) {
+	m.AI.Targets.Add(priority, g)
+}
+
 // Mob returns the mob with the AI passed as the entity self of e.
 func (ai *MobAI) Mob(e *Ent, self world.Entity) *Mob {
 	if ai.mob.Ent == nil {

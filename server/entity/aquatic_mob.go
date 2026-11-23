@@ -15,12 +15,12 @@ import (
 )
 
 var (
-	AxolotlType      = aquaticMobType{id: "minecraft:axolotl", width: .75, height: .42, health: 14}
-	CodType          = aquaticMobType{id: "minecraft:cod", width: .5, height: .3, health: 3}
-	PufferfishType   = aquaticMobType{id: "minecraft:pufferfish", width: .7, height: .7, health: 3}
-	SalmonType       = aquaticMobType{id: "minecraft:salmon", width: .7, height: .4, health: 3}
-	TadpoleType      = aquaticMobType{id: "minecraft:tadpole", width: .4, height: .3, health: 6}
-	TropicalFishType = aquaticMobType{id: "minecraft:tropical_fish", width: .5, height: .4, health: 3}
+	axolotlType      = aquaticMobType{id: "minecraft:axolotl", width: .75, height: .42, health: 14}
+	codType          = aquaticMobType{id: "minecraft:cod", width: .5, height: .3, health: 3}
+	pufferfishType   = aquaticMobType{id: "minecraft:pufferfish", width: .7, height: .7, health: 3}
+	salmonType       = aquaticMobType{id: "minecraft:salmon", width: .7, height: .4, health: 3}
+	tadpoleType      = aquaticMobType{id: "minecraft:tadpole", width: .4, height: .3, health: 6}
+	tropicalFishType = aquaticMobType{id: "minecraft:tropical_fish", width: .5, height: .4, health: 3}
 )
 
 type aquaticMobType struct {
@@ -30,42 +30,42 @@ type aquaticMobType struct {
 
 func (t aquaticMobType) EncodeEntity() string { return t.id }
 func (t aquaticMobType) Open(tx *world.Tx, h *world.EntityHandle, data *world.EntityData) world.Entity {
-	conf := AquaticMobConfig{ID: t.id, MaxHealth: t.health}
+	conf := aquaticMobConfig{ID: t.id, MaxHealth: t.health}
 	if t.id == "minecraft:salmon" {
 		conf.Variant = 1
 	}
 	if data.Data == nil {
 		conf.Apply(data)
 	}
-	if behaviour := data.Data.(*AquaticMobBehaviour); h != nil && !behaviour.randomSeeded {
+	if behaviour := data.Data.(*aquaticMobBehaviour); h != nil && !behaviour.randomSeeded {
 		behaviour.random, behaviour.randomSeeded = openRandom(tx, h), true
 	}
-	base := &AquaticMob{Ent: &Ent{tx: tx, handle: h, data: data}}
+	base := &aquaticMob{Ent: &Ent{tx: tx, handle: h, data: data}}
 	switch t.id {
 	case "minecraft:axolotl":
-		return &Axolotl{AquaticMob: base}
+		return &Axolotl{aquaticMob: base}
 	case "minecraft:cod":
-		return &Cod{AquaticMob: base}
+		return &cod{aquaticMob: base}
 	case "minecraft:pufferfish":
-		return &Pufferfish{AquaticMob: base}
+		return &pufferfish{aquaticMob: base}
 	case "minecraft:salmon":
-		return &Salmon{AquaticMob: base}
+		return &Salmon{aquaticMob: base}
 	case "minecraft:tadpole":
-		return &Tadpole{AquaticMob: base}
+		return &tadpole{aquaticMob: base}
 	default:
-		return &TropicalFish{AquaticMob: base}
+		return &TropicalFish{aquaticMob: base}
 	}
 }
 func (t aquaticMobType) BBox(e world.Entity) cube.BBox {
 	w, h := t.width, t.height
 	if t.id == "minecraft:axolotl" && e != nil {
-		if mob, ok := e.(interface{ behaviour() *AquaticMobBehaviour }); ok && mob.behaviour().age < 0 {
+		if mob, ok := e.(interface{ behaviour() *aquaticMobBehaviour }); ok && mob.behaviour().age < 0 {
 			// Axolotl.BABY_DIMENSIONS.
 			w, h = .375, .21
 		}
 	}
 	if t.id == "minecraft:pufferfish" && e != nil {
-		if mob, ok := e.(interface{ behaviour() *AquaticMobBehaviour }); ok {
+		if mob, ok := e.(interface{ behaviour() *aquaticMobBehaviour }); ok {
 			var scale float64
 			if state := mob.behaviour().puffState; state == 0 {
 				scale = .5
@@ -78,7 +78,7 @@ func (t aquaticMobType) BBox(e world.Entity) cube.BBox {
 		}
 	}
 	if t.id == "minecraft:salmon" && e != nil {
-		if mob, ok := e.(interface{ behaviour() *AquaticMobBehaviour }); ok {
+		if mob, ok := e.(interface{ behaviour() *aquaticMobBehaviour }); ok {
 			scale := 1.0
 			switch mob.behaviour().variant {
 			case 0:
@@ -90,31 +90,31 @@ func (t aquaticMobType) BBox(e world.Entity) cube.BBox {
 		}
 	}
 	if t.id == "minecraft:axolotl" && e != nil {
-		if mob, ok := e.(interface{ behaviour() *AquaticMobBehaviour }); ok && mob.behaviour().age < 0 {
+		if mob, ok := e.(interface{ behaviour() *aquaticMobBehaviour }); ok && mob.behaviour().age < 0 {
 			w, h = .375, .21
 		}
 	}
 	return cube.Box(-w/2, 0, -w/2, w/2, h, w/2)
 }
 func aquaticWorldEntity(e *Ent) world.Entity {
-	base := &AquaticMob{Ent: e}
+	base := &aquaticMob{Ent: e}
 	switch base.behaviour().id {
 	case "minecraft:axolotl":
-		return &Axolotl{AquaticMob: base}
+		return &Axolotl{aquaticMob: base}
 	case "minecraft:cod":
-		return &Cod{AquaticMob: base}
+		return &cod{aquaticMob: base}
 	case "minecraft:pufferfish":
-		return &Pufferfish{AquaticMob: base}
+		return &pufferfish{aquaticMob: base}
 	case "minecraft:salmon":
-		return &Salmon{AquaticMob: base}
+		return &Salmon{aquaticMob: base}
 	case "minecraft:tadpole":
-		return &Tadpole{AquaticMob: base}
+		return &tadpole{aquaticMob: base}
 	default:
-		return &TropicalFish{AquaticMob: base}
+		return &TropicalFish{aquaticMob: base}
 	}
 }
 func (t aquaticMobType) DecodeNBT(nbt map[string]any, data *world.EntityData) {
-	c := AquaticMobConfig{ID: t.id, MaxHealth: t.health}
+	c := aquaticMobConfig{ID: t.id, MaxHealth: t.health}
 	if t.id == "minecraft:salmon" {
 		c.Variant = 1
 	}
@@ -146,11 +146,11 @@ func (t aquaticMobType) DecodeNBT(nbt map[string]any, data *world.EntityData) {
 	}
 	c.Apply(data)
 	if t.id == "minecraft:axolotl" {
-		data.Data.(*AquaticMobBehaviour).breeding.decodeNBT(nbt)
+		data.Data.(*aquaticMobBehaviour).breeding.decodeNBT(nbt)
 	}
 }
 func (aquaticMobType) EncodeNBT(data *world.EntityData) map[string]any {
-	b := data.Data.(*AquaticMobBehaviour)
+	b := data.Data.(*aquaticMobBehaviour)
 	m := map[string]any{"Health": float32(b.health.Health()), "Age": int32(b.age), "FromBucket": boolByte(b.id == "minecraft:tadpole" || b.fromBucket)}
 	maps.Copy(m, b.bedrockVariantNBT())
 	m["adamant:java"] = map[string]any{"Variant": int32(b.variant), "BucketVariantTag": int32(b.bucketVariant), "PuffState": int32(b.puffState)}
@@ -169,7 +169,7 @@ var bedrockAxolotlVariants = [...]int32{0, 3, 2, 1, 4}
 
 // bedrockVariantNBT returns the variant fields BDS saves for the mob,
 // converted from the Java variant kept.
-func (b *AquaticMobBehaviour) bedrockVariantNBT() map[string]any {
+func (b *aquaticMobBehaviour) bedrockVariantNBT() map[string]any {
 	m := map[string]any{"Variant": int32(0), "MarkVariant": int32(0), "Color": byte(0), "Color2": byte(0)}
 	switch b.id {
 	case "minecraft:axolotl":
@@ -187,7 +187,7 @@ func (b *AquaticMobBehaviour) bedrockVariantNBT() map[string]any {
 // BedrockVariant returns the variant, mark variant and colours that Bedrock
 // draws the mob by, which the world format saves and Bedrock clients are
 // sent.
-func (a *AquaticMob) BedrockVariant() (variant, mark int32, color, color2 byte) {
+func (a *aquaticMob) BedrockVariant() (variant, mark int32, color, color2 byte) {
 	m := a.behaviour().bedrockVariantNBT()
 	return m["Variant"].(int32), m["MarkVariant"].(int32), m["Color"].(byte), m["Color2"].(byte)
 }
@@ -197,7 +197,7 @@ func (a *AquaticMob) BedrockVariant() (variant, mark int32, color, color2 byte) 
 // from before Adamant wrote the Bedrock fields, which alone have PuffState
 // at the top level.
 func aquaticJavaState(nbt map[string]any) (map[string]any, bool) {
-	if java := ReadNativeMobJavaState(nbt); java != nil {
+	if java := readNativeMobJavaState(nbt); java != nil {
 		if _, ok := java["Variant"]; ok {
 			return java, true
 		}
@@ -210,7 +210,7 @@ func aquaticJavaState(nbt map[string]any) (map[string]any, bool) {
 // javaAquaticVariant converts the variant fields BDS saves to the Java
 // variant and puff state, keeping def for mobs BDS saves no variant of.
 func javaAquaticVariant(id string, nbt map[string]any, def int) (variant, puffState int) {
-	v, _ := NativeMobVariant(nbt)
+	v, _ := nativeMobVariant(nbt)
 	switch id {
 	case "minecraft:axolotl":
 		if v >= 0 && int(v) < len(bedrockAxolotlVariants) {
@@ -239,15 +239,15 @@ func javaAquaticVariant(id string, nbt map[string]any, def int) (variant, puffSt
 }
 
 // AquaticMobConfig configures a fish-like mob decoded from Java entity NBT.
-type AquaticMobConfig struct {
+type aquaticMobConfig struct {
 	ID                                     string
 	Health, MaxHealth                      float64
 	Variant, BucketVariant, Age, PuffState int
 	AgeLocked, fromBucket, healthSet       bool
 }
 
-func (c AquaticMobConfig) Apply(data *world.EntityData) { data.Data = c.New() }
-func (c AquaticMobConfig) New() *AquaticMobBehaviour {
+func (c aquaticMobConfig) Apply(data *world.EntityData) { data.Data = c.New() }
+func (c aquaticMobConfig) New() *aquaticMobBehaviour {
 	maxHealth := c.MaxHealth
 	if maxHealth <= 0 {
 		maxHealth = 3
@@ -261,7 +261,7 @@ func (c AquaticMobConfig) New() *AquaticMobBehaviour {
 	if c.ID == "minecraft:axolotl" || c.ID == "minecraft:tadpole" {
 		speed = 1
 	}
-	b := &AquaticMobBehaviour{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), id: c.ID, variant: c.Variant, bucketVariant: c.BucketVariant, age: c.Age, puffState: c.PuffState, breeding: breeding{ageLocked: c.AgeLocked}, fromBucket: c.fromBucket, speed: speed, schoolSize: 1, random: vanilla.NewLegacyRandom(int64(c.Variant))}
+	b := &aquaticMobBehaviour{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), id: c.ID, variant: c.Variant, bucketVariant: c.BucketVariant, age: c.Age, puffState: c.PuffState, breeding: breeding{ageLocked: c.AgeLocked}, fromBucket: c.fromBucket, speed: speed, schoolSize: 1, random: vanilla.NewLegacyRandom(int64(c.Variant))}
 	switch c.ID {
 	case "minecraft:tadpole":
 		b.br = newTadpoleBrain()
@@ -271,7 +271,7 @@ func (c AquaticMobConfig) New() *AquaticMobBehaviour {
 	return b
 }
 
-type AquaticMobBehaviour struct {
+type aquaticMobBehaviour struct {
 	health                                           *HealthManager
 	effects                                          *EffectManager
 	id                                               string
@@ -290,8 +290,8 @@ type AquaticMobBehaviour struct {
 	ai MobAI
 	// br is the brain of an axolotl, or the one a tadpole runs besides its
 	// goals.
-	br     *Brain
-	panic  *PanicGoal
+	br     *brain
+	panic  *panicGoal
 	speed  float64
 	random vanilla.Random
 	// randomSeeded is set once random has been seeded.
@@ -300,11 +300,11 @@ type AquaticMobBehaviour struct {
 	// AbstractSchoolingFish: the fish followed and the size of the school a
 	// leader leads.
 	leader      *world.EntityHandle
-	leaderState *AquaticMobBehaviour
+	leaderState *aquaticMobBehaviour
 	schoolSize  int
 }
-type AquaticMob struct{ *Ent }
-type Axolotl struct{ *AquaticMob }
+type aquaticMob struct{ *Ent }
+type Axolotl struct{ *aquaticMob }
 
 // Rehydrate ports Axolotl.rehydrate: a splash of water gives an axolotl out
 // of water 1800 more ticks of air, up to its maximum.
@@ -313,18 +313,18 @@ func (a *Axolotl) Rehydrate() {
 	b.airTicks = max(b.airTicks-1800, 0)
 }
 
-type Cod struct{ *AquaticMob }
-type Pufferfish struct{ *AquaticMob }
-type Salmon struct{ *AquaticMob }
-type Tadpole struct{ *AquaticMob }
-type TropicalFish struct{ *AquaticMob }
+type cod struct{ *aquaticMob }
+type pufferfish struct{ *aquaticMob }
+type Salmon struct{ *aquaticMob }
+type tadpole struct{ *aquaticMob }
+type TropicalFish struct{ *aquaticMob }
 
-func (a *AquaticMob) behaviour() *AquaticMobBehaviour { return a.Behaviour().(*AquaticMobBehaviour) }
-func (a *AquaticMob) Tick(tx *world.Tx, current int64) {
+func (a *aquaticMob) behaviour() *aquaticMobBehaviour { return a.Behaviour().(*aquaticMobBehaviour) }
+func (a *aquaticMob) Tick(tx *world.Tx, current int64) {
 	a.behaviour().effects.Tick(a, tx)
 	a.Ent.Tick(tx, current)
 }
-func (b *AquaticMobBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (b *aquaticMobBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.dead {
 		return nil
 	}
@@ -334,14 +334,14 @@ func (b *AquaticMobBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	return b.tickFish(e, tx)
 }
 
-func (b *AquaticMobBehaviour) viewPuffState(e *Ent) {
+func (b *aquaticMobBehaviour) viewPuffState(e *Ent) {
 	world.BroadcastEntityState(e.tx, aquaticWorldEntity(e))
 }
-func (a *AquaticMob) Health() float64        { return a.behaviour().health.Health() }
-func (a *AquaticMob) MaxHealth() float64     { return a.behaviour().health.MaxHealth() }
-func (a *AquaticMob) SetMaxHealth(h float64) { a.behaviour().health.SetMaxHealth(h) }
-func (a *AquaticMob) Dead() bool             { return a.behaviour().dead || a.Health() <= 0 }
-func (a *AquaticMob) Hurt(d float64, src world.DamageSource) (float64, bool) {
+func (a *aquaticMob) Health() float64        { return a.behaviour().health.Health() }
+func (a *aquaticMob) MaxHealth() float64     { return a.behaviour().health.MaxHealth() }
+func (a *aquaticMob) SetMaxHealth(h float64) { a.behaviour().health.SetMaxHealth(h) }
+func (a *aquaticMob) Dead() bool             { return a.behaviour().dead || a.Health() <= 0 }
+func (a *aquaticMob) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if a.Dead() || d <= 0 {
 		return 0, false
 	}
@@ -387,7 +387,7 @@ func aquaticDamageHasAttacker(src world.DamageSource) bool {
 		return false
 	}
 }
-func (a *AquaticMob) Heal(h float64, _ world.HealingSource) float64 {
+func (a *aquaticMob) Heal(h float64, _ world.HealingSource) float64 {
 	if a.Dead() || h <= 0 {
 		return 0
 	}
@@ -395,22 +395,22 @@ func (a *AquaticMob) Heal(h float64, _ world.HealingSource) float64 {
 	a.behaviour().health.AddHealth(h)
 	return a.Health() - old
 }
-func (a *AquaticMob) KnockBack(src mgl64.Vec3, force, height float64) {
+func (a *aquaticMob) KnockBack(src mgl64.Vec3, force, height float64) {
 	knockBack(a, src, force, height)
 }
-func (a *AquaticMob) AddEffect(e effect.Effect)  { a.behaviour().effects.Add(e, a) }
-func (a *AquaticMob) RemoveEffect(t effect.Type) { a.behaviour().effects.Remove(t, a) }
-func (a *AquaticMob) Effects() []effect.Effect   { return a.behaviour().effects.Effects() }
-func (a *AquaticMob) Variant() int32 {
+func (a *aquaticMob) AddEffect(e effect.Effect)  { a.behaviour().effects.Add(e, a) }
+func (a *aquaticMob) RemoveEffect(t effect.Type) { a.behaviour().effects.Remove(t, a) }
+func (a *aquaticMob) Effects() []effect.Effect   { return a.behaviour().effects.Effects() }
+func (a *aquaticMob) Variant() int32 {
 	b := a.behaviour()
 	if b.id == "minecraft:pufferfish" {
 		return int32(b.puffState)
 	}
 	return int32(b.variant)
 }
-func (a *AquaticMob) Baby() bool      { b := a.behaviour(); return b.id == "minecraft:axolotl" && b.age < 0 }
-func (a *AquaticMob) Breathing() bool { return a.AirSupply() > 0 }
-func (a *AquaticMob) AirSupply() time.Duration {
+func (a *aquaticMob) Baby() bool      { b := a.behaviour(); return b.id == "minecraft:axolotl" && b.age < 0 }
+func (a *aquaticMob) Breathing() bool { return a.AirSupply() > 0 }
+func (a *aquaticMob) AirSupply() time.Duration {
 	b := a.behaviour()
 	ticks := 300
 	if b.id == "minecraft:axolotl" {
@@ -418,19 +418,19 @@ func (a *AquaticMob) AirSupply() time.Duration {
 	}
 	return time.Duration(max(ticks-b.airTicks, 0)) * time.Second / 20
 }
-func (a *AquaticMob) MaxAirSupply() time.Duration {
+func (a *aquaticMob) MaxAirSupply() time.Duration {
 	if a.behaviour().id == "minecraft:axolotl" {
 		return 6000 * time.Second / 20
 	}
 	return 300 * time.Second / 20
 }
-func (a *AquaticMob) Speed() float64     { return a.behaviour().speed }
-func (a *AquaticMob) SetSpeed(v float64) { a.behaviour().speed = v }
-func (a *AquaticMob) CanBePickedUpWithBucket(bucket item.Bucket) bool {
+func (a *aquaticMob) Speed() float64     { return a.behaviour().speed }
+func (a *aquaticMob) SetSpeed(v float64) { a.behaviour().speed = v }
+func (a *aquaticMob) CanBePickedUpWithBucket(bucket item.Bucket) bool {
 	liquid, ok := bucket.Content.Liquid()
 	return ok && liquid.LiquidType() == "water" && !a.Dead()
 }
-func (a *AquaticMob) BucketItem() item.Stack {
+func (a *aquaticMob) BucketItem() item.Stack {
 	b := a.behaviour()
 	m := item.MobBucket{Entity: b.id}
 	switch b.id {
@@ -440,7 +440,7 @@ func (a *AquaticMob) BucketItem() item.Stack {
 		return item.NewStack(m, 1)
 	}
 }
-func (a *AquaticMob) SaveToBucket(stack item.Stack) item.Stack {
+func (a *aquaticMob) SaveToBucket(stack item.Stack) item.Stack {
 	b := a.behaviour()
 	data := map[string]any{"Health": float32(b.health.Health()), "Variant": int32(b.variant), "BucketVariantTag": int32(b.bucketVariant), "Age": int32(b.age), "PuffState": int32(b.puffState), "FromBucket": byte(1)}
 	if b.id == "minecraft:tadpole" || b.id == "minecraft:axolotl" {
@@ -461,7 +461,7 @@ func (a *AquaticMob) SaveToBucket(stack item.Stack) item.Stack {
 		return item.Stack{}
 	}
 }
-func (a *AquaticMob) LoadFromBucket(stack item.Stack) {
+func (a *aquaticMob) LoadFromBucket(stack item.Stack) {
 	var data map[string]any
 	switch bucket := stack.Item().(type) {
 	case item.FishBucket:
@@ -491,7 +491,7 @@ func (a *AquaticMob) LoadFromBucket(stack item.Stack) {
 	}
 	b.fromBucket = true
 }
-func (a *AquaticMob) BucketPickupSound() world.Sound {
+func (a *aquaticMob) BucketPickupSound() world.Sound {
 	switch a.behaviour().id {
 	case "minecraft:axolotl":
 		return sound.Custom{Name: "item.bucket.fill_axolotl", Volume: 1, Pitch: 1}
@@ -501,48 +501,44 @@ func (a *AquaticMob) BucketPickupSound() world.Sound {
 		return sound.Custom{Name: "item.bucket.fill_fish", Volume: 1, Pitch: 1}
 	}
 }
-func (a *AquaticMob) FromBucket() bool {
+func (a *aquaticMob) FromBucket() bool {
 	return a.behaviour().id == "minecraft:tadpole" || a.behaviour().fromBucket
 }
-func (a *AquaticMob) SetFromBucket(v bool) {
+func (a *aquaticMob) SetFromBucket(v bool) {
 	if a.behaviour().id != "minecraft:tadpole" {
 		a.behaviour().fromBucket = v
 	}
 }
-func (a *AquaticMob) viewAction(action world.EntityAction) {
-	vs := a.tx.Viewers(a.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(a, action)
-	}
-	a.tx.ReleaseViewers(vs)
+func (a *aquaticMob) viewAction(action world.EntityAction) {
+	world.BroadcastEntityAction(a.tx, a, action)
 }
 func NewAxolotl(opts world.EntitySpawnOpts) *world.EntityHandle {
-	return opts.New(AxolotlType, AquaticMobConfig{ID: "minecraft:axolotl", MaxHealth: 14})
+	return opts.New(axolotlType, aquaticMobConfig{ID: "minecraft:axolotl", MaxHealth: 14})
 }
 func NewCod(opts world.EntitySpawnOpts) *world.EntityHandle {
-	return opts.New(CodType, AquaticMobConfig{ID: "minecraft:cod", MaxHealth: 3})
+	return opts.New(codType, aquaticMobConfig{ID: "minecraft:cod", MaxHealth: 3})
 }
 func NewPufferfish(opts world.EntitySpawnOpts) *world.EntityHandle {
-	return opts.New(PufferfishType, AquaticMobConfig{ID: "minecraft:pufferfish", MaxHealth: 3})
+	return opts.New(pufferfishType, aquaticMobConfig{ID: "minecraft:pufferfish", MaxHealth: 3})
 }
 func NewSalmon(opts world.EntitySpawnOpts) *world.EntityHandle {
-	return opts.New(SalmonType, AquaticMobConfig{ID: "minecraft:salmon", MaxHealth: 3, Variant: 1})
+	return opts.New(salmonType, aquaticMobConfig{ID: "minecraft:salmon", MaxHealth: 3, Variant: 1})
 }
 func NewTadpole(opts world.EntitySpawnOpts) *world.EntityHandle {
-	return opts.New(TadpoleType, AquaticMobConfig{ID: "minecraft:tadpole", MaxHealth: 6})
+	return opts.New(tadpoleType, aquaticMobConfig{ID: "minecraft:tadpole", MaxHealth: 6})
 }
 func NewTropicalFish(opts world.EntitySpawnOpts) *world.EntityHandle {
-	return opts.New(TropicalFishType, AquaticMobConfig{ID: "minecraft:tropical_fish", MaxHealth: 3})
+	return opts.New(tropicalFishType, aquaticMobConfig{ID: "minecraft:tropical_fish", MaxHealth: 3})
 }
 
 var _ world.EntityType = aquaticMobType{}
-var _ Bucketable = (*AquaticMob)(nil)
-var _ Living = (*AquaticMob)(nil)
+var _ Bucketable = (*aquaticMob)(nil)
+var _ Living = (*aquaticMob)(nil)
 
-func (b *AquaticMobBehaviour) effectManager() *EffectManager { return b.effects }
+func (b *aquaticMobBehaviour) effectManager() *EffectManager { return b.effects }
 
 // pushedByFluid ports the AbstractFish and Axolotl overrides of
 // Entity.isPushedByFluid.
-func (*AquaticMobBehaviour) pushedByFluid(*Mob) bool { return false }
+func (*aquaticMobBehaviour) pushedByFluid(*Mob) bool { return false }
 
-func (*AquaticMobBehaviour) keepsOwnAirSupply() {}
+func (*aquaticMobBehaviour) keepsOwnAirSupply() {}

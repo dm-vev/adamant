@@ -17,7 +17,7 @@ func projectTemplateMobNBT(source map[string]any) (map[string]any, error) {
 	}
 	native := make(map[string]any)
 	attributes, _ := source["attributes"].([]any)
-	projected := make([]NativeMobAttribute, 0, len(attributes)+1)
+	projected := make([]nativeMobAttr, 0, len(attributes)+1)
 	hasHealth := false
 	for _, value := range attributes {
 		attribute, ok := value.(map[string]any)
@@ -42,7 +42,7 @@ func projectTemplateMobNBT(source map[string]any) (map[string]any, error) {
 			continue
 		}
 		current = math.Max(minimum, math.Min(maximum, current))
-		entry := NativeMobAttribute{Name: name, Base: current, Current: current, DefaultMin: minimum, DefaultMax: current, Min: minimum, Max: maximum}
+		entry := nativeMobAttr{Name: name, Base: current, Current: current, DefaultMin: minimum, DefaultMax: current, Min: minimum, Max: maximum}
 		if name == "minecraft:health" {
 			if health, present := source["Health"]; present {
 				entry.Current = nativeNBTNumber(health)
@@ -56,22 +56,22 @@ func projectTemplateMobNBT(source map[string]any) (map[string]any, error) {
 		if health, present := source["Health"]; present {
 			current = nativeNBTNumber(health)
 		}
-		projected = append(projected, NativeMobAttribute{Name: "minecraft:health", Base: maximum, Current: current, DefaultMax: maximum, Max: maximum})
+		projected = append(projected, nativeMobAttr{Name: "minecraft:health", Base: maximum, Current: current, DefaultMax: maximum, Max: maximum})
 	}
-	native["Attributes"] = EncodeNativeMobAttributes(nil, projected)
+	native["Attributes"] = encodeNativeMobAttributes(nil, projected)
 	if equipment, ok := source["equipment"].(map[string]any); ok {
-		decode := func(slot string) (NativeMobItem, error) {
+		decode := func(slot string) (nativeMobItem, error) {
 			raw, _ := equipment[slot].(map[string]any)
 			if templateSpawnItemEmpty(raw) {
 				return nativeMobItemFromStack(item.Stack{}), nil
 			}
 			stack, err := item.StackFromStructureNBT(raw)
 			if err != nil {
-				return NativeMobItem{}, fmt.Errorf("Source %s %s: %w", id, slot, err)
+				return nativeMobItem{}, fmt.Errorf("Source %s %s: %w", id, slot, err)
 			}
 			return nativeMobItemFromStack(stack), nil
 		}
-		out := NativeMobEquipment{Armor: make([]NativeMobItem, 4)}
+		out := nativeMobEquipment{Armor: make([]nativeMobItem, 4)}
 		for index, slot := range [...]string{"head", "chest", "legs", "feet"} {
 			value, err := decode(slot)
 			if err != nil {
@@ -87,8 +87,8 @@ func projectTemplateMobNBT(source map[string]any) (map[string]any, error) {
 		if err != nil {
 			return nil, err
 		}
-		out.Mainhand, out.Offhand = []NativeMobItem{main}, []NativeMobItem{off}
-		for key, value := range EncodeNativeMobEquipment(out) {
+		out.Mainhand, out.Offhand = []nativeMobItem{main}, []nativeMobItem{off}
+		for key, value := range encodeNativeMobEquipment(out) {
 			native[key] = value
 		}
 	}

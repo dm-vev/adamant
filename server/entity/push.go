@@ -93,7 +93,7 @@ var pushScratchPool = sync.Pool{
 // the start of the pass and then applied one entity after another in tick order.
 // The flat serial sweep runs directly on the world owner without fanning out to
 // worker goroutines, avoiding scheduling stalls under CPU contention.
-func TickEntityCollisions(tx *world.Tx) {
+func tickEntityCollisions(tx *world.Tx) {
 	maxCramming := tx.World().GameRuleInt("max_entity_cramming")
 	s := pushScratchPool.Get().(*pushScratch)
 	defer s.release()
@@ -397,10 +397,10 @@ func pushCell(pos mgl64.Vec3) world.ChunkPos {
 // pushable ports Entity.isPushable: living entities that are alive, not
 // spectating and not climbing, plus boats and minecarts.
 func pushable(e world.Entity) bool {
-	switch e.(type) {
-	case *Boat, *ChestBoat, *Minecart, *MinecartContainer, *MinecartTNT, *MinecartCommandBlock:
+	if isPushableVehicleID(e.H().Type().EncodeEntity()) {
 		return true
-	case *Ent:
+	}
+	if _, ent := e.(*Ent); ent {
 		return false
 	}
 	l, ok := e.(Living)

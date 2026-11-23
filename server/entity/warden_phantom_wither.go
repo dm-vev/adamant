@@ -46,7 +46,7 @@ func trySpawnWitherPattern(tx *world.Tx, head cube.Pos) bool {
 			yaw = 0
 		}
 		opts := world.EntitySpawnOpts{Position: base.Vec3Middle().Add(mgl64.Vec3{0, .55}), Rotation: cube.Rotation{yaw, 0}, SpawnReason: "construction"}
-		tx.AddEntity(opts.New(WitherType, witherConfig{invulnerable: 220, health: 100}))
+		tx.AddEntity(opts.New(entityWitherType, witherConfig{invulnerable: 220, health: 100}))
 		return true
 	})
 }
@@ -66,15 +66,15 @@ const (
 )
 
 // PhantomType is the insomnia-spawned Phantom.
-var PhantomType phantomType
+var entityPhantomType phantomType
 
 type phantomType struct{}
 
 func (phantomType) EncodeEntity() string { return "minecraft:phantom" }
 func (phantomType) BBox(e world.Entity) cube.BBox {
 	size := 0
-	if phantom, ok := e.(*Phantom); ok {
-		size = phantom.state().size
+	if ph, ok := e.(*phantom); ok {
+		size = ph.state().size
 	}
 	scale := 1 + .15*float64(size)
 	return cube.Box(-.3*scale, 0, -.3*scale, .3*scale, .9*scale, .3*scale)
@@ -87,11 +87,11 @@ func (phantomType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData
 	if h != nil && !s.randomSeeded {
 		s.random, s.randomSeeded = openRandom(tx, h), true
 	}
-	return &Phantom{Ent: &Ent{tx: tx, handle: h, data: d}}
+	return &phantom{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
 func (phantomType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	size := int(nbtconv.Int32(n, "Size"))
-	if java := ReadNativeMobJavaState(n); java != nil {
+	if java := readNativeMobJavaState(n); java != nil {
 		size = int(nbtconv.Int32(java, "Size"))
 	}
 	phantomConfig{health: nativeBossHealth(n, 20), size: size, attack: int(nbtconv.Int32(n, "Attack")), target: nbtconv.Int64(n, "Target")}.Apply(d)
@@ -105,7 +105,7 @@ func (phantomType) DecodeNBT(n map[string]any, d *world.EntityData) {
 func (phantomType) EncodeNBT(d *world.EntityData) map[string]any {
 	s := d.Data.(*phantomState)
 	maxHealth := s.health.MaxHealth()
-	attrs := []NativeMobAttribute{
+	attrs := []nativeMobAttr{
 		{Name: "minecraft:health", Base: maxHealth, Current: s.health.Health(), DefaultMin: 0, DefaultMax: maxHealth, Min: 0, Max: maxHealth},
 		{Name: "minecraft:movement", Base: phantomBaseMovementSpeed, Current: s.speed, DefaultMin: 0, DefaultMax: 1024, Min: 0, Max: 1024},
 		{Name: "minecraft:follow_range", Base: 64, Current: 64, DefaultMin: 0, DefaultMax: 2048, Min: 0, Max: 2048},
@@ -152,19 +152,19 @@ type phantomState struct {
 	phase      phantomPhase
 	moveTarget mgl64.Vec3
 }
-type Phantom struct{ *Ent }
+type phantom struct{ *Ent }
 
 func NewPhantom(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(PhantomType, phantomConfig{})
+	return o.New(entityPhantomType, phantomConfig{})
 }
-func (*Phantom) SpeciesType() world.EntityType { return PhantomType }
-func (p *Phantom) state() *phantomState        { return p.Behaviour().(*phantomState) }
-func (p *Phantom) Tick(tx *world.Tx, n int64)  { p.state().effects.Tick(p, tx); p.Ent.Tick(tx, n) }
-func (p *Phantom) Health() float64             { return p.state().health.Health() }
-func (p *Phantom) MaxHealth() float64          { return p.state().health.MaxHealth() }
-func (p *Phantom) SetMaxHealth(v float64)      { p.state().health.SetMaxHealth(v) }
-func (p *Phantom) Dead() bool                  { return p.state().dead || p.Health() <= 0 }
-func (p *Phantom) Heal(v float64, _ world.HealingSource) float64 {
+func (*phantom) SpeciesType() world.EntityType { return entityPhantomType }
+func (p *phantom) state() *phantomState        { return p.Behaviour().(*phantomState) }
+func (p *phantom) Tick(tx *world.Tx, n int64)  { p.state().effects.Tick(p, tx); p.Ent.Tick(tx, n) }
+func (p *phantom) Health() float64             { return p.state().health.Health() }
+func (p *phantom) MaxHealth() float64          { return p.state().health.MaxHealth() }
+func (p *phantom) SetMaxHealth(v float64)      { p.state().health.SetMaxHealth(v) }
+func (p *phantom) Dead() bool                  { return p.state().dead || p.Health() <= 0 }
+func (p *phantom) Heal(v float64, _ world.HealingSource) float64 {
 	if v <= 0 || p.Dead() {
 		return 0
 	}
@@ -172,32 +172,28 @@ func (p *Phantom) Heal(v float64, _ world.HealingSource) float64 {
 	p.state().health.AddHealth(v)
 	return p.Health() - old
 }
-func (p *Phantom) KnockBack(src mgl64.Vec3, f, h float64) {
+func (p *phantom) KnockBack(src mgl64.Vec3, f, h float64) {
 	knockBack(p, src, f, h)
 }
-func (p *Phantom) AddEffect(e effect.Effect) {
+func (p *phantom) AddEffect(e effect.Effect) {
 	if e.Type() != effect.Poison && e.Type() != effect.FatalPoison {
 		p.state().effects.Add(e, p)
 	}
 }
-func (p *Phantom) RemoveEffect(t effect.Type) { p.state().effects.Remove(t, p) }
-func (p *Phantom) Effects() []effect.Effect   { return p.state().effects.Effects() }
-func (p *Phantom) Speed() float64             { return p.state().speed }
-func (p *Phantom) SetSpeed(v float64)         { p.state().speed = max(0, min(1024, v)) }
-func (p *Phantom) viewAction(a world.EntityAction) {
-	v := p.tx.Viewers(p.Position())
-	for _, x := range v {
-		x.ViewEntityAction(p, a)
-	}
-	p.tx.ReleaseViewers(v)
+func (p *phantom) RemoveEffect(t effect.Type) { p.state().effects.Remove(t, p) }
+func (p *phantom) Effects() []effect.Effect   { return p.state().effects.Effects() }
+func (p *phantom) Speed() float64             { return p.state().speed }
+func (p *phantom) SetSpeed(v float64)         { p.state().speed = max(0, min(1024, v)) }
+func (p *phantom) viewAction(a world.EntityAction) {
+	world.BroadcastEntityAction(p.tx, p, a)
 }
-func (p *Phantom) FinalizeSpawn(_ string, _ *vanilla.Random) {
+func (p *phantom) FinalizeSpawn(_ string, _ *vanilla.Random) {
 	s := p.state()
 	s.anchor = cube.PosFromVec3(p.Position()).Add(cube.Pos{0, 5, 0}).Vec3()
 	s.anchorSet = true
 }
 func (s *phantomState) Tick(e *Ent, tx *world.Tx) *Movement { return s.aiTick(e, tx) }
-func (p *Phantom) Hurt(d float64, src world.DamageSource) (float64, bool) {
+func (p *phantom) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if p.Dead() || d <= 0 {
 		return 0, false
 	}
@@ -220,7 +216,7 @@ func (p *Phantom) Hurt(d float64, src world.DamageSource) (float64, bool) {
 }
 
 // WitherType is the constructible three-headed Wither boss.
-var WitherType witherType
+var entityWitherType witherType
 
 type witherType struct{}
 
@@ -238,11 +234,11 @@ func (witherType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData)
 			s.random, s.randomSeeded = openRandom(tx, h), true
 		}
 	}
-	return &Wither{Ent: &Ent{tx: tx, handle: h, data: d}}
+	return &wither{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
 func (witherType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	c := witherConfig{health: nativeBossHealth(n, 300), invulnerable: int(nbtconv.Int32(n, "Invul")), charge: int(nbtconv.Int32(n, "Charge")), death: int(nbtconv.Int32(n, "Death"))}
-	if j := ReadNativeMobJavaState(n); j != nil {
+	if j := readNativeMobJavaState(n); j != nil {
 		c.invulnerable = int(nbtconv.Int32(j, "Invulnerability"))
 		c.charge = int(nbtconv.Int32(j, "Charge"))
 		c.death = int(nbtconv.Int32(j, "Death"))
@@ -252,7 +248,7 @@ func (witherType) DecodeNBT(n map[string]any, d *world.EntityData) {
 }
 func (witherType) EncodeNBT(d *world.EntityData) map[string]any {
 	s := d.Data.(*witherState)
-	attrs := []NativeMobAttribute{
+	attrs := []nativeMobAttr{
 		{Name: "minecraft:health", Base: 300, Current: s.health.Health(), DefaultMin: 0, DefaultMax: 300, Min: 0, Max: 300},
 		{Name: "minecraft:movement", Base: witherBaseMovementSpeed, Current: s.speed, DefaultMin: 0, DefaultMax: 1024, Min: 0, Max: 1024},
 		{Name: "minecraft:follow_range", Base: 40, Current: 40, DefaultMin: 0, DefaultMax: 2048, Min: 0, Max: 2048},
@@ -292,12 +288,12 @@ type witherState struct {
 	bar                             bossbar.BossBar
 	viewers                         map[*world.EntityHandle]bool
 }
-type Wither struct{ *Ent }
+type wither struct{ *Ent }
 
-func NewWither(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(WitherType, witherConfig{}) }
-func (w *Wither) state() *witherState                       { return w.Behaviour().(*witherState) }
-func (w *Wither) Tick(tx *world.Tx, n int64)                { w.state().effects.Tick(w, tx); w.Ent.Tick(tx, n) }
-func (w *Wither) updateBossBar() {
+func NewWither(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(entityWitherType, witherConfig{}) }
+func (w *wither) state() *witherState                       { return w.Behaviour().(*witherState) }
+func (w *wither) Tick(tx *world.Tx, n int64)                { w.state().effects.Tick(w, tx); w.Ent.Tick(tx, n) }
+func (w *wither) updateBossBar() {
 	s := w.state()
 	progress := w.Health() / w.MaxHealth()
 	if s.invulnerable > 0 {
@@ -333,7 +329,7 @@ func (w *Wither) updateBossBar() {
 		delete(s.viewers, handle)
 	}
 }
-func (w *Wither) removeBossBar() {
+func (w *wither) removeBossBar() {
 	s := w.state()
 	id := s.bar.ID()
 	for handle := range s.viewers {
@@ -345,16 +341,16 @@ func (w *Wither) removeBossBar() {
 		delete(s.viewers, handle)
 	}
 }
-func (w *Wither) Health() float64        { return w.state().health.Health() }
-func (w *Wither) MaxHealth() float64     { return w.state().health.MaxHealth() }
-func (w *Wither) SetMaxHealth(v float64) { w.state().health.SetMaxHealth(v) }
-func (w *Wither) Dead() bool             { return w.state().dead || w.state().death >= 220 }
+func (w *wither) Health() float64        { return w.state().health.Health() }
+func (w *wither) MaxHealth() float64     { return w.state().health.MaxHealth() }
+func (w *wither) SetMaxHealth(v float64) { w.state().health.SetMaxHealth(v) }
+func (w *wither) Dead() bool             { return w.state().dead || w.state().death >= 220 }
 
 // Hurt ports WitherBoss.hurtServer: drowning, other withers and its undead
 // friends never hurt the wither, nor anything while it is summoned but the
 // void, nor arrows and wind charges once it is powered. A hit makes it break
 // the blocks around it a second later and its idle heads restless.
-func (w *Wither) Hurt(d float64, src world.DamageSource) (float64, bool) {
+func (w *wither) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	s := w.state()
 	if w.Dead() || d <= 0 {
 		return 0, false
@@ -363,7 +359,7 @@ func (w *Wither) Hurt(d float64, src world.DamageSource) (float64, bool) {
 		return 0, false
 	}
 	killer := mobKiller(src)
-	if killer != nil && (killer.H().Type() == WitherType || witherFriend(killer)) {
+	if killer != nil && (killer.H().Type() == entityWitherType || witherFriend(killer)) {
 		return 0, false
 	}
 	if _, void := src.(VoidDamageSource); s.invulnerable > 0 && !void {
@@ -409,7 +405,7 @@ func (w *Wither) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	}
 	return d, true
 }
-func (w *Wither) Heal(v float64, _ world.HealingSource) float64 {
+func (w *wither) Heal(v float64, _ world.HealingSource) float64 {
 	if v <= 0 || w.Dead() {
 		return 0
 	}
@@ -420,26 +416,22 @@ func (w *Wither) Heal(v float64, _ world.HealingSource) float64 {
 }
 
 // KnockBack ports LivingEntity.knockback, which WitherBoss leaves as it is.
-func (w *Wither) KnockBack(src mgl64.Vec3, force, height float64) {
+func (w *wither) KnockBack(src mgl64.Vec3, force, height float64) {
 	knockBack(w, src, force, height)
 }
 
 // AddEffect does nothing: WitherBoss.addEffect refuses every effect.
-func (w *Wither) AddEffect(effect.Effect)    {}
-func (w *Wither) RemoveEffect(t effect.Type) { w.state().effects.Remove(t, w) }
-func (w *Wither) Effects() []effect.Effect   { return w.state().effects.Effects() }
-func (w *Wither) Speed() float64             { return w.state().speed }
-func (w *Wither) SetSpeed(v float64)         { w.state().speed = max(0, min(1024, v)) }
-func (w *Wither) viewAction(a world.EntityAction) {
-	v := w.tx.Viewers(w.Position())
-	for _, x := range v {
-		x.ViewEntityAction(w, a)
-	}
-	w.tx.ReleaseViewers(v)
+func (w *wither) AddEffect(effect.Effect)    {}
+func (w *wither) RemoveEffect(t effect.Type) { w.state().effects.Remove(t, w) }
+func (w *wither) Effects() []effect.Effect   { return w.state().effects.Effects() }
+func (w *wither) Speed() float64             { return w.state().speed }
+func (w *wither) SetSpeed(v float64)         { w.state().speed = max(0, min(1024, v)) }
+func (w *wither) viewAction(a world.EntityAction) {
+	world.BroadcastEntityAction(w.tx, w, a)
 }
 
-func (p *Phantom) dropSourceLoot(src world.DamageSource) { dropAllDeathLoot(p.tx, p, src) }
-func (w *Wither) dropSourceLoot(src world.DamageSource)  { dropAllDeathLoot(w.tx, w, src) }
+func (p *phantom) dropSourceLoot(src world.DamageSource) { dropAllDeathLoot(p.tx, p, src) }
+func (w *wither) dropSourceLoot(src world.DamageSource)  { dropAllDeathLoot(w.tx, w, src) }
 
 func nativeBossMovementSpeed(n map[string]any, fallback float64) float64 {
 	attributes, _ := n["Attributes"].([]any)
@@ -456,7 +448,7 @@ func nativeBossMovementSpeed(n map[string]any, fallback float64) float64 {
 }
 
 func nativeBossHealth(n map[string]any, fallback float64) float64 {
-	for _, attr := range ReadNativeMobAttributes(n) {
+	for _, attr := range readNativeMobAttributes(n) {
 		if attr.Name == "minecraft:health" && attr.Current > 0 {
 			return attr.Current
 		}
@@ -469,21 +461,21 @@ func nativeBossHealth(n map[string]any, fallback float64) float64 {
 	}
 	return fallback
 }
-func encodeBossNBT(d *world.EntityData, attrs []NativeMobAttribute, state map[string]any) map[string]any {
-	native := CloneNativeMobNBT(d.NativeNBT)
+func encodeBossNBT(d *world.EntityData, attrs []nativeMobAttr, state map[string]any) map[string]any {
+	native := cloneNativeMobNBT(d.NativeNBT)
 	if native == nil {
 		native = make(map[string]any)
 	}
-	native["Attributes"] = EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), attrs)
-	return MergeNativeMobJavaState(native, state)
+	native["Attributes"] = encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), attrs)
+	return mergeNativeMobJavaState(native, state)
 }
 
 var _ world.EntityType = wardenType{}
 var _ world.EntityType = phantomType{}
 var _ world.EntityType = witherType{}
-var _ Living = (*Warden)(nil)
-var _ Living = (*Phantom)(nil)
-var _ Living = (*Wither)(nil)
+var _ Living = (*warden)(nil)
+var _ Living = (*phantom)(nil)
+var _ Living = (*wither)(nil)
 
 func (b *phantomState) effectManager() *EffectManager { return b.effects }
 

@@ -13,19 +13,19 @@ import (
 func NewArmourStand(opts world.EntitySpawnOpts) *world.EntityHandle {
 	conf := armourStandConf
 	conf.Armour = inventory.NewArmour(nil)
-	return opts.New(ArmourStandType, conf)
+	return opts.New(entityArmourStandType, conf)
 }
 
-var armourStandConf = ArmourStandBehaviourConfig{}
+var armourStandConf = armourStandBehaviourConfig{}
 
 // ArmourStandType is a world.EntityType implementation for armour stands.
-var ArmourStandType armourStandType
+var entityArmourStandType armourStandType
 
 type armourStandType struct{}
 
 func (armourStandType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.EntityData) world.Entity {
 	e := &Ent{tx: tx, handle: handle, data: data}
-	if b, ok := data.Data.(*ArmourStandBehaviour); ok && !b.collisionInitialised {
+	if b, ok := data.Data.(*armourStandBehaviour); ok && !b.collisionInitialised {
 		b.collisionInitialised = true
 		b.passive.mc.CheckCollision(tx, e, data.Pos, mgl64.Vec3{})
 		b.passive.mc.nativeBoxSet = false
@@ -44,7 +44,7 @@ func (armourStandType) TickAfterBlocks() bool { return true }
 func (armourStandType) CollisionWidth() float64 { return .5 }
 func (armourStandType) BBox(e world.Entity) cube.BBox {
 	if ent, ok := e.(*Ent); ok {
-		if b, ok := ent.data.Data.(*ArmourStandBehaviour); ok {
+		if b, ok := ent.data.Data.(*armourStandBehaviour); ok {
 			c := b.passive.mc
 			if c.nativeBoxSet && ent.Position() == c.nativeBoxPosition {
 				lo, hi := c.nativeBox.Min(), c.nativeBox.Max()
@@ -61,7 +61,7 @@ func (armourStandType) DecodeNBT(m map[string]any, data *world.EntityData) {
 		poseIndex = 0
 	}
 
-	conf := ArmourStandBehaviourConfig{
+	conf := armourStandBehaviourConfig{
 		Armour:    inventory.NewArmour(nil),
 		PoseIndex: poseIndex % 13,
 		MainHand:  item.MapNBT(m, "MainHand"),
@@ -91,7 +91,7 @@ func (armourStandType) DecodeNBT(m map[string]any, data *world.EntityData) {
 }
 
 func (armourStandType) EncodeNBT(data *world.EntityData) map[string]any {
-	a, ok := data.Data.(*ArmourStandBehaviour)
+	a, ok := data.Data.(*armourStandBehaviour)
 	if !ok {
 		return map[string]any{}
 	}

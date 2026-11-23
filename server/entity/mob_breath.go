@@ -66,7 +66,7 @@ func (ai *MobAI) tickBreath(m *Mob) {
 // decreaseAirSupply ports LivingEntity.decreaseAirSupply: Respiration on the
 // helmet of a mob now and then saves it a breath.
 func (ai *MobAI) decreaseAirSupply(m *Mob) int {
-	if m.H().Type() == IronGolemType {
+	if m.H().Type().EncodeEntity() == "minecraft:iron_golem" {
 		// IronGolem.decreaseAirSupply: iron golems never run out of air.
 		return ai.air
 	}

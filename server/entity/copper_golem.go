@@ -13,13 +13,13 @@ import (
 )
 
 // CopperGolemType is the Java copper golem entity type.
-var CopperGolemType copperGolemType
+var entityCopperGolemType copperGolemType
 
 type copperGolemType struct{}
 
 func (copperGolemType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
-		(CopperGolemBehaviourConfig{NextWeatheringTick: -1}).Apply(d)
+		(copperGolemBehaviourConfig{NextWeatheringTick: -1}).Apply(d)
 	}
 	golem := &CopperGolem{Ent: &Ent{tx: tx, handle: h, data: d}}
 	if b := golem.b(); !b.randomSeeded {
@@ -34,7 +34,7 @@ func (copperGolemType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	if value, ok := m["next_weather_age"].(int64); ok {
 		nextWeatheringTick = value
 	}
-	c := CopperGolemBehaviourConfig{WeatherState: copperWeatherFromName(nbtconv.String(m, "weather_state")), State: copperStateFromName(nbtconv.String(m, "State")), NextWeatheringTick: nextWeatheringTick}
+	c := copperGolemBehaviourConfig{WeatherState: copperWeatherFromName(nbtconv.String(m, "weather_state")), State: copperStateFromName(nbtconv.String(m, "State")), NextWeatheringTick: nextWeatheringTick}
 	c.Waxed = nextWeatheringTick == -2
 	if antenna, ok := m["Antenna"].(map[string]any); ok {
 		c.Antenna = item.ReadNBT(antenna)
@@ -52,7 +52,7 @@ func (copperGolemType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	d.Data = c.New()
 }
 func (copperGolemType) EncodeNBT(d *world.EntityData) map[string]any {
-	b := d.Data.(*CopperGolemBehaviour)
+	b := d.Data.(*copperGolemBehaviour)
 	m := map[string]any{"Health": float32(b.health.Health()), "MaxHealth": float32(b.health.MaxHealth()), "weather_state": copperWeatherNames[b.weather], "State": copperStates[b.state], "Waxed": boolByte(b.waxed), "next_weather_age": b.nextWeatheringTick}
 	if !b.antenna.Empty() {
 		m["Antenna"] = item.WriteNBT(b.antenna)
@@ -94,7 +94,7 @@ func copperStateFromName(s string) int {
 	return 0
 }
 
-type CopperGolemBehaviourConfig struct {
+type copperGolemBehaviourConfig struct {
 	Health, MaxHealth   float64
 	WeatherState, State int
 	Waxed               bool
@@ -104,8 +104,8 @@ type CopperGolemBehaviourConfig struct {
 	healthSet           bool
 }
 
-func (c CopperGolemBehaviourConfig) Apply(d *world.EntityData) { d.Data = c.New() }
-func (c CopperGolemBehaviourConfig) New() *CopperGolemBehaviour {
+func (c copperGolemBehaviourConfig) Apply(d *world.EntityData) { d.Data = c.New() }
+func (c copperGolemBehaviourConfig) New() *copperGolemBehaviour {
 	maxHealth := c.MaxHealth
 	if maxHealth <= 0 {
 		maxHealth = 12
@@ -114,16 +114,16 @@ func (c CopperGolemBehaviourConfig) New() *CopperGolemBehaviour {
 	if !c.healthSet && health <= 0 {
 		health = maxHealth
 	}
-	b := &CopperGolemBehaviour{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), speed: .2, weather: max(0, min(c.WeatherState, 3)), state: max(0, min(c.State, 4)), waxed: c.Waxed, nextWeatheringTick: c.NextWeatheringTick, antenna: c.Antenna, carried: c.Carried}
+	b := &copperGolemBehaviour{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), speed: .2, weather: max(0, min(c.WeatherState, 3)), state: max(0, min(c.State, 4)), waxed: c.Waxed, nextWeatheringTick: c.NextWeatheringTick, antenna: c.Antenna, carried: c.Carried}
 	b.br = newCopperGolemBrain(b)
 	return b
 }
 
-type CopperGolemBehaviour struct {
+type copperGolemBehaviour struct {
 	health  *HealthManager
 	effects *EffectManager
 	ai      MobAI
-	br      *Brain
+	br      *brain
 	speed   float64
 	random  vanilla.Random
 	// randomSeeded is set once random has been seeded.
@@ -142,7 +142,7 @@ type CopperGolemBehaviour struct {
 type CopperGolem struct{ *Ent }
 
 func NewCopperGolem(opts world.EntitySpawnOpts) *world.EntityHandle {
-	return opts.New(CopperGolemType, CopperGolemBehaviourConfig{NextWeatheringTick: -1})
+	return opts.New(entityCopperGolemType, copperGolemBehaviourConfig{NextWeatheringTick: -1})
 }
 
 // TrySpawnCopperGolemPattern ports the copper golem pattern of
@@ -150,7 +150,7 @@ func NewCopperGolem(opts world.EntitySpawnOpts) *world.EntityHandle {
 // block-pattern matcher: a carved pumpkin on a copper block becomes a copper
 // golem of the oxidation of the block, standing on a copper chest that
 // replaces the block.
-func TrySpawnCopperGolemPattern(tx *world.Tx, pumpkinPos cube.Pos) bool {
+func trySpawnCopperGolemPattern(tx *world.Tx, pumpkinPos cube.Pos) bool {
 	var facing cube.Direction
 	switch head := tx.Block(pumpkinPos).(type) {
 	case block.Pumpkin:
@@ -193,8 +193,8 @@ func TrySpawnCopperGolemPattern(tx *world.Tx, pumpkinPos cube.Pos) bool {
 	return true
 }
 
-func (*CopperGolem) SpeciesType() world.EntityType { return CopperGolemType }
-func (c *CopperGolem) b() *CopperGolemBehaviour    { return c.Behaviour().(*CopperGolemBehaviour) }
+func (*CopperGolem) SpeciesType() world.EntityType { return entityCopperGolemType }
+func (c *CopperGolem) b() *copperGolemBehaviour    { return c.Behaviour().(*copperGolemBehaviour) }
 
 // FinalizeSpawn plays the one-time creation sound.
 func (c *CopperGolem) FinalizeSpawn(_ string, _ *vanilla.Random) {
@@ -238,15 +238,15 @@ func (c *CopperGolem) Tick(tx *world.Tx, n int64) {
 	c.updateWeathering(tx, n)
 	c.Ent.Tick(tx, n)
 }
-func (b *CopperGolemBehaviour) mobAI() *MobAI   { return &b.ai }
-func (b *CopperGolemBehaviour) brain() *Brain   { return b.br }
-func (b *CopperGolemBehaviour) panicking() bool { return b.br.has(memIsPanicking) }
+func (b *copperGolemBehaviour) mobAI() *MobAI   { return &b.ai }
+func (b *copperGolemBehaviour) brain() *brain   { return b.br }
+func (b *copperGolemBehaviour) panicking() bool { return b.br.has(memIsPanicking) }
 
-func (b *CopperGolemBehaviour) transportHeld() item.Stack     { return b.carried }
-func (b *CopperGolemBehaviour) setTransportHeld(s item.Stack) { b.carried = s }
+func (b *copperGolemBehaviour) transportHeld() item.Stack     { return b.carried }
+func (b *copperGolemBehaviour) setTransportHeld(s item.Stack) { b.carried = s }
 
 // Tick runs the MobAI of the copper golem with its brain.
-func (b *CopperGolemBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (b *copperGolemBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	// CopperGolem.createAttributes.
 	b.ai.MovementSpeed, b.ai.StepHeight = b.speed, 1
 	return b.ai.Tick(e, &CopperGolem{Ent: e}, func(m *Mob) {
@@ -263,7 +263,7 @@ func (b *CopperGolemBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 
 // customServerAiStep ports CopperGolem.customServerAiStep and
 // CopperGolemAi.updateActivity.
-func (b *CopperGolemBehaviour) customServerAiStep(m *Mob) {
+func (b *copperGolemBehaviour) customServerAiStep(m *Mob) {
 	b.br.tick(m)
 	b.br.setActiveToFirstValid(activityIdle)
 }
@@ -271,7 +271,7 @@ func (b *CopperGolemBehaviour) customServerAiStep(m *Mob) {
 // newCopperGolemBrain ports CopperGolemAi and the brain provider of
 // CopperGolem: a copper golem takes items out of copper chests and sorts
 // them into chests holding the same item.
-func newCopperGolemBrain(b *CopperGolemBehaviour) *Brain {
+func newCopperGolemBrain(b *copperGolemBehaviour) *brain {
 	br := newBrain(nearestLivingEntitySensor{}, hurtBySensor{})
 	br.addActivity(activityCore, 0,
 		newAnimalPanic(1.5, nil, nil, nil),
@@ -325,7 +325,7 @@ var copperGolemInteractions = [...]struct {
 // onReachedChest ports CopperGolemAi.onReachedTargetInteraction: the golem
 // opens the chest, plays the sound of what it does after nine ticks and
 // closes the chest after three seconds.
-func (b *CopperGolemBehaviour) onReachedChest(m *Mob, t transportTarget, interaction transportInteraction, ticks int) {
+func (b *copperGolemBehaviour) onReachedChest(m *Mob, t transportTarget, interaction transportInteraction, ticks int) {
 	i := copperGolemInteractions[interaction]
 	switch ticks {
 	case 1:
@@ -340,7 +340,7 @@ func (b *CopperGolemBehaviour) onReachedChest(m *Mob, t transportTarget, interac
 
 // openChest ports Container.startOpen for a copper golem: it counts as an
 // opener of the chest until it closes it.
-func (b *CopperGolemBehaviour) openChest(tx *world.Tx, h *world.EntityHandle, pos cube.Pos) {
+func (b *copperGolemBehaviour) openChest(tx *world.Tx, h *world.EntityHandle, pos cube.Pos) {
 	b.closeChest(tx, h)
 	c, ok := tx.Block(pos).(block.Container)
 	if !ok {
@@ -351,7 +351,7 @@ func (b *CopperGolemBehaviour) openChest(tx *world.Tx, h *world.EntityHandle, po
 }
 
 // closeChest ports Container.stopOpen and CopperGolem.clearOpenedChestPos.
-func (b *CopperGolemBehaviour) closeChest(tx *world.Tx, h *world.EntityHandle) {
+func (b *copperGolemBehaviour) closeChest(tx *world.Tx, h *world.EntityHandle) {
 	if b.openedChest == nil {
 		return
 	}
@@ -363,14 +363,14 @@ func (b *CopperGolemBehaviour) closeChest(tx *world.Tx, h *world.EntityHandle) {
 }
 
 // setState ports CopperGolem.setState: viewers see the state of the golem.
-func (b *CopperGolemBehaviour) setState(e *Ent, state CopperGolemState) {
+func (b *copperGolemBehaviour) setState(e *Ent, state CopperGolemState) {
 	if b.state != int(state) {
 		b.state = int(state)
 		e.updateState()
 	}
 }
 
-func (b *CopperGolemBehaviour) randomInt(bound int) int { return int(b.random.NextInt(int32(bound))) }
+func (b *copperGolemBehaviour) randomInt(bound int) int { return int(b.random.NextInt(int32(bound))) }
 
 // updateWeathering ports CopperGolem.updateWeathering: an unwaxed copper
 // golem oxidises a stage every seven hours or so, and a fully oxidised one
@@ -536,15 +536,11 @@ func (c *CopperGolem) Effects() []effect.Effect   { return c.b().effects.Effects
 func (c *CopperGolem) Speed() float64             { return c.b().speed }
 func (c *CopperGolem) SetSpeed(v float64)         { c.b().speed = v }
 func (c *CopperGolem) viewAction(a world.EntityAction) {
-	vs := c.tx.Viewers(c.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(c, a)
-	}
-	c.tx.ReleaseViewers(vs)
+	world.BroadcastEntityAction(c.tx, c, a)
 }
 
 var _ Living = (*CopperGolem)(nil)
 var _ Interactable = (*CopperGolem)(nil)
 var _ = sound.Custom{}
 
-func (b *CopperGolemBehaviour) effectManager() *EffectManager { return b.effects }
+func (b *copperGolemBehaviour) effectManager() *EffectManager { return b.effects }

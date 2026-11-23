@@ -84,10 +84,10 @@ func registerCubeGoals(m *Mob, c cubeMob) {
 	ai.Goals.Add(2, &cubeAttackGoal{goalFlags: goalFlags{GoalLook}})
 	ai.Goals.Add(4, &cubeRandomDirectionGoal{goalFlags: goalFlags{GoalLook}})
 	ai.Goals.Add(5, &cubeKeepOnJumpingGoal{goalFlags{GoalJump | GoalMove}})
-	players := NewNearestAttackableTargetGoal(nil, true)
+	players := newNearestAttackableTargetGoal(nil, true)
 	players.Selector = func(m *Mob, target world.Entity) bool { return math.Abs(target.Position()[1]-m.data.Pos[1]) <= 4 }
 	ai.Targets.Add(1, players)
-	ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true))
+	ai.Targets.Add(3, newNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true))
 }
 
 // tickCube runs what AbstractCubeMob does after the AI of a cube mob: it

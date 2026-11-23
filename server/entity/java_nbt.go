@@ -86,7 +86,7 @@ func NewFromStructureNBTOf(reg world.EntityRegistry, data map[string]any, opts w
 // NewFromBucket constructs a mob of a type of reg from the entity data
 // retained by its bucket. The bucket flag is set before the registered type
 // decodes its NBT.
-func NewFromBucket(reg world.EntityRegistry, opts world.EntitySpawnOpts, entityID string, data map[string]any) *world.EntityHandle {
+func newFromBucket(reg world.EntityRegistry, opts world.EntitySpawnOpts, entityID string, data map[string]any) *world.EntityHandle {
 	nbt := make(map[string]any, len(data)+2)
 	for key, value := range data {
 		nbt[key] = value

@@ -139,7 +139,7 @@ func catsWithin(tx *world.Tx, pos cube.Pos, radius float64) int {
 // spawnCat ports CatSpawner.spawnCat.
 func spawnCat(tx *world.Tx, pos cube.Pos, persistent bool, r *vanilla.Random) {
 	opts := world.EntitySpawnOpts{Position: pos.Vec3Middle(), SpawnReason: "natural", SpawnRandom: r}
-	cat := tx.AddEntity(opts.New(CatType, CatBehaviourConfig{}))
+	cat := tx.AddEntity(opts.New(entityCatType, catBehaviourConfig{}))
 	if persistent {
 		if c, ok := cat.(*Cat); ok {
 			c.SetPersistenceRequired(true)

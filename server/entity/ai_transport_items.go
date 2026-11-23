@@ -93,7 +93,7 @@ func newTransportItemsBetweenContainers(t *transportItems) *behavior {
 	}
 	bh.start = func(m *Mob, _ int64) { m.AI.nav.CanPathToTargetsBelowSurface = true }
 	bh.canStillUse = func(m *Mob, _ int64) bool {
-		b := m.Brain()
+		b := m.brain()
 		return !b.has(memTransportItemsCooldownTicks) && !b.has(memIsPanicking)
 	}
 	bh.stop = func(m *Mob, _ int64) { t.stop(m) }
@@ -176,7 +176,7 @@ func (t *transportItems) onReachedTarget(m *Mob) {
 		return
 	}
 	t.ticksReached++
-	m.Brain().set(memLookTarget, newBlockPosTracker(target.pos))
+	m.brain().set(memLookTarget, newBlockPosTracker(target.pos))
 	transportStopInPlace(m)
 	if t.hasInteraction && t.onReached != nil {
 		t.onReached(m, target, t.interaction, t.ticksReached)
@@ -444,7 +444,7 @@ func (t *transportItems) wanted(m *Mob, b world.Block) bool {
 
 // transportPositions returns the positions a memory holds.
 func transportPositions(m *Mob, mem memoryType) map[globalPos]struct{} {
-	v, _ := m.Brain().get(mem)
+	v, _ := m.brain().get(mem)
 	set, _ := v.(map[globalPos]struct{})
 	return set
 }
@@ -458,7 +458,7 @@ func (t *transportItems) setVisited(m *Mob, pos cube.Pos) {
 		t.enterCooldown(m)
 		return
 	}
-	m.Brain().setWithExpiry(memVisitedBlockPositions, visited, 6000)
+	m.brain().setWithExpiry(memVisitedBlockPositions, visited, 6000)
 }
 
 // markUnreachable ports
@@ -473,7 +473,7 @@ func (t *transportItems) markUnreachable(m *Mob, pos cube.Pos) {
 		t.enterCooldown(m)
 		return
 	}
-	b := m.Brain()
+	b := m.brain()
 	b.setWithExpiry(memVisitedBlockPositions, visited, 6000)
 	b.setWithExpiry(memUnreachableTransportBlockPositions, unreachable, 6000)
 }
@@ -538,14 +538,14 @@ func (t *transportItems) stopTargeting(m *Mob) {
 	t.ticksReached = 0
 	t.target = nil
 	m.AI.nav.Stop()
-	m.Brain().erase(memWalkTarget)
+	m.brain().erase(memWalkTarget)
 }
 
 // clearAfterMatch ports
 // TransportItemsBetweenContainers.clearMemoriesAfterMatchingTargetFound.
 func (t *transportItems) clearAfterMatch(m *Mob) {
 	t.stopTargeting(m)
-	b := m.Brain()
+	b := m.brain()
 	b.erase(memVisitedBlockPositions)
 	b.erase(memUnreachableTransportBlockPositions)
 }
@@ -554,7 +554,7 @@ func (t *transportItems) clearAfterMatch(m *Mob) {
 // TransportItemsBetweenContainers.enterCooldownAfterNoMatchingTargetFound.
 func (t *transportItems) enterCooldown(m *Mob) {
 	t.stopTargeting(m)
-	b := m.Brain()
+	b := m.brain()
 	b.set(memTransportItemsCooldownTicks, 140)
 	b.erase(memVisitedBlockPositions)
 	b.erase(memUnreachableTransportBlockPositions)

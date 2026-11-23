@@ -11,7 +11,7 @@ import (
 
 // FallingBlockBehaviourConfig holds optional parameters for
 // FallingBlockBehaviour.
-type FallingBlockBehaviourConfig struct {
+type fallingBlockBehaviourConfig struct {
 	Block world.Block
 	// Gravity is the amount of Y velocity subtracted every tick.
 	Gravity float64
@@ -24,15 +24,15 @@ type FallingBlockBehaviourConfig struct {
 	DistanceFallen float64
 }
 
-func (conf FallingBlockBehaviourConfig) Apply(data *world.EntityData) {
+func (conf fallingBlockBehaviourConfig) Apply(data *world.EntityData) {
 	data.Data = conf.New()
 }
 
 // New creates a FallingBlockBehaviour using the optional parameters in conf and
 // a block type.
-func (conf FallingBlockBehaviourConfig) New() *FallingBlockBehaviour {
+func (conf fallingBlockBehaviourConfig) New() *FallingBlockBehaviour {
 	behaviour := &FallingBlockBehaviour{block: conf.Block}
-	behaviour.passive = PassiveBehaviourConfig{
+	behaviour.passive = passiveBehaviourConfig{
 		Gravity: conf.Gravity,
 		Drag:    conf.Drag,
 		Tick:    behaviour.tick,
@@ -43,7 +43,7 @@ func (conf FallingBlockBehaviourConfig) New() *FallingBlockBehaviour {
 
 // FallingBlockBehaviour implements the behaviour for falling block entities.
 type FallingBlockBehaviour struct {
-	passive *PassiveBehaviour
+	passive *passiveBehaviour
 	block   world.Block
 
 	hurts                 bool

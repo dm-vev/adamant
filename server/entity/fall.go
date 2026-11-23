@@ -43,7 +43,7 @@ func (e *Ent) SetFallDistance(distance float64) { e.data.FallDistance = distance
 // out of water builds up fall distance, which the entity lands with when the
 // movement ends on the ground. Boats, like AbstractBoat, never land with it.
 func (e *Ent) tickFall(tx *world.Tx, m *Movement) {
-	if _, boat := e.data.Data.(*BoatBehaviour); boat || e.data.Riding != nil || e.fallSlowed() {
+	if id := e.H().Type().EncodeEntity(); id == "minecraft:boat" || id == "minecraft:chest_boat" || e.data.Riding != nil || e.fallSlowed() {
 		e.data.FallDistance = 0
 		return
 	}

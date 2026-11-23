@@ -46,27 +46,27 @@ func (s *foxState) registerGoals(m *Mob) {
 	ai.moveOverride = foxMoveControl{s}
 	ai.lookOverride = foxLookControl{s}
 
-	ai.Goals.Add(0, foxFloatGoal{NewFloatGoal(m), s})
+	ai.Goals.Add(0, foxFloatGoal{newFloatGoal(m), s})
 	ai.Goals.Add(0, newClimbOnTopOfPowderSnowGoal())
 	ai.Goals.Add(1, &foxFaceplantGoal{goalFlags: goalFlags{GoalLook | GoalJump | GoalMove}, fox: s})
-	s.panic = NewPanicGoal(2.2)
+	s.panic = newPanicGoal(2.2)
 	s.panic.Causes = func(src world.DamageSource) bool { return !s.defending && panicCause(src) }
 	ai.Goals.Add(2, s.panic)
-	ai.Goals.Add(3, foxBreedGoal{NewBreedGoal(1)})
-	players := NewAvoidEntityTypesGoal(playerTypes, 16, 1.6, 1.4)
+	ai.Goals.Add(3, foxBreedGoal{newBreedGoal(1)})
+	players := newAvoidEntityTypesGoal(playerTypes, 16, 1.6, 1.4)
 	players.Predicate = func(e world.Entity) bool { return !discrete(e) && !s.trusts(e) && !s.defending }
 	ai.Goals.Add(4, players)
-	wolves := NewAvoidEntityGoal(func(e world.Entity) bool { return e.H().Type() == WolfType }, 8, 1.6, 1.4)
+	wolves := newAvoidEntityGoal(func(e world.Entity) bool { return e.H().Type() == entityWolfType }, 8, 1.6, 1.4)
 	wolves.Predicate = func(e world.Entity) bool { return !e.(*Wolf).Tamed() && !s.defending }
 	ai.Goals.Add(4, wolves)
-	bears := NewAvoidEntityGoal(func(e world.Entity) bool { return e.H().Type() == PolarBearType }, 8, 1.6, 1.4)
+	bears := newAvoidEntityGoal(func(e world.Entity) bool { return e.H().Type() == entityPolarBearType }, 8, 1.6, 1.4)
 	bears.Predicate = func(world.Entity) bool { return !s.defending }
 	ai.Goals.Add(4, bears)
 	ai.Goals.Add(5, &foxStalkPreyGoal{goalFlags: goalFlags{GoalMove | GoalLook}, fox: s})
 	ai.Goals.Add(6, &foxPounceGoal{goalFlags: goalFlags{GoalMove | GoalJump}, fox: s})
-	ai.Goals.Add(6, &foxSeekShelterGoal{FleeSunGoal: NewFleeSunGoal(1.25), fox: s, interval: reducedTickDelay(100)})
-	melee := NewMeleeAttackGoal(1.2, true)
-	melee.CheckAttack = func(m *Mob, g *MeleeAttackGoal, target world.Entity) {
+	ai.Goals.Add(6, &foxSeekShelterGoal{fleeSunGoal: newFleeSunGoal(1.25), fox: s, interval: reducedTickDelay(100)})
+	melee := newMeleeAttackGoal(1.2, true)
+	melee.CheckAttack = func(m *Mob, g *meleeAttackGoal, target world.Entity) {
 		if g.CanPerformAttack(m, target) {
 			g.ResetAttackCooldown()
 			m.doHurtTarget(target)
@@ -75,28 +75,28 @@ func (s *foxState) registerGoals(m *Mob) {
 	}
 	ai.Goals.Add(7, foxMeleeAttackGoal{melee, s})
 	ai.Goals.Add(7, &foxSleepGoal{goalFlags: goalFlags{GoalMove | GoalLook | GoalJump}, fox: s, countdown: int(m.Random().NextInt(int32(reducedTickDelay(140))))})
-	ai.Goals.Add(8, foxFollowParentGoal{NewFollowParentGoal(1.25), s})
+	ai.Goals.Add(8, foxFollowParentGoal{newFollowParentGoal(1.25), s})
 	ai.Goals.Add(9, &foxStrollThroughVillageGoal{goalFlags: goalFlags{GoalMove}, fox: s, interval: reducedTickDelay(200)})
 	ai.Goals.Add(10, &foxEatBerriesGoal{moveToBlock: moveToBlock{acceptedDistance: 2, recalcInterval: 100}, fox: s})
 	ai.Goals.Add(10, newLeapAtTargetGoal(.4))
-	ai.Goals.Add(11, NewWaterAvoidingRandomStrollGoal(1))
+	ai.Goals.Add(11, newWaterAvoidingRandomStrollGoal(1))
 	ai.Goals.Add(11, &foxSearchForItemsGoal{goalFlags: goalFlags{GoalMove}, fox: s})
-	ai.Goals.Add(12, foxLookAtPlayerGoal{NewLookAtPlayerGoal(24), s})
+	ai.Goals.Add(12, foxLookAtPlayerGoal{newLookAtPlayerGoal(24), s})
 	ai.Goals.Add(13, &foxPerchAndSearchGoal{goalFlags: goalFlags{GoalMove | GoalLook}, fox: s})
 
-	defend := &NearestAttackableTargetGoal{targetGoal: newTargetGoal(false, false), RandomInterval: reducedTickDelay(10),
+	defend := &nearestAttackableTargetGoal{targetGoal: newTargetGoal(false, false), RandomInterval: reducedTickDelay(10),
 		IsType: func(e world.Entity) bool { _, ok := e.(Living); return ok }}
 	defend.Selector = func(m *Mob, target world.Entity) bool {
 		victim, _ := lastHurtMobOf(target)
 		return victim != nil && !s.trusts(target)
 	}
-	ai.Targets.Add(3, &foxDefendTrustedTargetGoal{NearestAttackableTargetGoal: defend, fox: s, timestamp: -1})
-	land := NewNearestAttackableTargetGoal(func(e world.Entity) bool {
-		return e.H().Type() == ChickenType || e.H().Type() == RabbitType
+	ai.Targets.Add(3, &foxDefendTrustedTargetGoal{nearestAttackableTargetGoal: defend, fox: s, timestamp: -1})
+	land := newNearestAttackableTargetGoal(func(e world.Entity) bool {
+		return e.H().Type() == entityChickenType || e.H().Type() == entityRabbitType
 	}, false)
-	turtles := NewNearestAttackableTypesGoal(entityTypes{"minecraft:turtle"}, false)
+	turtles := newNearestAttackableTypesGoal(entityTypes{"minecraft:turtle"}, false)
 	turtles.Selector = turtleBabyOnLand
-	fish := NewNearestAttackableTargetGoal(func(e world.Entity) bool {
+	fish := newNearestAttackableTargetGoal(func(e world.Entity) bool {
 		switch e.H().Type().EncodeEntity() {
 		case "minecraft:cod", "minecraft:salmon", "minecraft:tropical_fish":
 			return true
@@ -165,9 +165,9 @@ func (s *foxState) alertable(m *Mob) bool {
 // alertableEntity ports Fox.FoxAlertableEntitiesSelector.
 func (s *foxState) alertableEntity(e world.Entity) bool {
 	switch {
-	case e.H().Type() == FoxType:
+	case e.H().Type() == entityFoxType:
 		return false
-	case e.H().Type() == ChickenType || e.H().Type() == RabbitType || monsterClass[e.H().Type().EncodeEntity()]:
+	case e.H().Type() == entityChickenType || e.H().Type() == entityRabbitType || monsterClass[e.H().Type().EncodeEntity()]:
 		return true
 	}
 	if t, ok := e.(interface{ Tamed() bool }); ok {
@@ -241,7 +241,7 @@ func (c foxLookControl) tick(m *Mob) {
 // foxFloatGoal ports FoxFloatGoal: a fox swims in fluid deeper than a
 // quarter of a block and forgets what it did.
 type foxFloatGoal struct {
-	*FloatGoal
+	*floatGoal
 	fox *foxState
 }
 
@@ -268,7 +268,7 @@ func (g *foxFaceplantGoal) Stop(*Mob) { g.fox.faceplanted = false }
 func (g *foxFaceplantGoal) Tick(*Mob) { g.countdown-- }
 
 // foxBreedGoal ports FoxBreedGoal, which clears the states of both foxes.
-type foxBreedGoal struct{ *BreedGoal }
+type foxBreedGoal struct{ *breedGoal }
 
 func (g foxBreedGoal) Start(m *Mob) {
 	foxOf(m).clearStates()
@@ -290,7 +290,7 @@ func (g *foxStalkPreyGoal) CanUse(m *Mob) bool {
 		return false
 	}
 	target := m.Target()
-	return target != nil && entityAlive(target) && (target.H().Type() == ChickenType || target.H().Type() == RabbitType) &&
+	return target != nil && entityAlive(target) && (target.H().Type() == entityChickenType || target.H().Type() == entityRabbitType) &&
 		m.DistanceToSqr(target) > 36 && !s.crouching && !s.interested && !m.AI.jumping
 }
 
@@ -424,7 +424,7 @@ func rotlerpDelta(f, a, b float64) float64 {
 // foxSeekShelterGoal ports SeekShelterGoal: out of a village in daylight or
 // a thunderstorm, a fox looks for cover now and then.
 type foxSeekShelterGoal struct {
-	*FleeSunGoal
+	*fleeSunGoal
 	fox      *foxState
 	interval int
 }
@@ -455,24 +455,24 @@ func (g *foxSeekShelterGoal) setWantedPos(m *Mob) bool {
 
 func (g *foxSeekShelterGoal) Start(m *Mob) {
 	g.fox.clearStates()
-	g.FleeSunGoal.Start(m)
+	g.fleeSunGoal.Start(m)
 }
 
 // foxMeleeAttackGoal ports FoxMeleeAttackGoal: a fox only bites standing
 // up.
 type foxMeleeAttackGoal struct {
-	*MeleeAttackGoal
+	*meleeAttackGoal
 	fox *foxState
 }
 
 func (g foxMeleeAttackGoal) CanUse(m *Mob) bool {
 	s := g.fox
-	return !s.sitting && !s.sleeping && !s.crouching && !s.faceplanted && g.MeleeAttackGoal.CanUse(m)
+	return !s.sitting && !s.sleeping && !s.crouching && !s.faceplanted && g.meleeAttackGoal.CanUse(m)
 }
 
 func (g foxMeleeAttackGoal) Start(m *Mob) {
 	g.fox.interested = false
-	g.MeleeAttackGoal.Start(m)
+	g.meleeAttackGoal.Start(m)
 }
 
 // foxSleepGoal ports SleepGoal: by day a still fox under cover with nothing
@@ -517,21 +517,21 @@ func (g *foxSleepGoal) Start(m *Mob) {
 // foxFollowParentGoal ports FoxFollowParentGoal, which a defending fox does
 // not start.
 type foxFollowParentGoal struct {
-	*FollowParentGoal
+	*followParentGoal
 	fox *foxState
 }
 
 func (g foxFollowParentGoal) CanUse(m *Mob) bool {
-	return !g.fox.defending && g.FollowParentGoal.CanUse(m)
+	return !g.fox.defending && g.followParentGoal.CanUse(m)
 }
 
 func (g foxFollowParentGoal) CanContinueToUse(m *Mob) bool {
-	return !g.fox.defending && g.FollowParentGoal.CanContinueToUse(m)
+	return !g.fox.defending && g.followParentGoal.CanContinueToUse(m)
 }
 
 func (g foxFollowParentGoal) Start(m *Mob) {
 	g.fox.clearStates()
-	g.FollowParentGoal.Start(m)
+	g.followParentGoal.Start(m)
 }
 
 // foxStrollThroughVillageGoal ports FoxStrollThroughVillageGoal, a
@@ -554,7 +554,7 @@ func (g *foxStrollThroughVillageGoal) CanUse(m *Mob) bool {
 	if brightOutside(m.tx) || m.Random().NextInt(int32(g.interval)) != 0 || !m.tx.POIs().IsVillage(m.BlockPos()) {
 		return false
 	}
-	pos, ok := LandRandomPosWeighted(m, 15, 7, func(p cube.Pos) float64 { return -float64(m.tx.POIs().VillageDistance(p)) })
+	pos, ok := landRandomPosWeighted(m, 15, 7, func(p cube.Pos) float64 { return -float64(m.tx.POIs().VillageDistance(p)) })
 	g.hasWant = ok
 	if ok {
 		g.wanted = cube.PosFromVec3(pos)
@@ -717,16 +717,16 @@ func (g *foxSearchForItemsGoal) Tick(m *Mob) {
 // foxLookAtPlayerGoal ports FoxLookAtPlayerGoal, which a faceplanted or
 // interested fox does not run.
 type foxLookAtPlayerGoal struct {
-	*LookAtPlayerGoal
+	*lookAtPlayerGoal
 	fox *foxState
 }
 
 func (g foxLookAtPlayerGoal) CanUse(m *Mob) bool {
-	return g.LookAtPlayerGoal.CanUse(m) && !g.fox.faceplanted && !g.fox.interested
+	return g.lookAtPlayerGoal.CanUse(m) && !g.fox.faceplanted && !g.fox.interested
 }
 
 func (g foxLookAtPlayerGoal) CanContinueToUse(m *Mob) bool {
-	return g.LookAtPlayerGoal.CanContinueToUse(m) && !g.fox.faceplanted && !g.fox.interested
+	return g.lookAtPlayerGoal.CanContinueToUse(m) && !g.fox.faceplanted && !g.fox.interested
 }
 
 // foxPerchAndSearchGoal ports PerchAndSearchGoal: an idle fox now and then
@@ -775,7 +775,7 @@ func (g *foxPerchAndSearchGoal) resetLook(m *Mob) {
 // foxDefendTrustedTargetGoal ports DefendTrustedTargetGoal: a fox defends a
 // player it trusts from whatever hurt it.
 type foxDefendTrustedTargetGoal struct {
-	*NearestAttackableTargetGoal
+	*nearestAttackableTargetGoal
 	fox       *foxState
 	attacker  *world.EntityHandle
 	trusted   *world.EntityHandle

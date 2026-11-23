@@ -11,7 +11,7 @@ import (
 )
 
 // ArmourStandBehaviourConfig holds optional parameters for ArmourStandBehaviour.
-type ArmourStandBehaviourConfig struct {
+type armourStandBehaviourConfig struct {
 	Armour *inventory.Armour
 	// MainHand is the item equipped in the main hand slot of the armour stand.
 	MainHand item.Stack
@@ -22,22 +22,22 @@ type ArmourStandBehaviourConfig struct {
 }
 
 // Apply ...
-func (conf ArmourStandBehaviourConfig) Apply(data *world.EntityData) {
+func (conf armourStandBehaviourConfig) Apply(data *world.EntityData) {
 	data.Data = conf.New()
 }
 
 // New creates an ArmourStandBehaviour using the optional parameters in conf.
-func (conf ArmourStandBehaviourConfig) New() *ArmourStandBehaviour {
+func (conf armourStandBehaviourConfig) New() *armourStandBehaviour {
 	if conf.Armour == nil {
 		conf.Armour = inventory.NewArmour(nil)
 	}
 
-	a := &ArmourStandBehaviour{
+	a := &armourStandBehaviour{
 		conf:         conf,
 		armours:      conf.Armour,
 		lastOnGround: true,
 	}
-	a.passive = PassiveBehaviourConfig{
+	a.passive = passiveBehaviourConfig{
 		Gravity: 0.08,
 		Drag:    0.02,
 		Tick:    a.tick,
@@ -50,10 +50,10 @@ func (conf ArmourStandBehaviourConfig) New() *ArmourStandBehaviour {
 }
 
 // ArmourStandBehaviour implements the behaviour for armour stand entities.
-type ArmourStandBehaviour struct {
-	conf ArmourStandBehaviourConfig
+type armourStandBehaviour struct {
+	conf armourStandBehaviourConfig
 
-	passive *PassiveBehaviour
+	passive *passiveBehaviour
 	hurt    time.Duration
 	armours *inventory.Armour
 
@@ -83,14 +83,14 @@ func armourStandDropOffset(stack item.Stack) mgl64.Vec3 {
 // Tick ...
 // pistonMovement returns the movement computer a piston moves the armour stand
 // with.
-func (a *ArmourStandBehaviour) pistonMovement() *MovementComputer { return a.passive.mc }
+func (a *armourStandBehaviour) pistonMovement() *MovementComputer { return a.passive.mc }
 
-func (a *ArmourStandBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (a *armourStandBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	return a.passive.Tick(e, tx)
 }
 
 // tick ...
-func (a *ArmourStandBehaviour) tick(e *Ent, tx *world.Tx) {
+func (a *armourStandBehaviour) tick(e *Ent, tx *world.Tx) {
 	if a.hurt > 0 {
 		a.hurt -= time.Millisecond * 50
 		if a.hurt < 0 {
@@ -108,12 +108,12 @@ func (a *ArmourStandBehaviour) tick(e *Ent, tx *world.Tx) {
 }
 
 // Explode ...
-func (a *ArmourStandBehaviour) Explode(e *Ent, src world.ExplosionSource, impact float64) {
+func (a *armourStandBehaviour) Explode(e *Ent, src world.ExplosionSource, impact float64) {
 	a.passive.Explode(e, src, impact)
 }
 
 // AcceptItem ...
-func (a *ArmourStandBehaviour) AcceptItem(e *Ent, from world.Entity, _ *world.Tx, ctx *item.UseContext) bool {
+func (a *armourStandBehaviour) AcceptItem(e *Ent, from world.Entity, _ *world.Tx, ctx *item.UseContext) bool {
 	if sneaker, ok := from.(interface {
 		Sneaking() bool
 	}); ok && sneaker.Sneaking() {
@@ -179,7 +179,7 @@ func (a *ArmourStandBehaviour) AcceptItem(e *Ent, from world.Entity, _ *world.Tx
 }
 
 // Attack ...
-func (a *ArmourStandBehaviour) Attack(e *Ent, _ world.Entity, tx *world.Tx) {
+func (a *armourStandBehaviour) Attack(e *Ent, _ world.Entity, tx *world.Tx) {
 	if a.hurt > 0 {
 		a.destroy(e, tx)
 		return
@@ -190,19 +190,19 @@ func (a *ArmourStandBehaviour) Attack(e *Ent, _ world.Entity, tx *world.Tx) {
 }
 
 // destroy destroys the armour stand, dropping all equipped items.
-func (a *ArmourStandBehaviour) destroy(e *Ent, tx *world.Tx) {
+func (a *armourStandBehaviour) destroy(e *Ent, tx *world.Tx) {
 	tx.PlaySound(e.Position(), sound.ArmourStandBreak{})
 	a.dropAll(e, tx)
 	_ = e.CloseIn(tx)
 }
 
 // HurtDuration returns the remaining hurt duration of the armour stand.
-func (a *ArmourStandBehaviour) HurtDuration() time.Duration {
+func (a *armourStandBehaviour) HurtDuration() time.Duration {
 	return a.hurt
 }
 
 // dropAll drops all equipped items of the armour stand.
-func (a *ArmourStandBehaviour) dropAll(e *Ent, tx *world.Tx) {
+func (a *armourStandBehaviour) dropAll(e *Ent, tx *world.Tx) {
 	dropPos := e.Position()
 	drop := func(stack item.Stack) {
 		if stack.Empty() {
@@ -220,29 +220,29 @@ func (a *ArmourStandBehaviour) dropAll(e *Ent, tx *world.Tx) {
 }
 
 // Armour returns the armour equipped on the armour stand.
-func (a *ArmourStandBehaviour) Armour() *inventory.Armour {
+func (a *armourStandBehaviour) Armour() *inventory.Armour {
 	return a.armours
 }
 
 // HeldItems returns the items equipped in the main hand and offhand slots of the armour stand.
-func (a *ArmourStandBehaviour) HeldItems() (mainHand, offHand item.Stack) {
+func (a *armourStandBehaviour) HeldItems() (mainHand, offHand item.Stack) {
 	return a.conf.MainHand, a.conf.OffHand
 }
 
 // PoseIndex returns the pose index of the armour stand. Possible values range from 0 to 12 (inclusive).
-func (a *ArmourStandBehaviour) PoseIndex() int {
+func (a *armourStandBehaviour) PoseIndex() int {
 	return a.conf.PoseIndex
 }
 
 // SetHeldItems sets the items equipped in the main hand and offhand slots of the armour stand.
-func (a *ArmourStandBehaviour) SetHeldItems(e *Ent, mainHand, offHand item.Stack) {
+func (a *armourStandBehaviour) SetHeldItems(e *Ent, mainHand, offHand item.Stack) {
 	a.conf.MainHand = mainHand
 	a.conf.OffHand = offHand
 	a.updateHeldItems(e)
 }
 
 // SetPoseIndex sets the pose index of the armour stand. Possible values range from 0 to 12 (inclusive).
-func (a *ArmourStandBehaviour) SetPoseIndex(e *Ent, poseIndex int) {
+func (a *armourStandBehaviour) SetPoseIndex(e *Ent, poseIndex int) {
 	if poseIndex < 0 || poseIndex > 12 {
 		panic("pose index must be between 0 and 12")
 	}
@@ -251,30 +251,22 @@ func (a *ArmourStandBehaviour) SetPoseIndex(e *Ent, poseIndex int) {
 }
 
 // updateArmours updates the armour stand's equipped items for all viewers.
-func (a *ArmourStandBehaviour) updateArmours(e *Ent) {
+func (a *armourStandBehaviour) updateArmours(e *Ent) {
 	if e.tx == nil {
 		return
 	}
-	viewers := e.tx.Viewers(e.Position())
-	for _, v := range viewers {
-		v.ViewEntityArmour(e)
-	}
-	e.tx.ReleaseViewers(viewers)
+	world.BroadcastEntityArmour(e.tx, e)
 }
 
 // updateHeldItems updates the armour stand's held items for all viewers.
-func (a *ArmourStandBehaviour) updateHeldItems(e *Ent) {
+func (a *armourStandBehaviour) updateHeldItems(e *Ent) {
 	if e.tx == nil {
 		return
 	}
-	viewers := e.tx.Viewers(e.Position())
-	for _, v := range viewers {
-		v.ViewEntityItems(e)
-	}
-	e.tx.ReleaseViewers(viewers)
+	world.BroadcastEntityItems(e.tx, e)
 }
 
 // updateState updates the armour stand's state for all viewers.
-func (a *ArmourStandBehaviour) updateState(e *Ent) {
+func (a *armourStandBehaviour) updateState(e *Ent) {
 	world.BroadcastEntityState(e.tx, e)
 }

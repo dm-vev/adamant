@@ -11,39 +11,39 @@ import (
 )
 
 // MinecartTNTBehaviourConfig configures a TNT minecart behaviour.
-type MinecartTNTBehaviourConfig struct {
-	Minecart MinecartBehaviourConfig
+type minecartTNTBehaviourConfig struct {
+	Minecart minecartBehaviourConfig
 	Fuse     int
 }
 
 // Apply applies the configuration to the entity data.
-func (conf MinecartTNTBehaviourConfig) Apply(data *world.EntityData) {
+func (conf minecartTNTBehaviourConfig) Apply(data *world.EntityData) {
 	data.Data = conf.New()
 }
 
 // New creates a new TNT minecart behaviour.
-func (conf MinecartTNTBehaviourConfig) New() *MinecartTNTBehaviour {
+func (conf minecartTNTBehaviourConfig) New() *minecartTNTBehaviour {
 	base := conf.Minecart.New()
-	return &MinecartTNTBehaviour{
-		MinecartBehaviour: base,
+	return &minecartTNTBehaviour{
+		minecartBehaviour: base,
 		fuse:              conf.Fuse,
 	}
 }
 
 // MinecartTNTBehaviour implements TNT minecart behaviour.
-type MinecartTNTBehaviour struct {
-	*MinecartBehaviour
+type minecartTNTBehaviour struct {
+	*minecartBehaviour
 	fuse int
 }
 
 // Base returns the base minecart behaviour.
-func (b *MinecartTNTBehaviour) Base() *MinecartBehaviour {
-	return b.MinecartBehaviour
+func (b *minecartTNTBehaviour) Base() *minecartBehaviour {
+	return b.minecartBehaviour
 }
 
 // Tick ticks the TNT minecart behaviour.
-func (b *MinecartTNTBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	m := b.MinecartBehaviour.Tick(e, tx)
+func (b *minecartTNTBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+	m := b.minecartBehaviour.Tick(e, tx)
 	if b.fuse == 0 {
 		b.explode(e, tx, 0)
 		_ = e.CloseIn(tx)
@@ -57,7 +57,7 @@ func (b *MinecartTNTBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 }
 
 // Activate primes the TNT minecart when powered.
-func (b *MinecartTNTBehaviour) Activate(e *Ent, tx *world.Tx, powered bool) {
+func (b *minecartTNTBehaviour) Activate(e *Ent, tx *world.Tx, powered bool) {
 	if !powered || b.fuse >= 0 {
 		return
 	}
@@ -65,22 +65,22 @@ func (b *MinecartTNTBehaviour) Activate(e *Ent, tx *world.Tx, powered bool) {
 }
 
 // FuseTicks returns the fuse ticks for metadata.
-func (b *MinecartTNTBehaviour) FuseTicks() int {
+func (b *minecartTNTBehaviour) FuseTicks() int {
 	return b.fuse
 }
 
 // Ignited reports if the TNT minecart is ignited.
-func (b *MinecartTNTBehaviour) Ignited() bool {
+func (b *minecartTNTBehaviour) Ignited() bool {
 	return b.fuse >= 0
 }
 
-func (b *MinecartTNTBehaviour) prime(e *Ent, tx *world.Tx, fuse int) {
+func (b *minecartTNTBehaviour) prime(e *Ent, tx *world.Tx, fuse int) {
 	b.fuse = fuse
 	tx.PlaySound(e.Position(), sound.TNT{})
 	b.broadcastState(e, tx)
 }
 
-func (b *MinecartTNTBehaviour) explode(e *Ent, tx *world.Tx, speedSq float64) {
+func (b *minecartTNTBehaviour) explode(e *Ent, tx *world.Tx, speedSq float64) {
 	root := math.Sqrt(speedSq)
 	if root > 5 {
 		root = 5
@@ -90,19 +90,19 @@ func (b *MinecartTNTBehaviour) explode(e *Ent, tx *world.Tx, speedSq float64) {
 }
 
 // MinecartTNT is a minecart with TNT.
-type MinecartTNT struct {
-	*Minecart
+type minecartTNT struct {
+	*minecart
 }
 
-func (m *MinecartTNT) tnt() *MinecartTNTBehaviour {
-	if b, ok := m.Behaviour().(*MinecartTNTBehaviour); ok {
+func (m *minecartTNT) tnt() *minecartTNTBehaviour {
+	if b, ok := m.Behaviour().(*minecartTNTBehaviour); ok {
 		return b
 	}
 	return nil
 }
 
 // Interact handles TNT minecart interaction.
-func (m *MinecartTNT) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+func (m *minecartTNT) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	b := m.tnt()
 	if b == nil {
 		return false
@@ -116,11 +116,11 @@ func (m *MinecartTNT) Interact(tx *world.Tx, user item.User, ctx *item.UseContex
 		b.prime(m.Ent, tx, 80)
 		return true
 	}
-	return m.Minecart.Interact(tx, user, ctx)
+	return m.minecart.Interact(tx, user, ctx)
 }
 
 // Destroy destroys the TNT minecart and drops its item if appropriate.
-func (m *MinecartTNT) Destroy(tx *world.Tx, src world.DamageSource, causer world.Entity) bool {
+func (m *minecartTNT) Destroy(tx *world.Tx, src world.DamageSource, causer world.Entity) bool {
 	b := m.tnt()
 	if b == nil {
 		_ = m.CloseIn(tx)
@@ -140,17 +140,17 @@ func (m *MinecartTNT) Destroy(tx *world.Tx, src world.DamageSource, causer world
 }
 
 // Links returns the active links for the minecart.
-func (m *MinecartTNT) Links() []Link {
-	return m.Minecart.Links()
+func (m *minecartTNT) Links() []Link {
+	return m.minecart.Links()
 }
 
 // TNTMinecartType is a world.EntityType implementation for TNT minecarts.
-var TNTMinecartType tntMinecartType
+var entityTNTMinecartType tntMinecartType
 
 type tntMinecartType struct{}
 
 func (tntMinecartType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.EntityData) world.Entity {
-	return &MinecartTNT{Minecart: &Minecart{Ent: &Ent{tx: tx, handle: handle, data: data}}}
+	return &minecartTNT{minecart: &minecart{Ent: &Ent{tx: tx, handle: handle, data: data}}}
 }
 
 func (tntMinecartType) EncodeEntity() string { return "minecraft:tnt_minecart" }
@@ -161,7 +161,7 @@ func (tntMinecartType) NetworkOffset() float64        { return minecartNetworkOf
 func (tntMinecartType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf := tntMinecartConf
 	base := conf.New()
-	readMinecartDisplayNBT(base.MinecartBehaviour, m)
+	readMinecartDisplayNBT(base.minecartBehaviour, m)
 	base.fuse = -1
 	if v, ok := m["fuse"]; ok {
 		base.fuse = int(readNBTInt(v))
@@ -170,14 +170,14 @@ func (tntMinecartType) DecodeNBT(m map[string]any, data *world.EntityData) {
 }
 
 func (tntMinecartType) EncodeNBT(data *world.EntityData) map[string]any {
-	b := data.Data.(*MinecartTNTBehaviour)
+	b := data.Data.(*minecartTNTBehaviour)
 	m := map[string]any{"fuse": int32(b.fuse)}
-	writeMinecartDisplayNBT(b.MinecartBehaviour, m)
+	writeMinecartDisplayNBT(b.minecartBehaviour, m)
 	return m
 }
 
-var tntMinecartConf = MinecartTNTBehaviourConfig{
-	Minecart: MinecartBehaviourConfig{
+var tntMinecartConf = minecartTNTBehaviourConfig{
+	Minecart: minecartBehaviourConfig{
 		DisplayBlock:  block.TNT{},
 		DisplayOffset: minecartDisplayOffset,
 		Rideable:      false,

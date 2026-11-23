@@ -27,11 +27,11 @@ const (
 )
 
 var (
-	DrownedType        drownedType
-	GuardianType       guardianType
-	ElderGuardianType  elderGuardianType
-	NautilusType       nautilusType
-	ZombieNautilusType zombieNautilusType
+	entityDrownedType        drownedType
+	entityGuardianType       guardianType
+	entityElderGuardianType  elderGuardianType
+	entityNautilusType       nautilusType
+	entityZombieNautilusType zombieNautilusType
 )
 
 type drownedType struct{}
@@ -41,19 +41,19 @@ type nautilusType struct{}
 type zombieNautilusType struct{}
 
 func NewDrowned(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(DrownedType, oceanConfig{kind: oceanDrowned})
+	return o.New(entityDrownedType, oceanConfig{kind: oceanDrowned})
 }
 func NewGuardian(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(GuardianType, oceanConfig{kind: oceanGuardian})
+	return o.New(entityGuardianType, oceanConfig{kind: oceanGuardian})
 }
 func NewElderGuardian(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(ElderGuardianType, oceanConfig{kind: oceanElderGuardian})
+	return o.New(entityElderGuardianType, oceanConfig{kind: oceanElderGuardian})
 }
 func NewNautilus(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(NautilusType, oceanConfig{kind: oceanNautilus})
+	return o.New(entityNautilusType, oceanConfig{kind: oceanNautilus})
 }
 func NewZombieNautilus(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(ZombieNautilusType, oceanConfig{kind: oceanZombieNautilus})
+	return o.New(entityZombieNautilusType, oceanConfig{kind: oceanZombieNautilus})
 }
 
 type oceanEntityType struct {
@@ -80,7 +80,7 @@ func (t oceanEntityType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	if _, ok := m["MaxHealth"]; ok {
 		c.MaxHealth = float64(nbtconv.Float32(m, "MaxHealth"))
 	}
-	for _, attr := range ReadNativeMobAttributes(m) {
+	for _, attr := range readNativeMobAttributes(m) {
 		c.setAttribute(attr.Name, attr.Base, attr.Current)
 	}
 	attributes, _ := m["attributes"].([]any)
@@ -119,7 +119,7 @@ func (t oceanEntityType) DecodeNBT(m map[string]any, d *world.EntityData) {
 			}
 		}
 	}
-	nativeEquipment := ReadNativeMobEquipment(m)
+	nativeEquipment := readNativeMobEquipment(m)
 	if _, native := m["Mainhand"]; native {
 		c.mainHand = item.Stack{}
 		if len(nativeEquipment.Mainhand) != 0 {
@@ -188,19 +188,19 @@ func (t oceanEntityType) EncodeNBT(d *world.EntityData) map[string]any {
 	}
 	// Saving an actor is a native Bedrock operation, not a Java item export.
 	// Native map UUIDs need no fabricated Java map ID to survive this path.
-	equipment := ReadNativeMobEquipment(d.NativeNBT)
-	equipment.Mainhand = []NativeMobItem{nativeMobItemFromStack(b.mainHand)}
-	equipment.Offhand = []NativeMobItem{nativeMobItemFromStack(b.offHand)}
+	equipment := readNativeMobEquipment(d.NativeNBT)
+	equipment.Mainhand = []nativeMobItem{nativeMobItemFromStack(b.mainHand)}
+	equipment.Offhand = []nativeMobItem{nativeMobItemFromStack(b.offHand)}
 	if len(equipment.Armor) < 4 {
-		armor := make([]NativeMobItem, 4)
+		armor := make([]nativeMobItem, 4)
 		copy(armor, equipment.Armor)
 		equipment.Armor = armor
 	}
 	for i, stack := range []item.Stack{b.head, b.chest, b.legs, b.feet} {
 		equipment.Armor[i] = nativeMobItemFromStack(stack)
 	}
-	encoded := MergeNativeMobNBT(d.NativeNBT, m)
-	for key, value := range EncodeNativeMobEquipment(equipment) {
+	encoded := mergeNativeMobNBT(d.NativeNBT, m)
+	for key, value := range encodeNativeMobEquipment(equipment) {
 		encoded[key] = value
 	}
 	delete(encoded, "HandItems")
@@ -273,13 +273,13 @@ func (drownedType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData
 	return &Drowned{oceanEntityType{kind: oceanDrowned}.open(tx, h, d)}
 }
 func (guardianType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
-	return &Guardian{oceanEntityType{kind: oceanGuardian}.open(tx, h, d)}
+	return &guardian{oceanEntityType{kind: oceanGuardian}.open(tx, h, d)}
 }
 func (elderGuardianType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
-	return &ElderGuardian{oceanEntityType{kind: oceanElderGuardian}.open(tx, h, d)}
+	return &elderGuardian{oceanEntityType{kind: oceanElderGuardian}.open(tx, h, d)}
 }
 func (nautilusType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
-	return &Nautilus{oceanEntityType{kind: oceanNautilus}.open(tx, h, d)}
+	return &nautilus{oceanEntityType{kind: oceanNautilus}.open(tx, h, d)}
 }
 func (zombieNautilusType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	return &ZombieNautilus{oceanEntityType{kind: oceanZombieNautilus}.open(tx, h, d)}
@@ -302,7 +302,7 @@ func (elderGuardianType) BBox(e world.Entity) cube.BBox {
 	return oceanEntityType{width: 1.9975, height: 1.9975}.BBox(e)
 }
 func (nautilusType) BBox(e world.Entity) cube.BBox {
-	if m, ok := e.(*Nautilus); ok && m.Age() < 0 {
+	if m, ok := e.(*nautilus); ok && m.Age() < 0 {
 		return oceanEntityType{width: .7, height: .5}.BBox(e)
 	}
 	return oceanEntityType{width: 1.4, height: 1.0}.BBox(e)
@@ -441,13 +441,13 @@ func oceanBaseSpeed(k oceanKind) float64 {
 }
 
 type Drowned struct{ *oceanMob }
-type Guardian struct{ *oceanMob }
-type ElderGuardian struct{ *oceanMob }
-type Nautilus struct{ *oceanMob }
+type guardian struct{ *oceanMob }
+type elderGuardian struct{ *oceanMob }
+type nautilus struct{ *oceanMob }
 type ZombieNautilus struct{ *oceanMob }
 type oceanMob struct{ *Ent }
 
-func (m *Nautilus) PassengerPosition(passenger world.Entity) mgl64.Vec3 {
+func (m *nautilus) PassengerPosition(passenger world.Entity) mgl64.Vec3 {
 	return m.Position().Add(mgl64.Vec3{0, float64(float32(1.1375)), 0}).Sub(vehicleAttachmentPoint(passenger))
 }
 
@@ -485,7 +485,7 @@ type oceanBehaviour struct {
 	ai                                  MobAI
 	searchingForLand, swimming, drawing bool
 	moving                              bool
-	stroll                              *RandomStrollGoal
+	stroll                              *randomStrollGoal
 }
 
 func (b *oceanBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
@@ -649,7 +649,7 @@ func oceanNearestTarget(tx *world.Tx, p mgl64.Vec3, r float64) world.Entity {
 }
 
 // axolotlTypes holds the type of axolotls, which zombie nautili target.
-var axolotlTypes = []string{AxolotlType.EncodeEntity()}
+var axolotlTypes = []string{axolotlType.EncodeEntity()}
 
 func (m *oceanMob) FinalizeSpawn(reason string, random *vanilla.Random) {
 	b := m.b()
@@ -759,11 +759,7 @@ func (m *oceanMob) FollowRange() float64         { return m.b().followRange }
 func (m *oceanMob) KnockbackResistance() float64 { return m.b().knockbackResistance }
 func (m *oceanMob) hasEffect(t effect.Type) bool { _, ok := m.b().effects.Effect(t); return ok }
 func (m *oceanMob) viewAction(a world.EntityAction) {
-	vs := m.tx.Viewers(m.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(m, a)
-	}
-	m.tx.ReleaseViewers(vs)
+	world.BroadcastEntityAction(m.tx, m, a)
 }
 func (m *oceanMob) die(src world.DamageSource) {
 	b := m.b()

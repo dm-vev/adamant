@@ -23,7 +23,7 @@ func equipWithDispenser(tx *world.Tx, e world.Entity, v any) bool {
 	}:
 		return e.dispenserEquip(tx, stack)
 	case *Ent:
-		if b, ok := e.Behaviour().(*ArmourStandBehaviour); ok {
+		if b, ok := e.Behaviour().(*armourStandBehaviour); ok {
 			return b.dispenserEquip(e, tx, stack)
 		}
 	}
@@ -89,7 +89,7 @@ func dispenserEquipGear(tx *world.Tx, e world.Entity, stack item.Stack) bool {
 // dispenserEquip ports LivingEntity.canEquipWithDispenser and setItemSlot for an
 // armour stand: it wears a piece of armour, a pumpkin or a skull in the slot of
 // the piece if that slot is free, and holds a shield in its off hand.
-func (a *ArmourStandBehaviour) dispenserEquip(e *Ent, tx *world.Tx, stack item.Stack) bool {
+func (a *armourStandBehaviour) dispenserEquip(e *Ent, tx *world.Tx, stack item.Stack) bool {
 	inv := a.armours
 	switch i := stack.Item().(type) {
 	case item.HelmetType:
@@ -143,7 +143,7 @@ func (p *Pig) dispenserEquip(tx *world.Tx, stack item.Stack) bool {
 // dispenserEquip ports LivingEntity.canEquipWithDispenser and
 // Strider.canDispenserEquipIntoSlot: an adult strider takes a saddle, which it
 // does not wear yet.
-func (s *Strider) dispenserEquip(tx *world.Tx, stack item.Stack) bool {
+func (s *strider) dispenserEquip(tx *world.Tx, stack item.Stack) bool {
 	b := s.b()
 	if _, saddle := stack.Item().(item.Saddle); !saddle || b.saddled || b.age < 0 || s.Dead() {
 		return false

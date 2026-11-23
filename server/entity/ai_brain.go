@@ -264,7 +264,7 @@ type sensor interface {
 	// scanRate is the ticks between scans, 20 if zero.
 	scanRate() int
 	requires() []memoryType
-	doTick(m *Mob, b *Brain)
+	doTick(m *Mob, b *brain)
 }
 
 type sensorSlot struct {
@@ -273,7 +273,7 @@ type sensorSlot struct {
 }
 
 // Brain ports Java's Brain.
-type Brain struct {
+type brain struct {
 	// memIdx maps each memoryType to its 1-based slot index in memories (0 = unregistered).
 	memIdx [memMemoryTypeCount]uint8
 	// memories holds registered memory slots densely by value.
@@ -303,8 +303,8 @@ type Brain struct {
 
 // newBrain returns a brain with the sensors passed, its core activity core
 // and its default activity idle.
-func newBrain(sensors ...sensor) *Brain {
-	b := &Brain{
+func newBrain(sensors ...sensor) *brain {
+	b := &brain{
 		memories:           make([]memorySlot, 0, 16),
 		coreMask:           uint64(1) << activityCore,
 		defaultAct:         activityIdle,
@@ -325,7 +325,7 @@ func newBrain(sensors ...sensor) *Brain {
 
 // start delays the first scan of every sensor by a random part of its
 // scan rate, as Sensor.randomlyDelayStart.
-func (b *Brain) start(m *Mob) {
+func (b *brain) start(m *Mob) {
 	if b.started {
 		return
 	}
@@ -342,15 +342,15 @@ func sensorScanRate(s sensor) int {
 	return 20
 }
 
-func (b *Brain) setExpiringBit(mem memoryType) {
+func (b *brain) setExpiringBit(mem memoryType) {
 	b.expiringMask[mem>>6] |= uint64(1) << (mem & 63)
 }
 
-func (b *Brain) clearExpiringBit(mem memoryType) {
+func (b *brain) clearExpiringBit(mem memoryType) {
 	b.expiringMask[mem>>6] &^= uint64(1) << (mem & 63)
 }
 
-func (b *Brain) register(mem memoryType) {
+func (b *brain) register(mem memoryType) {
 	if b.memIdx[mem] == 0 {
 		b.memories = append(b.memories, memorySlot{ttl: neverExpire})
 		b.memIdx[mem] = uint8(len(b.memories))
@@ -358,7 +358,7 @@ func (b *Brain) register(mem memoryType) {
 }
 
 // copyMemoryFrom copies a registered memory slot (value and remaining TTL) from old.
-func (b *Brain) copyMemoryFrom(old *Brain, mem memoryType) {
+func (b *brain) copyMemoryFrom(old *brain, mem memoryType) {
 	idx := old.memIdx[mem]
 	if idx == 0 {
 		return
@@ -374,10 +374,10 @@ func (b *Brain) copyMemoryFrom(old *Brain, mem memoryType) {
 }
 
 // has reports if the brain remembers a value of the memory.
-func (b *Brain) has(mem memoryType) bool { return b.check(mem, memPresent) }
+func (b *brain) has(mem memoryType) bool { return b.check(mem, memPresent) }
 
 // check ports Brain.checkMemory.
-func (b *Brain) check(mem memoryType, status memoryStatus) bool {
+func (b *brain) check(mem memoryType, status memoryStatus) bool {
 	idx := b.memIdx[mem]
 	if idx == 0 {
 		return false
@@ -392,7 +392,7 @@ func (b *Brain) check(mem memoryType, status memoryStatus) bool {
 }
 
 // checkAll reports if every condition holds.
-func (b *Brain) checkAll(conds []memoryCondition) bool {
+func (b *brain) checkAll(conds []memoryCondition) bool {
 	for _, c := range conds {
 		if !b.check(c.mem, c.status) {
 			return false
@@ -402,7 +402,7 @@ func (b *Brain) checkAll(conds []memoryCondition) bool {
 }
 
 // get returns the value of a memory, if the brain remembers one.
-func (b *Brain) get(mem memoryType) (any, bool) {
+func (b *brain) get(mem memoryType) (any, bool) {
 	if idx := b.memIdx[mem]; idx != 0 {
 		if v := b.memories[idx-1].value; v != nil {
 			return v, true
@@ -412,7 +412,7 @@ func (b *Brain) get(mem memoryType) (any, bool) {
 }
 
 // clearMemories forgets every memory, as Brain.clearMemories.
-func (b *Brain) clearMemories() {
+func (b *brain) clearMemories() {
 	for i := range b.memories {
 		b.memories[i].clear()
 	}
@@ -420,7 +420,7 @@ func (b *Brain) clearMemories() {
 }
 
 // erase forgets a memory.
-func (b *Brain) erase(mem memoryType) {
+func (b *brain) erase(mem memoryType) {
 	if idx := b.memIdx[mem]; idx != 0 {
 		b.memories[idx-1].clear()
 		b.clearExpiringBit(mem)
@@ -429,10 +429,10 @@ func (b *Brain) erase(mem memoryType) {
 
 // set remembers a value of a memory, or forgets it if v is nil or an empty
 // slice, as Brain.setMemory.
-func (b *Brain) set(mem memoryType, v any) { b.setWithExpiry(mem, v, neverExpire) }
+func (b *brain) set(mem memoryType, v any) { b.setWithExpiry(mem, v, neverExpire) }
 
 // setWithExpiry remembers a value of a memory for ttl ticks.
-func (b *Brain) setWithExpiry(mem memoryType, v any, ttl int64) {
+func (b *brain) setWithExpiry(mem memoryType, v any, ttl int64) {
 	idx := b.memIdx[mem]
 	if idx == 0 {
 		return
@@ -462,7 +462,7 @@ func emptyMemoryValue(v any) bool {
 }
 
 // timeUntilExpiry returns the ticks the memory is remembered for.
-func (b *Brain) timeUntilExpiry(mem memoryType) int64 {
+func (b *brain) timeUntilExpiry(mem memoryType) int64 {
 	if idx := b.memIdx[mem]; idx != 0 {
 		return b.memories[idx-1].ttl
 	}
@@ -470,7 +470,7 @@ func (b *Brain) timeUntilExpiry(mem memoryType) int64 {
 }
 
 // entity returns the entity a memory holds, if it is in the world.
-func (b *Brain) entity(m *Mob, mem memoryType) world.Entity {
+func (b *brain) entity(m *Mob, mem memoryType) world.Entity {
 	v, ok := b.get(mem)
 	if !ok {
 		return nil
@@ -487,7 +487,7 @@ func (b *Brain) entity(m *Mob, mem memoryType) world.Entity {
 }
 
 // setEntity remembers an entity, or forgets the memory if e is nil.
-func (b *Brain) setEntity(mem memoryType, e world.Entity) {
+func (b *brain) setEntity(mem memoryType, e world.Entity) {
 	if e == nil {
 		b.erase(mem)
 		return
@@ -496,7 +496,7 @@ func (b *Brain) setEntity(mem memoryType, e world.Entity) {
 }
 
 // int returns the integer a memory holds.
-func (b *Brain) int(mem memoryType) (int, bool) {
+func (b *brain) int(mem memoryType) (int, bool) {
 	v, ok := b.get(mem)
 	if !ok {
 		return 0, false
@@ -506,10 +506,10 @@ func (b *Brain) int(mem memoryType) (int, bool) {
 }
 
 // isActive reports if an activity runs.
-func (b *Brain) isActive(a activity) bool { return b.activeMask&(uint64(1)<<a) != 0 }
+func (b *brain) isActive(a activity) bool { return b.activeMask&(uint64(1)<<a) != 0 }
 
 // activeNonCore returns the activity running beside the core ones.
-func (b *Brain) activeNonCore() (activity, bool) {
+func (b *brain) activeNonCore() (activity, bool) {
 	nonCore := b.activeMask &^ b.coreMask
 	if nonCore == 0 {
 		return 0, false
@@ -517,10 +517,10 @@ func (b *Brain) activeNonCore() (activity, bool) {
 	return activity(bits.TrailingZeros64(nonCore)), true
 }
 
-func (b *Brain) useDefaultActivity() { b.setActive(b.defaultAct) }
+func (b *brain) useDefaultActivity() { b.setActive(b.defaultAct) }
 
 // setActiveIfPossible ports Brain.setActiveActivityIfPossible.
-func (b *Brain) setActiveIfPossible(a activity) {
+func (b *brain) setActiveIfPossible(a activity) {
 	if b.requirementsMet(a) {
 		b.setActive(a)
 	} else {
@@ -529,7 +529,7 @@ func (b *Brain) setActiveIfPossible(a activity) {
 }
 
 // setActiveToFirstValid ports Brain.setActiveActivityToFirstValid.
-func (b *Brain) setActiveToFirstValid(acts ...activity) {
+func (b *brain) setActiveToFirstValid(acts ...activity) {
 	for _, a := range acts {
 		if b.requirementsMet(a) {
 			b.setActive(a)
@@ -538,7 +538,7 @@ func (b *Brain) setActiveToFirstValid(acts ...activity) {
 	}
 }
 
-func (b *Brain) setActive(a activity) {
+func (b *brain) setActive(a activity) {
 	if b.isActive(a) {
 		return
 	}
@@ -554,13 +554,13 @@ func (b *Brain) setActive(a activity) {
 	b.activeMask = b.coreMask | bit
 }
 
-func (b *Brain) requirementsMet(a activity) bool {
+func (b *brain) requirementsMet(a activity) bool {
 	return b.registeredActs&(uint64(1)<<a) != 0 && b.checkAll(b.requirements[a])
 }
 
 // addActivity adds the behaviours of an activity at priorities counting up
 // from priority, as ActivityData.create does.
-func (b *Brain) addActivity(a activity, priority int, behaviors ...behaviorControl) {
+func (b *brain) addActivity(a activity, priority int, behaviors ...behaviorControl) {
 	pairs := make([]prioritizedBehavior, len(behaviors))
 	for i, bh := range behaviors {
 		pairs[i] = prioritizedBehavior{priority + i, bh}
@@ -571,7 +571,7 @@ func (b *Brain) addActivity(a activity, priority int, behaviors ...behaviorContr
 // addActivityWith ports Brain.addActivity: the activity runs its behaviours
 // at their priorities while the conditions hold, and forgets the memories
 // erase when it stops.
-func (b *Brain) addActivityWith(a activity, pairs []prioritizedBehavior, conds []memoryCondition, erase []memoryType) {
+func (b *brain) addActivityWith(a activity, pairs []prioritizedBehavior, conds []memoryCondition, erase []memoryType) {
 	actBit := uint64(1) << a
 	b.registeredActs |= actBit
 	b.requirements[a] = conds
@@ -601,7 +601,7 @@ func (b *Brain) addActivityWith(a activity, pairs []prioritizedBehavior, conds [
 	b.orderDirty = true
 }
 
-func (b *Brain) syncOrder() {
+func (b *brain) syncOrder() {
 	var order uint16
 	hadRunning := len(b.runningBuf) > 0
 	if hadRunning {
@@ -625,7 +625,7 @@ func (b *Brain) syncOrder() {
 	b.activeCacheMask = 0
 }
 
-func (b *Brain) rebuildActiveCache() {
+func (b *brain) rebuildActiveCache() {
 	b.activeCache = b.activeCache[:0]
 	mask := b.activeMask
 	for pi := range b.byPriority {
@@ -647,7 +647,7 @@ func (b *Brain) rebuildActiveCache() {
 	b.activeCacheMask = mask
 }
 
-func (b *Brain) insertRunning(ob orderedBehavior) {
+func (b *brain) insertRunning(ob orderedBehavior) {
 	n := len(b.runningBuf)
 	if n == 0 || b.runningBuf[n-1].order < ob.order {
 		b.runningBuf = append(b.runningBuf, ob)
@@ -665,7 +665,7 @@ func (b *Brain) insertRunning(ob orderedBehavior) {
 	b.runningBuf[i] = ob
 }
 
-func (b *Brain) tickExpiringMemories() {
+func (b *brain) tickExpiringMemories() {
 	for word := range 2 {
 		for rem := b.expiringMask[word]; rem != 0; rem &= rem - 1 {
 			mem := memoryType(word*64 + bits.TrailingZeros64(rem))
@@ -684,7 +684,7 @@ func (b *Brain) tickExpiringMemories() {
 	}
 }
 
-func (b *Brain) startBehaviors(m *Mob, time int64) {
+func (b *brain) startBehaviors(m *Mob, time int64) {
 	if b.activeCacheMask != b.activeMask {
 		b.rebuildActiveCache()
 	}
@@ -702,7 +702,7 @@ func (b *Brain) startBehaviors(m *Mob, time int64) {
 	}
 }
 
-func (b *Brain) startBehaviorsFrom(m *Mob, time int64, startPB, startAB int) {
+func (b *brain) startBehaviorsFrom(m *Mob, time int64, startPB, startAB int) {
 	for pi := startPB; pi < len(b.byPriority); pi++ {
 		pb := &b.byPriority[pi]
 		if pb.actMask&b.activeMask == 0 {
@@ -726,7 +726,7 @@ func (b *Brain) startBehaviorsFrom(m *Mob, time int64, startPB, startAB int) {
 
 // tick ports Brain.tick: memories run out, sensors scan, and behaviours of
 // the active activities start and tick.
-func (b *Brain) tick(m *Mob) {
+func (b *brain) tick(m *Mob) {
 	b.start(m)
 	if b.orderDirty {
 		b.syncOrder()
@@ -764,7 +764,7 @@ func (b *Brain) tick(m *Mob) {
 }
 
 // stopAll ports Brain.stopAll.
-func (b *Brain) stopAll(m *Mob) {
+func (b *brain) stopAll(m *Mob) {
 	if len(b.runningBuf) == 0 {
 		return
 	}
@@ -783,11 +783,11 @@ func (b *Brain) stopAll(m *Mob) {
 
 // mobBrain is implemented by the behaviours of mobs driven by a brain.
 type mobBrain interface {
-	brain() *Brain
+	brain() *brain
 }
 
 // Brain returns the brain of the mob, nil if it has none.
-func (m *Mob) Brain() *Brain {
+func (m *Mob) brain() *brain {
 	if m.AI.caps == 0 {
 		m.AI.initCaps(m)
 	}
@@ -828,7 +828,7 @@ func (b *behavior) requiredMemories() []memoryType {
 }
 
 func (b *behavior) tryStart(m *Mob, time int64) bool {
-	if !m.Brain().checkAll(b.entry) || b.checkExtra != nil && !b.checkExtra(m) {
+	if !m.brain().checkAll(b.entry) || b.checkExtra != nil && !b.checkExtra(m) {
 		return false
 	}
 	b.st = behaviorRunning
@@ -870,13 +870,13 @@ type oneShot struct {
 
 // newOneShot returns a OneShot that triggers when the conditions hold and
 // trigger reports it did something.
-func newOneShot(conds []memoryCondition, trigger func(m *Mob, b *Brain, time int64) bool) *oneShot {
+func newOneShot(conds []memoryCondition, trigger func(m *Mob, b *brain, time int64) bool) *oneShot {
 	mems := make([]memoryType, len(conds))
 	for i, c := range conds {
 		mems[i] = c.mem
 	}
 	return &oneShot{mems: mems, trigger: func(m *Mob, time int64) bool {
-		b := m.Brain()
+		b := m.brain()
 		return b.checkAll(conds) && trigger(m, b, time)
 	}}
 }
@@ -931,7 +931,7 @@ func (g *gateBehavior) requiredMemories() []memoryType {
 }
 
 func (g *gateBehavior) tryStart(m *Mob, time int64) bool {
-	if !m.Brain().checkAll(g.entry) {
+	if !m.brain().checkAll(g.entry) {
 		return false
 	}
 	g.st = behaviorRunning
@@ -991,7 +991,7 @@ func (g *gateBehavior) doStop(m *Mob, time int64) {
 		}
 	}
 	for _, mem := range g.erase {
-		m.Brain().erase(mem)
+		m.brain().erase(mem)
 	}
 }
 
@@ -1124,7 +1124,7 @@ func (n *nearestVisibleLiving) visible(m *Mob, e world.Entity) bool {
 	}
 	c := forNonCombat()
 	c.rangeLimit = m.AI.FollowRange
-	if v, ok := m.Brain().get(memAttackTarget); ok && v == e.H() {
+	if v, ok := m.brain().get(memAttackTarget); ok && v == e.H() {
 		c.ignoreInvis = true
 	}
 	v := c.test(m, e)
@@ -1163,7 +1163,7 @@ func (n *nearestVisibleLiving) contains(m *Mob, e world.Entity) bool {
 
 // visibleLiving returns what the brain of the mob remembers seeing.
 func visibleLiving(m *Mob) *nearestVisibleLiving {
-	v, ok := m.Brain().get(memNearestVisibleLivingEntities)
+	v, ok := m.brain().get(memNearestVisibleLivingEntities)
 	if !ok {
 		return nil
 	}
@@ -1179,7 +1179,7 @@ func brainCanSee(m *Mob, e world.Entity) bool {
 
 // setWalkAndLookTarget ports BehaviorUtils.setWalkAndLookTargetMemories.
 func setWalkAndLookTarget(m *Mob, target positionTracker, speed float64, closeEnough int) {
-	b := m.Brain()
+	b := m.brain()
 	b.set(memLookTarget, target)
 	b.set(memWalkTarget, walkTarget{target: target, speed: speed, closeEnough: closeEnough})
 }
@@ -1187,7 +1187,7 @@ func setWalkAndLookTarget(m *Mob, target positionTracker, speed float64, closeEn
 // brainMobOf returns the mob of an entity driven by a brain, if it is one.
 func brainMobOf(e world.Entity) (*Mob, bool) {
 	m, ok := mobOf(e)
-	if !ok || m.Brain() == nil {
+	if !ok || m.brain() == nil {
 		return nil, false
 	}
 	return m, true

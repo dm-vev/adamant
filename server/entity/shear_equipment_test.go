@@ -18,7 +18,7 @@ func TestShearsTakeEquipmentOffMounts(t *testing.T) {
 	<-w.Exec(func(tx *world.Tx) {
 		conf := defaultMountConfig(mountHorse)
 		conf.Saddled, conf.Tamed = true, true
-		e := tx.AddEntity(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 64, .5}}.New(HorseType, conf))
+		e := tx.AddEntity(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 64, .5}}.New(horseType, conf))
 		horse := mountFromEntity(e)
 		horse.b().armor = item.NewStack(item.IronHorseArmour{}, 1)
 		dropped := func() []item.Stack {

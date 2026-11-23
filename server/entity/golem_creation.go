@@ -6,5 +6,5 @@ import (
 )
 
 func trySpawnConstructedGolem(tx *world.Tx, pos cube.Pos) bool {
-	return TrySpawnGolemPattern(tx, pos) || TrySpawnCopperGolemPattern(tx, pos)
+	return trySpawnGolemPattern(tx, pos) || trySpawnCopperGolemPattern(tx, pos)
 }

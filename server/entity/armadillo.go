@@ -16,17 +16,17 @@ import (
 
 // NewArmadillo creates an unrolled adult armadillo.
 func NewArmadillo(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(ArmadilloType, ArmadilloConfig{})
+	return o.New(entityArmadilloType, armadilloConfig{})
 }
 
 // ArmadilloType is the registered Java armadillo type.
-var ArmadilloType armadilloType
+var entityArmadilloType armadilloType
 
 type armadilloType struct{}
 
 func (armadilloType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
-		ArmadilloConfig{}.Apply(d)
+		armadilloConfig{}.Apply(d)
 	}
 	return &Armadillo{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
@@ -38,11 +38,11 @@ func (armadilloType) BBox(e world.Entity) cube.BBox {
 	return cube.Box(-.35, 0, -.35, .35, .65, .35)
 }
 func (armadilloType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	s := ReadNativeMobJavaState(m)
+	s := readNativeMobJavaState(m)
 	if s == nil {
 		s = m
 	}
-	c := ArmadilloConfig{Age: int(nbtconv.Int32(s, "Age")), ScuteTicks: int(nbtconv.Int32(s, "scute_time"))}
+	c := armadilloConfig{Age: int(nbtconv.Int32(s, "Age")), ScuteTicks: int(nbtconv.Int32(s, "scute_time"))}
 	if c.ScuteTicks == 0 {
 		c.ScuteTicks = int(nbtconv.Int32(s, "ScuteTime"))
 	}
@@ -62,12 +62,12 @@ func (armadilloType) DecodeNBT(m map[string]any, d *world.EntityData) {
 		c.Health, c.MaxHealth = a.Current, a.Base
 	}
 	d.Data = c.New()
-	d.Data.(*ArmadilloBehaviour).breeding.decodeNBT(s)
+	d.Data.(*armadilloBehaviour).breeding.decodeNBT(s)
 }
 func (armadilloType) EncodeNBT(d *world.EntityData) map[string]any {
-	b := d.Data.(*ArmadilloBehaviour)
-	a := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
-	return MergeNativeMobJavaState(map[string]any{"Attributes": a}, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "scute_time": int32(b.scuteTime), "state": armadilloStateNames[b.state]})))
+	b := d.Data.(*armadilloBehaviour)
+	a := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
+	return mergeNativeMobJavaState(map[string]any{"Attributes": a}, mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "scute_time": int32(b.scuteTime), "state": armadilloStateNames[b.state]})))
 }
 
 // armadilloState ports Armadillo.ArmadilloState.
@@ -85,7 +85,7 @@ var armadilloStateNames = [...]string{"idle", "rolling", "scared", "unrolling"}
 // animationDuration ports ArmadilloState.animationDuration.
 func (s armadilloState) animationDuration() int64 { return [...]int64{0, 10, 50, 30}[s] }
 
-func (c ArmadilloConfig) New() *ArmadilloBehaviour {
+func (c armadilloConfig) New() *armadilloBehaviour {
 	if c.MaxHealth <= 0 {
 		c.MaxHealth = 12
 	}
@@ -94,7 +94,7 @@ func (c ArmadilloConfig) New() *ArmadilloBehaviour {
 	}
 	// A scute time of zero is drawn from the random of the armadillo when it
 	// first ticks.
-	b := &ArmadilloBehaviour{health: c.Health, maxHealth: c.MaxHealth, effects: NewEffectManager(), age: c.Age, scuteTime: c.ScuteTicks, scuteTimePending: c.ScuteTicks == 0, state: c.State, speed: .14}
+	b := &armadilloBehaviour{health: c.Health, maxHealth: c.MaxHealth, effects: NewEffectManager(), age: c.Age, scuteTime: c.ScuteTicks, scuteTimePending: c.ScuteTicks == 0, state: c.State, speed: .14}
 	b.br = newArmadilloBrain(b)
 	return b
 }
@@ -110,22 +110,22 @@ func (a *Armadillo) FinalizeSpawn(_ string, r *vanilla.Random) {
 }
 
 // ArmadilloConfig configures age and saved scute and roll state.
-type ArmadilloConfig struct {
+type armadilloConfig struct {
 	Health, MaxHealth float64
 	Age, ScuteTicks   int
 	State             armadilloState
 }
 
-func (c ArmadilloConfig) Apply(d *world.EntityData) { d.Data = c.New() }
+func (c armadilloConfig) Apply(d *world.EntityData) { d.Data = c.New() }
 
 // Armadillo is a passive animal that rolls up in its shell when it senses
 // danger, and sheds scutes.
 type Armadillo struct{ *Ent }
-type ArmadilloBehaviour struct {
+type armadilloBehaviour struct {
 	health, maxHealth float64
 	effects           *EffectManager
 	ai                MobAI
-	br                *Brain
+	br                *brain
 	age, scuteTime    int
 	// scuteTimePending is set while scuteTime still has to be drawn.
 	scuteTimePending bool
@@ -138,17 +138,17 @@ type ArmadilloBehaviour struct {
 	breeding  breeding
 }
 
-func (a *Armadillo) behaviour() *ArmadilloBehaviour { return a.Behaviour().(*ArmadilloBehaviour) }
+func (a *Armadillo) behaviour() *armadilloBehaviour { return a.Behaviour().(*armadilloBehaviour) }
 func (a *Armadillo) Tick(tx *world.Tx, t int64)     { a.behaviour().effects.Tick(a, tx); a.Ent.Tick(tx, t) }
 
-func (b *ArmadilloBehaviour) mobAI() *MobAI   { return &b.ai }
-func (b *ArmadilloBehaviour) brain() *Brain   { return b.br }
-func (b *ArmadilloBehaviour) scared() bool    { return b.state != armadilloIdle }
-func (b *ArmadilloBehaviour) panicking() bool { return b.br.has(memIsPanicking) }
+func (b *armadilloBehaviour) mobAI() *MobAI   { return &b.ai }
+func (b *armadilloBehaviour) brain() *brain   { return b.br }
+func (b *armadilloBehaviour) scared() bool    { return b.state != armadilloIdle }
+func (b *armadilloBehaviour) panicking() bool { return b.br.has(memIsPanicking) }
 
 // Tick runs a tick of the armadillo: its ageing and love, and its MobAI with
 // its brain.
-func (b *ArmadilloBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (b *armadilloBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	a := &Armadillo{Ent: e}
 	b.ai.MovementSpeed, b.ai.EyeHeight = b.speed, .5525
 	if b.age < 0 {
@@ -167,7 +167,7 @@ func (b *ArmadilloBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 
 // customServerAiStep ports Armadillo.customServerAiStep: the brain ticks and
 // picks the activity, and now and then the armadillo sheds a scute.
-func (b *ArmadilloBehaviour) customServerAiStep(m *Mob) {
+func (b *armadilloBehaviour) customServerAiStep(m *Mob) {
 	b.br.tick(m)
 	b.br.setActiveToFirstValid(activityPanic, activityIdle)
 	if b.scuteTimePending {
@@ -186,7 +186,7 @@ func (b *ArmadilloBehaviour) customServerAiStep(m *Mob) {
 
 // afterAiStep ports what Armadillo.tick does after the tick of a LivingEntity:
 // a scared armadillo turns its head with its body.
-func (b *ArmadilloBehaviour) afterAiStep(m *Mob) {
+func (b *armadilloBehaviour) afterAiStep(m *Mob) {
 	if b.scared() {
 		m.AI.headYaw = m.AI.bodyYaw
 	}
@@ -199,7 +199,7 @@ func (b *ArmadilloBehaviour) afterAiStep(m *Mob) {
 }
 
 // switchState ports Armadillo.switchToState.
-func (b *ArmadilloBehaviour) switchState(m *Mob, s armadilloState) {
+func (b *armadilloBehaviour) switchState(m *Mob, s armadilloState) {
 	if b.state != s {
 		b.state, b.inStateTicks = s, 0
 		m.updateState()
@@ -208,7 +208,7 @@ func (b *ArmadilloBehaviour) switchState(m *Mob, s armadilloState) {
 
 // rollUp ports Armadillo.rollUp: the armadillo stops, falls out of love and
 // rolls up.
-func (b *ArmadilloBehaviour) rollUp(m *Mob) {
+func (b *armadilloBehaviour) rollUp(m *Mob) {
 	if b.scared() {
 		return
 	}
@@ -222,7 +222,7 @@ func (b *ArmadilloBehaviour) rollUp(m *Mob) {
 }
 
 // rollOut ports Armadillo.rollOut.
-func (b *ArmadilloBehaviour) rollOut(m *Mob) {
+func (b *armadilloBehaviour) rollOut(m *Mob) {
 	if !b.scared() {
 		return
 	}
@@ -231,7 +231,7 @@ func (b *ArmadilloBehaviour) rollOut(m *Mob) {
 	b.switchState(m, armadilloIdle)
 }
 
-func (b *ArmadilloBehaviour) makeSound(m *Mob, name string) {
+func (b *armadilloBehaviour) makeSound(m *Mob, name string) {
 	r := m.Random()
 	pitch := (r.NextFloat()-r.NextFloat())*.2 + 1
 	if b.age < 0 {
@@ -241,13 +241,13 @@ func (b *ArmadilloBehaviour) makeSound(m *Mob, name string) {
 }
 
 // canStayRolledUp ports Armadillo.canStayRolledUp.
-func (b *ArmadilloBehaviour) canStayRolledUp(m *Mob) bool {
+func (b *armadilloBehaviour) canStayRolledUp(m *Mob) bool {
 	return !b.panicking() && !m.InLiquid() && m.data.Riding == nil && m.HolderLeashID() == 0 && !isVehicle(m.Self)
 }
 
 // scaredBy ports Armadillo.isScaredBy: the undead, what hurt it and players
 // sprinting or riding within seven blocks scare it.
-func (b *ArmadilloBehaviour) scaredBy(m *Mob, e world.Entity) bool {
+func (b *armadilloBehaviour) scaredBy(m *Mob, e world.Entity) bool {
 	if !m.BBox().GrowVec3(mgl64.Vec3{7, 2, 7}).IntersectsWith(e.H().Type().BBox(e).Translate(e.Position())) {
 		return false
 	}
@@ -265,10 +265,10 @@ func (b *ArmadilloBehaviour) scaredBy(m *Mob, e world.Entity) bool {
 }
 
 // newArmadilloBrain ports ArmadilloAi and the brain provider of Armadillo.
-func newArmadilloBrain(a *ArmadilloBehaviour) *Brain {
+func newArmadilloBrain(a *armadilloBehaviour) *brain {
 	b := newBrain(nearestLivingEntitySensor{}, hurtBySensor{}, temptingSensor{items: animalTemptation}, adultSensor{},
 		mobSensor{rate: 5, test: a.scaredBy, ready: a.canStayRolledUp, mem: memDangerDetectedRecently, ttl: 80})
-	rollingOut := newOneShot([]memoryCondition{{memDangerDetectedRecently, memAbsent}}, func(m *Mob, _ *Brain, _ int64) bool {
+	rollingOut := newOneShot([]memoryCondition{{memDangerDetectedRecently, memAbsent}}, func(m *Mob, _ *brain, _ int64) bool {
 		if !a.scared() {
 			return false
 		}
@@ -286,7 +286,7 @@ func newArmadilloBrain(a *ArmadilloBehaviour) *Brain {
 	)
 	b.addActivityWith(activityIdle, []prioritizedBehavior{
 		{0, newSetEntityLookTargetSometimes(isPlayerType, 6, uniformInt{30, 60})},
-		{1, newAnimalMakeLove(ArmadilloType, 1, 1)},
+		{1, newAnimalMakeLove(entityArmadilloType, 1, 1)},
 		{2, newRunOne(nil,
 			weightedBehavior{newFollowTemptation(constSpeed(1.25), func(m *Mob) float64 {
 				if mobBaby(m.Self) {
@@ -311,7 +311,7 @@ func newArmadilloBrain(a *ArmadilloBehaviour) *Brain {
 // newArmadilloBallUp ports ArmadilloAi.ArmadilloBallUp: an armadillo on the
 // ground that senses danger rolls up for up to five minutes, peeks out now
 // and then while the danger is around, and unrolls once it has been gone.
-func newArmadilloBallUp(a *ArmadilloBehaviour) *behavior {
+func newArmadilloBallUp(a *armadilloBehaviour) *behavior {
 	nextPeek, dangerWasAround := 0, false
 	pickPeek := func(m *Mob) int { return int(armadilloScared.animationDuration()) + 100 + int(m.Random().NextInt(301)) }
 	return &behavior{
@@ -450,11 +450,7 @@ func (a *Armadillo) KnockBack(src mgl64.Vec3, f, h float64) {
 	knockBack(a, src, f, h)
 }
 func (a *Armadillo) viewAction(x world.EntityAction) {
-	vs := a.tx.Viewers(a.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(a, x)
-	}
-	a.tx.ReleaseViewers(vs)
+	world.BroadcastEntityAction(a.tx, a, x)
 }
 
 // Rolling reports if the armadillo is rolled up in any way.
@@ -509,14 +505,14 @@ func (a *Armadillo) breedingFood(stack item.Stack) bool {
 }
 
 func (a *Armadillo) breedOffspring(_ *world.Tx, _ breeder) *world.EntityHandle {
-	return babyAt(a).New(ArmadilloType, ArmadilloConfig{Age: babyStartAge})
+	return babyAt(a).New(entityArmadilloType, armadilloConfig{Age: babyStartAge})
 }
 
 var _ Interactable = (*Armadillo)(nil)
 
 // walkTargetValue ports Animal.getWalkTargetValue.
-func (b *ArmadilloBehaviour) walkTargetValue(m *Mob, pos cube.Pos) float64 {
+func (b *armadilloBehaviour) walkTargetValue(m *Mob, pos cube.Pos) float64 {
 	return animalWalkTargetValue(m, pos)
 }
 
-func (b *ArmadilloBehaviour) effectManager() *EffectManager { return b.effects }
+func (b *armadilloBehaviour) effectManager() *EffectManager { return b.effects }

@@ -11,7 +11,7 @@ import (
 
 // OcelotType is the source minecraft:ocelot species. Trusting an ocelot never
 // converts it into a tameable cat: it only stops fleeing from players.
-var OcelotType ocelotType
+var entityOcelotType ocelotType
 
 type ocelotType struct{}
 
@@ -30,7 +30,7 @@ func (ocelotType) BBox(e world.Entity) cube.BBox {
 }
 func (ocelotType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	c := ocelotBehaviourConfig{}
-	s := ReadNativeMobJavaState(m)
+	s := readNativeMobJavaState(m)
 	if s == nil {
 		s = m
 	}
@@ -60,9 +60,9 @@ func (ocelotType) DecodeNBT(m map[string]any, d *world.EntityData) {
 func (ocelotType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*ocelotBehaviour)
 	h := b.health
-	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: h.MaxHealth(), Current: h.Health(), DefaultMin: 0, DefaultMax: h.MaxHealth(), Min: 0, Max: h.MaxHealth()}, {Name: "minecraft:movement", Base: .3, Current: .3, DefaultMin: 0, DefaultMax: .3, Min: 0, Max: .3}, {Name: "minecraft:attack_damage", Base: 3, Current: 3, DefaultMin: 0, DefaultMax: 3, Min: 0, Max: 3}})
-	m := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs})
-	return MergeNativeMobJavaState(m, b.breeding.encodeNBT(map[string]any{"Health": float32(h.Health()), "MaxHealth": float32(h.MaxHealth()), "Trusting": boolByte(b.trusting), "Age": int32(b.age)}))
+	attrs := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: h.MaxHealth(), Current: h.Health(), DefaultMin: 0, DefaultMax: h.MaxHealth(), Min: 0, Max: h.MaxHealth()}, {Name: "minecraft:movement", Base: .3, Current: .3, DefaultMin: 0, DefaultMax: .3, Min: 0, Max: .3}, {Name: "minecraft:attack_damage", Base: 3, Current: 3, DefaultMin: 0, DefaultMax: 3, Min: 0, Max: 3}})
+	m := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs})
+	return mergeNativeMobJavaState(m, b.breeding.encodeNBT(map[string]any{"Health": float32(h.Health()), "MaxHealth": float32(h.MaxHealth()), "Trusting": boolByte(b.trusting), "Age": int32(b.age)}))
 }
 
 type ocelotBehaviourConfig struct {
@@ -91,7 +91,7 @@ type ocelotBehaviour struct {
 	age      int
 	breeding breeding
 	animalAI
-	tempt *TemptGoal
+	tempt *temptGoal
 	// crouching and sprinting are the pose the speed of the ocelot gives
 	// it.
 	crouching, sprinting bool
@@ -100,9 +100,9 @@ type ocelotBehaviour struct {
 type Ocelot struct{ *Ent }
 
 func NewOcelot(opts world.EntitySpawnOpts) *world.EntityHandle {
-	return opts.New(OcelotType, ocelotBehaviourConfig{})
+	return opts.New(entityOcelotType, ocelotBehaviourConfig{})
 }
-func (*Ocelot) SpeciesType() world.EntityType { return OcelotType }
+func (*Ocelot) SpeciesType() world.EntityType { return entityOcelotType }
 func (o *Ocelot) b() *ocelotBehaviour         { return o.Behaviour().(*ocelotBehaviour) }
 func (o *Ocelot) Tick(tx *world.Tx, n int64)  { o.b().effects.Tick(o, tx); o.Ent.Tick(tx, n) }
 func (b *ocelotBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
@@ -220,14 +220,10 @@ func (o *Ocelot) breedingFood(stack item.Stack) bool {
 }
 
 func (o *Ocelot) breedOffspring(_ *world.Tx, _ breeder) *world.EntityHandle {
-	return babyAt(o).New(OcelotType, ocelotBehaviourConfig{Age: babyStartAge})
+	return babyAt(o).New(entityOcelotType, ocelotBehaviourConfig{Age: babyStartAge})
 }
 func (o *Ocelot) viewAction(a world.EntityAction) {
-	vs := o.tx.Viewers(o.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(o, a)
-	}
-	o.tx.ReleaseViewers(vs)
+	world.BroadcastEntityAction(o.tx, o, a)
 }
 
 var _ Living = (*Ocelot)(nil)

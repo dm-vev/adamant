@@ -93,9 +93,9 @@ func TestDetectorRailTimingMatchesBDS(t *testing.T) {
 							case "spawn":
 								opts := world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65.0625, .5}}
 								if trace.Scenario.Entity == "minecraft:chest_minecart" {
-									handle = opts.New(ChestMinecartType, chestMinecartConf)
+									handle = opts.New(entityChestMinecartType, chestMinecartConf)
 								} else {
-									handle = opts.New(MinecartType, minecartConf)
+									handle = opts.New(entityMinecartType, minecartConf)
 								}
 								tx.AddEntity(handle)
 							case "remove":
@@ -166,15 +166,15 @@ func testDetectorRailSettledNative(t *testing.T, fixture string, count int) {
 				var handle *world.EntityHandle
 				switch trace.Scenario.Entity {
 				case "minecraft:minecart":
-					handle = opts.New(MinecartType, minecartConf)
+					handle = opts.New(entityMinecartType, minecartConf)
 				case "minecraft:tnt_minecart":
-					handle = opts.New(TNTMinecartType, tntMinecartConf)
+					handle = opts.New(entityTNTMinecartType, tntMinecartConf)
 				case "minecraft:command_block_minecart":
-					handle = NewCommandBlockMinecart(opts, CommandBlockMinecartConfig{})
+					handle = newCommandBlockMinecart(opts, commandBlockMinecartConfig{})
 				case "minecraft:chest_minecart":
-					handle = opts.New(ChestMinecartType, chestMinecartConf)
+					handle = opts.New(entityChestMinecartType, chestMinecartConf)
 				case "minecraft:hopper_minecart":
-					handle = opts.New(HopperMinecartType, hopperMinecartConf)
+					handle = opts.New(entityHopperMinecartType, hopperMinecartConf)
 				case "minecraft:armor_stand":
 					handle = NewArmourStand(opts)
 				default:

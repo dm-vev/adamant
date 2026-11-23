@@ -12,7 +12,7 @@ import (
 )
 
 // BatType is the source minecraft:bat ambient species.
-var BatType batType
+var entityBatType batType
 
 type batType struct{}
 
@@ -20,13 +20,13 @@ func (batType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) wo
 	if d.Data == nil {
 		batBehaviourConfig{}.Apply(d)
 	}
-	return &Bat{Ent: &Ent{tx: tx, handle: h, data: d}}
+	return &bat{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
 func (batType) EncodeEntity() string        { return "minecraft:bat" }
 func (batType) BBox(world.Entity) cube.BBox { return cube.Box(-.25, 0, -.25, .25, .9, .25) }
 func (batType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	c := batBehaviourConfig{}
-	s := ReadNativeMobJavaState(m)
+	s := readNativeMobJavaState(m)
 	if s == nil {
 		s = m
 	}
@@ -57,9 +57,9 @@ func (batType) DecodeNBT(m map[string]any, d *world.EntityData) {
 func (batType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*batBehaviour)
 	h := b.health
-	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: h.MaxHealth(), Current: h.Health(), DefaultMin: 0, DefaultMax: h.MaxHealth(), Min: 0, Max: h.MaxHealth()}, {Name: "minecraft:movement", Base: .6, Current: .6, DefaultMin: 0, DefaultMax: .6, Min: 0, Max: .6}})
-	m := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs, "Variant": int32(b.variant)})
-	return MergeNativeMobJavaState(m, map[string]any{"Health": float32(h.Health()), "MaxHealth": float32(h.MaxHealth()), "Resting": byte(batBool(b.resting)), "BatFlags": byte(batBool(b.resting))})
+	attrs := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: h.MaxHealth(), Current: h.Health(), DefaultMin: 0, DefaultMax: h.MaxHealth(), Min: 0, Max: h.MaxHealth()}, {Name: "minecraft:movement", Base: .6, Current: .6, DefaultMin: 0, DefaultMax: .6, Min: 0, Max: .6}})
+	m := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs, "Variant": int32(b.variant)})
+	return mergeNativeMobJavaState(m, map[string]any{"Health": float32(h.Health()), "MaxHealth": float32(h.MaxHealth()), "Resting": byte(batBool(b.resting)), "BatFlags": byte(batBool(b.resting))})
 }
 
 type batBehaviourConfig struct {
@@ -90,16 +90,16 @@ type batBehaviour struct {
 	// targetPosition is the block the bat flies towards.
 	targetPosition *cube.Pos
 }
-type Bat struct{ *Ent }
+type bat struct{ *Ent }
 
 // NewBat creates a bat, which hangs resting until it ticks, as the
 // constructor of Java's Bat leaves it.
 func NewBat(opts world.EntitySpawnOpts) *world.EntityHandle {
-	return opts.New(BatType, batBehaviourConfig{Resting: true})
+	return opts.New(entityBatType, batBehaviourConfig{Resting: true})
 }
-func (*Bat) SpeciesType() world.EntityType { return BatType }
-func (b *Bat) state() *batBehaviour        { return b.Behaviour().(*batBehaviour) }
-func (b *Bat) Tick(tx *world.Tx, n int64)  { b.state().effects.Tick(b, tx); b.Ent.Tick(tx, n) }
+func (*bat) SpeciesType() world.EntityType { return entityBatType }
+func (b *bat) state() *batBehaviour        { return b.Behaviour().(*batBehaviour) }
+func (b *bat) Tick(tx *world.Tx, n int64)  { b.state().effects.Tick(b, tx); b.Ent.Tick(tx, n) }
 
 func (b *batBehaviour) mobAI() *MobAI { return &b.ai }
 
@@ -107,7 +107,7 @@ func (b *batBehaviour) mobAI() *MobAI { return &b.ai }
 // customServerAiStep flies it about and hangs it from blocks.
 func (b *batBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	b.ai.EyeHeight, b.ai.MovementSpeed = .45, b.speed
-	return b.ai.Tick(e, &Bat{Ent: e}, nil)
+	return b.ai.Tick(e, &bat{Ent: e}, nil)
 }
 
 // setResting changes whether the bat hangs resting and shows viewers.
@@ -199,11 +199,11 @@ func signum(v float64) float64 {
 	}
 	return v
 }
-func (b *Bat) Health() float64        { return b.state().health.Health() }
-func (b *Bat) MaxHealth() float64     { return b.state().health.MaxHealth() }
-func (b *Bat) SetMaxHealth(h float64) { b.state().health.SetMaxHealth(h) }
-func (b *Bat) Dead() bool             { return b.state().dead || b.Health() <= 0 }
-func (b *Bat) Heal(h float64, _ world.HealingSource) float64 {
+func (b *bat) Health() float64        { return b.state().health.Health() }
+func (b *bat) MaxHealth() float64     { return b.state().health.MaxHealth() }
+func (b *bat) SetMaxHealth(h float64) { b.state().health.SetMaxHealth(h) }
+func (b *bat) Dead() bool             { return b.state().dead || b.Health() <= 0 }
+func (b *bat) Heal(h float64, _ world.HealingSource) float64 {
 	if b.Dead() || h <= 0 {
 		return 0
 	}
@@ -213,7 +213,7 @@ func (b *Bat) Heal(h float64, _ world.HealingSource) float64 {
 }
 
 // Hurt ports Bat.hurtServer: a hurt bat stops resting.
-func (b *Bat) Hurt(d float64, s world.DamageSource) (float64, bool) {
+func (b *bat) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	st := b.state()
 	if b.Dead() || d <= 0 || (s.Fire() && b.hasEffect(effect.FireResistance)) {
 		return 0, false
@@ -239,26 +239,22 @@ func (b *Bat) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	}
 	return d, true
 }
-func (b *Bat) KnockBack(src mgl64.Vec3, f, h float64) {
+func (b *bat) KnockBack(src mgl64.Vec3, f, h float64) {
 	knockBack(b, src, f, h)
 }
-func (b *Bat) AddEffect(e effect.Effect)    { b.state().effects.Add(e, b) }
-func (b *Bat) RemoveEffect(t effect.Type)   { b.state().effects.Remove(t, b) }
-func (b *Bat) Effects() []effect.Effect     { return b.state().effects.Effects() }
-func (b *Bat) Speed() float64               { return b.state().speed }
-func (b *Bat) SetSpeed(v float64)           { b.state().speed = v }
-func (b *Bat) hasEffect(t effect.Type) bool { _, ok := b.state().effects.Effect(t); return ok }
-func (b *Bat) Resting() bool                { return b.state().resting }
-func (b *Bat) SetResting(v bool)            { b.state().setResting(b.Ent, v) }
-func (b *Bat) viewAction(a world.EntityAction) {
-	vs := b.tx.Viewers(b.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(b, a)
-	}
-	b.tx.ReleaseViewers(vs)
+func (b *bat) AddEffect(e effect.Effect)    { b.state().effects.Add(e, b) }
+func (b *bat) RemoveEffect(t effect.Type)   { b.state().effects.Remove(t, b) }
+func (b *bat) Effects() []effect.Effect     { return b.state().effects.Effects() }
+func (b *bat) Speed() float64               { return b.state().speed }
+func (b *bat) SetSpeed(v float64)           { b.state().speed = v }
+func (b *bat) hasEffect(t effect.Type) bool { _, ok := b.state().effects.Effect(t); return ok }
+func (b *bat) Resting() bool                { return b.state().resting }
+func (b *bat) SetResting(v bool)            { b.state().setResting(b.Ent, v) }
+func (b *bat) viewAction(a world.EntityAction) {
+	world.BroadcastEntityAction(b.tx, b, a)
 }
 
-var _ Living = (*Bat)(nil)
+var _ Living = (*bat)(nil)
 
 func batBool(v bool) byte {
 	if v {

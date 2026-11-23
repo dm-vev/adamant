@@ -184,9 +184,9 @@ func (f *dragonFight) scanState(tx *world.Tx) {
 			f.spawnExitPortal(tx, false)
 		}
 	}
-	var dragon *EnderDragon
+	var dragon *enderDragon
 	for e := range tx.Entities() {
-		if d, ok := e.(*EnderDragon); ok {
+		if d, ok := e.(*enderDragon); ok {
 			dragon = d
 			break
 		}
@@ -211,20 +211,20 @@ func endFightEntityID(handle *world.EntityHandle) int64 {
 }
 
 func (f *dragonFight) AttachDragon(e world.Entity) {
-	if d, ok := e.(*EnderDragon); ok && f.data.DragonSpawned && endFightEntityID(d.H()) == f.data.DragonUniqueID {
+	if d, ok := e.(*enderDragon); ok && f.data.DragonSpawned && endFightEntityID(d.H()) == f.data.DragonUniqueID {
 		d.SetDragonFight(f)
 		d.SetFightOrigin(cube.Pos{})
 	}
 }
 
-func (f *dragonFight) bindDragon(d *EnderDragon) {
+func (f *dragonFight) bindDragon(d *enderDragon) {
 	f.data.DragonSpawned, f.data.DragonUniqueID = true, endFightEntityID(d.H())
 	f.AttachDragon(d)
 }
 
 func (f *dragonFight) findOrCreateDragon(tx *world.Tx) {
 	for e := range tx.Entities() {
-		if d, ok := e.(*EnderDragon); ok {
+		if d, ok := e.(*enderDragon); ok {
 			f.bindDragon(d)
 			return
 		}
@@ -232,16 +232,16 @@ func (f *dragonFight) findOrCreateDragon(tx *world.Tx) {
 	f.createDragon(tx)
 }
 
-func (f *dragonFight) createDragon(tx *world.Tx) *EnderDragon {
+func (f *dragonFight) createDragon(tx *world.Tx) *enderDragon {
 	r := tx.RegionRandom()
 	opts := world.EntitySpawnOpts{Position: mgl64.Vec3{0, 128, 0}, Rotation: cube.Rotation{float64(r.NextFloat() * 360), 0}, SpawnReason: "event", SpawnSeed: r.NextLong()}
-	handle := opts.New(EnderDragonType, EnderDragonBehaviourConfig{Phase: DragonHoldingPattern, Fight: f})
+	handle := opts.New(entityEnderDragonType, enderDragonBehaviourConfig{Phase: dragonHoldingPattern, Fight: f})
 	f.data.DragonSpawned, f.data.DragonUniqueID = true, endFightEntityID(handle)
-	return tx.AddEntity(handle).(*EnderDragon)
+	return tx.AddEntity(handle).(*enderDragon)
 }
 
 func (f *dragonFight) UpdateDragon(tx *world.Tx, e world.Entity) {
-	d, ok := e.(*EnderDragon)
+	d, ok := e.(*enderDragon)
 	if !ok || !f.data.DragonSpawned || endFightEntityID(d.H()) != f.data.DragonUniqueID {
 		return
 	}
@@ -318,7 +318,7 @@ func (f *dragonFight) OnCrystalDestroyed(tx *world.Tx, crystal world.Entity, pos
 	}
 	f.updateCrystalCount(tx)
 	for e := range tx.Entities() {
-		if d, ok := e.(*EnderDragon); ok && f.data.DragonSpawned && endFightEntityID(d.H()) == f.data.DragonUniqueID {
+		if d, ok := e.(*enderDragon); ok && f.data.DragonSpawned && endFightEntityID(d.H()) == f.data.DragonUniqueID {
 			d.CrystalDestroyed(tx, crystal, pos, source)
 			return
 		}

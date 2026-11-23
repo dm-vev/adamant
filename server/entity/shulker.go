@@ -19,7 +19,7 @@ import (
 
 // NewShulker creates a worldless shulker entity handle.
 func NewShulker(opts world.EntitySpawnOpts, conf ShulkerBehaviourConfig) *world.EntityHandle {
-	return opts.New(ShulkerType, conf)
+	return opts.New(entityShulkerType, conf)
 }
 
 func shulkerFace(v any) cube.Face {
@@ -48,7 +48,7 @@ func shulkerFace(v any) cube.Face {
 }
 
 // ShulkerType is the entity type for Java shulkers.
-var ShulkerType shulkerType
+var entityShulkerType shulkerType
 
 type shulkerType struct{}
 
@@ -101,7 +101,7 @@ func shulkerProgressBox(dir cube.Face, from, to float64) cube.BBox {
 
 func (shulkerType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf := ShulkerBehaviourConfig{}
-	javaState := ReadNativeMobJavaState(m)
+	javaState := readNativeMobJavaState(m)
 	source := m
 	if javaState != nil {
 		source = javaState
@@ -115,7 +115,7 @@ func (shulkerType) DecodeNBT(m map[string]any, data *world.EntityData) {
 		conf.Peek = nativeNBTByte(value)
 	}
 	// Bedrock stores the shell colour in Variant, not the generic Color tag.
-	if variant, ok := NativeMobVariant(m); ok && variant >= 0 && variant <= 16 {
+	if variant, ok := nativeMobVariant(m); ok && variant >= 0 && variant <= 16 {
 		conf.Color, conf.colorSet = uint8(variant), true
 	} else if value, ok := source["Color"]; ok {
 		conf.Color, conf.colorSet = shulkerColourSwap(nativeNBTByte(value)), true
@@ -131,19 +131,19 @@ func (shulkerType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	} else if health, ok := nativeMobAttribute(m, "minecraft:health"); ok {
 		conf.MaxHealth = health.Base
 	}
-	data.Data = conf.New()
+	data.Data = conf.newBehaviour()
 }
 func (shulkerType) EncodeNBT(data *world.EntityData) map[string]any {
-	b := data.Data.(*ShulkerBehaviour)
-	attributes := EncodeNativeMobAttributes(ReadNativeMobAttributes(data.NativeNBT), []NativeMobAttribute{{
+	b := data.Data.(*shulkerBehaviour)
+	attributes := encodeNativeMobAttributes(readNativeMobAttributes(data.NativeNBT), []nativeMobAttr{{
 		Name: "minecraft:health", Base: b.health.MaxHealth(), Current: b.health.Health(),
 		DefaultMin: 0, DefaultMax: b.health.MaxHealth(), Min: 0, Max: b.health.MaxHealth(),
 	}})
 	native := map[string]any{"Attributes": attributes, "Variant": int32(b.color)}
-	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(data.NativeNBT), map[string]any{
+	javaState := mergeNativeMobNBT(readNativeMobJavaState(data.NativeNBT), map[string]any{
 		"AttachFace": b.attachFace.String(), "Peek": b.peek, "Color": shulkerColourSwap(b.color),
 	})
-	return MergeNativeMobJavaState(native, javaState)
+	return mergeNativeMobJavaState(native, javaState)
 }
 
 // ShulkerBehaviourConfig configures shulker health and persisted shell state.
@@ -154,7 +154,7 @@ type ShulkerBehaviourConfig struct {
 	healthSet, colorSet bool
 }
 
-func (conf ShulkerBehaviourConfig) Apply(data *world.EntityData) { data.Data = conf.New() }
+func (conf ShulkerBehaviourConfig) Apply(data *world.EntityData) { data.Data = conf.newBehaviour() }
 
 // shulkerColourSwap converts between the Java dye colour of a shulker and
 // its Bedrock variant, which number the colours in reverse. Both use 16 for
@@ -166,7 +166,7 @@ func shulkerColourSwap(c uint8) uint8 {
 	return 15 - c
 }
 
-func (conf ShulkerBehaviourConfig) New() *ShulkerBehaviour {
+func (conf ShulkerBehaviourConfig) newBehaviour() *shulkerBehaviour {
 	if conf.MaxHealth <= 0 {
 		conf.MaxHealth = 30
 	}
@@ -179,12 +179,12 @@ func (conf ShulkerBehaviourConfig) New() *ShulkerBehaviour {
 	if !conf.colorSet && conf.Color == 0 {
 		conf.Color = 16
 	}
-	return &ShulkerBehaviour{health: NewHealthManager(conf.Health, conf.MaxHealth), effects: NewEffectManager(), attachFace: conf.AttachFace, peek: conf.Peek, peekAmount: float32(conf.Peek) * .01, color: conf.Color}
+	return &shulkerBehaviour{health: NewHealthManager(conf.Health, conf.MaxHealth), effects: NewEffectManager(), attachFace: conf.AttachFace, peek: conf.Peek, peekAmount: float32(conf.Peek) * .01, color: conf.Color}
 }
 
 // Shulker is an immobile hostile living entity.
 type Shulker struct{ *Ent }
-type ShulkerBehaviour struct {
+type shulkerBehaviour struct {
 	health     *HealthManager
 	effects    *EffectManager
 	ai         MobAI
@@ -197,7 +197,7 @@ type ShulkerBehaviour struct {
 	dead       bool
 }
 
-func (s *Shulker) behaviour() *ShulkerBehaviour { return s.Behaviour().(*ShulkerBehaviour) }
+func (s *Shulker) behaviour() *shulkerBehaviour { return s.Behaviour().(*shulkerBehaviour) }
 
 // Tick ports Shulker.tick: a shulker that may no longer stay where it is
 // finds another face or teleports, and its shell opens and closes a twentieth
@@ -221,27 +221,27 @@ func (s *Shulker) Tick(tx *world.Tx, current int64) {
 	}
 }
 
-func (b *ShulkerBehaviour) mobAI() *MobAI { return &b.ai }
+func (b *shulkerBehaviour) mobAI() *MobAI { return &b.ai }
 
 // Tick runs the MobAI of the shulker, which never moves on its own.
-func (b *ShulkerBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (b *shulkerBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	s := &Shulker{Ent: e}
 	// Shulker.getMaxHeadXRot and getMaxHeadYRot.
 	b.ai.MaxHeadYaw, b.ai.MaxHeadPitch, b.ai.EyeHeight = 180, 180, .5
 	return b.ai.Tick(e, s, func(m *Mob) {
 		ai := m.AI
 		ai.lookOverride, ai.bodyOverride = shulkerLookControl{b}, shulkerBodyControl{}
-		look := NewLookAtPlayerGoal(8)
+		look := newLookAtPlayerGoal(8)
 		look.OnlyHorizontal = true
 		ai.Goals.Add(1, look)
 		ai.Goals.Add(4, &shulkerAttackGoal{goalFlags: goalFlags{GoalMove | GoalLook}, b: b})
 		ai.Goals.Add(7, &shulkerPeekGoal{b: b})
-		ai.Goals.Add(8, NewRandomLookAroundGoal())
-		hurt := NewHurtByTargetGoal()
+		ai.Goals.Add(8, newRandomLookAroundGoal())
+		hurt := newHurtByTargetGoal()
 		hurt.IgnoreDamageFrom = func(e world.Entity) bool { _, shulker := e.(*Shulker); return shulker }
 		hurt.AlertOthers = true
 		ai.Targets.Add(1, hurt)
-		nearest := NewNearestAttackableTargetGoal(nil, true)
+		nearest := newNearestAttackableTargetGoal(nil, true)
 		nearest.Selector = func(m *Mob, _ world.Entity) bool { return m.tx.World().Difficulty() != world.DifficultyPeaceful }
 		ai.Targets.Add(2, nearest)
 	})
@@ -249,14 +249,14 @@ func (b *ShulkerBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 
 // travel ports Shulker.getDeltaMovement and setDeltaMovement: a shulker has
 // no movement.
-func (b *ShulkerBehaviour) travel(m *Mob, _ mgl64.Vec3) bool {
+func (b *shulkerBehaviour) travel(m *Mob, _ mgl64.Vec3) bool {
 	m.data.Vel = mgl64.Vec3{}
 	return true
 }
 
 // shulkerLookControl ports Shulker.ShulkerLookControl: a shulker turns its
 // head around the axis of the face it is attached to, and never up or down.
-type shulkerLookControl struct{ b *ShulkerBehaviour }
+type shulkerLookControl struct{ b *shulkerBehaviour }
 
 func (c shulkerLookControl) tick(m *Mob) {
 	look := &m.AI.look
@@ -292,7 +292,7 @@ func (shulkerBodyControl) tick(*Mob) {}
 
 // setRawPeek ports Shulker.setRawPeekAmount: a closed shell protects the
 // shulker with 20 armour.
-func (b *ShulkerBehaviour) setRawPeek(m *Mob, amount uint8) {
+func (b *shulkerBehaviour) setRawPeek(m *Mob, amount uint8) {
 	name := "entity.shulker.open"
 	event := world.GameEventContainerOpen
 	if amount == 0 {
@@ -304,7 +304,7 @@ func (b *ShulkerBehaviour) setRawPeek(m *Mob, amount uint8) {
 }
 
 // updatePeekAmount ports Shulker.updatePeekAmount.
-func (b *ShulkerBehaviour) updatePeekAmount() bool {
+func (b *shulkerBehaviour) updatePeekAmount() bool {
 	target := float32(b.peek) * .01
 	if b.peekAmount == target {
 		return false
@@ -319,7 +319,7 @@ func (b *ShulkerBehaviour) updatePeekAmount() bool {
 
 // onPeekAmountChange ports Shulker.onPeekAmountChange: an opening shell
 // pushes the entities in its way.
-func (b *ShulkerBehaviour) onPeekAmountChange(e *Ent, tx *world.Tx) {
+func (b *shulkerBehaviour) onPeekAmountChange(e *Ent, tx *world.Tx) {
 	now := shulkerPhysicalPeek(b.peekAmount)
 	old := shulkerPhysicalPeek(b.peekAmount - .05)
 	if b.peekAmount > float32(b.peek)*.01 {
@@ -350,7 +350,7 @@ func (b *ShulkerBehaviour) onPeekAmountChange(e *Ent, tx *world.Tx) {
 // and a half seconds.
 type shulkerAttackGoal struct {
 	goalFlags
-	b          *ShulkerBehaviour
+	b          *shulkerBehaviour
 	attackTime int
 }
 
@@ -395,7 +395,7 @@ func (g *shulkerAttackGoal) Tick(m *Mob) {
 // its shell now and then for one to three seconds.
 type shulkerPeekGoal struct {
 	goalFlags
-	b        *ShulkerBehaviour
+	b        *shulkerBehaviour
 	peekTime int
 }
 
@@ -469,7 +469,7 @@ func (s *Shulker) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	m := b.ai.Mob(s.Ent, s)
 	if b.health.Health() < b.health.MaxHealth()*.5 && m.Random().NextInt(4) == 0 {
 		b.teleportSomewhere(m)
-	} else if isProjectile && projectile.Projectile != nil && projectile.Projectile.H().Type() == ShulkerBulletType {
+	} else if isProjectile && projectile.Projectile != nil && projectile.Projectile.H().Type() == entityShulkerBulletType {
 		b.hitByShulkerBullet(m)
 	}
 	return damage, true
@@ -478,7 +478,7 @@ func (s *Shulker) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 // hitByShulkerBullet ports Shulker.hitByShulkerBullet: an open shulker that
 // teleports away leaves a shulker of its colour behind, less often the more
 // shulkers are near.
-func (b *ShulkerBehaviour) hitByShulkerBullet(m *Mob) {
+func (b *shulkerBehaviour) hitByShulkerBullet(m *Mob) {
 	oldPos, oldBox := m.data.Pos, m.BBox()
 	if b.peek == 0 || !b.teleportSomewhere(m) {
 		return
@@ -515,11 +515,7 @@ func (s *Shulker) updateState() {
 	world.BroadcastEntityState(s.tx, s)
 }
 func (s *Shulker) viewAction(action world.EntityAction) {
-	viewers := s.tx.Viewers(s.Position())
-	for _, viewer := range viewers {
-		viewer.ViewEntityAction(s, action)
-	}
-	s.tx.ReleaseViewers(viewers)
+	world.BroadcastEntityAction(s.tx, s, action)
 }
 func (s *Shulker) die(src world.DamageSource) {
 	b := s.behaviour()
@@ -533,7 +529,7 @@ func (s *Shulker) die(src world.DamageSource) {
 }
 
 // findNewAttachment ports Shulker.findNewAttachment.
-func (b *ShulkerBehaviour) findNewAttachment(e *Ent, tx *world.Tx) {
+func (b *shulkerBehaviour) findNewAttachment(e *Ent, tx *world.Tx) {
 	if face, ok := b.attachableSurface(tx, e.H(), cube.PosFromVec3(e.Position())); ok {
 		b.attachFace = face
 		return
@@ -544,7 +540,7 @@ func (b *ShulkerBehaviour) findNewAttachment(e *Ent, tx *world.Tx) {
 }
 
 // attachableSurface ports Shulker.findAttachableSurface.
-func (b *ShulkerBehaviour) attachableSurface(tx *world.Tx, self *world.EntityHandle, pos cube.Pos) (cube.Face, bool) {
+func (b *shulkerBehaviour) attachableSurface(tx *world.Tx, self *world.EntityHandle, pos cube.Pos) (cube.Face, bool) {
 	for face := cube.FaceDown; face <= cube.FaceEast; face++ {
 		if b.canStayAt(tx, self, pos, face) {
 			return face, true
@@ -555,7 +551,7 @@ func (b *ShulkerBehaviour) attachableSurface(tx *world.Tx, self *world.EntityHan
 
 // canStayAt ports Shulker.canStayAt: a shulker stays in air on the sturdy
 // face of a block, with room to open its shell fully.
-func (b *ShulkerBehaviour) canStayAt(tx *world.Tx, self *world.EntityHandle, pos cube.Pos, face cube.Face) bool {
+func (b *shulkerBehaviour) canStayAt(tx *world.Tx, self *world.EntityHandle, pos cube.Pos, face cube.Face) bool {
 	if face > cube.FaceEast {
 		return false
 	}
@@ -582,7 +578,7 @@ func (b *ShulkerBehaviour) canStayAt(tx *world.Tx, self *world.EntityHandle, pos
 
 // teleportSomewhere ports Shulker.teleportSomewhere: a shulker tries five
 // times to teleport to a spot within eight blocks it may stay at.
-func (b *ShulkerBehaviour) teleportSomewhere(m *Mob) bool {
+func (b *shulkerBehaviour) teleportSomewhere(m *Mob) bool {
 	if m.AI.NoAI || !m.Alive() {
 		return false
 	}
@@ -622,7 +618,7 @@ func (s *Shulker) FinalizeSpawn(_ string, _ *vanilla.Random) {
 // NewShulkerBullet creates a shulker bullet flying with the velocity of the
 // spawn options at a target.
 func NewShulkerBullet(opts world.EntitySpawnOpts, owner, target *world.EntityHandle) *world.EntityHandle {
-	return opts.New(ShulkerBulletType, shulkerBulletConf{owner: owner, target: target})
+	return opts.New(entityShulkerBulletType, shulkerBulletConf{owner: owner, target: target})
 }
 
 // newShulkerBulletFrom ports the ShulkerBullet constructor: a bullet leaves
@@ -631,7 +627,7 @@ func NewShulkerBullet(opts world.EntitySpawnOpts, owner, target *world.EntityHan
 func newShulkerBulletFrom(m *Mob, target world.Entity, avoidAxis cube.Pos) *world.EntityHandle {
 	box := m.BBox()
 	centre := box.Min().Add(box.Max()).Mul(.5)
-	return world.EntitySpawnOpts{Position: centre}.New(ShulkerBulletType, shulkerBulletConf{owner: m.H(), target: target.H(), avoid: &avoidAxis})
+	return world.EntitySpawnOpts{Position: centre}.New(entityShulkerBulletType, shulkerBulletConf{owner: m.H(), target: target.H(), avoid: &avoidAxis})
 }
 
 type shulkerBulletConf struct {
@@ -806,17 +802,17 @@ func posFace(p cube.Pos) cube.Face {
 
 // ShulkerBullet is the homing bullet of a shulker, which players may
 // destroy by hitting it.
-type ShulkerBullet struct{ *Ent }
+type shulkerBullet struct{ *Ent }
 
 // Destroy ports ShulkerBullet.hurtServer: a hit bullet breaks.
-func (b *ShulkerBullet) Destroy(tx *world.Tx, _ world.DamageSource, _ world.Entity) bool {
+func (b *shulkerBullet) Destroy(tx *world.Tx, _ world.DamageSource, _ world.Entity) bool {
 	tx.PlaySound(b.Position(), sound.Custom{Name: "entity.shulker_bullet.hurt", Volume: 1, Pitch: 1})
 	tx.EmitGameEvent(world.GameEventEntityDamage, b.Position(), world.GameEventContext{Source: b})
 	_ = b.CloseIn(tx)
 	return true
 }
 
-var ShulkerBulletType shulkerBulletType
+var entityShulkerBulletType shulkerBulletType
 
 type shulkerBulletType struct{}
 
@@ -824,7 +820,7 @@ func (shulkerBulletType) Open(tx *world.Tx, handle *world.EntityHandle, data *wo
 	if data.Data == nil {
 		shulkerBulletConf{}.Apply(data)
 	}
-	return &ShulkerBullet{Ent: &Ent{tx: tx, handle: handle, data: data}}
+	return &shulkerBullet{Ent: &Ent{tx: tx, handle: handle, data: data}}
 }
 func (shulkerBulletType) EncodeEntity() string { return "minecraft:shulker_bullet" }
 func (shulkerBulletType) BBox(world.Entity) cube.BBox {
@@ -835,4 +831,4 @@ func (shulkerBulletType) DecodeNBT(_ map[string]any, data *world.EntityData) {
 }
 func (shulkerBulletType) EncodeNBT(*world.EntityData) map[string]any { return nil }
 
-func (b *ShulkerBehaviour) effectManager() *EffectManager { return b.effects }
+func (b *shulkerBehaviour) effectManager() *EffectManager { return b.effects }

@@ -129,7 +129,7 @@ func releaseOozingSlimes(tx *world.Tx, e world.Entity, pos mgl64.Vec3) {
 			if nearby >= cramming {
 				break
 			}
-			if other.H() != e.H() && other.H().Type() == SlimeType && other.H().Type().BBox(other).Translate(other.Position()).IntersectsWith(box) {
+			if other.H() != e.H() && other.H().Type().EncodeEntity() == "minecraft:slime" && other.H().Type().BBox(other).Translate(other.Position()).IntersectsWith(box) {
 				nearby++
 			}
 		}

@@ -16,7 +16,7 @@ import (
 
 // HappyGhastType is the source happy ghast species. Babies use the same native
 // actor identity; age and all lifecycle state are persisted as Java state.
-var HappyGhastType world.EntityType = happyGhastType{}
+var entityHappyGhastType world.EntityType = happyGhastType{}
 
 type happyGhastType struct{}
 
@@ -40,7 +40,7 @@ func (happyGhastType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityD
 }
 func (happyGhastType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	c := happyGhastConfig{}
-	s := ReadNativeMobJavaState(n)
+	s := readNativeMobJavaState(n)
 	if s == nil {
 		s = n
 	}
@@ -68,14 +68,14 @@ func (happyGhastType) DecodeNBT(n map[string]any, d *world.EntityData) {
 func (happyGhastType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*happyGhastBehaviour)
 	h := b.health
-	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: 20, Current: h.Health(), DefaultMin: 0, DefaultMax: 20, Min: 0, Max: 20}, {Name: "minecraft:movement", Base: .05, Current: .05, DefaultMin: 0, DefaultMax: .05, Min: 0, Max: .05}})
-	m := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs})
+	attrs := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: 20, Current: h.Health(), DefaultMin: 0, DefaultMax: 20, Min: 0, Max: 20}, {Name: "minecraft:movement", Base: .05, Current: .05, DefaultMin: 0, DefaultMax: .05, Min: 0, Max: .05}})
+	m := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs})
 	home := b.currentHome()
 	state := map[string]any{"Age": int32(b.age), "Harnessed": boolByte(b.harness), "HarnessName": b.harnessName, "StillTimeout": int32(b.still), "HasHome": boolByte(home.set()), "Health": float32(h.Health())}
 	if home.set() {
 		state["HomeX"], state["HomeY"], state["HomeZ"], state["HomeRadius"] = int32(home.pos[0]), int32(home.pos[1]), int32(home.pos[2]), int32(home.radius)
 	}
-	return MergeNativeMobJavaState(m, b.breeding.encodeNBT(state))
+	return mergeNativeMobJavaState(m, b.breeding.encodeNBT(state))
 }
 
 type happyGhastConfig struct {
@@ -110,7 +110,7 @@ type happyGhastBehaviour struct {
 	health      *HealthManager
 	effects     *EffectManager
 	ai          MobAI
-	br          *Brain
+	br          *brain
 	ghastMove   ghastMoveControl
 	speed       float64
 	age         int
@@ -133,9 +133,9 @@ type happyGhastBehaviour struct {
 type HappyGhast struct{ *Ent }
 
 func NewHappyGhast(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(HappyGhastType, happyGhastConfig{})
+	return o.New(entityHappyGhastType, happyGhastConfig{})
 }
-func (*HappyGhast) SpeciesType() world.EntityType { return HappyGhastType }
+func (*HappyGhast) SpeciesType() world.EntityType { return entityHappyGhastType }
 
 // FinalizeSpawn initializes the source-created ghastling as a baby before it is exposed to viewers.
 func (h *HappyGhast) FinalizeSpawn(reason string, _ *vanilla.Random) {
@@ -147,7 +147,7 @@ func (h *HappyGhast) state() *happyGhastBehaviour { return h.Behaviour().(*happy
 func (h *HappyGhast) Tick(tx *world.Tx, n int64)  { h.state().effects.Tick(h, tx); h.Ent.Tick(tx, n) }
 
 func (b *happyGhastBehaviour) mobAI() *MobAI   { return &b.ai }
-func (b *happyGhastBehaviour) brain() *Brain   { return b.br }
+func (b *happyGhastBehaviour) brain() *brain   { return b.br }
 func (b *happyGhastBehaviour) panicking() bool { return b.br.has(memIsPanicking) }
 
 // currentHome returns the home of the happy ghast.
@@ -225,8 +225,8 @@ func (b *happyGhastBehaviour) setup(m *Mob) {
 // registerGoals ports HappyGhast.registerGoals.
 func (b *happyGhastBehaviour) registerGoals(m *Mob) {
 	ai := m.AI
-	ai.Goals.Add(3, &happyGhastFloatGoal{FloatGoal: NewFloatGoal(m), b: b})
-	tempt := NewTemptGoal(1, func(s item.Stack) bool {
+	ai.Goals.Add(3, &happyGhastFloatGoal{floatGoal: newFloatGoal(m), b: b})
+	tempt := newTemptGoal(1, func(s item.Stack) bool {
 		if !b.harness && b.age >= 0 {
 			return inItemTag(s, "happy_ghast_tempt_items")
 		}
@@ -247,13 +247,13 @@ func (b *happyGhastBehaviour) registerGoals(m *Mob) {
 
 // newHappyGhastBrain ports HappyGhastAi and the brain provider of
 // HappyGhast, which only ghastlings use.
-func newHappyGhastBrain() *Brain {
+func newHappyGhastBrain() *brain {
 	br := newBrain(nearestLivingEntitySensor{}, hurtBySensor{}, temptingSensor{items: animalTemptation, rangeLimit: 16}, adultSensor{anyType: true}, playerSensor{})
 	br.addActivity(activityCore, 0,
 		newSwim(.8),
 		newAnimalPanic(2, nil, func(m *Mob) (mgl64.Vec3, bool) {
 			dir := m.data.Rot.Vec3()
-			return AirAndWaterRandomPos(m, 5, 4, 0, dir[0], dir[2], math.Pi/2)
+			return airAndWaterRandomPos(m, 5, 4, 0, dir[0], dir[2], math.Pi/2)
 		}, nil),
 		newLookAtTargetSink(45, 90),
 		newMoveToTargetSink(150, 250, nil),
@@ -475,12 +475,12 @@ func (c happyGhastLookControl) tick(m *Mob) {
 // happyGhastFloatGoal ports HappyGhast.HappyGhastFloatGoal: a happy ghast
 // swims up unless it stays in place.
 type happyGhastFloatGoal struct {
-	*FloatGoal
+	*floatGoal
 	b *happyGhastBehaviour
 }
 
 func (g *happyGhastFloatGoal) CanUse(m *Mob) bool {
-	return !g.b.stillTimeout() && g.FloatGoal.CanUse(m)
+	return !g.b.stillTimeout() && g.floatGoal.CanUse(m)
 }
 
 func (b *happyGhastBehaviour) hasRiders() bool {
@@ -779,18 +779,10 @@ func (h *HappyGhast) BodyItem() item.Stack {
 	return item.NewStack(i, 1)
 }
 func (h *HappyGhast) viewAction(a world.EntityAction) {
-	vs := h.tx.Viewers(h.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(h, a)
-	}
-	h.tx.ReleaseViewers(vs)
+	world.BroadcastEntityAction(h.tx, h, a)
 }
 func (h *HappyGhast) viewArmour(tx *world.Tx) {
-	vs := tx.Viewers(h.Position())
-	for _, v := range vs {
-		v.ViewEntityArmour(h)
-	}
-	tx.ReleaseViewers(vs)
+	world.BroadcastEntityArmour(tx, h)
 }
 
 var _ Living = (*HappyGhast)(nil)

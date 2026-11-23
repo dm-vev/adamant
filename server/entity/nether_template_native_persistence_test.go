@@ -71,7 +71,7 @@ func TestNetherTemplateActorsRetainSourceStateAcrossMCDB(t *testing.T) {
 	piglinHandle, bruteHandle, hoglinHandle := spawn(piglinNBT), spawn(bruteNBT), spawn(hoglinNBT)
 	var piglin *Piglin
 	var brute *PiglinBrute
-	var hoglin *Hoglin
+	var hog *hoglin
 	if err := w.Do(func(tx *world.Tx) {
 		for e := range tx.Entities() {
 			switch e.H().UniqueID() {
@@ -80,13 +80,13 @@ func TestNetherTemplateActorsRetainSourceStateAcrossMCDB(t *testing.T) {
 			case bruteHandle.UniqueID():
 				brute = e.(*PiglinBrute)
 			case hoglinHandle.UniqueID():
-				hoglin = e.(*Hoglin)
+				hog = e.(*hoglin)
 			}
 		}
 	}).Wait(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if piglin == nil || brute == nil || hoglin == nil {
+	if piglin == nil || brute == nil || hog == nil {
 		t.Fatal("registered Source Nether actors were not added to the world")
 	}
 	checkSourceStack := func(label string, actual item.Stack, raw any) {
@@ -125,8 +125,8 @@ func TestNetherTemplateActorsRetainSourceStateAcrossMCDB(t *testing.T) {
 	if home, ok := brute.p().br.get(memHome); !ok || home != (globalPos{dim: world.Nether, pos: cube.Pos{12, 72, -9}}) {
 		t.Fatalf("brute HOME=%+v set=%t", home, ok)
 	}
-	if hoglin.beast().age != -24000 || hoglin.Health() != float64(nbtconv.Float32(hoglinNBT, "Health")) {
-		t.Fatalf("hoglin age/health=%d/%g, Source=%v/%v", hoglin.beast().age, hoglin.Health(), hoglinNBT["Age"], hoglinNBT["Health"])
+	if hog.beast().age != -24000 || hog.Health() != float64(nbtconv.Float32(hoglinNBT, "Health")) {
+		t.Fatalf("hoglin age/health=%d/%g, Source=%v/%v", hog.beast().age, hog.Health(), hoglinNBT["Age"], hoglinNBT["Health"])
 	}
 	// Clearing a mutable native item must take precedence over retained Source
 	// gear when the actor is serialized and decoded after restart.
@@ -148,7 +148,7 @@ func TestNetherTemplateActorsRetainSourceStateAcrossMCDB(t *testing.T) {
 	w = open()
 	if err := w.Do(func(tx *world.Tx) {
 		tx.Block(cube.PosFromVec3(pos))
-		piglin, brute, hoglin = nil, nil, nil
+		piglin, brute, hog = nil, nil, nil
 		for e := range tx.Entities() {
 			switch e.H().UniqueID() {
 			case piglinHandle.UniqueID():
@@ -156,13 +156,13 @@ func TestNetherTemplateActorsRetainSourceStateAcrossMCDB(t *testing.T) {
 			case bruteHandle.UniqueID():
 				brute = e.(*PiglinBrute)
 			case hoglinHandle.UniqueID():
-				hoglin = e.(*Hoglin)
+				hog = e.(*hoglin)
 			}
 		}
 	}).Wait(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if piglin == nil || brute == nil || hoglin == nil {
+	if piglin == nil || brute == nil || hog == nil {
 		t.Fatal("Source Nether actors were lost on MCDB reopen")
 	}
 	if got, _ := piglin.HeldItems(); !got.Empty() {
@@ -171,7 +171,7 @@ func TestNetherTemplateActorsRetainSourceStateAcrossMCDB(t *testing.T) {
 	if piglin.Health() != float64(nbtconv.Float32(piglinNBT, "Health")) || piglin.p().baby != nbtconv.Bool(piglinNBT, "IsBaby") {
 		t.Fatalf("Piglin health/baby changed on MCDB reopen: %g/%t", piglin.Health(), piglin.p().baby)
 	}
-	piglinSaved := ReadNativeMobJavaState(PiglinType{}.EncodeNBT(piglin.Ent.data))
+	piglinSaved := readNativeMobJavaState(piglinType{}.EncodeNBT(piglin.Ent.data))
 	brain, _ := piglinSaved["Brain"].(map[string]any)
 	memories, _ := brain["memories"].(map[string]any)
 	if _, ok := memories["minecraft:hunted_recently"]; !ok {
@@ -180,7 +180,7 @@ func TestNetherTemplateActorsRetainSourceStateAcrossMCDB(t *testing.T) {
 	if home, ok := brute.p().br.get(memHome); !ok || home != (globalPos{dim: world.Nether, pos: cube.Pos{12, 72, -9}}) || brute.Health() != float64(nbtconv.Float32(bruteNBT, "Health")) {
 		t.Fatalf("Brute state changed on MCDB reopen: HOME=%+v health=%g", home, brute.Health())
 	}
-	if hoglin.beast().age != -24000 || hoglin.Health() != float64(nbtconv.Float32(hoglinNBT, "Health")) {
-		t.Fatalf("Hoglin state changed on MCDB reopen: age/health=%d/%g", hoglin.beast().age, hoglin.Health())
+	if hog.beast().age != -24000 || hog.Health() != float64(nbtconv.Float32(hoglinNBT, "Health")) {
+		t.Fatalf("Hoglin state changed on MCDB reopen: age/health=%d/%g", hog.beast().age, hog.Health())
 	}
 }

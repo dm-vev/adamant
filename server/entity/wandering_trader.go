@@ -16,7 +16,7 @@ import (
 // WanderingTraderType is Java's minecraft:wandering_trader: a merchant that
 // sells the wandering trader trade sets, drinks invisibility at night and
 // leaves the world when its despawn delay runs out.
-var WanderingTraderType wanderingTraderType
+var entityWanderingTraderType wanderingTraderType
 
 type wanderingTraderType struct{}
 
@@ -24,13 +24,13 @@ func (wanderingTraderType) Open(tx *world.Tx, h *world.EntityHandle, d *world.En
 	if d.Data == nil {
 		wanderingTraderConfig{}.Apply(d)
 	}
-	return &WanderingTrader{Ent: &Ent{tx: tx, handle: h, data: d}}
+	return &wanderingTrader{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
 func (wanderingTraderType) EncodeEntity() string        { return "minecraft:wandering_trader" }
 func (wanderingTraderType) BBox(world.Entity) cube.BBox { return cube.Box(-.3, 0, -.3, .3, 1.95, .3) }
 
 func (wanderingTraderType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	s := ReadNativeMobJavaState(m)
+	s := readNativeMobJavaState(m)
 	if s == nil {
 		s = m
 	}
@@ -50,11 +50,11 @@ func (wanderingTraderType) DecodeNBT(m map[string]any, d *world.EntityData) {
 func (wanderingTraderType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*wanderingTraderBehaviour)
 	h := b.health
-	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{
+	attrs := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{
 		{Name: "minecraft:health", Base: h.MaxHealth(), Current: h.Health(), DefaultMin: 0, DefaultMax: h.MaxHealth(), Min: 0, Max: h.MaxHealth()},
 		{Name: "minecraft:movement", Base: .5, Current: .5, DefaultMin: 0, DefaultMax: .5, Min: 0, Max: .5},
 	})
-	native := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Health": float32(h.Health()), "Attributes": attrs})
+	native := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Health": float32(h.Health()), "Attributes": attrs})
 	state := map[string]any{"Health": float32(h.Health()), "DespawnDelay": int32(b.despawnDelay), "Age": int32(0)}
 	if b.hasWanderTarget {
 		state["wander_target"] = villagerPosNBT(b.wanderTarget)
@@ -63,7 +63,7 @@ func (wanderingTraderType) EncodeNBT(d *world.EntityData) map[string]any {
 	if b.offersGenerated {
 		state["Offers"] = writeMerchantOffers(b.offers)
 	}
-	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), state)
+	javaState := mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), state)
 	if !b.hasWanderTarget {
 		delete(javaState, "wander_target")
 	}
@@ -71,7 +71,7 @@ func (wanderingTraderType) EncodeNBT(d *world.EntityData) map[string]any {
 		delete(javaState, "home_pos")
 		delete(javaState, "home_radius")
 	}
-	return MergeNativeMobJavaState(native, javaState)
+	return mergeNativeMobJavaState(native, javaState)
 }
 
 type wanderingTraderConfig struct {
@@ -108,7 +108,7 @@ type wanderingTraderBehaviour struct {
 	health  *HealthManager
 	effects *EffectManager
 	ai      MobAI
-	panic   *PanicGoal
+	panic   *panicGoal
 	dead    bool
 
 	despawnDelay    int
@@ -124,20 +124,20 @@ type wanderingTraderBehaviour struct {
 }
 
 // WanderingTrader is a wandering trader entity.
-type WanderingTrader struct{ *Ent }
+type wanderingTrader struct{ *Ent }
 
 // NewWanderingTrader creates a wandering trader that never despawns.
 func NewWanderingTrader(opts world.EntitySpawnOpts) *world.EntityHandle {
-	return opts.New(WanderingTraderType, wanderingTraderConfig{})
+	return opts.New(entityWanderingTraderType, wanderingTraderConfig{})
 }
 
-func (t *WanderingTrader) b() *wanderingTraderBehaviour {
+func (t *wanderingTrader) b() *wanderingTraderBehaviour {
 	return t.Behaviour().(*wanderingTraderBehaviour)
 }
 
 // Tick ticks the trader and removes it once its despawn delay runs out while
 // nobody trades with it.
-func (t *WanderingTrader) Tick(tx *world.Tx, current int64) {
+func (t *wanderingTrader) Tick(tx *world.Tx, current int64) {
 	b := t.b()
 	b.effects.Tick(t, tx)
 	t.Ent.Tick(tx, current)
@@ -155,7 +155,7 @@ const traderSpeed = .7
 func (b *wanderingTraderBehaviour) mobAI() *MobAI { return &b.ai }
 
 func (b *wanderingTraderBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	t := &WanderingTrader{Ent: e}
+	t := &wanderingTrader{Ent: e}
 	b.trading.tick(tx, e.data.Pos)
 	b.tickUsingItem(t, tx)
 	b.ai.MovementSpeed, b.ai.EyeHeight = traderSpeed, 1.62
@@ -165,7 +165,7 @@ func (b *wanderingTraderBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 // registerGoals ports WanderingTrader.registerGoals.
 func (b *wanderingTraderBehaviour) registerGoals(m *Mob) {
 	ai := m.AI
-	ai.Goals.Add(0, NewFloatGoal(m))
+	ai.Goals.Add(0, newFloatGoal(m))
 	ai.Goals.Add(0, &traderUseItemGoal{trader: b, item: item.NewStack(item.Potion{Type: potion.Invisibility()}, 1), sound: "disappeared",
 		canUse: func(m *Mob) bool { return darkOutside(m.tx) && !b.invisible() }})
 	ai.Goals.Add(0, &traderUseItemGoal{trader: b, item: item.NewStack(item.Bucket{Content: item.MilkBucketContent()}, 1), sound: "reappeared",
@@ -183,21 +183,21 @@ func (b *wanderingTraderBehaviour) registerGoals(m *Mob) {
 		{entityIs("minecraft:illusioner"), 12},
 		{entityIs("minecraft:zoglin"), 10},
 	} {
-		ai.Goals.Add(1, NewAvoidEntityGoal(avoided.isType, avoided.distance, .5, .5))
+		ai.Goals.Add(1, newAvoidEntityGoal(avoided.isType, avoided.distance, .5, .5))
 	}
-	b.panic = NewPanicGoal(.5)
+	b.panic = newPanicGoal(.5)
 	ai.Goals.Add(1, b.panic)
-	ai.Goals.Add(1, &lookAtTradingPlayerGoal{NewLookAtPlayerGoal(8), b})
+	ai.Goals.Add(1, &lookAtTradingPlayerGoal{newLookAtPlayerGoal(8), b})
 	ai.Goals.Add(2, &wanderToPositionGoal{goalFlags: goalFlags{GoalMove}, trader: b, stopDistance: 2, speedModifier: .35})
 	ai.Goals.Add(4, &moveTowardsRestrictionGoal{goalFlags: goalFlags{GoalMove}, speedModifier: .35})
-	ai.Goals.Add(8, NewWaterAvoidingRandomStrollGoal(.35))
+	ai.Goals.Add(8, newWaterAvoidingRandomStrollGoal(.35))
 	// InteractGoal: a LookAtPlayerGoal that always looks at a player within
 	// three blocks and holds the trader still meanwhile.
-	interact := NewLookAtPlayerGoal(3)
+	interact := newLookAtPlayerGoal(3)
 	interact.Probability = 1
 	interact.setFlags(GoalLook | GoalMove)
 	ai.Goals.Add(9, interact)
-	mobs := NewLookAtPlayerGoal(8)
+	mobs := newLookAtPlayerGoal(8)
 	mobs.IsType = isMobEntity
 	ai.Goals.Add(10, mobs)
 }
@@ -234,7 +234,7 @@ func (g *tradeWithPlayerGoal) Stop(*Mob) { g.trader.trading.user = nil }
 // lookAtTradingPlayerGoal ports LookAtTradingPlayerGoal: a trader looks at
 // the player it trades with.
 type lookAtTradingPlayerGoal struct {
-	*LookAtPlayerGoal
+	*lookAtPlayerGoal
 	trader *wanderingTraderBehaviour
 }
 
@@ -308,19 +308,19 @@ func (g *traderUseItemGoal) CanContinueToUse(*Mob) bool { return g.trader.useTic
 
 func (g *traderUseItemGoal) Start(m *Mob) {
 	g.trader.using, g.trader.useTicks = g.item, traderUseDuration
-	(&WanderingTrader{Ent: m.Ent}).viewItems(m.tx)
+	(&wanderingTrader{Ent: m.Ent}).viewItems(m.tx)
 }
 
 func (g *traderUseItemGoal) Stop(m *Mob) {
 	g.trader.using, g.trader.useTicks = item.Stack{}, 0
-	(&WanderingTrader{Ent: m.Ent}).viewItems(m.tx)
+	(&wanderingTrader{Ent: m.Ent}).viewItems(m.tx)
 	m.tx.PlaySound(m.data.Pos, sound.Event{Name: g.sound, Entity: "minecraft:wandering_trader", Source: m.H()})
 }
 
 // tickUsingItem ports LivingEntity.updatingUsingItem for the trader: once
 // it drank its potion or milk, the potion gives it invisibility and the
 // milk clears its effects.
-func (b *wanderingTraderBehaviour) tickUsingItem(t *WanderingTrader, tx *world.Tx) {
+func (b *wanderingTraderBehaviour) tickUsingItem(t *wanderingTrader, tx *world.Tx) {
 	if b.useTicks == 0 {
 		return
 	}
@@ -347,13 +347,17 @@ func (b *wanderingTraderBehaviour) tickUsingItem(t *WanderingTrader, tx *world.T
 }
 
 // viewItems shows the item in the trader's hand and whether it is drinking.
-func (t *WanderingTrader) viewItems(tx *world.Tx) {
+func (t *wanderingTrader) viewItems(tx *world.Tx) {
 	viewers := tx.Viewers(t.Position())
-	var b world.Broadcast
+	var itemsB, stateB world.Broadcast
 	for _, v := range viewers {
-		v.ViewEntityItems(t)
+		if bv, ok := v.(world.EntityBroadcastViewer); ok {
+			bv.ViewEntityItemsShared(t, &itemsB)
+		} else {
+			v.ViewEntityItems(t)
+		}
 		if sv, ok := v.(world.EntityStateSharedViewer); ok {
-			sv.ViewEntityStateShared(t, &b)
+			sv.ViewEntityStateShared(t, &stateB)
 		} else {
 			v.ViewEntityState(t)
 		}
@@ -362,52 +366,52 @@ func (t *WanderingTrader) viewItems(tx *world.Tx) {
 }
 
 // HeldItems returns the potion or milk the trader is drinking.
-func (t *WanderingTrader) HeldItems() (mainHand, offHand item.Stack) {
+func (t *wanderingTrader) HeldItems() (mainHand, offHand item.Stack) {
 	return t.b().using, item.Stack{}
 }
 
 // SetHeldItems changes the item in the hand of the trader and shows its
 // viewers. The trader puts its hand away when it next finishes drinking.
-func (t *WanderingTrader) SetHeldItems(main, _ item.Stack) {
+func (t *wanderingTrader) SetHeldItems(main, _ item.Stack) {
 	t.b().using = main
 	viewEquipment(t.tx, t)
 }
 
 // UsingItem reports whether the trader is drinking.
-func (t *WanderingTrader) UsingItem() bool { return t.b().useTicks > 0 }
+func (t *wanderingTrader) UsingItem() bool { return t.b().useTicks > 0 }
 
 // DespawnDelay returns the ticks until the trader leaves, or 0 if it stays.
-func (t *WanderingTrader) DespawnDelay() int { return t.b().despawnDelay }
+func (t *wanderingTrader) DespawnDelay() int { return t.b().despawnDelay }
 
 // SetDespawnDelay sets the ticks until the trader leaves. Zero keeps it in
 // the world.
-func (t *WanderingTrader) SetDespawnDelay(ticks int) { t.b().despawnDelay = max(0, ticks) }
+func (t *wanderingTrader) SetDespawnDelay(ticks int) { t.b().despawnDelay = max(0, ticks) }
 
 // WanderTarget returns the position the trader walks to, if any.
-func (t *WanderingTrader) WanderTarget() (cube.Pos, bool) {
+func (t *wanderingTrader) WanderTarget() (cube.Pos, bool) {
 	return t.b().wanderTarget, t.b().hasWanderTarget
 }
 
 // SetWanderTarget makes the trader walk to pos.
-func (t *WanderingTrader) SetWanderTarget(pos cube.Pos) {
+func (t *wanderingTrader) SetWanderTarget(pos cube.Pos) {
 	t.b().wanderTarget, t.b().hasWanderTarget = pos, true
 }
 
 // Home returns the centre and radius the trader stays around, or false if it
 // roams freely.
-func (t *WanderingTrader) Home() (cube.Pos, int, bool) {
+func (t *wanderingTrader) Home() (cube.Pos, int, bool) {
 	h := t.b().ai.home
 	return h.pos, h.radius, h.set()
 }
 
 // SetHome restricts the trader to radius blocks around pos.
-func (t *WanderingTrader) SetHome(pos cube.Pos, radius int) {
+func (t *wanderingTrader) SetHome(pos cube.Pos, radius int) {
 	t.b().ai.home = mobHome{pos: pos, radius: radius}
 }
 
 // lastAttacker returns the living entity that last hurt the trader in the
 // last 100 ticks and when it did so.
-func (t *WanderingTrader) lastAttacker(tx *world.Tx) (world.Entity, int64, bool) {
+func (t *wanderingTrader) lastAttacker(tx *world.Tx) (world.Entity, int64, bool) {
 	attacker, stamp := t.b().ai.Mob(t.Ent, t).LastHurtBy()
 	if attacker == nil {
 		return nil, 0, false
@@ -415,12 +419,12 @@ func (t *WanderingTrader) lastAttacker(tx *world.Tx) (world.Entity, int64, bool)
 	return attacker, int64(stamp), true
 }
 
-func (t *WanderingTrader) Health() float64        { return t.b().health.Health() }
-func (t *WanderingTrader) MaxHealth() float64     { return t.b().health.MaxHealth() }
-func (t *WanderingTrader) SetMaxHealth(h float64) { t.b().health.SetMaxHealth(h) }
-func (t *WanderingTrader) Dead() bool             { return t.b().dead || t.Health() <= 0 }
+func (t *wanderingTrader) Health() float64        { return t.b().health.Health() }
+func (t *wanderingTrader) MaxHealth() float64     { return t.b().health.MaxHealth() }
+func (t *wanderingTrader) SetMaxHealth(h float64) { t.b().health.SetMaxHealth(h) }
+func (t *wanderingTrader) Dead() bool             { return t.b().dead || t.Health() <= 0 }
 
-func (t *WanderingTrader) Heal(h float64, _ world.HealingSource) float64 {
+func (t *wanderingTrader) Heal(h float64, _ world.HealingSource) float64 {
 	if t.Dead() || h <= 0 {
 		return 0
 	}
@@ -429,7 +433,7 @@ func (t *WanderingTrader) Heal(h float64, _ world.HealingSource) float64 {
 	return t.Health() - old
 }
 
-func (t *WanderingTrader) Hurt(d float64, src world.DamageSource) (float64, bool) {
+func (t *wanderingTrader) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	b := t.b()
 	if t.Dead() || d <= 0 || (src.Fire() && t.hasEffect(effect.FireResistance)) {
 		return 0, false
@@ -455,20 +459,20 @@ func (t *WanderingTrader) Hurt(d float64, src world.DamageSource) (float64, bool
 	return d, true
 }
 
-func (t *WanderingTrader) KnockBack(src mgl64.Vec3, force, height float64) {
+func (t *wanderingTrader) KnockBack(src mgl64.Vec3, force, height float64) {
 	knockBack(t, src, force, height)
 }
 
-func (t *WanderingTrader) AddEffect(e effect.Effect)    { t.b().effects.Add(e, t) }
-func (t *WanderingTrader) RemoveEffect(e effect.Type)   { t.b().effects.Remove(e, t) }
-func (t *WanderingTrader) Effects() []effect.Effect     { return t.b().effects.Effects() }
-func (t *WanderingTrader) Speed() float64               { return t.b().ai.speed }
-func (t *WanderingTrader) SetSpeed(float64)             {}
-func (t *WanderingTrader) hasEffect(e effect.Type) bool { _, ok := t.b().effects.Effect(e); return ok }
+func (t *wanderingTrader) AddEffect(e effect.Effect)    { t.b().effects.Add(e, t) }
+func (t *wanderingTrader) RemoveEffect(e effect.Type)   { t.b().effects.Remove(e, t) }
+func (t *wanderingTrader) Effects() []effect.Effect     { return t.b().effects.Effects() }
+func (t *wanderingTrader) Speed() float64               { return t.b().ai.speed }
+func (t *wanderingTrader) SetSpeed(float64)             {}
+func (t *wanderingTrader) hasEffect(e effect.Type) bool { _, ok := t.b().effects.Effect(e); return ok }
 
 // Interact ports WanderingTrader.mobInteract: a trader nobody else trades
 // with opens its trade screen.
-func (t *WanderingTrader) Interact(tx *world.Tx, user item.User, _ *item.UseContext) bool {
+func (t *wanderingTrader) Interact(tx *world.Tx, user item.User, _ *item.UseContext) bool {
 	b := t.b()
 	if t.Dead() || b.trading.user != nil {
 		return false
@@ -489,7 +493,7 @@ func (t *WanderingTrader) Interact(tx *world.Tx, user item.User, _ *item.UseCont
 
 // ensureOffers ports WanderingTrader.updateTrades: two buying offers, two
 // uncommon and five common offers, generated when first needed.
-func (t *WanderingTrader) ensureOffers() error {
+func (t *wanderingTrader) ensureOffers() error {
 	b := t.b()
 	if b.offersGenerated {
 		return nil
@@ -510,17 +514,17 @@ func (t *WanderingTrader) ensureOffers() error {
 }
 
 // MerchantName returns the trade screen title.
-func (t *WanderingTrader) MerchantName() string { return "entity.wandering_trader.name" }
+func (t *wanderingTrader) MerchantName() string { return "entity.wandering_trader.name" }
 
 // MerchantProfession returns the trader's entity type, as it has no
 // profession.
-func (t *WanderingTrader) MerchantProfession() string { return "minecraft:wandering_trader" }
+func (t *wanderingTrader) MerchantProfession() string { return "minecraft:wandering_trader" }
 
 // MerchantLevel returns 1: wandering traders have a single trade tier.
-func (t *WanderingTrader) MerchantLevel() int { return 1 }
+func (t *wanderingTrader) MerchantLevel() int { return 1 }
 
 // MerchantOffers returns the trader's offers.
-func (t *WanderingTrader) MerchantOffers() ([]MerchantOffer, error) {
+func (t *wanderingTrader) MerchantOffers() ([]MerchantOffer, error) {
 	if err := t.ensureOffers(); err != nil {
 		return nil, err
 	}
@@ -529,14 +533,14 @@ func (t *WanderingTrader) MerchantOffers() ([]MerchantOffer, error) {
 
 // MerchantOffersFor returns the trader's offers, which carry no reputation
 // discounts.
-func (t *WanderingTrader) MerchantOffersFor(world.Entity) ([]MerchantOffer, error) {
+func (t *wanderingTrader) MerchantOffersFor(world.Entity) ([]MerchantOffer, error) {
 	return t.MerchantOffers()
 }
 
 // CompleteMerchantTrade ports AbstractVillager.notifyTrade and
 // WanderingTrader.rewardTradeXp: the offer is used once and 3-6 experience
 // drops if it rewards experience.
-func (t *WanderingTrader) CompleteMerchantTrade(tx *world.Tx, _ world.Entity, index int) (bool, error) {
+func (t *wanderingTrader) CompleteMerchantTrade(tx *world.Tx, _ world.Entity, index int) (bool, error) {
 	if tx != nil {
 		t.bindTx(tx)
 	}
@@ -559,25 +563,21 @@ func (t *WanderingTrader) CompleteMerchantTrade(tx *world.Tx, _ world.Entity, in
 }
 
 // StartTrading claims the trader for a trading player.
-func (t *WanderingTrader) StartTrading(user *world.EntityHandle) bool {
+func (t *wanderingTrader) StartTrading(user *world.EntityHandle) bool {
 	return t.b().trading.start(user)
 }
 
 // StopTrading ends a trade with user.
-func (t *WanderingTrader) StopTrading(user *world.EntityHandle) { t.b().trading.stop(user) }
+func (t *wanderingTrader) StopTrading(user *world.EntityHandle) { t.b().trading.stop(user) }
 
-func (t *WanderingTrader) viewAction(a world.EntityAction) {
-	vs := t.tx.Viewers(t.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(t, a)
-	}
-	t.tx.ReleaseViewers(vs)
+func (t *wanderingTrader) viewAction(a world.EntityAction) {
+	world.BroadcastEntityAction(t.tx, t, a)
 }
 
 var (
-	_ Living          = (*WanderingTrader)(nil)
-	_ Interactable    = (*WanderingTrader)(nil)
-	_ TradingMerchant = (*WanderingTrader)(nil)
+	_ Living          = (*wanderingTrader)(nil)
+	_ Interactable    = (*wanderingTrader)(nil)
+	_ TradingMerchant = (*wanderingTrader)(nil)
 )
 
 func (b *wanderingTraderBehaviour) effectManager() *EffectManager { return b.effects }

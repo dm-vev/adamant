@@ -14,21 +14,21 @@ import (
 // NewOminousItemSpawner creates the timed item entity emitted by an ominous
 // trial spawner. Delay is the number of entity ticks before dispensing.
 func NewOminousItemSpawner(opts world.EntitySpawnOpts, stack item.Stack, delay int64) *world.EntityHandle {
-	return opts.New(OminousItemSpawnerType, OminousItemSpawnerConfig{Item: stack, Delay: delay})
+	return opts.New(entityOminousItemSpawnerType, ominousItemSpawnerConfig{Item: stack, Delay: delay})
 }
 
 // OminousItemSpawnerType is the entity type used for ominous trial-spawner loot.
-var OminousItemSpawnerType ominousItemSpawnerType
+var entityOminousItemSpawnerType ominousItemSpawnerType
 
 type ominousItemSpawnerType struct{}
 
 // OminousItemSpawnerConfig configures the stack and source countdown.
-type OminousItemSpawnerConfig struct {
+type ominousItemSpawnerConfig struct {
 	Item  item.Stack
 	Delay int64
 }
 
-func (c OminousItemSpawnerConfig) Apply(data *world.EntityData) {
+func (c ominousItemSpawnerConfig) Apply(data *world.EntityData) {
 	if c.Delay <= 0 {
 		c.Delay = 60
 	}
@@ -37,24 +37,24 @@ func (c OminousItemSpawnerConfig) Apply(data *world.EntityData) {
 
 func (ominousItemSpawnerType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.EntityData) world.Entity {
 	if data.Data == nil { data.Data = &ominousItemSpawnerBehaviour{delay: 60} }
-	return &OminousItemSpawner{Ent: &Ent{tx: tx, handle: handle, data: data}}
+	return &ominousItemSpawner{Ent: &Ent{tx: tx, handle: handle, data: data}}
 }
 func (ominousItemSpawnerType) EncodeEntity() string { return "minecraft:ominous_item_spawner" }
 func (ominousItemSpawnerType) BBox(world.Entity) cube.BBox { return cube.Box(-0.125, 0, -0.125, 0.125, 0.25, 0.125) }
 func (ominousItemSpawnerType) DecodeNBT(nbt map[string]any, data *world.EntityData) {
-	data.NativeNBT = CloneNativeMobNBT(nbt)
+	data.NativeNBT = cloneNativeMobNBT(nbt)
 	data.Data = &ominousItemSpawnerBehaviour{item: item.MapNBT(nbt, "item"), delay: nbtconv.Int64(nbt, "spawn_item_after_ticks")}
 }
 func (ominousItemSpawnerType) EncodeNBT(data *world.EntityData) map[string]any {
 	b := data.Data.(*ominousItemSpawnerBehaviour)
-	return MergeNativeMobNBT(data.NativeNBT, map[string]any{"item": item.WriteNBT(b.item), "spawn_item_after_ticks": b.delay})
+	return mergeNativeMobNBT(data.NativeNBT, map[string]any{"item": item.WriteNBT(b.item), "spawn_item_after_ticks": b.delay})
 }
 
 // OminousItemSpawner exposes the stack used by native entity metadata.
-type OminousItemSpawner struct { *Ent }
+type ominousItemSpawner struct { *Ent }
 
 // DisplayItem returns the stack orbiting the spawner.
-func (e *OminousItemSpawner) DisplayItem() item.Stack {
+func (e *ominousItemSpawner) DisplayItem() item.Stack {
 	return e.Behaviour().(*ominousItemSpawnerBehaviour).item
 }
 

@@ -25,7 +25,7 @@ func TestNewFromJavaNBTBuildsWorldlessShulkerAndPreservesState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if handle.World() != nil || handle.Type() != ShulkerType {
+	if handle.World() != nil || handle.Type() != entityShulkerType {
 		t.Fatalf("expected a worldless shulker handle, got world=%v type=%v", handle.World(), handle.Type().EncodeEntity())
 	}
 	w := world.Config{Entities: DefaultRegistry, Synchronous: true}.New()
@@ -40,17 +40,17 @@ func TestNewFromJavaNBTBuildsWorldlessShulkerAndPreservesState(t *testing.T) {
 		if shulker.Health() != 18 || shulker.AttachFace() != cube.FaceEast || shulker.Peek() != 73 || shulker.Color() != 10 {
 			t.Fatalf("decoded shulker state = health %v, face %v, peek %v, color %v", shulker.Health(), shulker.AttachFace(), shulker.Peek(), shulker.Color())
 		}
-		nbt = ShulkerType.EncodeNBT(shulker.data)
+		nbt = entityShulkerType.EncodeNBT(shulker.data)
 	})
 	health, ok := nativeMobAttribute(nbt, "minecraft:health")
 	if !ok || health.Current != 18 || health.Base != 30 {
 		t.Fatalf("native shulker health attribute = %#v, want current 18/base 30", health)
 	}
-	variant, ok := NativeMobVariant(nbt)
+	variant, ok := nativeMobVariant(nbt)
 	if !ok || variant != 10 {
 		t.Fatalf("native shulker variant = %d, want 10", variant)
 	}
-	if java := ReadNativeMobJavaState(nbt); java["Color"] != byte(5) {
+	if java := readNativeMobJavaState(nbt); java["Color"] != byte(5) {
 		t.Fatalf("Java shulker colour = %v, want 5", java["Color"])
 	}
 }
@@ -151,7 +151,7 @@ func TestShulkerBulletHitAppliesLevitation(t *testing.T) {
 			Position: owner.Position().Add(mgl64.Vec3{0, .5, 0}),
 			Velocity: mgl64.Vec3{.15, 0, 0},
 		}, owner.H(), target.H())
-		bullet := tx.AddEntity(handle).(*ShulkerBullet)
+		bullet := tx.AddEntity(handle).(*shulkerBullet)
 		for tick := range 40 {
 			if _, loaded := handle.Entity(tx); !loaded {
 				break
@@ -179,11 +179,11 @@ func TestShulkerNativeVariantOverridesGenericColor(t *testing.T) {
 	t.Parallel()
 	for _, variant := range []int32{0, 15, 16} {
 		var data world.EntityData
-		ShulkerType.DecodeNBT(map[string]any{
+		entityShulkerType.DecodeNBT(map[string]any{
 			"Variant": variant,
 			"Color":   byte(5),
 		}, &data)
-		shulker := ShulkerType.Open(nil, nil, &data).(*Shulker)
+		shulker := entityShulkerType.Open(nil, nil, &data).(*Shulker)
 		if got := shulker.Color(); got != uint8(variant) {
 			t.Errorf("native Variant %d with generic Color 5 decoded shell colour %d", variant, got)
 		}
@@ -202,7 +202,7 @@ func TestShulkerBulletCanHitOwnerAfterLeaving(t *testing.T) {
 			Position: mgl64.Vec3{12.5, 70.5, 8.5},
 			Velocity: mgl64.Vec3{.15, 0, 0},
 		}, owner.H(), nil)
-		bullet := tx.AddEntity(handle).(*ShulkerBullet)
+		bullet := tx.AddEntity(handle).(*shulkerBullet)
 		bullet.Tick(tx, 0)
 		bullet.SetVelocity(mgl64.Vec3{-1, 0, 0})
 		for tick := range 4 {

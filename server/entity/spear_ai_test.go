@@ -48,7 +48,7 @@ func TestZombiesStabWithSpears(t *testing.T) {
 		stabbed := false
 		<-w.Exec(func(tx *world.Tx) {
 			for e := range tx.Entities() {
-				if z, ok := e.(*Zombie); ok && z.UsingItem() {
+				if z, ok := e.(*zombie); ok && z.UsingItem() {
 					used = true
 				}
 			}

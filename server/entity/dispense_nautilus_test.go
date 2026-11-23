@@ -36,11 +36,11 @@ func TestDispenserEquipsTamedNautilus(t *testing.T) {
 				tx.SetBlock(pos, d, nil)
 				_ = d.Inventory(tx, pos).SetItem(0, c.stack)
 				front := pos.Side(cube.FaceEast)
-				mob := tx.AddEntity(world.EntitySpawnOpts{Position: front.Vec3Middle()}.New(NautilusType, oceanConfig{kind: oceanNautilus, tamed: c.tamed}))
+				mob := tx.AddEntity(world.EntitySpawnOpts{Position: front.Vec3Middle()}.New(entityNautilusType, oceanConfig{kind: oceanNautilus, tamed: c.tamed}))
 				tx.Block(pos).(block.Dispenser).ScheduledTick(pos, tx, nil)
 
 				taken := c.tamed
-				if got := c.worn(mob.(*Nautilus).oceanMob); got != taken {
+				if got := c.worn(mob.(*nautilus).oceanMob); got != taken {
 					t.Fatalf("nautilus took the item: %v, want %v", got, taken)
 				}
 				left, _ := d.Inventory(tx, pos).Item(0)

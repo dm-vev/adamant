@@ -37,7 +37,7 @@ func NewItemPickupDelay(opts world.EntitySpawnOpts, i item.Stack, delay time.Dur
 	return opts.New(ItemType, conf)
 }
 
-var itemConf = ItemBehaviourConfig{
+var itemConf = itemBehaviourConfig{
 	Gravity: 0.04,
 	Drag:    0.02,
 }

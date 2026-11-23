@@ -26,6 +26,31 @@ func (e *Ent) mobAI() (*MobAI, *Ent) {
 	return nil, e
 }
 
+// MobAI returns the MobAI driving the entity, or nil if its behaviour has none.
+func (e *Ent) MobAI() *MobAI {
+	if e == nil || e.data == nil || e.data.Data == nil {
+		return nil
+	}
+	ai, _ := e.mobAI()
+	return ai
+}
+
+// AddGoal registers g in the entity's MobAI goal selector if its behaviour is
+// driven by a MobAI.
+func (e *Ent) AddGoal(priority int, g Goal) {
+	if ai := e.MobAI(); ai != nil {
+		ai.Goals.Add(priority, g)
+	}
+}
+
+// AddTargetGoal registers g in the entity's MobAI target selector if its
+// behaviour is driven by a MobAI.
+func (e *Ent) AddTargetGoal(priority int, g Goal) {
+	if ai := e.MobAI(); ai != nil {
+		ai.Targets.Add(priority, g)
+	}
+}
+
 // HeadYaw returns the yaw of the head of the entity, which is that of its
 // body unless a MobAI turns it.
 func (e *Ent) HeadYaw() float64 {

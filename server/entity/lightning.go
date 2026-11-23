@@ -30,7 +30,7 @@ func NewLightningWithDamage(opts world.EntitySpawnOpts, dmg float64, blockFire b
 		state:              2,
 		lifetime:           -1,
 	}).tick
-	return opts.New(LightningType, conf)
+	return opts.New(entityLightningType, conf)
 }
 
 // NewVisualLightning creates a lightning bolt that neither hurts nor sets
@@ -39,7 +39,7 @@ func NewLightningWithDamage(opts world.EntitySpawnOpts, dmg float64, blockFire b
 func NewVisualLightning(opts world.EntitySpawnOpts) *world.EntityHandle {
 	conf := lightningConf
 	conf.Tick = (&lightningState{visualOnly: true, state: 2, lifetime: -1}).tick
-	return opts.New(LightningType, conf)
+	return opts.New(entityLightningType, conf)
 }
 
 var lightningConf = StationaryBehaviourConfig{SpawnSounds: []world.Sound{sound.Explosion{}, sound.Thunder{}}, ExistenceDuration: time.Second}
@@ -206,7 +206,7 @@ func fire() world.Block {
 }
 
 // LightningType is a world.EntityType implementation for Lightning.
-var LightningType lightningType
+var entityLightningType lightningType
 
 type lightningType struct{}
 

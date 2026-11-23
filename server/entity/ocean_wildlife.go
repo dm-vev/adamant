@@ -40,13 +40,13 @@ func (t oceanWildlifeType) Open(tx *world.Tx, h *world.EntityHandle, d *world.En
 	base := &oceanWildlife{Ent: &Ent{tx: tx, handle: h, data: d}}
 	switch t.id {
 	case "minecraft:squid":
-		return &Squid{base}
+		return &squid{base}
 	case "minecraft:glow_squid":
-		return &GlowSquid{base}
+		return &glowSquid{base}
 	case "minecraft:turtle":
 		return &Turtle{base}
 	default:
-		return &Dolphin{base}
+		return &dolphin{base}
 	}
 }
 func (t oceanWildlifeType) DecodeNBT(m map[string]any, d *world.EntityData) {
@@ -72,7 +72,7 @@ func (t oceanWildlifeType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	if t.id == "minecraft:turtle" {
 		d.Data.(*oceanWildlifeBehaviour).breeding.decodeNBT(m)
 	}
-	if equipment := ReadNativeMobEquipment(m); t.id == "minecraft:dolphin" && len(equipment.Mainhand) > 0 {
+	if equipment := readNativeMobEquipment(m); t.id == "minecraft:dolphin" && len(equipment.Mainhand) > 0 {
 		d.Data.(*oceanWildlifeBehaviour).held = item.ReadNBT(equipment.Mainhand[0].Raw)
 	}
 }
@@ -92,20 +92,20 @@ func turtleHomePos(v any) (x, y, z int, ok bool) {
 }
 func (t oceanWildlifeType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*oceanWildlifeBehaviour)
-	m := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Health": float32(b.health.Health()), "Age": int32(b.age), "Air": int16(b.air)})
+	m := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Health": float32(b.health.Health()), "Age": int32(b.age), "Air": int16(b.air)})
 	if b.id == "minecraft:turtle" {
-		m = MergeNativeMobNBT(m, b.breeding.encodeNBT(map[string]any{"home_pos": []int32{int32(b.homeX), int32(b.homeY), int32(b.homeZ)}, "has_egg": boolByte(b.hasEgg)}))
+		m = mergeNativeMobNBT(m, b.breeding.encodeNBT(map[string]any{"home_pos": []int32{int32(b.homeX), int32(b.homeY), int32(b.homeZ)}, "has_egg": boolByte(b.hasEgg)}))
 	}
 	if b.id == "minecraft:dolphin" {
-		m = MergeNativeMobNBT(m, map[string]any{"GotFish": boolByte(b.gotFish), "HasTreasure": boolByte(b.hasTreasure), "TreasurePosX": int32(b.treasureX), "TreasurePosY": int32(b.treasureY), "TreasurePosZ": int32(b.treasureZ), "Moistness": int32(b.moistness)})
+		m = mergeNativeMobNBT(m, map[string]any{"GotFish": boolByte(b.gotFish), "HasTreasure": boolByte(b.hasTreasure), "TreasurePosX": int32(b.treasureX), "TreasurePosY": int32(b.treasureY), "TreasurePosZ": int32(b.treasureZ), "Moistness": int32(b.moistness)})
 		if !b.held.Empty() {
 			name, damage := b.held.Item().EncodeItem()
-			equipment := NativeMobEquipment{Mainhand: []NativeMobItem{{Name: name, Count: byte(b.held.Count()), Damage: int32(damage), WasPickedUp: 1, Raw: item.WriteNBT(b.held)}}}
-			m = MergeNativeMobNBT(m, EncodeNativeMobEquipment(equipment))
+			equipment := nativeMobEquipment{Mainhand: []nativeMobItem{{Name: name, Count: byte(b.held.Count()), Damage: int32(damage), WasPickedUp: 1, Raw: item.WriteNBT(b.held)}}}
+			m = mergeNativeMobNBT(m, encodeNativeMobEquipment(equipment))
 		}
 	}
 	if b.id == "minecraft:glow_squid" {
-		m = MergeNativeMobNBT(m, map[string]any{"DarkTicksRemaining": int32(b.darkTicks)})
+		m = mergeNativeMobNBT(m, map[string]any{"DarkTicksRemaining": int32(b.darkTicks)})
 	}
 	return m
 }
@@ -138,10 +138,10 @@ func (c oceanWildlifeConfig) New() *oceanWildlifeBehaviour {
 	return &oceanWildlifeBehaviour{id: c.id, health: NewHealthManager(h, c.maxHealth), effects: NewEffectManager(), speed: .25, age: c.age, air: air, moistness: moistness, darkTicks: c.darkTicks, homeX: c.homeX, homeY: c.homeY, homeZ: c.homeZ, homeSet: c.homeSet, hasEgg: c.hasEgg, gotFish: c.gotFish, hasTreasure: c.hasTreasure, treasureX: c.treasureX, treasureY: c.treasureY, treasureZ: c.treasureZ}
 }
 
-type Squid struct{ *oceanWildlife }
-type GlowSquid struct{ *oceanWildlife }
+type squid struct{ *oceanWildlife }
+type glowSquid struct{ *oceanWildlife }
 type Turtle struct{ *oceanWildlife }
-type Dolphin struct{ *oceanWildlife }
+type dolphin struct{ *oceanWildlife }
 type oceanWildlife struct{ *Ent }
 type oceanWildlifeBehaviour struct {
 	id                                                                                   string
@@ -160,7 +160,7 @@ type oceanWildlifeBehaviour struct {
 	// flags its viewers were last shown and its panic goal.
 	turtle      turtleState
 	turtleShown turtleShownState
-	turtlePanic *PanicGoal
+	turtlePanic *panicGoal
 }
 
 func (m *oceanWildlife) b() *oceanWildlifeBehaviour { return m.Behaviour().(*oceanWildlifeBehaviour) }
@@ -241,11 +241,7 @@ func (m *oceanWildlife) KnockBack(src mgl64.Vec3, force, height float64) {
 	knockBack(m, src, force, height)
 }
 func (m *oceanWildlife) viewAction(action world.EntityAction) {
-	viewers := m.tx.Viewers(m.Position())
-	for _, viewer := range viewers {
-		viewer.ViewEntityAction(m, action)
-	}
-	m.tx.ReleaseViewers(viewers)
+	world.BroadcastEntityAction(m.tx, m, action)
 }
 func (m *oceanWildlife) AddEffect(e effect.Effect)  { m.b().effects.Add(e, m) }
 func (m *oceanWildlife) RemoveEffect(t effect.Type) { m.b().effects.Remove(t, m) }
@@ -320,35 +316,35 @@ func (m *oceanWildlife) FinalizeSpawn(_ string, _ *vanilla.Random) {
 	}
 }
 func NewSquid(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(SquidType, oceanWildlifeConfig{id: "minecraft:squid", maxHealth: 10})
+	return o.New(squidType, oceanWildlifeConfig{id: "minecraft:squid", maxHealth: 10})
 }
 func NewGlowSquid(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(GlowSquidType, oceanWildlifeConfig{id: "minecraft:glow_squid", maxHealth: 10})
+	return o.New(glowSquidType, oceanWildlifeConfig{id: "minecraft:glow_squid", maxHealth: 10})
 }
 func NewTurtle(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(TurtleType, oceanWildlifeConfig{id: "minecraft:turtle", maxHealth: 30})
+	return o.New(turtleType, oceanWildlifeConfig{id: "minecraft:turtle", maxHealth: 30})
 }
 func NewDolphin(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(DolphinType, oceanWildlifeConfig{id: "minecraft:dolphin", maxHealth: 10})
+	return o.New(dolphinType, oceanWildlifeConfig{id: "minecraft:dolphin", maxHealth: 10})
 }
 func (m *oceanWildlife) SpeciesType() world.EntityType {
 	switch m.b().id {
 	case "minecraft:squid":
-		return SquidType
+		return squidType
 	case "minecraft:glow_squid":
-		return GlowSquidType
+		return glowSquidType
 	case "minecraft:turtle":
-		return TurtleType
+		return turtleType
 	default:
-		return DolphinType
+		return dolphinType
 	}
 }
 
 var (
-	SquidType     = oceanWildlifeType{id: "minecraft:squid", width: .8, height: .8, maxHealth: 10}
-	GlowSquidType = oceanWildlifeType{id: "minecraft:glow_squid", width: .8, height: .8, maxHealth: 10}
-	TurtleType    = oceanWildlifeType{id: "minecraft:turtle", width: 1.2, height: .4, maxHealth: 30}
-	DolphinType   = oceanWildlifeType{id: "minecraft:dolphin", width: .9, height: .6, maxHealth: 10}
+	squidType     = oceanWildlifeType{id: "minecraft:squid", width: .8, height: .8, maxHealth: 10}
+	glowSquidType = oceanWildlifeType{id: "minecraft:glow_squid", width: .8, height: .8, maxHealth: 10}
+	turtleType    = oceanWildlifeType{id: "minecraft:turtle", width: 1.2, height: .4, maxHealth: 30}
+	dolphinType   = oceanWildlifeType{id: "minecraft:dolphin", width: .9, height: .6, maxHealth: 10}
 )
 
 func (t *Turtle) SetHomePos(pos cube.Pos) {

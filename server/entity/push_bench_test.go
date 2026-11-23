@@ -42,11 +42,11 @@ func BenchmarkTickEntityCollisions(b *testing.B) {
 					tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{x, 64, z}}))
 				}
 				// Warm up one call so pool/chunk state is in steady state.
-				TickEntityCollisions(tx)
+				tickEntityCollisions(tx)
 				b.ReportAllocs()
 				b.ResetTimer()
 				for range b.N {
-					TickEntityCollisions(tx)
+					tickEntityCollisions(tx)
 				}
 				b.StopTimer()
 			})
@@ -73,11 +73,11 @@ func BenchmarkTickEntityCollisions(b *testing.B) {
 					oz := float64(k/4) * 0.12
 					tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{cx + 8 + ox, 64, cz + 8 + oz}}))
 				}
-				TickEntityCollisions(tx)
+				tickEntityCollisions(tx)
 				b.ReportAllocs()
 				b.ResetTimer()
 				for range b.N {
-					TickEntityCollisions(tx)
+					tickEntityCollisions(tx)
 				}
 				b.StopTimer()
 			})
@@ -96,11 +96,11 @@ func BenchmarkTickEntityCollisions(b *testing.B) {
 				c.Heal(1e9, nil)
 				cows = append(cows, c)
 			}
-			TickEntityCollisions(tx)
+			tickEntityCollisions(tx)
 			b.ReportAllocs()
 			b.ResetTimer()
 			for range b.N {
-				TickEntityCollisions(tx)
+				tickEntityCollisions(tx)
 			}
 			b.StopTimer()
 			_ = cows
@@ -130,11 +130,11 @@ func BenchmarkTickEntityCollisions(b *testing.B) {
 				z := float64(i/10) * 16.0
 				tx.AddEntity(NewArmourStand(world.EntitySpawnOpts{Position: mgl64.Vec3{x + 4, 64, z}}))
 			}
-			TickEntityCollisions(tx)
+			tickEntityCollisions(tx)
 			b.ReportAllocs()
 			b.ResetTimer()
 			for range b.N {
-				TickEntityCollisions(tx)
+				tickEntityCollisions(tx)
 			}
 			b.StopTimer()
 		})

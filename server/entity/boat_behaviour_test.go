@@ -96,7 +96,7 @@ func TestBoatPassengerSeatHeight(t *testing.T) {
 		behaviour.passengers[0] = passengerHandle
 		behaviour.updatePassengers(boat.Ent, tx)
 
-		rim := boat.Position()[1] + BoatType.BBox(boat).Max()[1]
+		rim := boat.Position()[1] + entityBoatType.BBox(boat).Max()[1]
 		eyeY := passenger.Position()[1] + rider.EyeHeight()
 		if passenger.Position()[1] <= rim || eyeY <= rim {
 			t.Fatalf("passenger base/eye = %v/%v, want above boat rim %v", passenger.Position()[1], eyeY, rim)
@@ -132,11 +132,11 @@ func (r *seatTestRider) Move(pos mgl64.Vec3, _, _ float64) { r.data.Pos = r.data
 
 func TestBoatNBTRoundTrip(t *testing.T) {
 	t.Parallel()
-	data := &world.EntityData{Data: BoatBehaviourConfig{Variant: 8}.New()}
-	nbt := BoatType.EncodeNBT(data)
+	data := &world.EntityData{Data: boatBehaviourConfig{Variant: 8}.New()}
+	nbt := entityBoatType.EncodeNBT(data)
 	decoded := new(world.EntityData)
-	BoatType.DecodeNBT(nbt, decoded)
-	if got := decoded.Data.(*BoatBehaviour).variant; nbt["Variant"] != int32(8) || got != 8 {
+	entityBoatType.DecodeNBT(nbt, decoded)
+	if got := decoded.Data.(*boatBehaviour).variant; nbt["Variant"] != int32(8) || got != 8 {
 		t.Fatalf("boat variant round trip: nbt=%v variant=%d", nbt, got)
 	}
 }
@@ -146,9 +146,9 @@ func TestChestBoatNBTRoundTrip(t *testing.T) {
 	behaviour := chestBoatConf.New()
 	behaviour.variant = 9
 	_ = behaviour.inv.SetItem(26, item.NewStack(item.Diamond{}, 3))
-	nbt := ChestBoatType.EncodeNBT(&world.EntityData{Data: behaviour})
+	nbt := entityChestBoatType.EncodeNBT(&world.EntityData{Data: behaviour})
 	decoded := new(world.EntityData)
-	ChestBoatType.DecodeNBT(nbt, decoded)
+	entityChestBoatType.DecodeNBT(nbt, decoded)
 	got := decoded.Data.(*ChestBoatBehaviour)
 	stack, _ := got.inv.Item(26)
 	if got.variant != 9 || stack.Count() != 3 {

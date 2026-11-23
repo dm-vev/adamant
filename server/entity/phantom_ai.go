@@ -33,7 +33,7 @@ func (s *phantomState) aiTick(e *Ent, tx *world.Tx) *Movement {
 	if sunBurnTick(e, tx) && e.OnFireDuration() < 8*time.Second {
 		e.SetOnFire(8 * time.Second)
 	}
-	return ai.Tick(e, &Phantom{Ent: e}, s.registerGoals)
+	return ai.Tick(e, &phantom{Ent: e}, s.registerGoals)
 }
 
 // registerGoals ports Phantom.registerGoals.

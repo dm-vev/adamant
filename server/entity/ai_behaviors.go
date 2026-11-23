@@ -32,7 +32,7 @@ func newMoveToTargetSink(minTimeout, maxTimeout int, extra func(m *Mob) bool) *b
 		return manhattan(wt.target.currentBlockPos(m.tx), m.BlockPos()) <= wt.closeEnough
 	}
 	tryComputePath := func(m *Mob, wt walkTarget, time int64) bool {
-		b := m.Brain()
+		b := m.brain()
 		target := wt.target.currentBlockPos(m.tx)
 		path = m.AI.nav.CreatePath(m, target, 0)
 		speed = wt.speed
@@ -48,7 +48,7 @@ func newMoveToTargetSink(minTimeout, maxTimeout int, extra func(m *Mob) bool) *b
 		if path != nil {
 			return true
 		}
-		step, ok := DefaultRandomPosTowards(m, 10, 7, target.Vec3Middle(), math.Pi/2)
+		step, ok := defaultRandomPosTowards(m, 10, 7, target.Vec3Middle(), math.Pi/2)
 		if !ok {
 			return false
 		}
@@ -56,7 +56,7 @@ func newMoveToTargetSink(minTimeout, maxTimeout int, extra func(m *Mob) bool) *b
 		return path != nil
 	}
 	start := func(m *Mob, _ int64) {
-		m.Brain().set(memPath, path)
+		m.brain().set(memPath, path)
 		m.AI.nav.MoveTo(m, path, speed)
 	}
 	return &behavior{
@@ -70,7 +70,7 @@ func newMoveToTargetSink(minTimeout, maxTimeout int, extra func(m *Mob) bool) *b
 			if extra != nil && !extra(m) {
 				return false
 			}
-			b := m.Brain()
+			b := m.brain()
 			v, _ := b.get(memWalkTarget)
 			wt := v.(walkTarget)
 			r := reached(m, wt)
@@ -89,7 +89,7 @@ func newMoveToTargetSink(minTimeout, maxTimeout int, extra func(m *Mob) bool) *b
 			if path == nil || lastTargetPos == nil {
 				return false
 			}
-			v, ok := m.Brain().get(memWalkTarget)
+			v, ok := m.brain().get(memWalkTarget)
 			if !ok {
 				return false
 			}
@@ -102,7 +102,7 @@ func newMoveToTargetSink(minTimeout, maxTimeout int, extra func(m *Mob) bool) *b
 			return !m.AI.nav.IsDone() && !reached(m, wt)
 		},
 		stop: func(m *Mob, _ int64) {
-			b := m.Brain()
+			b := m.brain()
 			if v, ok := b.get(memWalkTarget); ok && !reached(m, v.(walkTarget)) && m.AI.nav.IsStuck() {
 				remainingCooldown = int(m.Random().NextInt(40))
 			}
@@ -113,7 +113,7 @@ func newMoveToTargetSink(minTimeout, maxTimeout int, extra func(m *Mob) bool) *b
 		},
 		start: start,
 		tick: func(m *Mob, time int64) {
-			b := m.Brain()
+			b := m.brain()
 			if newPath := m.AI.nav.Path(); newPath != path {
 				path = newPath
 				b.set(memPath, newPath)
@@ -159,12 +159,12 @@ func newLookAtTargetSink(minDuration, maxDuration int) *behavior {
 		entry:       []memoryCondition{{memLookTarget, memPresent}},
 		minDuration: minDuration, maxDuration: maxDuration,
 		canStillUse: func(m *Mob, _ int64) bool {
-			v, ok := m.Brain().get(memLookTarget)
+			v, ok := m.brain().get(memLookTarget)
 			return ok && v.(positionTracker).visibleBy(m)
 		},
-		stop: func(m *Mob, _ int64) { m.Brain().erase(memLookTarget) },
+		stop: func(m *Mob, _ int64) { m.brain().erase(memLookTarget) },
 		tick: func(m *Mob, _ int64) {
-			if v, ok := m.Brain().get(memLookTarget); ok {
+			if v, ok := m.brain().get(memLookTarget); ok {
 				p := v.(positionTracker).currentPosition(m.tx)
 				m.AI.look.SetLookAt(m, p[0], p[1], p[2])
 			}
@@ -197,13 +197,13 @@ func newAnimalPanic(speed float64, causes func(world.DamageSource) bool, positio
 		causes = panicCause
 	}
 	if position == nil {
-		position = func(m *Mob) (mgl64.Vec3, bool) { return LandRandomPos(m, 5, 4) }
+		position = func(m *Mob) (mgl64.Vec3, bool) { return landRandomPos(m, 5, 4) }
 	}
 	return &behavior{
 		entry:       []memoryCondition{{memIsPanicking, memRegistered}, {memHurtBy, memRegistered}},
 		minDuration: 100, maxDuration: 120,
 		checkExtra: func(m *Mob) bool {
-			b := m.Brain()
+			b := m.brain()
 			if v, ok := b.get(memHurtBy); ok && causes(v.(world.DamageSource)) {
 				return true
 			}
@@ -214,12 +214,12 @@ func newAnimalPanic(speed float64, causes func(world.DamageSource) bool, positio
 			if onStart != nil {
 				onStart(m)
 			}
-			b := m.Brain()
+			b := m.brain()
 			b.set(memIsPanicking, true)
 			b.erase(memWalkTarget)
 			m.AI.nav.Stop()
 		},
-		stop: func(m *Mob, _ int64) { m.Brain().erase(memIsPanicking) },
+		stop: func(m *Mob, _ int64) { m.brain().erase(memIsPanicking) },
 		tick: func(m *Mob, _ int64) {
 			if !m.AI.nav.IsDone() {
 				return
@@ -236,7 +236,7 @@ func newAnimalPanic(speed float64, causes func(world.DamageSource) bool, positio
 				to, ok = position(m)
 			}
 			if ok {
-				m.Brain().set(memWalkTarget, walkTarget{target: newBlockPosTracker(cube.PosFromVec3(to)), speed: speed})
+				m.brain().set(memWalkTarget, walkTarget{target: newBlockPosTracker(cube.PosFromVec3(to)), speed: speed})
 			}
 		},
 	}
@@ -249,14 +249,14 @@ func newCountDownCooldownTicks(mem memoryType) *behavior {
 		entry:     []memoryCondition{{mem, memPresent}},
 		noTimeout: true,
 		canStillUse: func(m *Mob, _ int64) bool {
-			v, ok := m.Brain().int(mem)
+			v, ok := m.brain().int(mem)
 			return ok && v > 0
 		},
 		tick: func(m *Mob, _ int64) {
-			v, _ := m.Brain().int(mem)
-			m.Brain().set(mem, v-1)
+			v, _ := m.brain().int(mem)
+			m.brain().set(mem, v-1)
 		},
-		stop: func(m *Mob, _ int64) { m.Brain().erase(mem) },
+		stop: func(m *Mob, _ int64) { m.brain().erase(mem) },
 	}
 }
 
@@ -281,7 +281,7 @@ func (t *lookTicker) tickDownAndCheck(m *Mob) bool {
 // which filter returns true.
 func newSetEntityLookTargetSometimes(filter func(world.Entity) bool, maxDist float64, interval uniformInt) *oneShot {
 	ticker := &lookTicker{interval: interval}
-	return newOneShot([]memoryCondition{{memLookTarget, memAbsent}, {memNearestVisibleLivingEntities, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memLookTarget, memAbsent}, {memNearestVisibleLivingEntities, memPresent}}, func(m *Mob, b *brain, _ int64) bool {
 		target := visibleLiving(m).findClosest(m, func(e world.Entity) bool {
 			return (filter == nil || filter(e)) && m.DistanceToSqr(e) <= maxDist*maxDist
 		})
@@ -296,7 +296,7 @@ func newSetEntityLookTargetSometimes(filter func(world.Entity) bool, maxDist flo
 // newSetEntityLookTarget ports SetEntityLookTarget: a mob looks at the
 // nearest entity it sees within maxDist for which filter returns true.
 func newSetEntityLookTarget(filter func(world.Entity) bool, maxDist float64) *oneShot {
-	return newOneShot([]memoryCondition{{memLookTarget, memAbsent}, {memNearestVisibleLivingEntities, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memLookTarget, memAbsent}, {memNearestVisibleLivingEntities, memPresent}}, func(m *Mob, b *brain, _ int64) bool {
 		target := visibleLiving(m).findClosest(m, func(e world.Entity) bool {
 			return (filter == nil || filter(e)) && m.DistanceToSqr(e) <= maxDist*maxDist
 		})
@@ -328,7 +328,7 @@ func newAnimalMakeLove(partnerType world.EntityType, speed float64, closeEnough 
 		return e.(breeder)
 	}
 	partnerOf := func(m *Mob) breeder {
-		e := m.Brain().entity(m, memBreedTarget)
+		e := m.brain().entity(m, memBreedTarget)
 		if e == nil || e.H().Type() != partnerType {
 			return nil
 		}
@@ -342,9 +342,9 @@ func newAnimalMakeLove(partnerType world.EntityType, speed float64, closeEnough 
 		checkExtra: func(m *Mob) bool { return m.Self.(breeder).InLove() && find(m) != nil },
 		start: func(m *Mob, time int64) {
 			p := find(m)
-			m.Brain().setEntity(memBreedTarget, p)
+			m.brain().setEntity(memBreedTarget, p)
 			if pm, ok := brainMobOf(p); ok {
-				pm.Brain().setEntity(memBreedTarget, m.Self)
+				pm.brain().setEntity(memBreedTarget, m.Self)
 			}
 			lockGazeAndWalkToEachOther(m, p, speed, closeEnough)
 			spawnChildAt = time + 60 + int64(m.Random().NextInt(50))
@@ -359,14 +359,14 @@ func newAnimalMakeLove(partnerType world.EntityType, speed float64, closeEnough 
 			lockGazeAndWalkToEachOther(m, p, speed, closeEnough)
 			if m.DistanceToSqr(p) < 9 && time >= spawnChildAt {
 				breed(m.Self.(breeder), p, m.tx)
-				m.Brain().erase(memBreedTarget)
+				m.brain().erase(memBreedTarget)
 				if pm, ok := brainMobOf(p); ok {
-					pm.Brain().erase(memBreedTarget)
+					pm.brain().erase(memBreedTarget)
 				}
 			}
 		},
 		stop: func(m *Mob, _ int64) {
-			b := m.Brain()
+			b := m.brain()
 			b.erase(memBreedTarget)
 			b.erase(memWalkTarget)
 			b.erase(memLookTarget)
@@ -377,10 +377,10 @@ func newAnimalMakeLove(partnerType world.EntityType, speed float64, closeEnough 
 
 // lockGazeAndWalkToEachOther ports BehaviorUtils.lockGazeAndWalkToEachOther.
 func lockGazeAndWalkToEachOther(m *Mob, other world.Entity, speed float64, closeEnough int) {
-	m.Brain().set(memLookTarget, newEntityTracker(other, true))
+	m.brain().set(memLookTarget, newEntityTracker(other, true))
 	setWalkAndLookTarget(m, newEntityTracker(other, true), speed, closeEnough)
 	if om, ok := brainMobOf(other); ok {
-		om.Brain().set(memLookTarget, newEntityTracker(m.Self, true))
+		om.brain().set(memLookTarget, newEntityTracker(m.Self, true))
 		setWalkAndLookTarget(om, newEntityTracker(m.Self, true), speed, closeEnough)
 	}
 }
@@ -397,17 +397,17 @@ func newFollowTemptation(speed func(m *Mob) float64, closeEnough func(m *Mob) fl
 			{memTemptingPlayer, memPresent}, {memBreedTarget, memAbsent}, {memIsPanicking, memAbsent}},
 		noTimeout: true,
 		canStillUse: func(m *Mob, _ int64) bool {
-			b := m.Brain()
+			b := m.brain()
 			return b.has(memTemptingPlayer) && !b.has(memBreedTarget) && !b.has(memIsPanicking)
 		},
 		stop: func(m *Mob, _ int64) {
-			b := m.Brain()
+			b := m.brain()
 			b.set(memTemptationCooldownTicks, 100)
 			b.erase(memWalkTarget)
 			b.erase(memLookTarget)
 		},
 		tick: func(m *Mob, _ int64) {
-			b := m.Brain()
+			b := m.brain()
 			p := b.entity(m, memTemptingPlayer)
 			if p == nil {
 				return
@@ -428,7 +428,7 @@ func newFollowTemptation(speed func(m *Mob) float64, closeEnough func(m *Mob) fl
 // adult it remembers in the memory passed while it is within followRange
 // but not closer than its minimum.
 func newBabyFollowAdult(followRange uniformInt, speed func(m *Mob) float64, nearest memoryType, targetEye bool) *oneShot {
-	return newOneShot([]memoryCondition{{nearest, memPresent}, {memLookTarget, memRegistered}, {memWalkTarget, memAbsent}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{nearest, memPresent}, {memLookTarget, memRegistered}, {memWalkTarget, memAbsent}}, func(m *Mob, b *brain, _ int64) bool {
 		if !mobBaby(m.Self) {
 			return false
 		}
@@ -467,7 +467,7 @@ func newRandomLookAroundBehavior(interval uniformInt, maxYaw, minPitch, maxPitch
 			yaw := wrapDegrees(m.Yaw() + 2*float64(r.NextFloat())*maxYaw - maxYaw)
 			dir := cube.Rotation{yaw, pitch}.Vec3()
 			eye := mgl64.Vec3{m.data.Pos[0], m.EyeY(), m.data.Pos[2]}
-			b := m.Brain()
+			b := m.brain()
 			b.set(memLookTarget, newVecTracker(eye.Add(dir)))
 			b.set(memGazeCooldownTicks, interval.sample(m))
 		},
@@ -478,21 +478,21 @@ func newRandomLookAroundBehavior(interval uniformInt, maxYaw, minPitch, maxPitch
 // walks to a random spot on land within ten blocks, unless it is in water
 // and may not stroll from it.
 func newRandomStroll(speed float64, mayStrollFromWater bool) *oneShot {
-	return newStrollFlyOrSwim(speed, func(m *Mob) (mgl64.Vec3, bool) { return LandRandomPos(m, 10, 7) }, func(m *Mob) bool {
+	return newStrollFlyOrSwim(speed, func(m *Mob) (mgl64.Vec3, bool) { return landRandomPos(m, 10, 7) }, func(m *Mob) bool {
 		return mayStrollFromWater || !m.InWater()
 	})
 }
 
 // newRandomStrollWithin ports RandomStroll.stroll with distances.
 func newRandomStrollWithin(speed float64, horizontal, vertical int) *oneShot {
-	return newStrollFlyOrSwim(speed, func(m *Mob) (mgl64.Vec3, bool) { return LandRandomPos(m, horizontal, vertical) }, nil)
+	return newStrollFlyOrSwim(speed, func(m *Mob) (mgl64.Vec3, bool) { return landRandomPos(m, horizontal, vertical) }, nil)
 }
 
 // newRandomFly ports RandomStroll.fly.
 func newRandomFly(speed float64) *oneShot {
 	return newStrollFlyOrSwim(speed, func(m *Mob) (mgl64.Vec3, bool) {
 		dir := m.data.Rot.Vec3()
-		return AirAndWaterRandomPos(m, 10, 7, -2, dir[0], dir[2], math.Pi/2)
+		return airAndWaterRandomPos(m, 10, 7, -2, dir[0], dir[2], math.Pi/2)
 	}, nil)
 }
 
@@ -528,7 +528,7 @@ func randomStrollSwimPos(m *Mob) (mgl64.Vec3, bool) {
 }
 
 func newStrollFlyOrSwim(speed float64, pos func(m *Mob) (mgl64.Vec3, bool), canRun func(m *Mob) bool) *oneShot {
-	return newOneShot([]memoryCondition{{memWalkTarget, memAbsent}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memWalkTarget, memAbsent}}, func(m *Mob, b *brain, _ int64) bool {
 		if canRun != nil && !canRun(m) {
 			return false
 		}
@@ -544,7 +544,7 @@ func newStrollFlyOrSwim(speed float64, pos func(m *Mob) (mgl64.Vec3, bool), canR
 // newSetWalkTargetFromLookTarget ports SetWalkTargetFromLookTarget: a mob
 // walks to what it looks at.
 func newSetWalkTargetFromLookTarget(can func(m *Mob) bool, speed func(m *Mob) float64, closeEnough int) *oneShot {
-	return newOneShot([]memoryCondition{{memWalkTarget, memAbsent}, {memLookTarget, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memWalkTarget, memAbsent}, {memLookTarget, memPresent}}, func(m *Mob, b *brain, _ int64) bool {
 		if can != nil && !can(m) {
 			return false
 		}
@@ -560,13 +560,13 @@ func constSpeed(v float64) func(*Mob) float64 { return func(*Mob) float64 { retu
 // newOneShotIf ports BehaviorBuilder.triggerIf: a OneShot that runs when the
 // predicate holds.
 func newOneShotIf(pred func(m *Mob) bool) *oneShot {
-	return newOneShot(nil, func(m *Mob, _ *Brain, _ int64) bool { return pred(m) })
+	return newOneShot(nil, func(m *Mob, _ *brain, _ int64) bool { return pred(m) })
 }
 
 // newStartAttacking ports StartAttacking: a mob that may attack starts
 // attacking the target the finder returns.
 func newStartAttacking(can func(m *Mob) bool, finder func(m *Mob) world.Entity) *oneShot {
-	return newOneShot([]memoryCondition{{memAttackTarget, memAbsent}, {memCantReachWalkTargetSince, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memAttackTarget, memAbsent}, {memCantReachWalkTargetSince, memRegistered}}, func(m *Mob, b *brain, _ int64) bool {
 		if can != nil && !can(m) {
 			return false
 		}
@@ -585,7 +585,7 @@ func newStartAttacking(can func(m *Mob) bool, finder func(m *Mob) world.Entity) 
 // picks out or, if it may grow tired, that it could not reach for ten
 // seconds. onErased runs when it does.
 func newStopAttackingIfTargetInvalid(stop func(m *Mob, target world.Entity) bool, onErased func(m *Mob, target world.Entity), canGrowTired bool) *oneShot {
-	return newOneShot([]memoryCondition{{memAttackTarget, memPresent}, {memCantReachWalkTargetSince, memRegistered}}, func(m *Mob, b *Brain, time int64) bool {
+	return newOneShot([]memoryCondition{{memAttackTarget, memPresent}, {memCantReachWalkTargetSince, memRegistered}}, func(m *Mob, b *brain, time int64) bool {
 		target := b.entity(m, memAttackTarget)
 		tired := false
 		if canGrowTired {
@@ -630,7 +630,7 @@ func collisionEmpty(tx *world.Tx, pos cube.Pos) bool {
 // block.
 func newTryFindLand(r int, speed float64) *oneShot {
 	var nextOK int64
-	return newOneShot([]memoryCondition{{memAttackTarget, memAbsent}, {memWalkTarget, memAbsent}, {memLookTarget, memRegistered}}, func(m *Mob, b *Brain, time int64) bool {
+	return newOneShot([]memoryCondition{{memAttackTarget, memAbsent}, {memWalkTarget, memAbsent}, {memLookTarget, memRegistered}}, func(m *Mob, b *brain, time int64) bool {
 		at := m.BlockPos()
 		if !pathWater(m.tx, at) {
 			return false
@@ -662,7 +662,7 @@ func newTryFindLand(r int, speed float64) *oneShot {
 // beside air over water.
 func newTryFindLandNearLiquid(r int, speed float64) *oneShot {
 	var nextOK int64
-	return newOneShot([]memoryCondition{{memAttackTarget, memAbsent}, {memWalkTarget, memAbsent}, {memLookTarget, memRegistered}}, func(m *Mob, b *Brain, time int64) bool {
+	return newOneShot([]memoryCondition{{memAttackTarget, memAbsent}, {memWalkTarget, memAbsent}, {memLookTarget, memRegistered}}, func(m *Mob, b *brain, time int64) bool {
 		at := m.BlockPos()
 		if pathWater(m.tx, at) {
 			return false
@@ -694,7 +694,7 @@ func newTryFindLandNearLiquid(r int, speed float64) *oneShot {
 // newEraseMemoryIf ports EraseMemoryIf: a mob forgets a memory once pred
 // holds.
 func newEraseMemoryIf(pred func(m *Mob) bool, mem memoryType) *oneShot {
-	return newOneShot([]memoryCondition{{mem, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{mem, memPresent}}, func(m *Mob, b *brain, _ int64) bool {
 		if !pred(m) {
 			return false
 		}
@@ -705,14 +705,14 @@ func newEraseMemoryIf(pred func(m *Mob) bool, mem memoryType) *oneShot {
 
 // isBreeding ports BehaviorUtils.isBreeding: the mob has a partner to breed
 // with.
-func isBreeding(m *Mob) bool { return m.Brain().has(memBreedTarget) }
+func isBreeding(m *Mob) bool { return m.brain().has(memBreedTarget) }
 
 // newSetWalkTargetFromAttackTargetIfTargetOutOfReach ports the behaviour of
 // that name: a mob walks to its attack target until it is within reach and
 // in sight.
 func newSetWalkTargetFromAttackTargetIfTargetOutOfReach(speed func(m *Mob) float64) *oneShot {
 	return newOneShot([]memoryCondition{{memWalkTarget, memRegistered}, {memLookTarget, memRegistered}, {memAttackTarget, memPresent},
-		{memNearestVisibleLivingEntities, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
+		{memNearestVisibleLivingEntities, memRegistered}}, func(m *Mob, b *brain, _ int64) bool {
 		target := b.entity(m, memAttackTarget)
 		if target == nil {
 			return false
@@ -731,7 +731,7 @@ func newSetWalkTargetFromAttackTargetIfTargetOutOfReach(speed func(m *Mob) float
 // and in sight, and then waits cooldown ticks.
 func newMeleeAttack(cooldown int) *oneShot {
 	return newOneShot([]memoryCondition{{memLookTarget, memRegistered}, {memAttackTarget, memPresent}, {memAttackCoolingDown, memAbsent},
-		{memNearestVisibleLivingEntities, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+		{memNearestVisibleLivingEntities, memPresent}}, func(m *Mob, b *brain, _ int64) bool {
 		target := b.entity(m, memAttackTarget)
 		if n, ok := m.Behaviour().(interface{ nonMeleeWeapon() bool }); ok && n.nonMeleeWeapon() {
 			// MeleeAttack.isHoldingUsableNonMeleeWeapon.
@@ -753,7 +753,7 @@ func newMeleeAttack(cooldown int) *oneShot {
 // it finds any.
 func newTryFindLiquid(r int, speed float64) *oneShot {
 	var nextOK int64
-	return newOneShot([]memoryCondition{{memAttackTarget, memAbsent}, {memWalkTarget, memAbsent}, {memLookTarget, memRegistered}}, func(m *Mob, b *Brain, time int64) bool {
+	return newOneShot([]memoryCondition{{memAttackTarget, memAbsent}, {memWalkTarget, memAbsent}, {memLookTarget, memRegistered}}, func(m *Mob, b *brain, time int64) bool {
 		at := m.BlockPos()
 		if pathWater(m.tx, at) {
 			return false
@@ -804,7 +804,7 @@ func newGoToWantedItem(pred func(m *Mob) bool, speed float64, interrupt bool, ma
 	if interrupt {
 		walk.status = memRegistered
 	}
-	return newOneShot([]memoryCondition{{memLookTarget, memRegistered}, walk, {memNearestVisibleWantedItem, memPresent}, {memItemPickupCooldownTicks, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memLookTarget, memRegistered}, walk, {memNearestVisibleWantedItem, memPresent}, {memItemPickupCooldownTicks, memRegistered}}, func(m *Mob, b *brain, _ int64) bool {
 		it := b.entity(m, memNearestVisibleWantedItem)
 		if it == nil || b.has(memItemPickupCooldownTicks) || pred != nil && !pred(m) {
 			return false
@@ -847,7 +847,7 @@ func newGoAndGiveItemsToTarget(target func(m *Mob) (positionTracker, bool), spee
 			at := t.currentPosition(m.tx)
 			if at.Sub(mgl64.Vec3{m.data.Pos[0], m.EyeY(), m.data.Pos[2]}).Len() < 3 {
 				throw(m, at)
-				m.Brain().set(cooldown, cooldownTicks)
+				m.brain().set(cooldown, cooldownTicks)
 			}
 		},
 	}
@@ -856,7 +856,7 @@ func newGoAndGiveItemsToTarget(target func(m *Mob) (positionTracker, bool), spee
 // newStayCloseToTarget ports StayCloseToTarget: a mob further than tooFar
 // from its target walks back to within closeEnough of it.
 func newStayCloseToTarget(target func(m *Mob) (positionTracker, bool), shouldRun func(m *Mob) bool, closeEnough, tooFar int, speed float64) *oneShot {
-	return newOneShot([]memoryCondition{{memLookTarget, memRegistered}, {memWalkTarget, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memLookTarget, memRegistered}, {memWalkTarget, memRegistered}}, func(m *Mob, b *brain, _ int64) bool {
 		t, ok := target(m)
 		if !ok || !shouldRun(m) {
 			return false
@@ -874,7 +874,7 @@ func newStayCloseToTarget(target func(m *Mob) (positionTracker, bool), shouldRun
 // that remembers what pacifies it stops attacking and stays pacified for a
 // while.
 func newBecomePassiveIfMemoryPresent(pacifying memoryType, duration int) *oneShot {
-	return newOneShot([]memoryCondition{{memAttackTarget, memRegistered}, {memPacified, memAbsent}, {pacifying, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memAttackTarget, memRegistered}, {memPacified, memAbsent}, {pacifying, memPresent}}, func(m *Mob, b *brain, _ int64) bool {
 		b.setWithExpiry(memPacified, true, int64(duration))
 		b.erase(memAttackTarget)
 		return true
@@ -885,7 +885,7 @@ func newBecomePassiveIfMemoryPresent(pacifying memoryType, duration int) *oneSho
 // what a memory holds walks to a random spot away from it, breaking off what
 // it walks to only if interrupt. toPos returns where the memory value is.
 func newSetWalkTargetAwayFrom(mem memoryType, speed float64, dist int, interrupt bool, toPos func(m *Mob, v any) mgl64.Vec3) *oneShot {
-	return newOneShot([]memoryCondition{{memWalkTarget, memRegistered}, {mem, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memWalkTarget, memRegistered}, {mem, memPresent}}, func(m *Mob, b *brain, _ int64) bool {
 		wv, walking := b.get(memWalkTarget)
 		if walking && !interrupt {
 			return false
@@ -904,7 +904,7 @@ func newSetWalkTargetAwayFrom(mem memoryType, speed float64, dist int, interrupt
 			}
 		}
 		for range 10 {
-			if to, ok := LandRandomPosAway(m, 16, 7, avoid); ok {
+			if to, ok := landRandomPosAway(m, 16, 7, avoid); ok {
 				b.set(memWalkTarget, walkTarget{target: newBlockPosTracker(cube.PosFromVec3(to)), speed: speed})
 				break
 			}
@@ -932,7 +932,7 @@ func findManhattanBox(origin cube.Pos, h, v int, match func(cube.Pos) bool) (cub
 // newCopyMemoryWithExpiry ports CopyMemoryWithExpiry: while pred holds, a mob
 // copies what one memory holds into another it lacks, for a while.
 func newCopyMemoryWithExpiry(pred func(m *Mob) bool, source, target memoryType, duration uniformInt) *oneShot {
-	return newOneShot([]memoryCondition{{source, memPresent}, {target, memAbsent}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{source, memPresent}, {target, memAbsent}}, func(m *Mob, b *brain, _ int64) bool {
 		if !pred(m) {
 			return false
 		}
@@ -950,7 +950,7 @@ func newInteractWithDoor() *oneShot {
 		lastNode  *pathNodeData
 		cooldown  int
 		openDoor  = func(m *Mob, pos cube.Pos) { setDoorOpen(m.tx, pos, true) }
-		rememberD = func(b *Brain, pos cube.Pos) map[cube.Pos]struct{} {
+		rememberD = func(b *brain, pos cube.Pos) map[cube.Pos]struct{} {
 			v, _ := b.get(memDoorsToClose)
 			doors, _ := v.(map[cube.Pos]struct{})
 			if doors == nil {
@@ -961,7 +961,7 @@ func newInteractWithDoor() *oneShot {
 			return doors
 		}
 	)
-	return newOneShot([]memoryCondition{{memPath, memPresent}, {memDoorsToClose, memRegistered}, {memNearestLivingEntities, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memPath, memPresent}, {memDoorsToClose, memRegistered}, {memNearestLivingEntities, memRegistered}}, func(m *Mob, b *brain, _ int64) bool {
 		v, _ := b.get(memPath)
 		path, _ := v.(*mobPath)
 		if path == nil || path.next <= 0 || path.Done() {
@@ -1024,7 +1024,7 @@ func otherMobComingThroughDoor(m *Mob, door cube.Pos) bool {
 		if !ok {
 			continue
 		}
-		v, ok := om.Brain().get(memPath)
+		v, ok := om.brain().get(memPath)
 		path, _ := v.(*mobPath)
 		if !ok || path == nil || path.Done() || path.next <= 0 {
 			continue
@@ -1039,7 +1039,7 @@ func otherMobComingThroughDoor(m *Mob, door cube.Pos) bool {
 // newSetLookAndInteract ports SetLookAndInteract: a mob looks at and means to
 // interact with the nearest entity of the kind passed within range.
 func newSetLookAndInteract(isType func(world.Entity) bool, r int) *oneShot {
-	return newOneShot([]memoryCondition{{memLookTarget, memRegistered}, {memInteractionTarget, memAbsent}, {memNearestVisibleLivingEntities, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memLookTarget, memRegistered}, {memInteractionTarget, memAbsent}, {memNearestVisibleLivingEntities, memPresent}}, func(m *Mob, b *brain, _ int64) bool {
 		e := visibleLiving(m).findClosest(m, func(e world.Entity) bool { return m.DistanceToSqr(e) <= float64(r*r) && isType(e) })
 		if e == nil {
 			return false
@@ -1053,7 +1053,7 @@ func newSetLookAndInteract(isType func(world.Entity) bool, r int) *oneShot {
 // newInteractWith ports InteractWith: a mob walks up to the nearest entity of
 // the kind passed within range it sees.
 func newInteractWith(isType func(world.Entity) bool, r int, speed float64, stop int) *oneShot {
-	return newOneShot([]memoryCondition{{memInteractionTarget, memRegistered}, {memLookTarget, memRegistered}, {memWalkTarget, memAbsent}, {memNearestVisibleLivingEntities, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memInteractionTarget, memRegistered}, {memLookTarget, memRegistered}, {memWalkTarget, memAbsent}, {memNearestVisibleLivingEntities, memPresent}}, func(m *Mob, b *brain, _ int64) bool {
 		v := visibleLiving(m)
 		if v.findClosest(m, isType) == nil {
 			return false
@@ -1070,7 +1070,7 @@ func newInteractWith(isType func(world.Entity) bool, r int, speed float64, stop 
 // newGoToTargetLocation ports GoToTargetLocation: a mob walks to a spot
 // around the position a memory holds until within closeEnough of it.
 func newGoToTargetLocation(mem memoryType, closeEnough int, speed float64) *oneShot {
-	return newOneShot([]memoryCondition{{mem, memPresent}, {memAttackTarget, memAbsent}, {memWalkTarget, memAbsent}, {memLookTarget, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{mem, memPresent}, {memAttackTarget, memAbsent}, {memWalkTarget, memAbsent}, {memLookTarget, memRegistered}}, func(m *Mob, b *brain, _ int64) bool {
 		v, _ := b.get(mem)
 		pos := v.(cube.Pos)
 		if distSqrPos(pos, m.BlockPos()) >= float64(closeEnough*closeEnough) {
@@ -1085,14 +1085,14 @@ func newGoToTargetLocation(mem memoryType, closeEnough int, speed float64) *oneS
 // newRandomStrollWithinRange ports RandomStroll.stroll with distances: a mob
 // strolls to a random spot on land within the distances passed.
 func newRandomStrollWithinRange(speed float64, horizontal, vertical int) *oneShot {
-	return newStrollFlyOrSwim(speed, func(m *Mob) (mgl64.Vec3, bool) { return LandRandomPos(m, horizontal, vertical) }, nil)
+	return newStrollFlyOrSwim(speed, func(m *Mob) (mgl64.Vec3, bool) { return landRandomPos(m, horizontal, vertical) }, nil)
 }
 
 // newStrollToPoi ports StrollToPoi: a mob within maxDist of the place a
 // memory holds walks back to it every four seconds.
 func newStrollToPoi(mem memoryType, speed float64, closeEnough, maxDist int) *oneShot {
 	var nextOK int64
-	return newOneShot([]memoryCondition{{memWalkTarget, memRegistered}, {mem, memPresent}}, func(m *Mob, b *Brain, time int64) bool {
+	return newOneShot([]memoryCondition{{memWalkTarget, memRegistered}, {mem, memPresent}}, func(m *Mob, b *brain, time int64) bool {
 		v, _ := b.get(mem)
 		p := v.(globalPos)
 		if p.dim != m.tx.World().Dimension() || p.pos.Vec3Centre().Sub(m.data.Pos).LenSqr() >= float64(maxDist*maxDist) {
@@ -1111,7 +1111,7 @@ func newStrollToPoi(mem memoryType, speed float64, closeEnough, maxDist int) *on
 // a memory holds strolls about every nine seconds.
 func newStrollAroundPoi(mem memoryType, speed float64, maxDist int) *oneShot {
 	var nextOK int64
-	return newOneShot([]memoryCondition{{memWalkTarget, memRegistered}, {mem, memPresent}}, func(m *Mob, b *Brain, time int64) bool {
+	return newOneShot([]memoryCondition{{memWalkTarget, memRegistered}, {mem, memPresent}}, func(m *Mob, b *brain, time int64) bool {
 		v, _ := b.get(mem)
 		p := v.(globalPos)
 		if p.dim != m.tx.World().Dimension() || p.pos.Vec3Centre().Sub(m.data.Pos).LenSqr() >= float64(maxDist*maxDist) {
@@ -1120,7 +1120,7 @@ func newStrollAroundPoi(mem memoryType, speed float64, maxDist int) *oneShot {
 		if time <= nextOK {
 			return true
 		}
-		if to, ok := LandRandomPos(m, 8, 6); ok {
+		if to, ok := landRandomPos(m, 8, 6); ok {
 			b.set(memWalkTarget, walkTarget{target: newBlockPosTracker(cube.PosFromVec3(to)), speed: speed, closeEnough: 1})
 		} else {
 			b.erase(memWalkTarget)
@@ -1139,7 +1139,7 @@ type globalPos struct {
 // newBackUpIfTooClose ports BackUpIfTooClose: a mob with a target too close
 // that it sees strafes back from it.
 func newBackUpIfTooClose(tooClose int, speed float64) *oneShot {
-	return newOneShot([]memoryCondition{{memWalkTarget, memAbsent}, {memLookTarget, memRegistered}, {memAttackTarget, memPresent}, {memNearestVisibleLivingEntities, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memWalkTarget, memAbsent}, {memLookTarget, memRegistered}, {memAttackTarget, memPresent}, {memNearestVisibleLivingEntities, memPresent}}, func(m *Mob, b *brain, _ int64) bool {
 		target := b.entity(m, memAttackTarget)
 		if target == nil || m.DistanceToSqr(target) >= float64(tooClose*tooClose) || !visibleLiving(m).contains(m, target) {
 			return false
@@ -1155,7 +1155,7 @@ func newBackUpIfTooClose(tooClose int, speed float64) *oneShot {
 // forgets its anger at what died, at a player only if the game forgives
 // dead players.
 func newStopBeingAngryIfTargetDead() *oneShot {
-	return newOneShot([]memoryCondition{{memAngryAt, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memAngryAt, memPresent}}, func(m *Mob, b *brain, _ int64) bool {
 		v, _ := b.get(memAngryAt)
 		id := v.(uuid.UUID)
 		dead, player := false, false
@@ -1175,7 +1175,7 @@ func newStopBeingAngryIfTargetDead() *oneShot {
 // whose attack target died celebrates where it fell, dancing if dance says
 // so, and stops being angry at it.
 func newStartCelebratingIfTargetDead(duration int, dance func(m *Mob, killed world.EntityType) bool) *oneShot {
-	return newOneShot([]memoryCondition{{memAttackTarget, memPresent}, {memAngryAt, memRegistered}, {memCelebrateLocation, memAbsent}, {memDancing, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memAttackTarget, memPresent}, {memAngryAt, memRegistered}, {memCelebrateLocation, memAbsent}, {memDancing, memRegistered}}, func(m *Mob, b *brain, _ int64) bool {
 		d, ok := attackTargetDeath(m)
 		if !ok {
 			return false
@@ -1196,7 +1196,7 @@ func newStartCelebratingIfTargetDead(duration int, dance func(m *Mob, killed wor
 // dead or dying, as LivingEntity.isDeadOrDying: a player stays in the world
 // dead, and a mob that left it dead is remembered for a second.
 func attackTargetDeath(m *Mob) (entityDeath, bool) {
-	v, ok := m.Brain().get(memAttackTarget)
+	v, ok := m.brain().get(memAttackTarget)
 	if !ok {
 		return entityDeath{}, false
 	}

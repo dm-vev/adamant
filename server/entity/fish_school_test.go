@@ -40,7 +40,7 @@ func TestFishFormSchools(t *testing.T) {
 		<-w.Exec(func(tx *world.Tx) {
 			for _, h := range fish {
 				e, _ := h.Entity(tx)
-				b := e.(*Cod).behaviour()
+				b := e.(*cod).behaviour()
 				if b.schoolSize == len(fish) {
 					leader++
 				}

@@ -9,7 +9,7 @@ import (
 )
 
 // GroundProfile controls ground path evaluation.
-type GroundProfile struct {
+type groundProfile struct {
 	MaxVisitedNodes            int
 	StepHeight, MaxFall        int
 	Width, Height, FollowRange float64
@@ -18,7 +18,7 @@ type GroundProfile struct {
 }
 
 // Navigator owns a reusable ground route; movement remains the caller's responsibility.
-type Navigator struct {
+type navigator struct {
 	Path            []cube.Pos
 	Target          cube.Pos
 	HasTarget       bool
@@ -29,7 +29,7 @@ type Navigator struct {
 }
 
 // MoveTo keeps an existing route for an unchanged target and throttles replanning to 20 ticks.
-func (n *Navigator) MoveTo(tx *world.Tx, start, target cube.Pos, profile GroundProfile, tick int64) bool {
+func (n *navigator) MoveTo(tx *world.Tx, start, target cube.Pos, profile groundProfile, tick int64) bool {
 	if n.HasTarget && n.Target == target && len(n.Path) > n.Index {
 		return true
 	}
@@ -39,13 +39,13 @@ func (n *Navigator) MoveTo(tx *world.Tx, start, target cube.Pos, profile GroundP
 			return len(n.Path) > n.Index
 		}
 	}
-	n.Path = FindGroundPath(tx, start, target, profile)
+	n.Path = findGroundPath(tx, start, target, profile)
 	n.Target, n.HasTarget, n.Index, n.LastComputeTick = target, true, 0, tick
 	return len(n.Path) > 0
 }
 
 // Tick advances reached waypoints and returns the next centered waypoint.
-func (n *Navigator) Tick(position mgl64.Vec3, tick int64, width float64) (mgl64.Vec3, bool) {
+func (n *navigator) Tick(position mgl64.Vec3, tick int64, width float64) (mgl64.Vec3, bool) {
 	if tick-n.LastStuckCheck >= 100 {
 		if tick > 0 {
 			minMove := math.Max(.1, width*.1)

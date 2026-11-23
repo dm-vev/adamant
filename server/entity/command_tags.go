@@ -4,7 +4,7 @@ import "slices"
 
 // CommandTags returns the Java command tags retained for the entity.
 func (e *Ent) CommandTags() []string {
-	state := ReadNativeMobJavaState(e.data.NativeNBT)
+	state := readNativeMobJavaState(e.data.NativeNBT)
 	tags, _ := state["Tags"].([]string)
 	if tags == nil {
 		if raw, ok := state["Tags"].([]any); ok {
@@ -21,12 +21,12 @@ func (e *Ent) CommandTags() []string {
 
 // SetCommandTags replaces the Java command tags retained for the entity.
 func (e *Ent) SetCommandTags(tags []string) {
-	state := ReadNativeMobJavaState(e.data.NativeNBT)
+	state := readNativeMobJavaState(e.data.NativeNBT)
 	if state == nil {
 		state = make(map[string]any)
 	}
 	state["Tags"] = slices.Clone(tags)
-	e.data.NativeNBT = MergeNativeMobJavaState(e.data.NativeNBT, state)
+	e.data.NativeNBT = mergeNativeMobJavaState(e.data.NativeNBT, state)
 }
 
 // NativeAttribute returns the base value of a retained native mob attribute.
@@ -43,11 +43,11 @@ func (e *Ent) NativeAttributeValue(name string) (float64, bool) {
 
 // SetNativeAttribute changes the base value of a retained native mob attribute.
 func (e *Ent) SetNativeAttribute(name string, value float64) bool {
-	attributes := ReadNativeMobAttributes(e.data.NativeNBT)
+	attributes := readNativeMobAttributes(e.data.NativeNBT)
 	for i := range attributes {
 		if attributes[i].Name == name {
 			attributes[i].Base, attributes[i].Current = value, value
-			e.data.NativeNBT = MergeNativeMobNBT(e.data.NativeNBT, map[string]any{"Attributes": EncodeNativeMobAttributes(attributes, nil)})
+			e.data.NativeNBT = mergeNativeMobNBT(e.data.NativeNBT, map[string]any{"Attributes": encodeNativeMobAttributes(attributes, nil)})
 			return true
 		}
 	}
@@ -56,7 +56,7 @@ func (e *Ent) SetNativeAttribute(name string, value float64) bool {
 
 // SetCommandAttributeModifier stores a Java command modifier alongside source-only state.
 func (e *Ent) SetCommandAttributeModifier(attribute, id string, amount float64, operation string, remove bool) bool {
-	state := ReadNativeMobJavaState(e.data.NativeNBT)
+	state := readNativeMobJavaState(e.data.NativeNBT)
 	if state == nil {
 		state = make(map[string]any)
 	}
@@ -82,13 +82,13 @@ func (e *Ent) SetCommandAttributeModifier(attribute, id string, amount float64, 
 		all[attribute] = modifiers
 	}
 	state["CommandAttributeModifiers"] = all
-	e.data.NativeNBT = MergeNativeMobJavaState(e.data.NativeNBT, state)
+	e.data.NativeNBT = mergeNativeMobJavaState(e.data.NativeNBT, state)
 	return true
 }
 
 // CommandAttributeModifier reads the amount stored for a Java command modifier.
 func (e *Ent) CommandAttributeModifier(attribute, id string) (float64, bool) {
-	state := ReadNativeMobJavaState(e.data.NativeNBT)
+	state := readNativeMobJavaState(e.data.NativeNBT)
 	all, _ := state["CommandAttributeModifiers"].(map[string]any)
 	modifiers, _ := all[attribute].(map[string]any)
 	raw, ok := modifiers[id].(map[string]any)

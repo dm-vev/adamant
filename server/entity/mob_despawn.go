@@ -290,7 +290,7 @@ func decodePersistence(data *world.EntityData, m map[string]any) {
 		return
 	}
 	persistent := nbtBool(m, "Persistent") || nbtBool(m, "PersistenceRequired")
-	if java := ReadNativeMobJavaState(m); java != nil {
+	if java := readNativeMobJavaState(m); java != nil {
 		persistent = persistent || nbtBool(java, "PersistenceRequired")
 	}
 	if persistent {

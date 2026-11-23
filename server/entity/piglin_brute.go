@@ -9,23 +9,23 @@ import (
 	"github.com/google/uuid"
 )
 
-type PiglinBruteType struct{}
+type piglinBruteType struct{}
 type PiglinBrute struct{ *Piglin }
 
-func (PiglinBruteType) EncodeEntity() string { return "minecraft:piglin_brute" }
-func (PiglinBruteType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
+func (piglinBruteType) EncodeEntity() string { return "minecraft:piglin_brute" }
+func (piglinBruteType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
 		(piglinConfig{brut: true, main: bruteAxe()}).Apply(d)
 	}
 	return &PiglinBrute{&Piglin{&Ent{tx: tx, handle: h, data: d}}}
 }
-func (PiglinBruteType) BBox(world.Entity) cube.BBox { return cube.Box(-.3, 0, -.3, .3, 1.95, .3) }
-func (PiglinBruteType) DecodeNBT(n map[string]any, d *world.EntityData) {
-	j := ReadNativeMobJavaState(n)
+func (piglinBruteType) BBox(world.Entity) cube.BBox { return cube.Box(-.3, 0, -.3, .3, 1.95, .3) }
+func (piglinBruteType) DecodeNBT(n map[string]any, d *world.EntityData) {
+	j := readNativeMobJavaState(n)
 	if j == nil {
 		j = n
 	}
-	eq := ReadNativeMobEquipment(n)
+	eq := readNativeMobEquipment(n)
 	c := piglinConfig{brut: true, immune: nbtconv.Bool(j, "IsImmuneToZombification"), conversion: int(nbtconv.Int32(j, "TimeInOverworld")), main: piglinStackFromNative(eq.Mainhand), off: piglinStackFromNative(eq.Offhand)}
 	c.angryAt, _ = uuid.Parse(nbtconv.String(j, "AngerTarget"))
 	for i := range c.armor {
@@ -50,12 +50,12 @@ func (PiglinBruteType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	}
 	c.Apply(d)
 }
-func (PiglinBruteType) EncodeNBT(d *world.EntityData) map[string]any { return encodePiglinNBT(d) }
+func (piglinBruteType) EncodeNBT(d *world.EntityData) map[string]any { return encodePiglinNBT(d) }
 func NewPiglinBrute(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(PiglinBruteType{}, piglinConfig{brut: true, main: bruteAxe()})
+	return o.New(piglinBruteType{}, piglinConfig{brut: true, main: bruteAxe()})
 }
 func bruteAxe() item.Stack                           { return item.NewStack(item.Axe{Tier: item.ToolTierGold}, 1) }
-func (b *PiglinBrute) SpeciesType() world.EntityType { return PiglinBruteType{} }
+func (b *PiglinBrute) SpeciesType() world.EntityType { return piglinBruteType{} }
 
 // FinalizeSpawn ports PiglinBrute.finalizeSpawn: a brute takes up a golden
 // axe and guards where it spawned, as PiglinBruteAi.initMemories.
@@ -68,4 +68,4 @@ func (b *PiglinBrute) FinalizeSpawn(_ string, r *vanilla.Random) {
 	s.main = bruteAxe()
 }
 
-var _ world.EntityType = PiglinBruteType{}
+var _ world.EntityType = piglinBruteType{}

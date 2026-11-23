@@ -28,19 +28,19 @@ func endermanState(m *Mob) *speciesState { return m.Behaviour().(*speciesState) 
 func (s *speciesState) registerEndermanGoals(m *Mob) {
 	ai := m.AI
 	ai.SetPathfindingMalus(PathWater, -1)
-	ai.Goals.Add(0, NewFloatGoal(m))
+	ai.Goals.Add(0, newFloatGoal(m))
 	ai.Goals.Add(1, &endermanFreezeWhenLookedAtGoal{goalFlags: goalFlags{GoalJump | GoalMove}})
-	ai.Goals.Add(2, NewMeleeAttackGoal(1, false))
-	stroll := NewWaterAvoidingRandomStrollGoal(1)
+	ai.Goals.Add(2, newMeleeAttackGoal(1, false))
+	stroll := newWaterAvoidingRandomStrollGoal(1)
 	stroll.Probability = 0
 	ai.Goals.Add(7, stroll)
-	ai.Goals.Add(8, NewLookAtPlayerGoal(8))
-	ai.Goals.Add(8, NewRandomLookAroundGoal())
+	ai.Goals.Add(8, newLookAtPlayerGoal(8))
+	ai.Goals.Add(8, newRandomLookAroundGoal())
 	ai.Goals.Add(10, &endermanLeaveBlockGoal{})
 	ai.Goals.Add(11, &endermanTakeBlockGoal{})
-	ai.Targets.Add(1, &endermanLookForPlayerGoal{NearestAttackableTargetGoal: NewNearestAttackableTargetGoal(nil, false)})
-	ai.Targets.Add(2, NewHurtByTargetGoal())
-	ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:endermite"}, true))
+	ai.Targets.Add(1, &endermanLookForPlayerGoal{nearestAttackableTargetGoal: newNearestAttackableTargetGoal(nil, false)})
+	ai.Targets.Add(2, newHurtByTargetGoal())
+	ai.Targets.Add(3, newNearestAttackableTypesGoal(entityTypes{"minecraft:endermite"}, true))
 	ai.Targets.Add(4, &resetUniversalAngerTargetGoal{lastHurtByPlayer: -1})
 }
 
@@ -302,7 +302,7 @@ func (g *endermanFreezeWhenLookedAtGoal) Tick(m *Mob) {
 // angered it, and teleports the enderman around it, ported from
 // Enderman.EndermanLookForPlayerGoal.
 type endermanLookForPlayerGoal struct {
-	*NearestAttackableTargetGoal
+	*nearestAttackableTargetGoal
 	pending                 *world.EntityHandle
 	aggroTime, teleportTime int
 }
@@ -330,7 +330,7 @@ func (g *endermanLookForPlayerGoal) Start(m *Mob) {
 
 func (g *endermanLookForPlayerGoal) Stop(m *Mob) {
 	g.pending = nil
-	g.NearestAttackableTargetGoal.Stop(m)
+	g.nearestAttackableTargetGoal.Stop(m)
 }
 
 func (g *endermanLookForPlayerGoal) CanContinueToUse(m *Mob) bool {
@@ -354,7 +354,7 @@ func (g *endermanLookForPlayerGoal) CanContinueToUse(m *Mob) bool {
 			}
 		}
 	}
-	return g.NearestAttackableTargetGoal.CanContinueToUse(m)
+	return g.nearestAttackableTargetGoal.CanContinueToUse(m)
 }
 
 func (g *endermanLookForPlayerGoal) Tick(m *Mob) {
@@ -364,7 +364,7 @@ func (g *endermanLookForPlayerGoal) Tick(m *Mob) {
 	if g.pending != nil {
 		if g.aggroTime--; g.aggroTime <= 0 {
 			g.target, g.pending = g.pending, nil
-			g.NearestAttackableTargetGoal.Start(m)
+			g.nearestAttackableTargetGoal.Start(m)
 		}
 		return
 	}

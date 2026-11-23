@@ -3,6 +3,7 @@ package entity
 import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/ecs"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -55,6 +56,15 @@ func Open(tx *world.Tx, handle *world.EntityHandle, data *world.EntityData) *Ent
 
 func (e *Ent) H() *world.EntityHandle {
 	return e.handle
+}
+
+// Components returns the ECS component bag attached to the entity's data, or
+// nil if e or its data is nil.
+func (e *Ent) Components() *ecs.Bag {
+	if e == nil || e.data == nil {
+		return nil
+	}
+	return &e.data.Components
 }
 
 func (e *Ent) Behaviour() Behaviour {

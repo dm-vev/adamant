@@ -11,7 +11,7 @@ import (
 
 // NaturalSpawnTick is invoked on the world owner every game tick. It uses the
 // Java legacy random stream independently of terrain and decoration generation.
-func NaturalSpawnTick(tx *world.Tx) {
+func naturalSpawnTick(tx *world.Tx) {
 	w := tx.World()
 	// WanderingTraderSpawner owns its own random and ticks without players.
 	traderRandom := vanilla.NewLegacyRandom(w.Seed() ^ int64(uint64(tx.CurrentTick())*0x632be59bd9b4e019))

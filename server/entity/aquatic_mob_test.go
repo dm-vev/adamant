@@ -9,11 +9,11 @@ import (
 
 func TestAquaticBucketRoundTrip(t *testing.T) {
 	t.Parallel()
-	originalData := world.EntityData{Data: (AquaticMobConfig{
+	originalData := world.EntityData{Data: (aquaticMobConfig{
 		ID: "minecraft:tropical_fish", Health: 2, MaxHealth: 3, Variant: 5, BucketVariant: 117506305,
 		Age: -2400, healthSet: true,
 	}).New()}
-	original := TropicalFishType.Open(nil, nil, &originalData).(*TropicalFish)
+	original := tropicalFishType.Open(nil, nil, &originalData).(*TropicalFish)
 	bucket := original.SaveToBucket(original.BucketItem())
 	fishBucket, ok := bucket.Item().(item.FishBucket)
 	if !ok || fishBucket.EntityID() != "minecraft:tropical_fish" {
@@ -21,8 +21,8 @@ func TestAquaticBucketRoundTrip(t *testing.T) {
 	}
 
 	var restoredData world.EntityData
-	TropicalFishType.DecodeNBT(fishBucket.Data, &restoredData)
-	restored := TropicalFishType.Open(nil, nil, &restoredData).(*TropicalFish)
+	tropicalFishType.DecodeNBT(fishBucket.Data, &restoredData)
+	restored := tropicalFishType.Open(nil, nil, &restoredData).(*TropicalFish)
 	if got := restored.Health(); got != 2 {
 		t.Fatalf("restored health = %v, want 2", got)
 	}

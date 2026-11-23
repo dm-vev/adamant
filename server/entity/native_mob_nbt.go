@@ -8,7 +8,7 @@ import (
 // NativeMobAttribute is one Bedrock actor Attributes entry. BDS 1.26.52.3
 // stores these as named compounds with Base, Current, DefaultMin, DefaultMax,
 // Min and Max numeric fields. Raw retains any additional fields.
-type NativeMobAttribute struct {
+type nativeMobAttr struct {
 	Name                   string
 	Base, Current          float64
 	DefaultMin, DefaultMax float64
@@ -19,7 +19,7 @@ type NativeMobAttribute struct {
 // NativeMobItem is a native Bedrock actor equipment/item record. The probed
 // 1.26.52.3 item compounds use Name, Count, Damage and WasPickedUp; chest
 // inventory entries additionally use Slot. Raw preserves unrecognized tags.
-type NativeMobItem struct {
+type nativeMobItem struct {
 	Name        string
 	Count       byte
 	Damage      int32
@@ -29,42 +29,42 @@ type NativeMobItem struct {
 }
 
 // NativeMobEquipment contains native actor inventory/equipment lists.
-type NativeMobEquipment struct {
-	Armor, Mainhand, Offhand, ChestItems []NativeMobItem
+type nativeMobEquipment struct {
+	Armor, Mainhand, Offhand, ChestItems []nativeMobItem
 }
 
-func nativeMobItemFromStack(stack item.Stack) NativeMobItem {
+func nativeMobItemFromStack(stack item.Stack) nativeMobItem {
 	raw := item.WriteNBT(stack)
 	if stack.Empty() {
-		return NativeMobItem{Raw: raw}
+		return nativeMobItem{Raw: raw}
 	}
 	name, damage := stack.Item().EncodeItem()
 	wear := int32(damage)
 	if stack.MaxDurability() > 0 {
 		wear = int32(stack.MaxDurability() - stack.Durability())
 	}
-	return NativeMobItem{Name: name, Count: byte(stack.Count()), Damage: wear, Raw: raw}
+	return nativeMobItem{Name: name, Count: byte(stack.Count()), Damage: wear, Raw: raw}
 }
 
 // CloneNativeMobNBT returns a deep copy of an actor payload. EntityData keeps
 // this alongside decoded behavior so serializers can round-trip fields they do
 // not understand.
-func CloneNativeMobNBT(data map[string]any) map[string]any { return world.CloneNativeEntityNBT(data) }
+func cloneNativeMobNBT(data map[string]any) map[string]any { return world.CloneNativeEntityNBT(data) }
 
 // MergeNativeMobNBT overlays canonical actor fields while retaining unknown
 // Bedrock actor tags and same-slot equipment/attribute extensions.
-func MergeNativeMobNBT(retained, canonical map[string]any) map[string]any {
+func mergeNativeMobNBT(retained, canonical map[string]any) map[string]any {
 	return world.MergeNativeEntityNBT(retained, canonical)
 }
 
 // ReadNativeMobAttributes reads BDS's Attributes compound list. Each Raw map
 // is independent and retains fields not represented by this typed view.
-func ReadNativeMobAttributes(data map[string]any) []NativeMobAttribute {
+func readNativeMobAttributes(data map[string]any) []nativeMobAttr {
 	list, ok := data["Attributes"].([]any)
 	if !ok {
 		return nil
 	}
-	attrs := make([]NativeMobAttribute, 0, len(list))
+	attrs := make([]nativeMobAttr, 0, len(list))
 	for _, raw := range list {
 		m, ok := raw.(map[string]any)
 		if !ok {
@@ -74,15 +74,15 @@ func ReadNativeMobAttributes(data map[string]any) []NativeMobAttribute {
 		if !ok || name == "" {
 			continue
 		}
-		attrs = append(attrs, NativeMobAttribute{Name: name, Base: nativeNBTNumber(m["Base"]), Current: nativeNBTNumber(m["Current"]), DefaultMin: nativeNBTNumber(m["DefaultMin"]), DefaultMax: nativeNBTNumber(m["DefaultMax"]), Min: nativeNBTNumber(m["Min"]), Max: nativeNBTNumber(m["Max"]), Raw: CloneNativeMobNBT(m)})
+		attrs = append(attrs, nativeMobAttr{Name: name, Base: nativeNBTNumber(m["Base"]), Current: nativeNBTNumber(m["Current"]), DefaultMin: nativeNBTNumber(m["DefaultMin"]), DefaultMax: nativeNBTNumber(m["DefaultMax"]), Min: nativeNBTNumber(m["Min"]), Max: nativeNBTNumber(m["Max"]), Raw: cloneNativeMobNBT(m)})
 	}
 	return attrs
 }
 
 // EncodeNativeMobAttributes returns a BDS Attributes list. Existing same-name
 // entries are merged so fields unknown to this implementation are preserved.
-func EncodeNativeMobAttributes(existing []NativeMobAttribute, updates []NativeMobAttribute) []any {
-	byName := make(map[string]NativeMobAttribute, len(existing)+len(updates))
+func encodeNativeMobAttributes(existing []nativeMobAttr, updates []nativeMobAttr) []any {
+	byName := make(map[string]nativeMobAttr, len(existing)+len(updates))
 	order := make([]string, 0, len(existing)+len(updates))
 	for _, attr := range existing {
 		if attr.Name == "" {
@@ -98,7 +98,7 @@ func EncodeNativeMobAttributes(existing []NativeMobAttribute, updates []NativeMo
 			continue
 		}
 		if previous, ok := byName[attr.Name]; ok {
-			attr.Raw = MergeNativeMobNBT(previous.Raw, attr.Raw)
+			attr.Raw = mergeNativeMobNBT(previous.Raw, attr.Raw)
 		} else {
 			order = append(order, attr.Name)
 		}
@@ -107,7 +107,7 @@ func EncodeNativeMobAttributes(existing []NativeMobAttribute, updates []NativeMo
 	out := make([]any, 0, len(order))
 	for _, name := range order {
 		a := byName[name]
-		m := CloneNativeMobNBT(a.Raw)
+		m := cloneNativeMobNBT(a.Raw)
 		if m == nil {
 			m = make(map[string]any, 7)
 		}
@@ -120,13 +120,13 @@ func EncodeNativeMobAttributes(existing []NativeMobAttribute, updates []NativeMo
 }
 
 // ReadNativeMobEquipment reads the probed Bedrock actor equipment compounds.
-func ReadNativeMobEquipment(data map[string]any) NativeMobEquipment {
-	return NativeMobEquipment{Armor: readNativeMobItems(data, "Armor"), Mainhand: readNativeMobItems(data, "Mainhand"), Offhand: readNativeMobItems(data, "Offhand"), ChestItems: readNativeMobItems(data, "ChestItems")}
+func readNativeMobEquipment(data map[string]any) nativeMobEquipment {
+	return nativeMobEquipment{Armor: readNativeMobItems(data, "Armor"), Mainhand: readNativeMobItems(data, "Mainhand"), Offhand: readNativeMobItems(data, "Offhand"), ChestItems: readNativeMobItems(data, "ChestItems")}
 }
 
 // EncodeNativeMobEquipment returns only non-nil lists so a caller can update a
 // subset of equipment. Empty, non-nil slices explicitly clear their slots.
-func EncodeNativeMobEquipment(e NativeMobEquipment) map[string]any {
+func encodeNativeMobEquipment(e nativeMobEquipment) map[string]any {
 	out := make(map[string]any, 4)
 	if e.Armor != nil {
 		out["Armor"] = encodeNativeMobItems(e.Armor, "Armor")
@@ -143,19 +143,19 @@ func EncodeNativeMobEquipment(e NativeMobEquipment) map[string]any {
 	return out
 }
 
-func readNativeMobItems(data map[string]any, key string) []NativeMobItem {
+func readNativeMobItems(data map[string]any, key string) []nativeMobItem {
 	values, ok := data[key].([]any)
 	if !ok {
 		return nil
 	}
-	items := make([]NativeMobItem, 0, len(values))
+	items := make([]nativeMobItem, 0, len(values))
 	for _, value := range values {
 		raw, ok := value.(map[string]any)
 		if !ok {
-			items = append(items, NativeMobItem{})
+			items = append(items, nativeMobItem{})
 			continue
 		}
-		item := NativeMobItem{Raw: world.CloneNativeEntityNBT(raw)}
+		item := nativeMobItem{Raw: world.CloneNativeEntityNBT(raw)}
 		item.Name, _ = raw["Name"].(string)
 		item.Count = nativeNBTByte(raw["Count"])
 		if damage, ok := nativeNBTInt(raw["Damage"]); ok {
@@ -171,7 +171,7 @@ func readNativeMobItems(data map[string]any, key string) []NativeMobItem {
 	return items
 }
 
-func encodeNativeMobItems(items []NativeMobItem, key string) []any {
+func encodeNativeMobItems(items []nativeMobItem, key string) []any {
 	out := make([]any, len(items))
 	for i, item := range items {
 		raw := world.CloneNativeEntityNBT(item.Raw)
@@ -192,15 +192,15 @@ func encodeNativeMobItems(items []NativeMobItem, key string) []any {
 
 // ReadNativeMobJavaState reads the Adamant-only namespace used for Java source
 // data that has no evidenced Bedrock actor field. It is not a native BDS tag.
-func ReadNativeMobJavaState(data map[string]any) map[string]any {
+func readNativeMobJavaState(data map[string]any) map[string]any {
 	state, _ := data["adamant:java"].(map[string]any)
-	return CloneNativeMobNBT(state)
+	return cloneNativeMobNBT(state)
 }
 
 // MergeNativeMobJavaState stores Java-only compatibility data without
 // conflating UUIDs, anger timers or other Java fields with native actor tags.
-func MergeNativeMobJavaState(native, javaState map[string]any) map[string]any {
-	out := CloneNativeMobNBT(native)
+func mergeNativeMobJavaState(native, javaState map[string]any) map[string]any {
+	out := cloneNativeMobNBT(native)
 	if out == nil {
 		out = make(map[string]any)
 	}
@@ -208,30 +208,30 @@ func MergeNativeMobJavaState(native, javaState map[string]any) map[string]any {
 		delete(out, "adamant:java")
 		return out
 	}
-	out["adamant:java"] = CloneNativeMobNBT(javaState)
+	out["adamant:java"] = cloneNativeMobNBT(javaState)
 	return out
 }
 
 // NativeMobUniqueID reads the BDS actor identity as a scalar signed int64. It
 // must not be confused with a Java UUID or its four-int array encoding.
-func NativeMobUniqueID(data map[string]any) (int64, bool) { return nativeNBTInt64(data["UniqueID"]) }
+func nativeMobUniqueID(data map[string]any) (int64, bool) { return nativeNBTInt64(data["UniqueID"]) }
 
 // NativeMobOwnerID reads the Bedrock actor owner reference, a scalar signed
 // UniqueID in OwnerNew. It is not Java's UUID int-array representation.
-func NativeMobOwnerID(data map[string]any) (int64, bool) { return nativeNBTInt64(data["OwnerNew"]) }
+func nativeMobOwnerID(data map[string]any) (int64, bool) { return nativeNBTInt64(data["OwnerNew"]) }
 
 // NativeMobAngry reads BDS's observed IsAngry byte flag; it is not a Java
 // AngerTime or target UUID.
-func NativeMobAngry(data map[string]any) bool { return nativeNBTByte(data["IsAngry"]) != 0 }
+func nativeMobAngry(data map[string]any) bool { return nativeNBTByte(data["IsAngry"]) != 0 }
 
 // NativeMobVariant reads the observed numeric Bedrock Variant field.
-func NativeMobVariant(data map[string]any) (int32, bool) {
+func nativeMobVariant(data map[string]any) (int32, bool) {
 	v, ok := nativeNBTInt64(data["Variant"])
 	return int32(v), ok && v >= -1<<31 && v <= 1<<31-1
 }
 
 // NativeMobColor reads the observed byte-valued Bedrock Color field.
-func NativeMobColor(data map[string]any) (byte, bool) {
+func nativeMobColor(data map[string]any) (byte, bool) {
 	v, ok := data["Color"]
 	if !ok {
 		return 0, false
@@ -250,27 +250,27 @@ func NativeMobColor(data map[string]any) (byte, bool) {
 }
 
 // SetNativeMobOwnerID writes the scalar signed-int64 OwnerNew field.
-func SetNativeMobOwnerID(data map[string]any, ownerID int64) map[string]any {
-	return MergeNativeMobNBT(data, map[string]any{"OwnerNew": ownerID})
+func setNativeMobOwnerID(data map[string]any, ownerID int64) map[string]any {
+	return mergeNativeMobNBT(data, map[string]any{"OwnerNew": ownerID})
 }
 
 // SetNativeMobAngry writes BDS's observed byte-valued IsAngry flag.
-func SetNativeMobAngry(data map[string]any, angry bool) map[string]any {
+func setNativeMobAngry(data map[string]any, angry bool) map[string]any {
 	value := byte(0)
 	if angry {
 		value = 1
 	}
-	return MergeNativeMobNBT(data, map[string]any{"IsAngry": value})
+	return mergeNativeMobNBT(data, map[string]any{"IsAngry": value})
 }
 
 // SetNativeMobVariant writes the observed numeric int32 Variant field.
-func SetNativeMobVariant(data map[string]any, variant int32) map[string]any {
-	return MergeNativeMobNBT(data, map[string]any{"Variant": variant})
+func setNativeMobVariant(data map[string]any, variant int32) map[string]any {
+	return mergeNativeMobNBT(data, map[string]any{"Variant": variant})
 }
 
 // SetNativeMobColor writes the observed byte-valued Color field.
-func SetNativeMobColor(data map[string]any, color byte) map[string]any {
-	return MergeNativeMobNBT(data, map[string]any{"Color": color})
+func setNativeMobColor(data map[string]any, color byte) map[string]any {
+	return mergeNativeMobNBT(data, map[string]any{"Color": color})
 }
 
 func nativeNBTByte(value any) byte {
@@ -364,11 +364,11 @@ func oceanFloat(value any) (float64, bool) {
 	return 0, false
 }
 
-func nativeMobAttribute(data map[string]any, name string) (NativeMobAttribute, bool) {
-	for _, attribute := range ReadNativeMobAttributes(data) {
+func nativeMobAttribute(data map[string]any, name string) (nativeMobAttr, bool) {
+	for _, attribute := range readNativeMobAttributes(data) {
 		if attribute.Name == name {
 			return attribute, true
 		}
 	}
-	return NativeMobAttribute{}, false
+	return nativeMobAttr{}, false
 }

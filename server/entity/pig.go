@@ -13,7 +13,7 @@ import (
 )
 
 // NewPig creates an adult, unsaddled Java pig.
-func NewPig(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(PigType, PigConfig{}) }
+func NewPig(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(PigType, pigConfig{}) }
 
 // PigType is the registered Java pig type.
 var PigType pigType
@@ -22,7 +22,7 @@ type pigType struct{}
 
 func (pigType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
-		PigConfig{}.Apply(d)
+		pigConfig{}.Apply(d)
 	}
 	return &Pig{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
@@ -34,11 +34,11 @@ func (pigType) BBox(e world.Entity) cube.BBox {
 	return cube.Box(-.45, 0, -.45, .45, .9, .45)
 }
 func (pigType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	s := ReadNativeMobJavaState(m)
+	s := readNativeMobJavaState(m)
 	if s == nil {
 		s = m
 	}
-	c := PigConfig{Age: int(nbtconv.Int32(s, "Age")), Saddled: nbtconv.Bool(s, "Saddle")}
+	c := pigConfig{Age: int(nbtconv.Int32(s, "Age")), Saddled: nbtconv.Bool(s, "Saddle")}
 	if v, ok := s["variant"].(string); ok {
 		c.Variant = pigVariant(v)
 	} else if v, ok := m["Variant"]; ok {
@@ -57,7 +57,7 @@ func (pigType) DecodeNBT(m map[string]any, d *world.EntityData) {
 		c.MaxHealth = float64(nbtconv.Float32(map[string]any{"MaxHealth": v}, "MaxHealth"))
 	}
 	d.Data = c.New()
-	d.Data.(*PigBehaviour).breeding.decodeNBT(s)
+	d.Data.(*pigBehaviour).breeding.decodeNBT(s)
 }
 func pigVariant(value string) int {
 	switch strings.TrimPrefix(value, "minecraft:") {
@@ -70,14 +70,14 @@ func pigVariant(value string) int {
 	}
 }
 func (pigType) EncodeNBT(d *world.EntityData) map[string]any {
-	b := d.Data.(*PigBehaviour)
-	a := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
-	native := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": a, "Variant": int32(b.variant)})
-	return MergeNativeMobJavaState(native, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "Saddle": byte(boolByte(b.saddled)), "variant": "minecraft:" + [...]string{"temperate", "warm", "cold"}[b.variant], "sound_variant": "minecraft:" + b.soundVariant})))
+	b := d.Data.(*pigBehaviour)
+	a := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
+	native := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": a, "Variant": int32(b.variant)})
+	return mergeNativeMobJavaState(native, mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "Saddle": byte(boolByte(b.saddled)), "variant": "minecraft:" + [...]string{"temperate", "warm", "cold"}[b.variant], "sound_variant": "minecraft:" + b.soundVariant})))
 }
 
 // PigConfig supplies a pig's persistent Java state.
-type PigConfig struct {
+type pigConfig struct {
 	Health, MaxHealth float64
 	Age               int
 	Saddled           bool
@@ -85,8 +85,8 @@ type PigConfig struct {
 	SoundVariant      string
 }
 
-func (c PigConfig) Apply(d *world.EntityData) { d.Data = c.New() }
-func (c PigConfig) New() *PigBehaviour {
+func (c pigConfig) Apply(d *world.EntityData) { d.Data = c.New() }
+func (c pigConfig) New() *pigBehaviour {
 	if c.MaxHealth <= 0 {
 		c.MaxHealth = 10
 	}
@@ -97,12 +97,12 @@ func (c PigConfig) New() *PigBehaviour {
 	if sv != "big" && sv != "mini" {
 		sv = "classic"
 	}
-	return &PigBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, saddled: c.Saddled, variant: max(0, min(c.Variant, 2)), soundVariant: sv, speed: .25, effects: NewEffectManager()}
+	return &pigBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, saddled: c.Saddled, variant: max(0, min(c.Variant, 2)), soundVariant: sv, speed: .25, effects: NewEffectManager()}
 }
 
 // Pig is a concrete passive pig with growth, saddle and ridden steering state.
 type Pig struct{ *Ent }
-type PigBehaviour struct {
+type pigBehaviour struct {
 	effects           *EffectManager
 	health, maxHealth float64
 	age, variant      int
@@ -119,18 +119,18 @@ type PigBehaviour struct {
 // Variant returns the climate variant of the pig, 0 temperate, 1 warm and 2
 // cold, as the world format saves it besides the name and Bedrock clients are
 // sent it.
-func (p *PigBehaviour) Variant() int32 { return int32(p.variant) }
-func (p *PigBehaviour) Baby() bool     { return p.age < 0 }
+func (p *pigBehaviour) Variant() int32 { return int32(p.variant) }
+func (p *pigBehaviour) Baby() bool     { return p.age < 0 }
 
 // SoundVariant returns the name of the sounds the pig makes.
-func (p *PigBehaviour) SoundVariant() string { return p.soundVariant }
+func (p *pigBehaviour) SoundVariant() string { return p.soundVariant }
 
 // ClimateVariant returns the name of the climate the pig is coloured for.
-func (p *PigBehaviour) ClimateVariant() string {
+func (p *pigBehaviour) ClimateVariant() string {
 	return [...]string{"temperate", "warm", "cold"}[min(p.variant, 2)]
 }
 
-func (p *Pig) behaviour() *PigBehaviour { return p.Behaviour().(*PigBehaviour) }
+func (p *Pig) behaviour() *pigBehaviour { return p.Behaviour().(*pigBehaviour) }
 func (p *Pig) Tick(tx *world.Tx, t int64) {
 	p.behaviour().effects.Tick(p, tx)
 	p.Ent.Tick(tx, t)
@@ -145,7 +145,7 @@ func (p *Pig) Tick(tx *world.Tx, t int64) {
 		}
 	}
 }
-func (b *PigBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (b *pigBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	pig, ok := e.living().(*Pig)
 	if !ok {
 		pig = &Pig{Ent: e}
@@ -159,24 +159,24 @@ func (b *PigBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 
 // registerGoals ports Pig.registerGoals: a pig follows players holding a
 // carrot on a stick as it follows those holding its food.
-func (b *PigBehaviour) registerGoals(m *Mob, pig *Pig) {
+func (b *pigBehaviour) registerGoals(m *Mob, pig *Pig) {
 	ai := m.AI
-	b.panic = NewPanicGoal(1.25)
-	ai.Goals.Add(0, NewFloatGoal(m))
+	b.panic = newPanicGoal(1.25)
+	ai.Goals.Add(0, newFloatGoal(m))
 	ai.Goals.Add(1, b.panic)
-	ai.Goals.Add(3, NewBreedGoal(1))
-	ai.Goals.Add(4, NewTemptGoal(1.2, func(s item.Stack) bool { return itemNamed(s, "minecraft:carrot_on_a_stick") }, false))
-	ai.Goals.Add(4, NewTemptGoal(1.2, pig.breedingFood, false))
-	ai.Goals.Add(5, NewFollowParentGoal(1.1))
-	ai.Goals.Add(6, NewWaterAvoidingRandomStrollGoal(1))
-	ai.Goals.Add(7, NewLookAtPlayerGoal(6))
-	ai.Goals.Add(8, NewRandomLookAroundGoal())
+	ai.Goals.Add(3, newBreedGoal(1))
+	ai.Goals.Add(4, newTemptGoal(1.2, func(s item.Stack) bool { return itemNamed(s, "minecraft:carrot_on_a_stick") }, false))
+	ai.Goals.Add(4, newTemptGoal(1.2, pig.breedingFood, false))
+	ai.Goals.Add(5, newFollowParentGoal(1.1))
+	ai.Goals.Add(6, newWaterAvoidingRandomStrollGoal(1))
+	ai.Goals.Add(7, newLookAtPlayerGoal(6))
+	ai.Goals.Add(8, newRandomLookAroundGoal())
 }
 
 // travel ports LivingEntity.travelRidden for a pig a player steers with a
 // carrot on a stick: Pig.tickRidden turns the pig the way the player looks,
 // and the pig walks forward at 0.225 times its speed, faster while boosted.
-func (b *PigBehaviour) travel(m *Mob, _ mgl64.Vec3) bool {
+func (b *pigBehaviour) travel(m *Mob, _ mgl64.Vec3) bool {
 	c := (&Pig{Ent: m.Ent}).controller(m.tx)
 	if c == nil || !m.Alive() {
 		return false
@@ -318,11 +318,7 @@ func (p *Pig) KnockBack(src mgl64.Vec3, f, h float64) {
 	knockBack(p, src, f, h)
 }
 func (p *Pig) viewAction(a world.EntityAction) {
-	vs := p.tx.Viewers(p.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(p, a)
-	}
-	p.tx.ReleaseViewers(vs)
+	world.BroadcastEntityAction(p.tx, p, a)
 }
 
 // dropCustomDeathLoot drops a pig's saddle, a preserved equipment item.
@@ -451,7 +447,7 @@ func (p *Pig) breedingFood(stack item.Stack) bool {
 // breedOffspring ports Pig.getBreedOffspring: the piglet takes the variant of
 // either parent.
 func (p *Pig) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
-	return babyAt(p).New(PigType, PigConfig{Age: babyStartAge, Variant: randomParent(randomOf(p.tx, p), p.behaviour().variant, partner.(*Pig).behaviour().variant)})
+	return babyAt(p).New(PigType, pigConfig{Age: babyStartAge, Variant: randomParent(randomOf(p.tx, p), p.behaviour().variant, partner.(*Pig).behaviour().variant)})
 }
 
 // FinalizeSpawn ports Pig.finalizeSpawn: the biome selects the variant and
@@ -483,4 +479,4 @@ var _ PassengerDismounter = (*Pig)(nil)
 var _ Linker = (*Pig)(nil)
 var _ Interactable = (*Pig)(nil)
 
-func (b *PigBehaviour) effectManager() *EffectManager { return b.effects }
+func (b *pigBehaviour) effectManager() *EffectManager { return b.effects }

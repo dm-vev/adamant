@@ -17,7 +17,7 @@ import (
 // animalAI is the MobAI of an animal and the goals other code asks about.
 type animalAI struct {
 	ai    MobAI
-	panic *PanicGoal
+	panic *panicGoal
 }
 
 func (a *animalAI) mobAI() *MobAI { return &a.ai }
@@ -52,23 +52,23 @@ type animalSpec struct {
 // stroll, if any.
 func registerAnimalGoals(m *Mob, a *animalAI, spec animalSpec, extra Goal) {
 	ai := m.AI
-	a.panic = NewPanicGoal(spec.panic)
+	a.panic = newPanicGoal(spec.panic)
 	priority := 0
 	add := func(g Goal) {
 		ai.Goals.Add(priority, g)
 		priority++
 	}
-	add(NewFloatGoal(m))
+	add(newFloatGoal(m))
 	add(a.panic)
-	add(NewBreedGoal(spec.breed))
-	add(NewTemptGoal(spec.tempt, spec.tempting, false))
-	add(NewFollowParentGoal(spec.parent))
+	add(newBreedGoal(spec.breed))
+	add(newTemptGoal(spec.tempt, spec.tempting, false))
+	add(newFollowParentGoal(spec.parent))
 	if extra != nil {
 		add(extra)
 	}
-	add(NewWaterAvoidingRandomStrollGoal(spec.stroll))
-	add(NewLookAtPlayerGoal(6))
-	add(NewRandomLookAroundGoal())
+	add(newWaterAvoidingRandomStrollGoal(spec.stroll))
+	add(newLookAtPlayerGoal(6))
+	add(newRandomLookAroundGoal())
 }
 
 // animalEyeHeight returns the eye height of an animal, half as high for a
@@ -82,7 +82,7 @@ func animalEyeHeight(adult float64, baby bool) float64 {
 
 // PanicGoal makes a hurt mob run to a random spot nearby, or to water when
 // it burns, ported from Java's PanicGoal.
-type PanicGoal struct {
+type panicGoal struct {
 	goalFlags
 	SpeedModifier float64
 	// Causes selects the damage the mob panics from, panicCause if nil.
@@ -93,11 +93,11 @@ type PanicGoal struct {
 }
 
 // NewPanicGoal returns a PanicGoal.
-func NewPanicGoal(speedModifier float64) *PanicGoal {
-	return &PanicGoal{goalFlags: goalFlags{GoalMove}, SpeedModifier: speedModifier}
+func newPanicGoal(speedModifier float64) *panicGoal {
+	return &panicGoal{goalFlags: goalFlags{GoalMove}, SpeedModifier: speedModifier}
 }
 
-func (g *PanicGoal) shouldPanic(m *Mob) bool {
+func (g *panicGoal) shouldPanic(m *Mob) bool {
 	src := m.LastDamage()
 	if src == nil {
 		return false
@@ -108,7 +108,7 @@ func (g *PanicGoal) shouldPanic(m *Mob) bool {
 	return panicCause(src)
 }
 
-func (g *PanicGoal) CanUse(m *Mob) bool {
+func (g *panicGoal) CanUse(m *Mob) bool {
 	if !g.shouldPanic(m) {
 		return false
 	}
@@ -118,26 +118,26 @@ func (g *PanicGoal) CanUse(m *Mob) bool {
 			return true
 		}
 	}
-	pos, ok := DefaultRandomPos(m, 5, 4)
+	pos, ok := defaultRandomPos(m, 5, 4)
 	if ok {
 		g.wanted = pos
 	}
 	return ok
 }
 
-func (g *PanicGoal) CanContinueToUse(m *Mob) bool { return !m.AI.nav.IsDone() }
+func (g *panicGoal) CanContinueToUse(m *Mob) bool { return !m.AI.nav.IsDone() }
 
-func (g *PanicGoal) Start(m *Mob) {
+func (g *panicGoal) Start(m *Mob) {
 	m.AI.nav.MoveToPos(m, g.wanted[0], g.wanted[1], g.wanted[2], g.SpeedModifier)
 	g.running = true
 }
 
-func (g *PanicGoal) Stop(*Mob) { g.running = false }
+func (g *panicGoal) Stop(*Mob) { g.running = false }
 
 // BreedGoal walks an animal in love to a partner in love nearby and breeds
 // with it once both spent three seconds together, ported from Java's
 // BreedGoal.
-type BreedGoal struct {
+type breedGoal struct {
 	goalFlags
 	SpeedModifier float64
 
@@ -146,13 +146,13 @@ type BreedGoal struct {
 }
 
 // NewBreedGoal returns a BreedGoal.
-func NewBreedGoal(speedModifier float64) *BreedGoal {
-	return &BreedGoal{goalFlags: goalFlags{GoalMove | GoalLook}, SpeedModifier: speedModifier}
+func newBreedGoal(speedModifier float64) *breedGoal {
+	return &breedGoal{goalFlags: goalFlags{GoalMove | GoalLook}, SpeedModifier: speedModifier}
 }
 
-func (g *BreedGoal) self(m *Mob) breeder { return m.Self.(breeder) }
+func (g *breedGoal) self(m *Mob) breeder { return m.Self.(breeder) }
 
-func (g *BreedGoal) partnerOf(m *Mob) breeder {
+func (g *breedGoal) partnerOf(m *Mob) breeder {
 	if g.partner == nil {
 		return nil
 	}
@@ -167,7 +167,7 @@ func (g *BreedGoal) partnerOf(m *Mob) breeder {
 	return p
 }
 
-func (g *BreedGoal) CanUse(m *Mob) bool {
+func (g *breedGoal) CanUse(m *Mob) bool {
 	a := g.self(m)
 	if !a.InLove() {
 		return false
@@ -183,14 +183,14 @@ func (g *BreedGoal) CanUse(m *Mob) bool {
 	return true
 }
 
-func (g *BreedGoal) CanContinueToUse(m *Mob) bool {
+func (g *breedGoal) CanContinueToUse(m *Mob) bool {
 	p := g.partnerOf(m)
 	return p != nil && p.InLove() && g.loveTime < 60 && !panicking(p)
 }
 
-func (g *BreedGoal) Stop(*Mob) { g.partner, g.loveTime = nil, 0 }
+func (g *breedGoal) Stop(*Mob) { g.partner, g.loveTime = nil, 0 }
 
-func (g *BreedGoal) Tick(m *Mob) {
+func (g *breedGoal) Tick(m *Mob) {
 	p := g.partnerOf(m)
 	if p == nil {
 		return
@@ -205,7 +205,7 @@ func (g *BreedGoal) Tick(m *Mob) {
 
 // TemptGoal makes a mob follow a player holding food it likes, ported from
 // Java's TemptGoal.
-type TemptGoal struct {
+type temptGoal struct {
 	goalFlags
 	SpeedModifier float64
 	Items         func(item.Stack) bool
@@ -231,14 +231,14 @@ type TemptGoal struct {
 }
 
 // NewTemptGoal returns a TemptGoal for items.
-func NewTemptGoal(speedModifier float64, items func(item.Stack) bool, canScare bool) *TemptGoal {
-	return &TemptGoal{goalFlags: goalFlags{GoalMove | GoalLook}, SpeedModifier: speedModifier, Items: items, CanScare: canScare, StopDistance: 2.5}
+func newTemptGoal(speedModifier float64, items func(item.Stack) bool, canScare bool) *temptGoal {
+	return &temptGoal{goalFlags: goalFlags{GoalMove | GoalLook}, SpeedModifier: speedModifier, Items: items, CanScare: canScare, StopDistance: 2.5}
 }
 
 // Running reports if the goal runs.
-func (g *TemptGoal) Running() bool { return g.running }
+func (g *temptGoal) Running() bool { return g.running }
 
-func (g *TemptGoal) holdsItem(_ *Mob, p world.Entity) bool {
+func (g *temptGoal) holdsItem(_ *Mob, p world.Entity) bool {
 	h, ok := p.(interface {
 		HeldItems() (item.Stack, item.Stack)
 	})
@@ -249,7 +249,7 @@ func (g *TemptGoal) holdsItem(_ *Mob, p world.Entity) bool {
 	return g.Items(main) || g.Items(off)
 }
 
-func (g *TemptGoal) CanUse(m *Mob) bool {
+func (g *temptGoal) CanUse(m *Mob) bool {
 	if g.calmDown > 0 {
 		g.calmDown--
 		return false
@@ -268,14 +268,14 @@ func (g *TemptGoal) CanUse(m *Mob) bool {
 	return true
 }
 
-func (g *TemptGoal) canScare(m *Mob) bool {
+func (g *temptGoal) canScare(m *Mob) bool {
 	if g.Scares != nil {
 		return g.Scares(m)
 	}
 	return g.CanScare
 }
 
-func (g *TemptGoal) CanContinueToUse(m *Mob) bool {
+func (g *temptGoal) CanContinueToUse(m *Mob) bool {
 	if g.canScare(m) && g.player != nil {
 		if p, ok := g.player.Entity(m.tx); ok {
 			pos, rot := p.Position(), p.Rotation()
@@ -295,7 +295,7 @@ func (g *TemptGoal) CanContinueToUse(m *Mob) bool {
 	return g.CanUse(m)
 }
 
-func (g *TemptGoal) Start(m *Mob) {
+func (g *temptGoal) Start(m *Mob) {
 	if p, ok := g.player.Entity(m.tx); ok {
 		pos := p.Position()
 		g.px, g.py, g.pz = pos[0], pos[1], pos[2]
@@ -303,14 +303,14 @@ func (g *TemptGoal) Start(m *Mob) {
 	g.running = true
 }
 
-func (g *TemptGoal) Stop(m *Mob) {
+func (g *temptGoal) Stop(m *Mob) {
 	g.player = nil
 	g.stopNavigation(m)
 	g.calmDown = reducedTickDelay(100)
 	g.running = false
 }
 
-func (g *TemptGoal) Tick(m *Mob) {
+func (g *temptGoal) Tick(m *Mob) {
 	p, ok := g.player.Entity(m.tx)
 	if !ok {
 		return
@@ -326,7 +326,7 @@ func (g *TemptGoal) Tick(m *Mob) {
 	}
 }
 
-func (g *TemptGoal) stopNavigation(m *Mob) {
+func (g *temptGoal) stopNavigation(m *Mob) {
 	if g.StopNavigation != nil {
 		g.StopNavigation(m)
 		return
@@ -336,7 +336,7 @@ func (g *TemptGoal) stopNavigation(m *Mob) {
 
 // FollowParentGoal makes a baby animal follow the nearest adult of its kind
 // that is more than three blocks away, ported from Java's FollowParentGoal.
-type FollowParentGoal struct {
+type followParentGoal struct {
 	goalFlags
 	SpeedModifier float64
 	// MinDist and MaxDist are the distances to the adult between which the
@@ -348,16 +348,16 @@ type FollowParentGoal struct {
 }
 
 // NewFollowParentGoal returns a FollowParentGoal.
-func NewFollowParentGoal(speedModifier float64) *FollowParentGoal {
-	return &FollowParentGoal{SpeedModifier: speedModifier, MinDist: 3, MaxDist: 16}
+func newFollowParentGoal(speedModifier float64) *followParentGoal {
+	return &followParentGoal{SpeedModifier: speedModifier, MinDist: 3, MaxDist: 16}
 }
 
 // ageable is implemented by mobs that grow up, as Java's AgeableMob.
 type ageable interface{ ageTicks() *int }
 
-func (g *FollowParentGoal) baby(m *Mob) bool { return *m.Self.(ageable).ageTicks() < 0 }
+func (g *followParentGoal) baby(m *Mob) bool { return *m.Self.(ageable).ageTicks() < 0 }
 
-func (g *FollowParentGoal) CanUse(m *Mob) bool {
+func (g *followParentGoal) CanUse(m *Mob) bool {
 	if !g.baby(m) {
 		return false
 	}
@@ -384,7 +384,7 @@ func (g *FollowParentGoal) CanUse(m *Mob) bool {
 	return true
 }
 
-func (g *FollowParentGoal) CanContinueToUse(m *Mob) bool {
+func (g *followParentGoal) CanContinueToUse(m *Mob) bool {
 	if !g.baby(m) {
 		return false
 	}
@@ -396,11 +396,11 @@ func (g *FollowParentGoal) CanContinueToUse(m *Mob) bool {
 	return d >= g.MinDist*g.MinDist && d <= g.MaxDist*g.MaxDist
 }
 
-func (g *FollowParentGoal) Start(*Mob) { g.timeToRecalcPath = 0 }
+func (g *followParentGoal) Start(*Mob) { g.timeToRecalcPath = 0 }
 
-func (g *FollowParentGoal) Stop(*Mob) { g.parent = nil }
+func (g *followParentGoal) Stop(*Mob) { g.parent = nil }
 
-func (g *FollowParentGoal) Tick(m *Mob) {
+func (g *followParentGoal) Tick(m *Mob) {
 	if g.timeToRecalcPath--; g.timeToRecalcPath > 0 {
 		return
 	}
@@ -412,7 +412,7 @@ func (g *FollowParentGoal) Tick(m *Mob) {
 
 // EatBlockGoal makes a mob lower its head now and then and eat the grass
 // it stands in or on, ported from Java's EatBlockGoal.
-type EatBlockGoal struct {
+type eatBlockGoal struct {
 	goalFlags
 	// Ate is called when the mob ate, as Mob.ate.
 	Ate func(m *Mob)
@@ -421,14 +421,14 @@ type EatBlockGoal struct {
 }
 
 // NewEatBlockGoal returns an EatBlockGoal.
-func NewEatBlockGoal(ate func(m *Mob)) *EatBlockGoal {
-	return &EatBlockGoal{goalFlags: goalFlags{GoalMove | GoalLook | GoalJump}, Ate: ate}
+func newEatBlockGoal(ate func(m *Mob)) *eatBlockGoal {
+	return &eatBlockGoal{goalFlags: goalFlags{GoalMove | GoalLook | GoalJump}, Ate: ate}
 }
 
 // Eating reports if the mob lowers its head to eat.
-func (g *EatBlockGoal) Eating() bool { return g.eatAnimationTick > 0 }
+func (g *eatBlockGoal) Eating() bool { return g.eatAnimationTick > 0 }
 
-func (g *EatBlockGoal) CanUse(m *Mob) bool {
+func (g *eatBlockGoal) CanUse(m *Mob) bool {
 	chance := 1000
 	if b, ok := m.Self.(breeder); ok && *b.ageTicks() < 0 {
 		chance = 50
@@ -440,7 +440,7 @@ func (g *EatBlockGoal) CanUse(m *Mob) bool {
 	return blockInTag(m.tx.Block(pos), "minecraft:edible_for_sheep") || sheepGrass(m.tx, pos.Side(cube.FaceDown))
 }
 
-func (g *EatBlockGoal) Start(m *Mob) {
+func (g *eatBlockGoal) Start(m *Mob) {
 	g.eatAnimationTick = adjustedTickDelay(g, 40)
 	if v, ok := m.Self.(interface{ viewAction(world.EntityAction) }); ok {
 		v.viewAction(EatGrassAction{})
@@ -448,11 +448,11 @@ func (g *EatBlockGoal) Start(m *Mob) {
 	m.AI.nav.Stop()
 }
 
-func (g *EatBlockGoal) Stop(*Mob) { g.eatAnimationTick = 0 }
+func (g *eatBlockGoal) Stop(*Mob) { g.eatAnimationTick = 0 }
 
-func (g *EatBlockGoal) CanContinueToUse(*Mob) bool { return g.eatAnimationTick > 0 }
+func (g *eatBlockGoal) CanContinueToUse(*Mob) bool { return g.eatAnimationTick > 0 }
 
-func (g *EatBlockGoal) Tick(m *Mob) {
+func (g *eatBlockGoal) Tick(m *Mob) {
 	g.eatAnimationTick = max(0, g.eatAnimationTick-1)
 	if g.eatAnimationTick != adjustedTickDelay(g, 4) {
 		return

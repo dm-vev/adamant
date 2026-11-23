@@ -48,16 +48,16 @@ func TestLeashAttachBreakAndFenceKnotLifecycle(t *testing.T) {
 		if !mob.(*Cow).AttachLeash(holder, tx) {
 			t.Fatal("could not reattach cow")
 		}
-		if !TieLeashedEntities(fencePos, tx, holder) {
+		if !tieLeashedEntities(fencePos, tx, holder) {
 			t.Fatal("tying a held cow to a fence did not create a knot")
 		}
 		id := mob.(*Cow).HolderLeashID()
 		if id == 0 || id == holderHandle.UniqueID() {
 			t.Fatalf("cow holder after tying = %d, want knot ID", id)
 		}
-		var knot *LeashKnot
+		var knot *leashKnot
 		for candidate := range tx.Entities() {
-			if k, ok := candidate.(*LeashKnot); ok && k.H().UniqueID() == id {
+			if k, ok := candidate.(*leashKnot); ok && k.H().UniqueID() == id {
 				knot = k
 				break
 			}
@@ -100,20 +100,20 @@ func TestTyingLeadsReusesTheKnot(t *testing.T) {
 		for i, x := range []float64{4.5, 6.5, 30.5} {
 			cow := tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{x, 64, .5}})).(*Cow)
 			cow.AttachLeash(holder, tx)
-			if i < 2 && !TieLeashedEntities(fencePos, tx, holder) {
+			if i < 2 && !tieLeashedEntities(fencePos, tx, holder) {
 				t.Fatalf("could not tie cow %d", i)
 			}
 		}
 		knots := 0
 		for e := range tx.Entities() {
-			if _, ok := e.(*LeashKnot); ok {
+			if _, ok := e.(*leashKnot); ok {
 				knots++
 			}
 		}
 		if knots != 1 {
 			t.Fatalf("%d knots on one fence, want 1", knots)
 		}
-		if TieLeashedEntities(fencePos, tx, holder) {
+		if tieLeashedEntities(fencePos, tx, holder) {
 			t.Fatal("tied a cow led from 30 blocks away")
 		}
 	})

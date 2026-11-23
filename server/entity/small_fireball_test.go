@@ -14,21 +14,21 @@ import (
 func TestSmallFireballType(t *testing.T) {
 	t.Parallel()
 	entityType, ok := DefaultRegistry.Lookup("minecraft:small_fireball")
-	if !ok || entityType != SmallFireballType {
+	if !ok || entityType != entitySmallFireballType {
 		t.Fatalf("small fireball is not registered: %v", entityType)
 	}
 
-	box := SmallFireballType.BBox(nil)
+	box := entitySmallFireballType.BBox(nil)
 	if box.Width() != 0.3125 || box.Height() != 0.3125 || box.Length() != 0.3125 {
 		t.Fatalf("unexpected small fireball bounding box: %#v", box)
 	}
 
 	data := &world.EntityData{}
-	SmallFireballType.DecodeNBT(map[string]any{}, data)
+	entitySmallFireballType.DecodeNBT(map[string]any{}, data)
 	if _, ok := data.Data.(*ProjectileBehaviour); !ok {
 		t.Fatalf("unexpected small fireball behaviour: %T", data.Data)
 	}
-	if nbt := SmallFireballType.EncodeNBT(data); len(nbt) != 0 {
+	if nbt := entitySmallFireballType.EncodeNBT(data); len(nbt) != 0 {
 		t.Fatalf("unexpected small fireball NBT: %#v", nbt)
 	}
 }

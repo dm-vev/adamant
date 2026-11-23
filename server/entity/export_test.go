@@ -106,3 +106,93 @@ func GhastlingWalkTarget(tx *world.Tx, g *HappyGhast) (world.Entity, float64, bo
 	}
 	return nil, wt.speed, true
 }
+
+// Test-only re-exports of unexported entity types, configs, and entity types
+// for external integration tests in package entity_test.
+type (
+	Allay                      = allay
+	ArmourStandBehaviour       = armourStandBehaviour
+	Bat                        = bat
+	BeeConfig                  = beeConfig
+	Blaze                      = blaze
+	Breeze                     = breeze
+	CatBehaviourConfig         = catBehaviourConfig
+	CopperGolemBehaviourConfig = copperGolemBehaviourConfig
+	Creaking                   = creaking
+	Dolphin                    = dolphin
+	Donkey                     = donkey
+	DragonPhase                = dragonPhase
+	EndCrystalBehaviour        = endCrystalBehaviour
+	EnderDragon                = enderDragon
+	EnderDragonBehaviourConfig = enderDragonBehaviourConfig
+	FishingHookConfig          = fishingHookConfig
+	FoxConfig                  = foxConfig
+	Ghast                      = ghast
+	Hoglin                     = hoglin
+	IronGolem                  = ironGolem
+	MooshroomConfig            = mooshroomConfig
+	MountConfig                = mountConfig
+	Nautilus                   = nautilus
+	PandaConfig                = pandaConfig
+	ParrotConfig               = parrotConfig
+	PolarBearConfig            = polarBearConfig
+	Pufferfish                 = pufferfish
+	SheepConfig                = sheepConfig
+	Skeleton                   = skeleton
+	SkeletonHorse              = skeletonHorse
+	Sniffer                    = sniffer
+	SnowGolem                  = snowGolem
+	Strider                    = strider
+	StriderConfig              = striderConfig
+	TNT                        = tntEntity
+	WanderingTrader            = wanderingTrader
+	Warden                     = warden
+	Witch                      = witch
+	Wither                     = wither
+	Zombie                     = zombie
+)
+
+const (
+	DragonDying            = dragonDying
+	DragonHoldingPattern   = dragonHoldingPattern
+	DragonHovering         = dragonHovering
+	DragonLanding          = dragonLanding
+	DragonSittingAttacking = dragonSittingAttacking
+	DragonSittingFlaming   = dragonSittingFlaming
+	DragonSittingScanning  = dragonSittingScanning
+	DragonTakeoff          = dragonTakeoff
+)
+
+var (
+	BeeType                = entityBeeType
+	BoatType               = entityBoatType
+	BottleOfEnchantingType = entityBottleOfEnchantingType
+	CatType                = entityCatType
+	ChestBoatType          = entityChestBoatType
+	CopperGolemType        = entityCopperGolemType
+	DonkeyType             = donkeyType
+	EggType                = entityEggType
+	EnderDragonType        = entityEnderDragonType
+	FishingHookType        = entityFishingHookType
+	FoxType                = entityFoxType
+	HorseType              = horseType
+	LightningType          = entityLightningType
+	MooshroomType          = entityMooshroomType
+	NautilusType           = entityNautilusType
+	PandaType              = entityPandaType
+	ParrotType             = entityParrotType
+	PolarBearType          = entityPolarBearType
+	SalmonType             = salmonType
+	SheepType              = entitySheepType
+	SilverfishType         = entitySilverfishType
+	SkeletonHorseType      = skeletonHorseType
+	SmallFireballType      = entitySmallFireballType
+	SnowballType           = entitySnowballType
+	SplashPotionType       = entitySplashPotionType
+	StriderType            = entityStriderType
+	TraderLlamaType        = traderLlamaType
+	WindChargeType         = entityWindChargeType
+	WitherSkullType        = entityWitherSkullType
+	ZombieType             = zombieType
+	StartRiding            = startRiding
+)

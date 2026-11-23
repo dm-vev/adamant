@@ -22,7 +22,7 @@ func (s *netherState) aiTickBlaze(e *Ent, tx *world.Tx) *Movement {
 	if ai.started && !ai.onGround && e.data.Vel[1] < 0 {
 		e.data.Vel[1] *= .6
 	}
-	self := &Blaze{e}
+	self := &blaze{e}
 	mov := ai.Tick(e, self, s.registerBlazeGoals)
 	if !s.dead {
 		tickWaterSensitive(ai.Mob(e, self))
@@ -34,7 +34,7 @@ func (s *netherState) aiTickBlaze(e *Ent, tx *world.Tx) *Movement {
 func (s *netherState) aiTickGhast(e *Ent, tx *world.Tx) *Movement {
 	ai := &s.ai
 	ai.FollowRange, ai.EyeHeight, ai.FlyingSpeed = 100, 2.6, .06
-	return ai.Tick(e, &Ghast{e}, s.registerGhastGoals)
+	return ai.Tick(e, &ghast{e}, s.registerGhastGoals)
 }
 
 // registerBlazeGoals ports Blaze.registerGoals.
@@ -45,15 +45,15 @@ func (s *netherState) registerBlazeGoals(m *Mob) {
 	ai.SetPathfindingMalus(PathFireInNeighbour, 0)
 	ai.SetPathfindingMalus(PathFire, 0)
 	ai.Goals.Add(4, &blazeAttackGoal{goalFlags: goalFlags{GoalMove | GoalLook}})
-	stroll := NewWaterAvoidingRandomStrollGoal(1)
+	stroll := newWaterAvoidingRandomStrollGoal(1)
 	stroll.Probability = 0
 	ai.Goals.Add(7, stroll)
-	ai.Goals.Add(8, NewLookAtPlayerGoal(8))
-	ai.Goals.Add(8, NewRandomLookAroundGoal())
-	hurt := NewHurtByTargetGoal()
+	ai.Goals.Add(8, newLookAtPlayerGoal(8))
+	ai.Goals.Add(8, newRandomLookAroundGoal())
+	hurt := newHurtByTargetGoal()
 	hurt.AlertOthers = true
 	ai.Targets.Add(1, hurt)
-	ai.Targets.Add(2, NewNearestAttackableTargetGoal(nil, true))
+	ai.Targets.Add(2, newNearestAttackableTargetGoal(nil, true))
 }
 
 // registerGhastGoals ports Ghast.registerGoals.
@@ -63,7 +63,7 @@ func (s *netherState) registerGhastGoals(m *Mob) {
 	ai.Goals.Add(5, &ghastRandomFloatAroundGoal{goalFlags: goalFlags{GoalMove}})
 	ai.Goals.Add(7, &ghastLookGoal{goalFlags{GoalLook}})
 	ai.Goals.Add(7, &ghastShootFireballGoal{})
-	players := NewNearestAttackableTargetGoal(nil, true)
+	players := newNearestAttackableTargetGoal(nil, true)
 	players.Selector = func(m *Mob, target world.Entity) bool { return math.Abs(target.Position()[1]-m.data.Pos[1]) <= 4 }
 	ai.Targets.Add(1, players)
 }

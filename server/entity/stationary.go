@@ -31,14 +31,14 @@ func (conf StationaryBehaviourConfig) New() *StationaryBehaviour {
 	if conf.ExistenceDuration == 0 {
 		conf.ExistenceDuration = math.MaxInt64
 	}
-	return &StationaryBehaviour{BaseBehaviour: NewBaseBehaviour(), conf: conf}
+	return &StationaryBehaviour{baseBehaviour: newBaseBehaviour(), conf: conf}
 }
 
 // StationaryBehaviour implements the behaviour of an entity that is unable to
 // move, such as a text entity or an area effect cloud. Applying velocity to
 // such entities will not move them.
 type StationaryBehaviour struct {
-	BaseBehaviour
+	baseBehaviour
 
 	conf  StationaryBehaviourConfig
 	close bool

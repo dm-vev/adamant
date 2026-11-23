@@ -74,13 +74,13 @@ func (b *oceanWildlifeBehaviour) registerDolphinGoals(m *Mob) {
 	ai.Goals.Add(0, &tryFindWaterGoal{})
 	ai.Goals.Add(1, &dolphinSwimToTreasureGoal{goalFlags: goalFlags{GoalMove | GoalLook}, dolphin: b})
 	ai.Goals.Add(2, &dolphinSwimWithPlayerGoal{goalFlags: goalFlags{GoalMove | GoalLook}, speed: 4})
-	swim := NewRandomStrollGoal(1)
+	swim := newRandomStrollGoal(1)
 	swim.Interval, swim.Position = 10, randomSwimmablePos
 	ai.Goals.Add(4, swim)
-	ai.Goals.Add(4, NewRandomLookAroundGoal())
-	ai.Goals.Add(5, NewLookAtPlayerGoal(6))
+	ai.Goals.Add(4, newRandomLookAroundGoal())
+	ai.Goals.Add(5, newLookAtPlayerGoal(6))
 	ai.Goals.Add(5, &dolphinJumpGoal{goalFlags: goalFlags{GoalMove | GoalJump}, interval: reducedTickDelay(10)})
-	ai.Goals.Add(6, NewMeleeAttackGoal(1.2, true))
+	ai.Goals.Add(6, newMeleeAttackGoal(1.2, true))
 	ai.Goals.Add(7, &dolphinMoveToItemGoal{goalFlags: goalFlags{GoalMove}, dolphin: b})
 	ai.Goals.Add(8, &dolphinPlayWithItemsGoal{dolphin: b})
 	ai.Goals.Add(8, &followPlayerRiddenEntityGoal{isType: func(e world.Entity) bool { _, ok := e.(*Boat); return ok }})
@@ -91,8 +91,8 @@ func (b *oceanWildlifeBehaviour) registerDolphinGoals(m *Mob) {
 		}
 		return false
 	}})
-	ai.Goals.Add(9, NewAvoidEntityTypesGoal(entityTypes{"minecraft:guardian", "minecraft:elder_guardian"}, 8, 1, 1))
-	hurt := NewHurtByTargetGoal()
+	ai.Goals.Add(9, newAvoidEntityTypesGoal(entityTypes{"minecraft:guardian", "minecraft:elder_guardian"}, 8, 1, 1))
+	hurt := newHurtByTargetGoal()
 	hurt.IgnoreDamageFrom = entityIs("minecraft:guardian", "minecraft:elder_guardian")
 	hurt.AlertOthers = true
 	ai.Targets.Add(1, hurt)
@@ -134,7 +134,7 @@ func (b *oceanWildlifeBehaviour) travelDolphin(m *Mob, input mgl64.Vec3) bool {
 
 // Collect ports Dolphin.pickUpItem: a dolphin with nothing in its mouth
 // takes a whole stack.
-func (d *Dolphin) Collect(stack item.Stack) (int, bool) {
+func (d *dolphin) Collect(stack item.Stack) (int, bool) {
 	b := d.b()
 	if d.Dead() || stack.Empty() || !b.held.Empty() || mobGriefingDisabled(d.tx) {
 		return 0, false
@@ -145,22 +145,18 @@ func (d *Dolphin) Collect(stack item.Stack) (int, bool) {
 }
 
 // HeldItems returns the item the dolphin plays with.
-func (d *Dolphin) HeldItems() (item.Stack, item.Stack) { return d.b().held, item.Stack{} }
+func (d *dolphin) HeldItems() (item.Stack, item.Stack) { return d.b().held, item.Stack{} }
 
 // SetHeldItems changes the item the dolphin holds in its mouth and shows its
 // viewers.
-func (d *Dolphin) SetHeldItems(main, _ item.Stack) {
+func (d *dolphin) SetHeldItems(main, _ item.Stack) {
 	d.b().held = main
 	viewEquipment(d.tx, d)
 }
 
 // viewHeldItem shows viewers the item a dolphin holds.
 func (b *oceanWildlifeBehaviour) viewHeldItem(e *Ent) {
-	viewers := e.tx.Viewers(e.data.Pos)
-	for _, v := range viewers {
-		v.ViewEntityItems(oceanWildlifeEntity(e))
-	}
-	e.tx.ReleaseViewers(viewers)
+	world.BroadcastEntityItems(e.tx, oceanWildlifeEntity(e))
 }
 
 // dropHeld ports Dolphin.ItemGoal.dropItem: a dolphin tosses the item in
@@ -377,13 +373,13 @@ func (g *dolphinSwimToTreasureGoal) Tick(m *Mob) {
 		return
 	}
 	treasure := cube.Pos{b.treasureX, b.treasureY, b.treasureZ}.Vec3Centre()
-	next, found := DefaultRandomPosTowards(m, 16, 1, treasure, math.Pi/8)
+	next, found := defaultRandomPosTowards(m, 16, 1, treasure, math.Pi/8)
 	if !found {
-		next, found = DefaultRandomPosTowards(m, 8, 4, treasure, math.Pi/2)
+		next, found = defaultRandomPosTowards(m, 8, 4, treasure, math.Pi/2)
 	}
 	if found {
 		if p := cube.PosFromVec3(next); !pathWater(m.tx, p) || !pathfindableWater(m, p) {
-			next, found = DefaultRandomPosTowards(m, 8, 5, treasure, math.Pi/2)
+			next, found = defaultRandomPosTowards(m, 8, 5, treasure, math.Pi/2)
 		}
 	}
 	if !found {

@@ -41,7 +41,7 @@ func (cowType) BBox(entity world.Entity) cube.BBox {
 
 func (cowType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf := CowConfig{}
-	javaState := ReadNativeMobJavaState(m)
+	javaState := readNativeMobJavaState(m)
 	source := m
 	if javaState != nil {
 		source = javaState
@@ -72,16 +72,16 @@ func (cowType) DecodeNBT(m map[string]any, data *world.EntityData) {
 func (cowType) EncodeNBT(data *world.EntityData) map[string]any {
 	cow := data.Data.(*CowBehaviour)
 	health := cow.health
-	attributes := EncodeNativeMobAttributes(ReadNativeMobAttributes(data.NativeNBT), []NativeMobAttribute{{
+	attributes := encodeNativeMobAttributes(readNativeMobAttributes(data.NativeNBT), []nativeMobAttr{{
 		Name: "minecraft:health", Base: health.MaxHealth(), Current: health.Health(),
 		DefaultMin: 0, DefaultMax: health.MaxHealth(), Min: 0, Max: health.MaxHealth(),
 	}})
-	native := MergeNativeMobNBT(data.NativeNBT, map[string]any{"Attributes": attributes})
-	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(data.NativeNBT), cow.breeding.encodeNBT(map[string]any{
+	native := mergeNativeMobNBT(data.NativeNBT, map[string]any{"Attributes": attributes})
+	javaState := mergeNativeMobNBT(readNativeMobJavaState(data.NativeNBT), cow.breeding.encodeNBT(map[string]any{
 		"Age": int32(cow.ageTicks), "variant": "minecraft:" + [...]string{"temperate", "warm", "cold"}[min(cow.variant, 2)],
 		"sound_variant": "minecraft:" + cow.soundVariant,
 	}))
-	return MergeNativeMobJavaState(native, javaState)
+	return mergeNativeMobJavaState(native, javaState)
 }
 
 func cowVariant(value string) int {
@@ -120,7 +120,7 @@ func (conf CowConfig) New() *CowBehaviour {
 		soundVariant = "classic"
 	}
 	return &CowBehaviour{
-		BaseBehaviour: NewBaseBehaviour(),
+		baseBehaviour: newBaseBehaviour(),
 		health:        NewHealthManager(conf.Health, conf.MaxHealth),
 		effects:       NewEffectManager(),
 		variant:       max(0, min(conf.Variant, 2)),
@@ -134,7 +134,7 @@ func (conf CowConfig) New() *CowBehaviour {
 type Cow struct{ *Ent }
 
 type CowBehaviour struct {
-	BaseBehaviour
+	baseBehaviour
 	health            *HealthManager
 	effects           *EffectManager
 	variant, ageTicks int
@@ -258,11 +258,7 @@ func (c *Cow) hasEffect(t effect.Type) bool {
 }
 
 func (c *Cow) viewAction(action world.EntityAction) {
-	viewers := c.tx.Viewers(c.Position())
-	for _, viewer := range viewers {
-		viewer.ViewEntityAction(c, action)
-	}
-	c.tx.ReleaseViewers(viewers)
+	world.BroadcastEntityAction(c.tx, c, action)
 }
 
 func (c *Cow) die(src world.DamageSource) {

@@ -16,7 +16,7 @@ import (
 
 // registerGoals ports Rabbit.registerGoals and the goals Rabbit.setVariant
 // adds to the killer bunny.
-func (b *RabbitBehaviour) registerGoals(m *Mob) {
+func (b *rabbitBehaviour) registerGoals(m *Mob) {
 	ai := m.AI
 	ai.move.adjustWanted = func(speedModifier float64) float64 {
 		// RabbitMoveControl.setWantedPosition: a rabbit swims at 1.5 times
@@ -32,32 +32,32 @@ func (b *RabbitBehaviour) registerGoals(m *Mob) {
 	ai.moveOverride = rabbitMoveControl{b}
 	b.setSpeedModifier(m, 0)
 
-	b.panic = NewPanicGoal(2.2)
-	ai.Goals.Add(1, NewFloatGoal(m))
+	b.panic = newPanicGoal(2.2)
+	ai.Goals.Add(1, newFloatGoal(m))
 	ai.Goals.Add(1, newClimbOnTopOfPowderSnowGoal())
 	ai.Goals.Add(1, rabbitPanicGoal{b.panic, b})
-	ai.Goals.Add(2, NewBreedGoal(.8))
-	ai.Goals.Add(3, NewTemptGoal(1, rabbitFood, false))
+	ai.Goals.Add(2, newBreedGoal(.8))
+	ai.Goals.Add(3, newTemptGoal(1, rabbitFood, false))
 	isMonster := func(e world.Entity) bool { return monsterClass[e.H().Type().EncodeEntity()] }
-	ai.Goals.Add(4, rabbitAvoidEntityGoal{NewAvoidEntityTypesGoal(playerTypes, 8, 2.2, 2.2), b})
-	ai.Goals.Add(4, rabbitAvoidEntityGoal{NewAvoidEntityTypesGoal(entityTypes{"minecraft:wolf"}, 10, 2.2, 2.2), b})
-	ai.Goals.Add(4, rabbitAvoidEntityGoal{NewAvoidEntityGoal(isMonster, 4, 2.2, 2.2), b})
+	ai.Goals.Add(4, rabbitAvoidEntityGoal{newAvoidEntityTypesGoal(playerTypes, 8, 2.2, 2.2), b})
+	ai.Goals.Add(4, rabbitAvoidEntityGoal{newAvoidEntityTypesGoal(entityTypes{"minecraft:wolf"}, 10, 2.2, 2.2), b})
+	ai.Goals.Add(4, rabbitAvoidEntityGoal{newAvoidEntityGoal(isMonster, 4, 2.2, 2.2), b})
 	ai.Goals.Add(5, &raidGardenGoal{goalFlags: goalFlags{GoalMove | GoalJump}, rabbit: b})
-	ai.Goals.Add(6, NewWaterAvoidingRandomStrollGoal(.6))
-	ai.Goals.Add(11, NewLookAtPlayerGoal(10))
+	ai.Goals.Add(6, newWaterAvoidingRandomStrollGoal(.6))
+	ai.Goals.Add(11, newLookAtPlayerGoal(10))
 	if b.killer {
-		ai.Goals.Add(4, NewMeleeAttackGoal(1.4, true))
-		hurt := NewHurtByTargetGoal()
+		ai.Goals.Add(4, newMeleeAttackGoal(1.4, true))
+		hurt := newHurtByTargetGoal()
 		hurt.AlertOthers = true
 		ai.Targets.Add(1, hurt)
-		ai.Targets.Add(2, NewNearestAttackableTypesGoal(playerTypes, true))
-		ai.Targets.Add(2, NewNearestAttackableTypesGoal(entityTypes{"minecraft:wolf"}, true))
+		ai.Targets.Add(2, newNearestAttackableTypesGoal(playerTypes, true))
+		ai.Targets.Add(2, newNearestAttackableTypesGoal(entityTypes{"minecraft:wolf"}, true))
 	}
 }
 
 // setSpeedModifier ports Rabbit.setSpeedModifier: it sets the speed of the
 // path the rabbit follows and wants to walk at.
-func (b *RabbitBehaviour) setSpeedModifier(m *Mob, speed float64) {
+func (b *rabbitBehaviour) setSpeedModifier(m *Mob, speed float64) {
 	m.AI.nav.SetSpeedModifier(speed)
 	w := m.AI.move.Wanted()
 	m.AI.move.SetWantedPosition(w[0], w[1], w[2], speed)
@@ -65,7 +65,7 @@ func (b *RabbitBehaviour) setSpeedModifier(m *Mob, speed float64) {
 
 // setJumping ports Rabbit.setJumping, which plays the hop sound when the
 // rabbit jumps.
-func (b *RabbitBehaviour) setJumping(m *Mob, jump bool) {
+func (b *rabbitBehaviour) setJumping(m *Mob, jump bool) {
 	m.AI.jumping = jump
 	if jump {
 		r := m.Random()
@@ -74,19 +74,19 @@ func (b *RabbitBehaviour) setJumping(m *Mob, jump bool) {
 }
 
 // startJumping ports Rabbit.startJumping: a hop lasts 15 ticks.
-func (b *RabbitBehaviour) startJumping(m *Mob) {
+func (b *rabbitBehaviour) startJumping(m *Mob) {
 	b.setJumping(m, true)
 	b.jumpDuration, b.jumpTicks = 15, 0
 }
 
 // facePoint ports Rabbit.facePoint.
-func (b *RabbitBehaviour) facePoint(m *Mob, x, z float64) {
+func (b *rabbitBehaviour) facePoint(m *Mob, x, z float64) {
 	m.SetYaw(math.Atan2(z-m.data.Pos[2], x-m.data.Pos[0])*180/math.Pi - 90)
 }
 
 // tickJumpControl ports RabbitJumpControl.tick: a jump the rabbit wants
 // starts a hop.
-func (b *RabbitBehaviour) tickJumpControl(m *Mob) {
+func (b *rabbitBehaviour) tickJumpControl(m *Mob) {
 	if m.AI.jump.jump {
 		b.startJumping(m)
 		m.AI.jump.jump = false
@@ -96,7 +96,7 @@ func (b *RabbitBehaviour) tickJumpControl(m *Mob) {
 // customServerAiStep ports Rabbit.customServerAiStep: on the ground the
 // rabbit waits out its landing delay, then hops towards where it wants to
 // go, and the killer bunny hops at a target within four blocks.
-func (b *RabbitBehaviour) customServerAiStep(m *Mob) {
+func (b *rabbitBehaviour) customServerAiStep(m *Mob) {
 	if b.jumpDelayTicks > 0 {
 		b.jumpDelayTicks--
 	}
@@ -136,7 +136,7 @@ func (b *RabbitBehaviour) customServerAiStep(m *Mob) {
 // jumpFromGround ports Rabbit.jumpFromGround and getJumpPower: a rabbit hops
 // higher while it runs or jumps onto a block, and a rabbit that stands still
 // pushes off forwards.
-func (b *RabbitBehaviour) jumpFromGround(m *Mob) bool {
+func (b *rabbitBehaviour) jumpFromGround(m *Mob) bool {
 	ai := m.AI
 	power := float32(.3)
 	if ai.move.SpeedModifier() <= .6 {
@@ -162,11 +162,11 @@ func (b *RabbitBehaviour) jumpFromGround(m *Mob) bool {
 	return true
 }
 
-func (b *RabbitBehaviour) jumpInLiquid(*Mob, bool) bool { return false }
+func (b *rabbitBehaviour) jumpInLiquid(*Mob, bool) bool { return false }
 
 // rabbitMoveControl ports RabbitMoveControl: a rabbit on the ground stands
 // still until it hops, and moves at the speed it wanted while it does.
-type rabbitMoveControl struct{ rabbit *RabbitBehaviour }
+type rabbitMoveControl struct{ rabbit *rabbitBehaviour }
 
 func (c rabbitMoveControl) tick(m *Mob) {
 	b := c.rabbit
@@ -182,8 +182,8 @@ func (c rabbitMoveControl) tick(m *Mob) {
 // rabbitPanicGoal ports RabbitPanicGoal: a panicking rabbit keeps hopping
 // at its panic speed.
 type rabbitPanicGoal struct {
-	*PanicGoal
-	rabbit *RabbitBehaviour
+	*panicGoal
+	rabbit *rabbitBehaviour
 }
 
 func (g rabbitPanicGoal) Tick(m *Mob) { g.rabbit.setSpeedModifier(m, g.SpeedModifier) }
@@ -191,12 +191,12 @@ func (g rabbitPanicGoal) Tick(m *Mob) { g.rabbit.setSpeedModifier(m, g.SpeedModi
 // rabbitAvoidEntityGoal ports RabbitAvoidEntityGoal: the killer bunny flees
 // from nothing.
 type rabbitAvoidEntityGoal struct {
-	*AvoidEntityGoal
-	rabbit *RabbitBehaviour
+	*avoidEntityGoal
+	rabbit *rabbitBehaviour
 }
 
 func (g rabbitAvoidEntityGoal) CanUse(m *Mob) bool {
-	return !g.rabbit.killer && g.AvoidEntityGoal.CanUse(m)
+	return !g.rabbit.killer && g.avoidEntityGoal.CanUse(m)
 }
 
 // raidGardenGoal ports Rabbit.RaidGardenGoal: a rabbit that has not eaten
@@ -205,7 +205,7 @@ func (g rabbitAvoidEntityGoal) CanUse(m *Mob) bool {
 type raidGardenGoal struct {
 	goalFlags
 	moveToBlock
-	rabbit               *RabbitBehaviour
+	rabbit               *rabbitBehaviour
 	wantsToRaid, canRaid bool
 }
 

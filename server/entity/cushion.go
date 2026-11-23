@@ -10,19 +10,19 @@ import (
 
 // NewCushion creates a worldless cushion entity handle with a dye colour id.
 func NewCushion(opts world.EntitySpawnOpts, color int) *world.EntityHandle {
-	return opts.New(CushionType, CushionBehaviourConfig{Color: uint8(max(0, min(color, 15)))})
+	return opts.New(entityCushionType, cushionBehaviourConfig{Color: uint8(max(0, min(color, 15)))})
 }
 
-var CushionType cushionType
+var entityCushionType cushionType
 type cushionType struct{}
 func (cushionType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.EntityData) world.Entity {
-	if data.Data == nil { CushionBehaviourConfig{}.Apply(data) }
+	if data.Data == nil { cushionBehaviourConfig{}.Apply(data) }
 	return &Cushion{Ent: &Ent{tx:tx, handle:handle, data:data}}
 }
 func (cushionType) EncodeEntity() string { return "minecraft:cushion" }
 func (cushionType) BBox(world.Entity) cube.BBox { return cube.Box(-0.5,0,-0.5,0.5,0.25,0.5) }
 func (cushionType) DecodeNBT(m map[string]any, data *world.EntityData) {
-	conf := CushionBehaviourConfig{}
+	conf := cushionBehaviourConfig{}
 	if raw, ok := m["color"]; ok {
 		switch v := raw.(type) {
 		case string:
@@ -34,15 +34,15 @@ func (cushionType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	data.Data = conf.New()
 }
 func (cushionType) EncodeNBT(data *world.EntityData) map[string]any {
-	return map[string]any{"color": item.Colours()[data.Data.(*CushionBehaviour).color].String()}
+	return map[string]any{"color": item.Colours()[data.Data.(*cushionBehaviour).color].String()}
 }
 
 // CushionBehaviourConfig configures the cushion's dye colour.
-type CushionBehaviourConfig struct { Color uint8 }
-func (c CushionBehaviourConfig) Apply(data *world.EntityData) { data.Data = c.New() }
-func (c CushionBehaviourConfig) New() *CushionBehaviour { return &CushionBehaviour{stationary: StationaryBehaviourConfig{}.New(), color: min(c.Color, 15)} }
-type CushionBehaviour struct { stationary *StationaryBehaviour; color uint8; passenger *world.EntityHandle }
-func (b *CushionBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+type cushionBehaviourConfig struct { Color uint8 }
+func (c cushionBehaviourConfig) Apply(data *world.EntityData) { data.Data = c.New() }
+func (c cushionBehaviourConfig) New() *cushionBehaviour { return &cushionBehaviour{stationary: StationaryBehaviourConfig{}.New(), color: min(c.Color, 15)} }
+type cushionBehaviour struct { stationary *StationaryBehaviour; color uint8; passenger *world.EntityHandle }
+func (b *cushionBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if !item.CushionWouldSurviveAt(tx, cushionType{}.BBox(e).Translate(e.Position())) {
 		b.DismountAll(e,tx)
 		tx.AddEntity(NewItem(world.EntitySpawnOpts{Position:e.Position()},item.NewStack(item.Cushion{Colour:item.Colours()[int(b.color)]},1)))
@@ -57,7 +57,7 @@ func (b *CushionBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	}
 	return b.stationary.Tick(e,tx)
 }
-func (b *CushionBehaviour) DismountAll(e *Ent, tx *world.Tx) {
+func (b *cushionBehaviour) DismountAll(e *Ent, tx *world.Tx) {
 	if b.passenger == nil { return }
 	h := b.passenger
 	b.passenger = nil
@@ -69,12 +69,12 @@ func (b *CushionBehaviour) DismountAll(e *Ent, tx *world.Tx) {
 
 // Cushion is a small rideable decorative entity.
 type Cushion struct { *Ent }
-func (c *Cushion) Color() uint8 { return c.Behaviour().(*CushionBehaviour).color }
+func (c *Cushion) Color() uint8 { return c.Behaviour().(*cushionBehaviour).color }
 func (c *Cushion) Interact(tx *world.Tx, user item.User, _ *item.UseContext) bool {
 	return c.Mount(tx,user)
 }
 func (c *Cushion) Mount(tx *world.Tx, passenger world.Entity) bool {
-	b := c.Behaviour().(*CushionBehaviour)
+	b := c.Behaviour().(*cushionBehaviour)
 	if passenger == nil || b.passenger != nil { return false }
 	r, ok := passenger.(Rider)
 	if !ok || r.Riding() != nil { return false }
@@ -85,13 +85,13 @@ func (c *Cushion) Mount(tx *world.Tx, passenger world.Entity) bool {
 	return true
 }
 func (c *Cushion) Dismount(tx *world.Tx, passenger world.Entity) {
-	b:=c.Behaviour().(*CushionBehaviour)
+	b:=c.Behaviour().(*cushionBehaviour)
 	if passenger==nil || b.passenger==nil || passenger.H()!=b.passenger { return }
 	h:=b.passenger; b.passenger=nil
 	if r,ok:=passenger.(Rider);ok { r.SetRiding(nil) }
 	c.broadcastLink(tx,h,false)
 }
-func (c *Cushion) Passenger() *world.EntityHandle { return c.Behaviour().(*CushionBehaviour).passenger }
+func (c *Cushion) Passenger() *world.EntityHandle { return c.Behaviour().(*cushionBehaviour).passenger }
 
 // RiderSeat returns the seat of Bedrock's cushion, which turns its rider
 // sideways.
@@ -108,7 +108,7 @@ func (c *Cushion) broadcastLink(tx *world.Tx, rider *world.EntityHandle, mounted
 	tx.ReleaseViewers(viewers)
 }
 func (c *Cushion) Destroy(tx *world.Tx, _ world.DamageSource, _ world.Entity) bool {
-	b := c.Behaviour().(*CushionBehaviour)
+	b := c.Behaviour().(*cushionBehaviour)
 	b.DismountAll(c.Ent, tx)
 	tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: c.Position()}, item.NewStack(item.Cushion{Colour: item.Colours()[int(b.color)]}, 1)))
 	_ = c.CloseIn(tx)

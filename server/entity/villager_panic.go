@@ -25,7 +25,7 @@ func (v *Villager) spawnGolemIfNeeded(tx *world.Tx, current int64, needed int) {
 	}
 	var nearby []*Villager
 	wanting := 0
-	for e := range tx.EntitiesWithin(VillagerType.BBox(v).Translate(v.Position()).Grow(10)) {
+	for e := range tx.EntitiesWithin(entityVillagerType.BBox(v).Translate(v.Position()).Grow(10)) {
 		other, ok := e.(*Villager)
 		if !ok {
 			continue
@@ -108,7 +108,7 @@ func ironGolemFits(tx *world.Tx, pos cube.Pos) bool {
 			return false
 		}
 	}
-	box := IronGolemType.BBox(nil).Translate(pos.Vec3Middle())
+	box := entityIronGolemType.BBox(nil).Translate(pos.Vec3Middle())
 	for e := range tx.EntitiesWithin(box.Grow(2)) {
 		if e.H().Type().BBox(e).Translate(e.Position()).IntersectsWith(box) {
 			return false

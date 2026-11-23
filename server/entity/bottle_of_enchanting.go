@@ -13,7 +13,7 @@ import (
 func NewBottleOfEnchanting(opts world.EntitySpawnOpts, owner world.Entity) *world.EntityHandle {
 	conf := bottleOfEnchantingConf
 	conf.Owner = ownerHandle(owner)
-	return opts.New(BottleOfEnchantingType, conf)
+	return opts.New(entityBottleOfEnchantingType, conf)
 }
 
 var bottleOfEnchantingConf = ProjectileBehaviourConfig{
@@ -35,7 +35,7 @@ func spawnExperience(_ *Ent, tx *world.Tx, target trace.Result) {
 }
 
 // BottleOfEnchantingType is a world.EntityType for BottleOfEnchanting.
-var BottleOfEnchantingType bottleOfEnchantingType
+var entityBottleOfEnchantingType bottleOfEnchantingType
 
 type bottleOfEnchantingType struct{}
 

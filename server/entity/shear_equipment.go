@@ -58,7 +58,7 @@ func (p *Pig) ShearEquipment(tx *world.Tx, user world.Entity) bool {
 }
 
 // ShearEquipment shears the saddle off a strider nobody rides.
-func (s *Strider) ShearEquipment(tx *world.Tx, user world.Entity) bool {
+func (s *strider) ShearEquipment(tx *world.Tx, user world.Entity) bool {
 	b := s.b()
 	if !b.saddled || b.passenger != nil {
 		return false

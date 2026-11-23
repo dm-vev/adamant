@@ -35,10 +35,10 @@ func TestSpawnedMobsTakeTheirBiomeVariant(t *testing.T) {
 		if v := spawn(tx, "minecraft:chicken", "ice_plains", 4.5).(*Chicken).ClimateVariant(); v != "cold" {
 			t.Errorf("snowy chicken is %s, want cold", v)
 		}
-		if v := spawn(tx, "minecraft:frog", "mangrove_swamp", 6.5).(*Frog).Variant(); v != 2 {
+		if v := spawn(tx, "minecraft:frog", "mangrove_swamp", 6.5).(*frog).Variant(); v != 2 {
 			t.Errorf("mangrove frog has Bedrock variant %d, want warm 2", v)
 		}
-		if v := spawn(tx, "minecraft:frog", "ice_plains", 8.5).(*Frog).Variant(); v != 1 {
+		if v := spawn(tx, "minecraft:frog", "ice_plains", 8.5).(*frog).Variant(); v != 1 {
 			t.Errorf("snowy frog has Bedrock variant %d, want cold 1", v)
 		}
 		if v := spawn(tx, "minecraft:wolf", "forest", 10.5).(*Wolf).Variant(); wolfVariantNames[v] != "woods" {

@@ -86,31 +86,31 @@ func (b *oceanBehaviour) registerDrownedGoals(m *Mob) {
 	ai.nav.SetAmphibious(true)
 	ai.moveOverride = &drownedMoveControl{}
 	ai.SetPathfindingMalus(PathWater, 0)
-	ai.Goals.Add(8, NewLookAtPlayerGoal(8))
-	ai.Goals.Add(8, NewRandomLookAroundGoal())
+	ai.Goals.Add(8, newLookAtPlayerGoal(8))
+	ai.Goals.Add(8, newRandomLookAroundGoal())
 	ai.Goals.Add(1, &drownedGoToWaterGoal{goalFlags: goalFlags{GoalMove}})
 	ai.Goals.Add(2, newDrownedTridentAttackGoal())
-	attack := NewMeleeAttackGoal(1, false)
+	attack := newMeleeAttackGoal(1, false)
 	raiseArmTicks := 0
-	attack.OnTick = func(m *Mob, g *MeleeAttackGoal) {
+	attack.OnTick = func(m *Mob, g *meleeAttackGoal) {
 		raiseArmTicks++
 		m.SetAggressive(raiseArmTicks >= 5 && g.TicksUntilNextAttack() < g.AttackInterval()/2)
 	}
-	ai.Goals.Add(2, &drownedAttackGoal{zombieAttackGoal{MeleeAttackGoal: attack, raiseArmTicks: &raiseArmTicks}})
+	ai.Goals.Add(2, &drownedAttackGoal{zombieAttackGoal{meleeAttackGoal: attack, raiseArmTicks: &raiseArmTicks}})
 	ai.Goals.Add(5, &drownedGoToBeachGoal{goalFlags: goalFlags{GoalMove | GoalJump}})
 	ai.Goals.Add(6, &drownedSwimUpGoal{})
-	ai.Goals.Add(7, NewRandomStrollGoal(1))
-	hurt := NewHurtByTargetGoal()
+	ai.Goals.Add(7, newRandomStrollGoal(1))
+	hurt := newHurtByTargetGoal()
 	hurt.IgnoreDamageFrom = entityIs("minecraft:drowned")
 	hurt.AlertOthers, hurt.AlertIgnore = true, entityIs("minecraft:zombified_piglin")
 	ai.Targets.Add(1, hurt)
-	players := NewNearestAttackableTargetGoal(nil, true)
+	players := newNearestAttackableTargetGoal(nil, true)
 	players.Selector = func(m *Mob, target world.Entity) bool { return drownedOkTarget(m, target) }
 	ai.Targets.Add(2, players)
-	ai.Targets.Add(3, NewNearestAttackableTypesGoal(villagerTypes, false))
-	ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true))
-	ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:axolotl"}, true))
-	turtles := NewNearestAttackableTypesGoal(entityTypes{"minecraft:turtle"}, true)
+	ai.Targets.Add(3, newNearestAttackableTypesGoal(villagerTypes, false))
+	ai.Targets.Add(3, newNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true))
+	ai.Targets.Add(3, newNearestAttackableTypesGoal(entityTypes{"minecraft:axolotl"}, true))
+	turtles := newNearestAttackableTypesGoal(entityTypes{"minecraft:turtle"}, true)
 	turtles.Selector = func(m *Mob, target world.Entity) bool { return mobIsBaby(target) && !entityInWater(m.tx, target) }
 	ai.Targets.Add(5, turtles)
 }
@@ -313,7 +313,7 @@ func (g *drownedSwimUpGoal) Tick(m *Mob) {
 	if m.data.Pos[1] >= drownedSeaLevel(m)-1 || !(m.AI.nav.IsDone() || drownedCloseToNextPos(m)) {
 		return
 	}
-	pos, ok := DefaultRandomPosTowards(m, 4, 8, mgl64.Vec3{m.data.Pos[0], drownedSeaLevel(m) - 1, m.data.Pos[2]}, math.Pi/2)
+	pos, ok := defaultRandomPosTowards(m, 4, 8, mgl64.Vec3{m.data.Pos[0], drownedSeaLevel(m) - 1, m.data.Pos[2]}, math.Pi/2)
 	if !ok {
 		g.stuck = true
 		return
@@ -342,10 +342,10 @@ func drownedCloseToNextPos(m *Mob) bool {
 // drownedTridentAttackGoal ports Drowned.DrownedTridentAttackGoal, a
 // RangedAttackGoal: a drowned holding a trident throws it every two seconds
 // at targets within ten blocks.
-type drownedTridentAttackGoal struct{ *RangedAttackGoal }
+type drownedTridentAttackGoal struct{ *rangedAttackGoal }
 
 func newDrownedTridentAttackGoal() *drownedTridentAttackGoal {
-	return &drownedTridentAttackGoal{NewRangedAttackGoal(1, 40, 10, func(m *Mob, target world.Entity, _ float64) {
+	return &drownedTridentAttackGoal{newRangedAttackGoal(1, 40, 10, func(m *Mob, target world.Entity, _ float64) {
 		drownedOf(m).throwTrident(m, target)
 	})}
 }
@@ -354,7 +354,7 @@ func (g *drownedTridentAttackGoal) CanUse(m *Mob) bool {
 	if _, ok := drownedOf(m).mainHand.Item().(item.Trident); !ok {
 		return false
 	}
-	return g.RangedAttackGoal.CanUse(m)
+	return g.rangedAttackGoal.CanUse(m)
 }
 
 func (g *drownedTridentAttackGoal) Start(m *Mob) {
@@ -363,7 +363,7 @@ func (g *drownedTridentAttackGoal) Start(m *Mob) {
 }
 
 func (g *drownedTridentAttackGoal) Stop(m *Mob) {
-	g.RangedAttackGoal.Stop(m)
+	g.rangedAttackGoal.Stop(m)
 	drownedOf(m).setDrawing(m, false)
 	m.SetAggressive(false)
 }

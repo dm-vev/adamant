@@ -18,7 +18,7 @@ func TestAllaysDeliverToNoteBlocks(t *testing.T) {
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	note := cube.Pos{6, 64, 0}
-	var allay *world.EntityHandle
+	var allayH *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
 		for x := -12; x <= 12; x++ {
 			for z := -12; z <= 12; z++ {
@@ -26,9 +26,9 @@ func TestAllaysDeliverToNoteBlocks(t *testing.T) {
 			}
 		}
 		tx.SetBlock(note, block.Note{}, nil)
-		allay = tx.AddEntity(NewAllay(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}})).H()
-		e, _ := allay.Entity(tx)
-		b := e.(*Allay).b()
+		allayH = tx.AddEntity(NewAllay(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}})).H()
+		e, _ := allayH.Entity(tx)
+		b := e.(*allay).b()
 		b.held, b.inventory = item.NewStack(item.Diamond{}, 1), item.NewStack(item.Diamond{}, 2)
 	})
 	stepTicks(t, w, 2)
@@ -42,8 +42,8 @@ func TestAllaysDeliverToNoteBlocks(t *testing.T) {
 		stepTicks(t, w, 1)
 		dropped := false
 		<-w.Exec(func(tx *world.Tx) {
-			e, _ := allay.Entity(tx)
-			a := e.(*Allay)
+			e, _ := allayH.Entity(tx)
+			a := e.(*allay)
 			heard = heard || a.b().likedPos != nil && a.b().likedPos.pos == note
 			for it := range tx.Entities() {
 				if ent, ok := it.(*Ent); ok && ent.H().Type() == ItemType && it.Position().Sub(note.Vec3Centre()).Len() < 3 {

@@ -16,10 +16,10 @@ import (
 
 // NewChicken creates a worldless chicken handle with the supplied variant and age.
 func NewChicken(opts world.EntitySpawnOpts, conf ChickenBehaviourConfig) *world.EntityHandle {
-	return opts.New(ChickenType, conf)
+	return opts.New(entityChickenType, conf)
 }
 
-var ChickenType chickenType
+var entityChickenType chickenType
 
 type chickenType struct{}
 
@@ -67,11 +67,11 @@ func (chickenType) DecodeNBT(m map[string]any, data *world.EntityData) {
 		conf.SoundVariant = v
 	}
 	conf.Jockey = nbtconv.Bool(m, "IsChickenJockey")
-	data.Data = conf.New()
-	data.Data.(*ChickenBehaviour).breeding.decodeNBT(m)
+	data.Data = conf.newBehaviour()
+	data.Data.(*chickenBehaviour).breeding.decodeNBT(m)
 }
 func (chickenType) EncodeNBT(data *world.EntityData) map[string]any {
-	b := data.Data.(*ChickenBehaviour)
+	b := data.Data.(*chickenBehaviour)
 	variant := []string{"temperate", "cold", "warm"}[min(b.variant, 2)]
 	return b.breeding.encodeNBT(map[string]any{"Health": float32(b.health.Health()), "MaxHealth": float32(b.health.MaxHealth()), "Age": int32(b.ageTicks), "EggLayTime": int32(b.eggTimer), "variant": "minecraft:" + variant, "sound_variant": "minecraft:" + b.soundVariant, "IsChickenJockey": boolByte(b.jockey)})
 }
@@ -84,8 +84,8 @@ type ChickenBehaviourConfig struct {
 	healthSet, eggTimerSet        bool
 }
 
-func (c ChickenBehaviourConfig) Apply(data *world.EntityData) { data.Data = c.New() }
-func (c ChickenBehaviourConfig) New() *ChickenBehaviour {
+func (c ChickenBehaviourConfig) Apply(data *world.EntityData) { data.Data = c.newBehaviour() }
+func (c ChickenBehaviourConfig) newBehaviour() *chickenBehaviour {
 	if c.MaxHealth <= 0 {
 		c.MaxHealth = 4
 	}
@@ -99,11 +99,11 @@ func (c ChickenBehaviourConfig) New() *ChickenBehaviour {
 	}
 	// An egg lay time not set is drawn from the random of the chicken when it
 	// first ticks.
-	return &ChickenBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), speed: .25, ageTicks: c.AgeTicks, eggTimer: c.EggLayTime, eggTimerPending: !c.eggTimerSet, variant: c.Variant, soundVariant: soundVariant, jockey: c.Jockey}
+	return &chickenBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), speed: .25, ageTicks: c.AgeTicks, eggTimer: c.EggLayTime, eggTimerPending: !c.eggTimerSet, variant: c.Variant, soundVariant: soundVariant, jockey: c.Jockey}
 }
 
 type Chicken struct{ *Ent }
-type ChickenBehaviour struct {
+type chickenBehaviour struct {
 	health             *HealthManager
 	effects            *EffectManager
 	speed              float64
@@ -117,12 +117,12 @@ type ChickenBehaviour struct {
 	animalAI
 }
 
-func (c *Chicken) behaviour() *ChickenBehaviour { return c.Behaviour().(*ChickenBehaviour) }
+func (c *Chicken) behaviour() *chickenBehaviour { return c.Behaviour().(*chickenBehaviour) }
 func (c *Chicken) Tick(tx *world.Tx, current int64) {
 	c.behaviour().effects.Tick(c, tx)
 	c.Ent.Tick(tx, current)
 }
-func (b *ChickenBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (b *chickenBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	chicken, ok := e.living().(*Chicken)
 	if !ok {
 		chicken = &Chicken{Ent: e}
@@ -216,11 +216,7 @@ func (c *Chicken) PassengerPosition(passenger world.Entity) mgl64.Vec3 {
 	return c.Position().Add(offset).Sub(vehicleAttachmentPoint(passenger))
 }
 func (c *Chicken) viewAction(a world.EntityAction) {
-	vs := c.tx.Viewers(c.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(c, a)
-	}
-	c.tx.ReleaseViewers(vs)
+	world.BroadcastEntityAction(c.tx, c, a)
 }
 func (c *Chicken) die(src world.DamageSource) {
 	b := c.behaviour()
@@ -280,10 +276,10 @@ func (c *Chicken) breedingFood(stack item.Stack) bool {
 // breedOffspring ports Chicken.getBreedOffspring: the chick takes the
 // variant of either parent.
 func (c *Chicken) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
-	return babyAt(c).New(ChickenType, ChickenBehaviourConfig{AgeTicks: babyStartAge, Variant: randomParent(randomOf(c.tx, c), c.behaviour().variant, partner.(*Chicken).behaviour().variant)})
+	return babyAt(c).New(entityChickenType, ChickenBehaviourConfig{AgeTicks: babyStartAge, Variant: randomParent(randomOf(c.tx, c), c.behaviour().variant, partner.(*Chicken).behaviour().variant)})
 }
 
-func (b *ChickenBehaviour) effectManager() *EffectManager { return b.effects }
+func (b *chickenBehaviour) effectManager() *EffectManager { return b.effects }
 
 // baseExperience ports Chicken.getBaseExperienceReward: a chicken jockey gives
 // 10.

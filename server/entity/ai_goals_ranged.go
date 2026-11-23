@@ -21,7 +21,7 @@ type mobBowUser interface {
 
 // RangedBowAttackGoal draws the bow of a mob at its target and strafes
 // around it, ported from Java's RangedBowAttackGoal.
-type RangedBowAttackGoal struct {
+type rangedBowAttackGoal struct {
 	goalFlags
 	SpeedModifier     float64
 	AttackIntervalMin int
@@ -36,8 +36,8 @@ type RangedBowAttackGoal struct {
 
 // NewRangedBowAttackGoal returns a RangedBowAttackGoal that shoots from at
 // most attackRadius blocks away.
-func NewRangedBowAttackGoal(speedModifier float64, attackIntervalMin int, attackRadius float64) *RangedBowAttackGoal {
-	return &RangedBowAttackGoal{goalFlags: goalFlags{GoalMove | GoalLook}, SpeedModifier: speedModifier, AttackIntervalMin: attackIntervalMin,
+func newRangedBowAttackGoal(speedModifier float64, attackIntervalMin int, attackRadius float64) *rangedBowAttackGoal {
+	return &rangedBowAttackGoal{goalFlags: goalFlags{GoalMove | GoalLook}, SpeedModifier: speedModifier, AttackIntervalMin: attackIntervalMin,
 		attackRadiusSqr: attackRadius * attackRadius, attackTime: -1, strafingTime: -1}
 }
 
@@ -46,19 +46,19 @@ func bowUser(m *Mob) mobBowUser {
 	return u
 }
 
-func (g *RangedBowAttackGoal) CanUse(m *Mob) bool {
+func (g *rangedBowAttackGoal) CanUse(m *Mob) bool {
 	u := bowUser(m)
 	return m.Target() != nil && u != nil && u.holdingBow()
 }
 
-func (g *RangedBowAttackGoal) CanContinueToUse(m *Mob) bool {
+func (g *rangedBowAttackGoal) CanContinueToUse(m *Mob) bool {
 	u := bowUser(m)
 	return (g.CanUse(m) || !m.AI.nav.IsDone()) && u != nil && u.holdingBow()
 }
 
-func (g *RangedBowAttackGoal) Start(m *Mob) { m.SetAggressive(true) }
+func (g *rangedBowAttackGoal) Start(m *Mob) { m.SetAggressive(true) }
 
-func (g *RangedBowAttackGoal) Stop(m *Mob) {
+func (g *rangedBowAttackGoal) Stop(m *Mob) {
 	m.SetAggressive(false)
 	g.seeTime, g.attackTime = 0, -1
 	if u := bowUser(m); u != nil {
@@ -66,9 +66,9 @@ func (g *RangedBowAttackGoal) Stop(m *Mob) {
 	}
 }
 
-func (g *RangedBowAttackGoal) RequiresUpdateEveryTick() bool { return true }
+func (g *rangedBowAttackGoal) RequiresUpdateEveryTick() bool { return true }
 
-func (g *RangedBowAttackGoal) Tick(m *Mob) {
+func (g *rangedBowAttackGoal) Tick(m *Mob) {
 	target := m.Target()
 	u := bowUser(m)
 	if target == nil || u == nil {
@@ -163,7 +163,7 @@ func rangedAttackUncertainty(m *Mob) float64 {
 
 // AvoidEntityGoal walks a mob away from entities it fears, ported from
 // Java's AvoidEntityGoal.
-type AvoidEntityGoal struct {
+type avoidEntityGoal struct {
 	goalFlags
 	IsType func(world.Entity) bool
 	// Types, if set, holds every type IsType may select.
@@ -179,19 +179,19 @@ type AvoidEntityGoal struct {
 
 // NewAvoidEntityGoal returns an AvoidEntityGoal for the entities isType
 // selects within maxDist blocks.
-func NewAvoidEntityGoal(isType func(world.Entity) bool, maxDist, walkSpeed, sprintSpeed float64) *AvoidEntityGoal {
-	return &AvoidEntityGoal{goalFlags: goalFlags{GoalMove}, IsType: isType, MaxDist: maxDist, WalkSpeed: walkSpeed, SprintSpeed: sprintSpeed}
+func newAvoidEntityGoal(isType func(world.Entity) bool, maxDist, walkSpeed, sprintSpeed float64) *avoidEntityGoal {
+	return &avoidEntityGoal{goalFlags: goalFlags{GoalMove}, IsType: isType, MaxDist: maxDist, WalkSpeed: walkSpeed, SprintSpeed: sprintSpeed}
 }
 
 // NewAvoidEntityTypesGoal returns an AvoidEntityGoal for the entities of
 // types within maxDist blocks.
-func NewAvoidEntityTypesGoal(types entityTypes, maxDist, walkSpeed, sprintSpeed float64) *AvoidEntityGoal {
-	g := NewAvoidEntityGoal(types.is, maxDist, walkSpeed, sprintSpeed)
+func newAvoidEntityTypesGoal(types entityTypes, maxDist, walkSpeed, sprintSpeed float64) *avoidEntityGoal {
+	g := newAvoidEntityGoal(types.is, maxDist, walkSpeed, sprintSpeed)
 	g.Types = types
 	return g
 }
 
-func (g *AvoidEntityGoal) CanUse(m *Mob) bool {
+func (g *avoidEntityGoal) CanUse(m *Mob) bool {
 	c := forCombat()
 	c.rangeLimit = g.MaxDist
 	c.selector = func(_ *Mob, target world.Entity) bool {
@@ -215,7 +215,7 @@ func (g *AvoidEntityGoal) CanUse(m *Mob) bool {
 	if avoid == nil {
 		return false
 	}
-	pos, ok := DefaultRandomPosAway(m, 16, 7, avoid.Position())
+	pos, ok := defaultRandomPosAway(m, 16, 7, avoid.Position())
 	if !ok || avoid.Position().Sub(pos).LenSqr() < avoid.Position().Sub(m.data.Pos).LenSqr() {
 		return false
 	}
@@ -227,13 +227,13 @@ func (g *AvoidEntityGoal) CanUse(m *Mob) bool {
 	return true
 }
 
-func (g *AvoidEntityGoal) CanContinueToUse(m *Mob) bool { return !m.AI.nav.IsDone() }
+func (g *avoidEntityGoal) CanContinueToUse(m *Mob) bool { return !m.AI.nav.IsDone() }
 
-func (g *AvoidEntityGoal) Start(m *Mob) { m.AI.nav.MoveTo(m, g.path, g.WalkSpeed) }
+func (g *avoidEntityGoal) Start(m *Mob) { m.AI.nav.MoveTo(m, g.path, g.WalkSpeed) }
 
-func (g *AvoidEntityGoal) Stop(*Mob) { g.toAvoid = nil }
+func (g *avoidEntityGoal) Stop(*Mob) { g.toAvoid = nil }
 
-func (g *AvoidEntityGoal) Tick(m *Mob) {
+func (g *avoidEntityGoal) Tick(m *Mob) {
 	avoid, ok := g.toAvoid.Entity(m.tx)
 	if ok && m.DistanceToSqr(avoid) < 49 {
 		m.AI.nav.SetSpeedModifier(g.SprintSpeed)
@@ -257,28 +257,28 @@ func headEmpty(m *Mob) bool {
 
 // RestrictSunGoal keeps the paths of a mob in the shade by day, ported from
 // Java's RestrictSunGoal.
-type RestrictSunGoal struct{ goalFlags }
+type restrictSunGoal struct{ goalFlags }
 
-func (g *RestrictSunGoal) CanUse(m *Mob) bool { return brightOutside(m.tx) && headEmpty(m) }
+func (g *restrictSunGoal) CanUse(m *Mob) bool { return brightOutside(m.tx) && headEmpty(m) }
 
-func (g *RestrictSunGoal) Start(m *Mob) { m.AI.nav.AvoidSun = true }
+func (g *restrictSunGoal) Start(m *Mob) { m.AI.nav.AvoidSun = true }
 
-func (g *RestrictSunGoal) Stop(m *Mob) { m.AI.nav.AvoidSun = false }
+func (g *restrictSunGoal) Stop(m *Mob) { m.AI.nav.AvoidSun = false }
 
 // FleeSunGoal walks a burning mob into the shade, ported from Java's
 // FleeSunGoal.
-type FleeSunGoal struct {
+type fleeSunGoal struct {
 	goalFlags
 	SpeedModifier float64
 	wanted        mgl64.Vec3
 }
 
 // NewFleeSunGoal returns a FleeSunGoal.
-func NewFleeSunGoal(speedModifier float64) *FleeSunGoal {
-	return &FleeSunGoal{goalFlags: goalFlags{GoalMove}, SpeedModifier: speedModifier}
+func newFleeSunGoal(speedModifier float64) *fleeSunGoal {
+	return &fleeSunGoal{goalFlags: goalFlags{GoalMove}, SpeedModifier: speedModifier}
 }
 
-func (g *FleeSunGoal) CanUse(m *Mob) bool {
+func (g *fleeSunGoal) CanUse(m *Mob) bool {
 	if m.Target() != nil || !brightOutside(m.tx) || m.OnFireDuration() <= 0 || !canSeeSky(m.tx, m.BlockPos()) || !headEmpty(m) {
 		return false
 	}
@@ -289,7 +289,7 @@ func (g *FleeSunGoal) CanUse(m *Mob) bool {
 	return ok
 }
 
-func (g *FleeSunGoal) hidePos(m *Mob) (mgl64.Vec3, bool) {
+func (g *fleeSunGoal) hidePos(m *Mob) (mgl64.Vec3, bool) {
 	r := m.Random()
 	origin := m.BlockPos()
 	for range 10 {
@@ -301,15 +301,15 @@ func (g *FleeSunGoal) hidePos(m *Mob) (mgl64.Vec3, bool) {
 	return mgl64.Vec3{}, false
 }
 
-func (g *FleeSunGoal) CanContinueToUse(m *Mob) bool { return !m.AI.nav.IsDone() }
+func (g *fleeSunGoal) CanContinueToUse(m *Mob) bool { return !m.AI.nav.IsDone() }
 
-func (g *FleeSunGoal) Start(m *Mob) {
+func (g *fleeSunGoal) Start(m *Mob) {
 	m.AI.nav.MoveToPos(m, g.wanted[0], g.wanted[1], g.wanted[2], g.SpeedModifier)
 }
 
 // RangedAttackGoal makes a mob attack its target from a distance at an
 // interval, ported from Java's RangedAttackGoal.
-type RangedAttackGoal struct {
+type rangedAttackGoal struct {
 	goalFlags
 	SpeedModifier                        float64
 	AttackIntervalMin, AttackIntervalMax int
@@ -325,12 +325,12 @@ type RangedAttackGoal struct {
 
 // NewRangedAttackGoal returns a RangedAttackGoal attacking every interval
 // ticks within radius blocks.
-func NewRangedAttackGoal(speedModifier float64, interval int, radius float64, perform func(m *Mob, target world.Entity, power float64)) *RangedAttackGoal {
-	return &RangedAttackGoal{goalFlags: goalFlags{GoalMove | GoalLook}, SpeedModifier: speedModifier, AttackIntervalMin: interval, AttackIntervalMax: interval,
+func newRangedAttackGoal(speedModifier float64, interval int, radius float64, perform func(m *Mob, target world.Entity, power float64)) *rangedAttackGoal {
+	return &rangedAttackGoal{goalFlags: goalFlags{GoalMove | GoalLook}, SpeedModifier: speedModifier, AttackIntervalMin: interval, AttackIntervalMax: interval,
 		AttackRadius: radius, Perform: perform, attackTime: -1}
 }
 
-func (g *RangedAttackGoal) CanUse(m *Mob) bool {
+func (g *rangedAttackGoal) CanUse(m *Mob) bool {
 	target := m.Target()
 	if target == nil || !entityAlive(target) {
 		return false
@@ -339,7 +339,7 @@ func (g *RangedAttackGoal) CanUse(m *Mob) bool {
 	return true
 }
 
-func (g *RangedAttackGoal) CanContinueToUse(m *Mob) bool {
+func (g *rangedAttackGoal) CanContinueToUse(m *Mob) bool {
 	if g.CanUse(m) {
 		return true
 	}
@@ -347,11 +347,11 @@ func (g *RangedAttackGoal) CanContinueToUse(m *Mob) bool {
 	return ok && entityAlive(t) && !m.AI.nav.IsDone()
 }
 
-func (g *RangedAttackGoal) Stop(*Mob) { g.target, g.seeTime, g.attackTime = nil, 0, -1 }
+func (g *rangedAttackGoal) Stop(*Mob) { g.target, g.seeTime, g.attackTime = nil, 0, -1 }
 
-func (g *RangedAttackGoal) RequiresUpdateEveryTick() bool { return true }
+func (g *rangedAttackGoal) RequiresUpdateEveryTick() bool { return true }
 
-func (g *RangedAttackGoal) Tick(m *Mob) {
+func (g *rangedAttackGoal) Tick(m *Mob) {
 	target, ok := g.target.Entity(m.tx)
 	if !ok {
 		return

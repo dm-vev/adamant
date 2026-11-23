@@ -13,20 +13,20 @@ import (
 
 // This file ports the goals of Java's Witch.
 
-func (b *WitchBehaviour) mobAI() *MobAI { return &b.ai }
+func (b *witchBehaviour) mobAI() *MobAI { return &b.ai }
 
-func witchOf(m *Mob) *WitchBehaviour { return m.Behaviour().(*WitchBehaviour) }
+func witchOf(m *Mob) *witchBehaviour { return m.Behaviour().(*witchBehaviour) }
 
 // aiTick runs the MobAI of a witch and what Witch.aiStep does before it: a
 // witch drinks potions that help it.
-func (b *WitchBehaviour) aiTick(e *Ent, tx *world.Tx) *Movement {
+func (b *witchBehaviour) aiTick(e *Ent, tx *world.Tx) *Movement {
 	ai := &b.ai
 	ai.MovementSpeed, ai.EyeHeight = b.speed, 1.62
 	if b.drinking {
 		// SPEED_MODIFIER_DRINKING of -0.25.
 		ai.MovementSpeed = math.Max(0, b.speed-.25)
 	}
-	self := &Witch{Ent: e}
+	self := &witch{Ent: e}
 	if ai.started && !b.dead {
 		b.tickPotions(ai.Mob(e, self))
 	}
@@ -34,32 +34,32 @@ func (b *WitchBehaviour) aiTick(e *Ent, tx *world.Tx) *Movement {
 }
 
 // registerGoals ports Witch.registerGoals.
-func (b *WitchBehaviour) registerGoals(m *Mob) {
+func (b *witchBehaviour) registerGoals(m *Mob) {
 	ai := m.AI
 	registerRaiderGoals(m)
-	heal := &nearestHealableRaiderTargetGoal{NearestAttackableTargetGoal: NewNearestAttackableTypesGoal(raiderTypes, true)}
+	heal := &nearestHealableRaiderTargetGoal{nearestAttackableTargetGoal: newNearestAttackableTypesGoal(raiderTypes, true)}
 	heal.Selector = func(m *Mob, target world.Entity) bool {
-		return witchOf(m).activeRaid(m) != nil && target.H().Type() != WitchType
+		return witchOf(m).activeRaid(m) != nil && target.H().Type() != entityWitchType
 	}
 	b.heal = heal
-	b.attack = NewNearestAttackableTargetGoal(nil, true)
-	ai.Goals.Add(1, NewFloatGoal(m))
-	ai.Goals.Add(2, NewRangedAttackGoal(1, 60, 10, b.performRangedAttack))
-	ai.Goals.Add(2, NewWaterAvoidingRandomStrollGoal(1))
-	ai.Goals.Add(3, NewLookAtPlayerGoal(8))
-	ai.Goals.Add(3, NewRandomLookAroundGoal())
-	hurt := NewHurtByTargetGoal()
+	b.attack = newNearestAttackableTargetGoal(nil, true)
+	ai.Goals.Add(1, newFloatGoal(m))
+	ai.Goals.Add(2, newRangedAttackGoal(1, 60, 10, b.performRangedAttack))
+	ai.Goals.Add(2, newWaterAvoidingRandomStrollGoal(1))
+	ai.Goals.Add(3, newLookAtPlayerGoal(8))
+	ai.Goals.Add(3, newRandomLookAroundGoal())
+	hurt := newHurtByTargetGoal()
 	hurt.IgnoreDamageFrom = isRaiderEntity
 	ai.Targets.Add(1, hurt)
 	ai.Targets.Add(2, heal)
-	ai.Targets.Add(3, &witchAttackTargetGoal{NearestAttackableTargetGoal: b.attack, witch: b})
+	ai.Targets.Add(3, &witchAttackTargetGoal{nearestAttackableTargetGoal: b.attack, witch: b})
 }
 
 // tickPotions ports the start of Witch.aiStep: while it heals raiders a
 // witch attacks no players, and it drinks water breathing under water,
 // fire resistance while burning, healing when hurt and swiftness to catch
 // up with its target.
-func (b *WitchBehaviour) tickPotions(m *Mob) {
+func (b *witchBehaviour) tickPotions(m *Mob) {
 	if b.heal != nil {
 		b.heal.cooldown--
 		b.attackAllow = b.heal.cooldown <= 0
@@ -72,7 +72,7 @@ func (b *WitchBehaviour) tickPotions(m *Mob) {
 		}
 		b.drinking = false
 		for _, eff := range b.drinkPotion.Effects() {
-			m.Self.(*Witch).AddEffect(eff)
+			m.Self.(*witch).AddEffect(eff)
 		}
 		m.tx.EmitGameEvent(world.GameEventDrink, m.data.Pos, world.GameEventContext{Source: m.Self})
 		m.updateState()
@@ -91,7 +91,7 @@ func (b *WitchBehaviour) tickPotions(m *Mob) {
 		drink = potion.Swiftness()
 	default:
 		if r.NextFloat() < 7.5e-4 {
-			(&Witch{Ent: m.Ent}).viewAction(WitchMagicAction{})
+			(&witch{Ent: m.Ent}).viewAction(WitchMagicAction{})
 		}
 		return
 	}
@@ -99,14 +99,14 @@ func (b *WitchBehaviour) tickPotions(m *Mob) {
 	m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "entity.witch.drink", Volume: 1, Pitch: .8 + float64(r.NextFloat())*.4})
 	m.updateState()
 	if r.NextFloat() < 7.5e-4 {
-		(&Witch{Ent: m.Ent}).viewAction(WitchMagicAction{})
+		(&witch{Ent: m.Ent}).viewAction(WitchMagicAction{})
 	}
 }
 
 // performRangedAttack ports Witch.performRangedAttack: a witch heals the
 // raider it targets and throws slowness, poison, weakness or harming at
 // others, aimed where the target heads.
-func (b *WitchBehaviour) performRangedAttack(m *Mob, target world.Entity, _ float64) {
+func (b *witchBehaviour) performRangedAttack(m *Mob, target world.Entity, _ float64) {
 	if b.drinking {
 		return
 	}
@@ -161,7 +161,7 @@ func (b *WitchBehaviour) performRangedAttack(m *Mob, target world.Entity, _ floa
 
 // witchMagicAbsorb ports Witch.getDamageAfterMagicAbsorb: a witch takes no
 // damage from its own potions and little from magic and thorns.
-func witchMagicAbsorb(w *Witch, d float64, src world.DamageSource) float64 {
+func witchMagicAbsorb(w *witch, d float64, src world.DamageSource) float64 {
 	if a := damageAttacker(src); a != nil && a.H() == w.H() || splashOwner(src) == w.H() {
 		return 0
 	}
@@ -183,7 +183,7 @@ func splashOwner(src world.DamageSource) *world.EntityHandle {
 // nearestHealableRaiderTargetGoal ports Java's NearestHealableRaiderTargetGoal:
 // in a raid, a witch now and then picks a raider to heal.
 type nearestHealableRaiderTargetGoal struct {
-	*NearestAttackableTargetGoal
+	*nearestAttackableTargetGoal
 	cooldown int
 }
 
@@ -192,21 +192,21 @@ func (g *nearestHealableRaiderTargetGoal) CanUse(m *Mob) bool {
 		return false
 	}
 	g.RandomInterval = 0
-	return g.NearestAttackableTargetGoal.CanUse(m)
+	return g.nearestAttackableTargetGoal.CanUse(m)
 }
 
 func (g *nearestHealableRaiderTargetGoal) Start(m *Mob) {
 	g.cooldown = reducedTickDelay(200)
-	g.NearestAttackableTargetGoal.Start(m)
+	g.nearestAttackableTargetGoal.Start(m)
 }
 
 // witchAttackTargetGoal ports Java's NearestAttackableWitchTargetGoal: a
 // witch hunts players while it heals no raiders.
 type witchAttackTargetGoal struct {
-	*NearestAttackableTargetGoal
-	witch *WitchBehaviour
+	*nearestAttackableTargetGoal
+	witch *witchBehaviour
 }
 
 func (g *witchAttackTargetGoal) CanUse(m *Mob) bool {
-	return g.witch.attackAllow && g.NearestAttackableTargetGoal.CanUse(m)
+	return g.witch.attackAllow && g.nearestAttackableTargetGoal.CanUse(m)
 }

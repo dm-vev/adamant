@@ -15,21 +15,21 @@ import (
 )
 
 // CatType is the Java minecraft:cat entity type.
-var CatType catType
+var entityCatType catType
 
 type catType struct{}
 
 func (catType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
-		CatBehaviourConfig{}.Apply(d)
+		catBehaviourConfig{}.Apply(d)
 	}
 	return &Cat{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
 func (catType) EncodeEntity() string        { return "minecraft:cat" }
 func (catType) BBox(world.Entity) cube.BBox { return cube.Box(-.3, 0, -.3, .3, .7, .3) }
 func (catType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	c := CatBehaviourConfig{}
-	javaState := ReadNativeMobJavaState(m)
+	c := catBehaviourConfig{}
+	javaState := readNativeMobJavaState(m)
 	source := m
 	if javaState != nil {
 		source = javaState
@@ -54,7 +54,7 @@ func (catType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	if v, ok := source["variant"].(string); ok {
 		c.Variant = catVariantFromName(v)
 		c.variantSet = true
-	} else if v, ok := NativeMobVariant(m); ok && v >= 0 && int(v) < len(bedrockCatVariants) {
+	} else if v, ok := nativeMobVariant(m); ok && v >= 0 && int(v) < len(bedrockCatVariants) {
 		c.Variant = int(bedrockCatVariants[v])
 		c.variantSet = true
 	}
@@ -74,20 +74,20 @@ func (catType) DecodeNBT(m map[string]any, d *world.EntityData) {
 		c.SoundVariant = strings.TrimPrefix(value, "minecraft:")
 	}
 	d.Data = c.New()
-	d.Data.(*CatBehaviour).breeding.decodeNBT(source)
+	d.Data.(*catBehaviour).breeding.decodeNBT(source)
 }
 func (catType) EncodeNBT(d *world.EntityData) map[string]any {
-	b := d.Data.(*CatBehaviour)
+	b := d.Data.(*catBehaviour)
 	health := b.health
-	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: health.MaxHealth(), Current: health.Health(), DefaultMin: 0, DefaultMax: health.MaxHealth(), Min: 0, Max: health.MaxHealth()}, {Name: "minecraft:movement", Base: .3, Current: .3, DefaultMin: 0, DefaultMax: .3, Min: 0, Max: .3}, {Name: "minecraft:attack_damage", Base: 3, Current: 3, DefaultMin: 0, DefaultMax: 3, Min: 0, Max: 3}})
-	native := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs, "Variant": bedrockCatVariants[b.variant]})
-	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.ageTicks), "Health": float32(health.Health()), "MaxHealth": float32(health.MaxHealth()), "Tame": byte(catBool(b.tamed)), "Sitting": byte(catBool(b.orderedToSit)), "variant": "minecraft:" + catVariantNames[b.variant], "sound_variant": "minecraft:" + b.soundVariant, "CollarColor": b.collarColor}))
+	attrs := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: health.MaxHealth(), Current: health.Health(), DefaultMin: 0, DefaultMax: health.MaxHealth(), Min: 0, Max: health.MaxHealth()}, {Name: "minecraft:movement", Base: .3, Current: .3, DefaultMin: 0, DefaultMax: .3, Min: 0, Max: .3}, {Name: "minecraft:attack_damage", Base: 3, Current: 3, DefaultMin: 0, DefaultMax: 3, Min: 0, Max: 3}})
+	native := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs, "Variant": bedrockCatVariants[b.variant]})
+	javaState := mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.ageTicks), "Health": float32(health.Health()), "MaxHealth": float32(health.MaxHealth()), "Tame": byte(catBool(b.tamed)), "Sitting": byte(catBool(b.orderedToSit)), "variant": "minecraft:" + catVariantNames[b.variant], "sound_variant": "minecraft:" + b.soundVariant, "CollarColor": b.collarColor}))
 	if owner := catOwnerNBT(b.ownerUUID); owner != nil {
 		javaState["Owner"] = owner
 	} else {
 		delete(javaState, "Owner")
 	}
-	return MergeNativeMobJavaState(native, javaState)
+	return mergeNativeMobJavaState(native, javaState)
 }
 func catOwnerNBT(owner string) []int32 {
 	id, err := uuid.Parse(owner)
@@ -142,7 +142,7 @@ func catBool(v bool) byte {
 	return 0
 }
 
-type CatBehaviourConfig struct {
+type catBehaviourConfig struct {
 	Health, MaxHealth                float64
 	Tamed, Sitting                   bool
 	OwnerUUID                        string
@@ -152,8 +152,8 @@ type CatBehaviourConfig struct {
 	healthSet, collarSet, variantSet bool
 }
 
-func (c CatBehaviourConfig) Apply(d *world.EntityData) { d.Data = c.New() }
-func (c CatBehaviourConfig) New() *CatBehaviour {
+func (c catBehaviourConfig) Apply(d *world.EntityData) { d.Data = c.New() }
+func (c catBehaviourConfig) New() *catBehaviour {
 	if c.MaxHealth <= 0 {
 		c.MaxHealth = 10
 	}
@@ -171,12 +171,12 @@ func (c CatBehaviourConfig) New() *CatBehaviour {
 	if soundVariant != "royal" {
 		soundVariant = "classic"
 	}
-	return &CatBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), speed: .3,
+	return &catBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), speed: .3,
 		tamable: tamable{tamed: c.Tamed, ownerUUID: c.OwnerUUID, orderedToSit: c.Sitting, inSittingPose: c.Sitting},
 		variant: c.Variant, collarColor: c.CollarColor, ageTicks: c.AgeTicks, soundVariant: soundVariant}
 }
 
-type CatBehaviour struct {
+type catBehaviour struct {
 	health       *HealthManager
 	effects      *EffectManager
 	speed        float64
@@ -200,16 +200,16 @@ type catShownState struct{ sitting, lying, crouching, sprinting bool }
 
 // Variant returns the variant of the cat by the index of catVariantNames, the
 // order of Java's cat variants. BedrockVariant gives Bedrock's number.
-func (c *CatBehaviour) Variant() int32 { return int32(c.variant) }
-func (c *CatBehaviour) Baby() bool     { return c.ageTicks < 0 }
+func (c *catBehaviour) Variant() int32 { return int32(c.variant) }
+func (c *catBehaviour) Baby() bool     { return c.ageTicks < 0 }
 
 // SoundVariant returns the name of the sounds the cat makes.
-func (c *CatBehaviour) SoundVariant() string { return c.soundVariant }
+func (c *catBehaviour) SoundVariant() string { return c.soundVariant }
 
 type Cat struct{ *Ent }
 
 func NewCat(opts world.EntitySpawnOpts) *world.EntityHandle {
-	return opts.New(CatType, CatBehaviourConfig{})
+	return opts.New(entityCatType, catBehaviourConfig{})
 }
 
 // Hiss makes the cat hiss, as cats hiss at phantoms that come near.
@@ -217,10 +217,10 @@ func (c *Cat) Hiss(tx *world.Tx) {
 	tx.PlaySound(c.Position(), sound.Custom{Name: "entity.cat.hiss", Volume: 1, Pitch: 1})
 }
 
-func (c *Cat) SpeciesType() world.EntityType { return CatType }
-func (c *Cat) b() *CatBehaviour              { return c.Behaviour().(*CatBehaviour) }
+func (c *Cat) SpeciesType() world.EntityType { return entityCatType }
+func (c *Cat) b() *catBehaviour              { return c.Behaviour().(*catBehaviour) }
 func (c *Cat) Tick(tx *world.Tx, n int64)    { c.b().effects.Tick(c, tx); c.Ent.Tick(tx, n) }
-func (b *CatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+func (b *catBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	c := &Cat{Ent: e}
 	b.ai.MovementSpeed, b.ai.EyeHeight = b.speed, .35
 	if b.ageTicks < 0 {
@@ -389,19 +389,15 @@ func (c *Cat) canMateWith(partner breeder) bool {
 // the collar colours of the parents mixed.
 func (c *Cat) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
 	b, p := c.b(), partner.(*Cat).b()
-	conf := CatBehaviourConfig{AgeTicks: babyStartAge, Variant: randomParent(randomOf(c.tx, c), b.variant, p.variant), variantSet: true}
+	conf := catBehaviourConfig{AgeTicks: babyStartAge, Variant: randomParent(randomOf(c.tx, c), b.variant, p.variant), variantSet: true}
 	if b.tamed {
 		collar := mixedDyeColour(randomOf(c.tx, c), item.Colours()[b.collarColor%16], item.Colours()[p.collarColor%16])
 		conf.Tamed, conf.OwnerUUID, conf.CollarColor, conf.collarSet = true, b.ownerUUID, collar.Uint8(), true
 	}
-	return babyAt(c).New(CatType, conf)
+	return babyAt(c).New(entityCatType, conf)
 }
 func (c *Cat) viewAction(a world.EntityAction) {
-	vs := c.tx.Viewers(c.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(c, a)
-	}
-	c.tx.ReleaseViewers(vs)
+	world.BroadcastEntityAction(c.tx, c, a)
 }
 func (c *Cat) die(src world.DamageSource) {
 	b := c.b()
@@ -417,4 +413,4 @@ func (c *Cat) die(src world.DamageSource) {
 var _ Living = (*Cat)(nil)
 var _ ItemAcceptor = (*Cat)(nil)
 
-func (b *CatBehaviour) effectManager() *EffectManager { return b.effects }
+func (b *catBehaviour) effectManager() *EffectManager { return b.effects }

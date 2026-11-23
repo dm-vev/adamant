@@ -36,7 +36,7 @@ func TestProjectilesBreakPotsPerGamerules(t *testing.T) {
 			if c.owner != nil {
 				snowball = tx.AddEntity(NewSnowball(opts, c.owner))
 			} else {
-				snowball = tx.AddEntity(opts.New(SnowballType, snowballConf))
+				snowball = tx.AddEntity(opts.New(entitySnowballType, snowballConf))
 			}
 			tx.Block(pos).(block.DecoratedPot).ProjectileHit(pos, tx, snowball, cube.FaceUp)
 			_, still := tx.Block(pos).(block.DecoratedPot)

@@ -18,7 +18,7 @@ import (
 )
 
 // WardenType is the registered Java Warden type.
-var WardenType wardenType
+var entityWardenType wardenType
 
 type wardenType struct{}
 
@@ -27,7 +27,7 @@ func (wardenType) EncodeEntity() string { return "minecraft:warden" }
 // BBox ports Warden.getDefaultDimensions: a warden digging or emerging is a
 // block tall.
 func (wardenType) BBox(e world.Entity) cube.BBox {
-	if w, ok := e.(*Warden); ok && w.state().diggingOrEmerging() {
+	if w, ok := e.(*warden); ok && w.state().diggingOrEmerging() {
 		return cube.Box(-.45, 0, -.45, .45, 1, .45)
 	}
 	return cube.Box(-.45, 0, -.45, .45, 2.9, .45)
@@ -36,11 +36,11 @@ func (wardenType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData)
 	if d.Data == nil {
 		wardenConfig{}.Apply(d)
 	}
-	return &Warden{Ent: &Ent{tx: tx, handle: h, data: d}}
+	return &warden{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
 func (wardenType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	c := wardenConfig{health: nativeBossHealth(n, 500)}
-	if java := ReadNativeMobJavaState(n); java != nil {
+	if java := readNativeMobJavaState(n); java != nil {
 		if anger, ok := java["anger"].(map[string]any); ok {
 			suspects, _ := anger["suspects"].([]any)
 			for _, raw := range suspects {
@@ -60,7 +60,7 @@ func (wardenType) DecodeNBT(n map[string]any, d *world.EntityData) {
 }
 func (wardenType) EncodeNBT(d *world.EntityData) map[string]any {
 	s := d.Data.(*wardenState)
-	attrs := []NativeMobAttribute{
+	attrs := []nativeMobAttr{
 		{Name: "minecraft:health", Base: 500, Current: s.health.Health(), DefaultMin: 0, DefaultMax: 500, Min: 0, Max: 500},
 		{Name: "minecraft:movement", Base: wardenBaseMovementSpeed, Current: s.speed, DefaultMin: 0, DefaultMax: 1024, Min: 0, Max: 1024},
 		{Name: "minecraft:follow_range", Base: 24, Current: 24, DefaultMin: 0, DefaultMax: 2048, Min: 0, Max: 2048},
@@ -109,7 +109,7 @@ type wardenState struct {
 	health     *HealthManager
 	effects    *EffectManager
 	ai         MobAI
-	br         *Brain
+	br         *brain
 	speed      float64
 	dead       bool
 	pose       wardenPose
@@ -122,18 +122,18 @@ type wardenState struct {
 
 // Warden is the blind guardian of the deep dark, which hunts by sound and
 // smell.
-type Warden struct{ *Ent }
+type warden struct{ *Ent }
 
-func NewWarden(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(WardenType, wardenConfig{}) }
-func (*Warden) SpeciesType() world.EntityType               { return WardenType }
-func (w *Warden) state() *wardenState                       { return w.Behaviour().(*wardenState) }
+func NewWarden(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(entityWardenType, wardenConfig{}) }
+func (*warden) SpeciesType() world.EntityType               { return entityWardenType }
+func (w *warden) state() *wardenState                       { return w.Behaviour().(*wardenState) }
 
 // ignoresExplosion ports Warden.ignoreExplosion: a warden that digs into the
 // ground or emerges from it is not pushed.
-func (w *Warden) ignoresExplosion() bool { return w.state().diggingOrEmerging() }
+func (w *warden) ignoresExplosion() bool { return w.state().diggingOrEmerging() }
 
 // Tick ports Warden.tick: the vibrations a warden hears travel to it.
-func (w *Warden) Tick(tx *world.Tx, n int64) {
+func (w *warden) Tick(tx *world.Tx, n int64) {
 	s := w.state()
 	s.effects.Tick(w, tx)
 	w.Ent.Tick(tx, n)
@@ -144,7 +144,7 @@ func (w *Warden) Tick(tx *world.Tx, n int64) {
 
 // FinalizeSpawn ports Warden.finalizeSpawn: a warden may not dig away for a
 // minute, and one a shrieker summons emerges from the ground.
-func (w *Warden) FinalizeSpawn(reason string, _ *vanilla.Random) {
+func (w *warden) FinalizeSpawn(reason string, _ *vanilla.Random) {
 	s := w.state()
 	s.br.setWithExpiry(memDigCooldown, true, 1200)
 	if reason == "triggered" {
@@ -155,7 +155,7 @@ func (w *Warden) FinalizeSpawn(reason string, _ *vanilla.Random) {
 }
 
 func (s *wardenState) mobAI() *MobAI { return &s.ai }
-func (s *wardenState) brain() *Brain { return s.br }
+func (s *wardenState) brain() *brain { return s.br }
 
 // The durations of the activities of a warden, from WardenAi.
 const (
@@ -169,7 +169,7 @@ const (
 func (s *wardenState) Tick(e *Ent, tx *world.Tx) *Movement {
 	// Warden.createAttributes.
 	s.ai.MovementSpeed, s.ai.FollowRange, s.ai.EyeHeight = s.speed, 24, float64(float32(2.9)*.85)
-	return s.ai.Tick(e, &Warden{Ent: e}, func(m *Mob) {
+	return s.ai.Tick(e, &warden{Ent: e}, func(m *Mob) {
 		m.AI.nav.SetCanFloat(true)
 		m.AI.SetPathfindingMalus(PathUnpassableRail, 0)
 		m.AI.SetPathfindingMalus(PathDamaging, 8)
@@ -346,7 +346,7 @@ func (s *wardenState) doHurtTarget(m *Mob, target world.Entity) bool {
 	if !ok {
 		return false
 	}
-	w := m.Self.(*Warden)
+	w := m.Self.(*warden)
 	w.viewAction(SwingArmAction{})
 	m.tx.PlaySound(m.data.Pos, sound.Event{Name: "attack", Entity: "minecraft:warden"})
 	s.br.setWithExpiry(memSonicBoomCooldown, true, 40)
@@ -361,7 +361,7 @@ func (s *wardenState) doHurtTarget(m *Mob, target world.Entity) bool {
 }
 
 // newWardenBrain ports WardenAi and the brain provider of Warden.
-func newWardenBrain(s *wardenState) *Brain {
+func newWardenBrain(s *wardenState) *brain {
 	br := newBrain(playerSensor{}, wardenEntitySensor{})
 	for _, mem := range []memoryType{memNearestVisibleNemesis, memRecentProjectile, memTouchCooldown, memVibrationCooldown, memDigCooldown} {
 		br.register(mem)
@@ -381,7 +381,7 @@ func newWardenBrain(s *wardenState) *Brain {
 	)
 	br.addActivityWith(activityRoar, []prioritizedBehavior{{10, newWardenRoar(s)}}, []memoryCondition{{memRoarTarget, memPresent}}, nil)
 	br.addActivityWith(activityFight, []prioritizedBehavior{
-		{10, newOneShot([]memoryCondition{{memDigCooldown, memRegistered}}, func(_ *Mob, b *Brain, _ int64) bool {
+		{10, newOneShot([]memoryCondition{{memDigCooldown, memRegistered}}, func(_ *Mob, b *brain, _ int64) bool {
 			wardenSetDigCooldown(b)
 			return true
 		})},
@@ -412,7 +412,7 @@ func newWardenBrain(s *wardenState) *Brain {
 
 // wardenSetDigCooldown ports WardenAi.setDigCooldown: a warden on its dig
 // cooldown may not dig away for another minute.
-func wardenSetDigCooldown(b *Brain) {
+func wardenSetDigCooldown(b *brain) {
 	if b.has(memDigCooldown) {
 		b.setWithExpiry(memDigCooldown, true, 1200)
 	}
@@ -439,7 +439,7 @@ func (s wardenEntitySensor) requires() []memoryType {
 	return append(s.nearestLivingEntitySensor.requires(), memNearestAttackable)
 }
 
-func (s wardenEntitySensor) doTick(m *Mob, b *Brain) {
+func (s wardenEntitySensor) doTick(m *Mob, b *brain) {
 	s.nearestLivingEntitySensor.doTick(m, b)
 	near := nearestLiving(m)
 	for _, players := range [...]bool{true, false} {
@@ -456,7 +456,7 @@ func (s wardenEntitySensor) doTick(m *Mob, b *Brain) {
 // newSetWardenLookTarget ports SetWardenLookTarget: a warden without a
 // target looks at what it roars at or what disturbed it.
 func newSetWardenLookTarget() *oneShot {
-	return newOneShot([]memoryCondition{{memLookTarget, memRegistered}, {memDisturbanceLocation, memRegistered}, {memRoarTarget, memRegistered}, {memAttackTarget, memAbsent}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memLookTarget, memRegistered}, {memDisturbanceLocation, memRegistered}, {memRoarTarget, memRegistered}, {memAttackTarget, memAbsent}}, func(m *Mob, b *brain, _ int64) bool {
 		var pos cube.Pos
 		if roar := b.entity(m, memRoarTarget); roar != nil {
 			pos = cube.PosFromVec3(roar.Position())
@@ -472,7 +472,7 @@ func newSetWardenLookTarget() *oneShot {
 
 // newSetRoarTarget ports SetRoarTarget: a warden roars at what it is angry at.
 func newSetRoarTarget(finder func(m *Mob) world.Entity) *oneShot {
-	return newOneShot([]memoryCondition{{memRoarTarget, memAbsent}, {memAttackTarget, memAbsent}, {memCantReachWalkTargetSince, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
+	return newOneShot([]memoryCondition{{memRoarTarget, memAbsent}, {memAttackTarget, memAbsent}, {memCantReachWalkTargetSince, memRegistered}}, func(m *Mob, b *brain, _ int64) bool {
 		target := finder(m)
 		if !wardenCanTarget(m, target) {
 			return false
@@ -487,7 +487,7 @@ func newSetRoarTarget(finder func(m *Mob) world.Entity) *oneShot {
 // sniffs for it now and then.
 func newTryToSniff(s *wardenState) *oneShot {
 	return newOneShot([]memoryCondition{{memIsSniffing, memRegistered}, {memWalkTarget, memRegistered}, {memSniffCooldown, memAbsent},
-		{memNearestAttackable, memPresent}, {memDisturbanceLocation, memAbsent}}, func(m *Mob, b *Brain, _ int64) bool {
+		{memNearestAttackable, memPresent}, {memDisturbanceLocation, memAbsent}}, func(m *Mob, b *brain, _ int64) bool {
 		b.set(memIsSniffing, true)
 		b.setWithExpiry(memSniffCooldown, true, int64(uniformInt{100, 200}.sample(m)))
 		b.erase(memWalkTarget)
@@ -561,7 +561,7 @@ func newWardenRoar(s *wardenState) *behavior {
 		minDuration: wardenRoarTicks, maxDuration: wardenRoarTicks,
 		canStillUse: func(*Mob, int64) bool { return true },
 		start: func(m *Mob, _ int64) {
-			b := m.Brain()
+			b := m.brain()
 			b.setWithExpiry(memRoarSoundDelay, true, 25)
 			b.erase(memWalkTarget)
 			target := b.entity(m, memRoarTarget)
@@ -573,7 +573,7 @@ func newWardenRoar(s *wardenState) *behavior {
 			s.increaseAngerAt(m, target, 20, false)
 		},
 		tick: func(m *Mob, _ int64) {
-			b := m.Brain()
+			b := m.brain()
 			if !b.has(memRoarSoundDelay) && !b.has(memRoarSoundCooldown) {
 				b.setWithExpiry(memRoarSoundCooldown, true, wardenRoarTicks-25)
 			}
@@ -582,7 +582,7 @@ func newWardenRoar(s *wardenState) *behavior {
 			if s.pose == wardenRoaring {
 				s.setPose(m, wardenStanding)
 			}
-			b := m.Brain()
+			b := m.brain()
 			if target := b.entity(m, memRoarTarget); target != nil {
 				s.setAttackTarget(target)
 			}
@@ -603,7 +603,7 @@ func newWardenSniffing(s *wardenState) *behavior {
 			if s.pose == wardenSniffing {
 				s.setPose(m, wardenStanding)
 			}
-			b := m.Brain()
+			b := m.brain()
 			b.erase(memIsSniffing)
 			e := b.entity(m, memNearestAttackable)
 			if !wardenCanTarget(m, e) {
@@ -635,12 +635,12 @@ func newWardenSonicBoom(s *wardenState) *behavior {
 			{memSonicBoomSoundDelay, memRegistered}},
 		minDuration: duration, maxDuration: duration,
 		checkExtra: func(m *Mob) bool {
-			target := m.Brain().entity(m, memAttackTarget)
+			target := m.brain().entity(m, memAttackTarget)
 			return target != nil && wardenCloserThan(m, target, 15, 20)
 		},
 		canStillUse: func(*Mob, int64) bool { return true },
 		start: func(m *Mob, _ int64) {
-			b := m.Brain()
+			b := m.brain()
 			b.setWithExpiry(memAttackCoolingDown, true, duration)
 			b.setWithExpiry(memSonicBoomSoundDelay, true, soundTicks)
 			s.sonicBoom = true
@@ -648,7 +648,7 @@ func newWardenSonicBoom(s *wardenState) *behavior {
 			m.tx.PlaySound(m.data.Pos, sound.Event{Name: "sonic_charge", Entity: "minecraft:warden"})
 		},
 		tick: func(m *Mob, _ int64) {
-			b := m.Brain()
+			b := m.brain()
 			target := b.entity(m, memAttackTarget)
 			if target != nil {
 				tp := target.Position()
@@ -683,7 +683,7 @@ func newWardenSonicBoom(s *wardenState) *behavior {
 			}
 		},
 		stop: func(m *Mob, _ int64) {
-			m.Brain().setWithExpiry(memSonicBoomCooldown, true, 40)
+			m.brain().setWithExpiry(memSonicBoomCooldown, true, 40)
 			s.sonicBoom = false
 			m.updateState()
 		},
@@ -691,20 +691,20 @@ func newWardenSonicBoom(s *wardenState) *behavior {
 }
 
 // VibrationUser returns the hearing of the warden.
-func (w *Warden) VibrationUser() world.VibrationUser { return wardenVibrationUser{w} }
+func (w *warden) VibrationUser() world.VibrationUser { return wardenVibrationUser{w} }
 
 // VibrationData returns the vibration listener data of the warden.
-func (w *Warden) VibrationData() *world.VibrationData { return w.state().vibrations }
+func (w *warden) VibrationData() *world.VibrationData { return w.state().vibrations }
 
 // VibrationListenerPosition returns the eyes of the warden, where its
 // EntityPositionSource is.
-func (w *Warden) VibrationListenerPosition() mgl64.Vec3 {
+func (w *warden) VibrationListenerPosition() mgl64.Vec3 {
 	return w.Position().Add(mgl64.Vec3{0, w.state().ai.EyeHeight})
 }
 
 // wardenVibrationUser ports Warden.VibrationUser: a warden hears vibrations
 // within sixteen blocks and grows angry at what made them.
-type wardenVibrationUser struct{ w *Warden }
+type wardenVibrationUser struct{ w *warden }
 
 func (wardenVibrationUser) VibrationRadius() int { return 16 }
 func (wardenVibrationUser) ListensToGameEvent(e world.GameEvent) bool {
@@ -764,30 +764,30 @@ func (u wardenVibrationUser) VibrationParticle(destination mgl64.Vec3, travelTic
 }
 
 // WardenPose reports the poses viewers see the warden in.
-func (w *Warden) WardenPose() (emerging, digging, roaring, sniffing, sonicBoom bool) {
+func (w *warden) WardenPose() (emerging, digging, roaring, sniffing, sonicBoom bool) {
 	s := w.state()
 	return s.pose == wardenEmerging, s.pose == wardenDigging, s.pose == wardenRoaring, s.pose == wardenSniffing, s.sonicBoom
 }
 
 // HeartbeatInterval ports Warden.getHeartBeatDelay: the heart of a warden
 // beats every two seconds when calm and four times as often when angry.
-func (w *Warden) HeartbeatInterval() int32 {
+func (w *warden) HeartbeatInterval() int32 {
 	anger := float32(w.state().clientAnger) / 80
 	return int32(40 - math.Floor(float64(min(max(anger, 0), 1)*30)))
 }
 
 // AngerAt returns how angry the warden is at an entity.
-func (w *Warden) AngerAt(e world.Entity) int { return w.state().anger.angerOf(e) }
+func (w *warden) AngerAt(e world.Entity) int { return w.state().anger.angerOf(e) }
 
-func (w *Warden) Health() float64        { return w.state().health.Health() }
-func (w *Warden) MaxHealth() float64     { return w.state().health.MaxHealth() }
-func (w *Warden) SetMaxHealth(v float64) { w.state().health.SetMaxHealth(v) }
-func (w *Warden) Dead() bool             { return w.state().dead || w.Health() <= 0 }
+func (w *warden) Health() float64        { return w.state().health.Health() }
+func (w *warden) MaxHealth() float64     { return w.state().health.MaxHealth() }
+func (w *warden) SetMaxHealth(v float64) { w.state().health.SetMaxHealth(v) }
+func (w *warden) Dead() bool             { return w.state().dead || w.Health() <= 0 }
 
 // Hurt ports Warden.isInvulnerableTo and hurtServer: a warden digging or
 // emerging takes no damage, and one hurt grows angry at its attacker and
 // fights it if it hit directly or from close by.
-func (w *Warden) Hurt(d float64, src world.DamageSource) (float64, bool) {
+func (w *warden) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	s := w.state()
 	if w.Dead() || d <= 0 {
 		return 0, false
@@ -829,7 +829,7 @@ func (w *Warden) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	}
 	return d, true
 }
-func (w *Warden) Heal(v float64, _ world.HealingSource) float64 {
+func (w *warden) Heal(v float64, _ world.HealingSource) float64 {
 	if v <= 0 || w.Dead() {
 		return 0
 	}
@@ -839,22 +839,18 @@ func (w *Warden) Heal(v float64, _ world.HealingSource) float64 {
 }
 
 // KnockBack does nothing: a warden resists all knockback.
-func (w *Warden) KnockBack(mgl64.Vec3, float64, float64) {}
-func (w *Warden) AddEffect(e effect.Effect) {
+func (w *warden) KnockBack(mgl64.Vec3, float64, float64) {}
+func (w *warden) AddEffect(e effect.Effect) {
 	if e.Type() != effect.Poison && e.Type() != effect.FatalPoison {
 		w.state().effects.Add(e, w)
 	}
 }
-func (w *Warden) RemoveEffect(t effect.Type) { w.state().effects.Remove(t, w) }
-func (w *Warden) Effects() []effect.Effect   { return w.state().effects.Effects() }
-func (w *Warden) Speed() float64             { return w.state().speed }
-func (w *Warden) SetSpeed(v float64)         { w.state().speed = max(0, min(1024, v)) }
-func (w *Warden) viewAction(a world.EntityAction) {
-	v := w.tx.Viewers(w.Position())
-	for _, x := range v {
-		x.ViewEntityAction(w, a)
-	}
-	w.tx.ReleaseViewers(v)
+func (w *warden) RemoveEffect(t effect.Type) { w.state().effects.Remove(t, w) }
+func (w *warden) Effects() []effect.Effect   { return w.state().effects.Effects() }
+func (w *warden) Speed() float64             { return w.state().speed }
+func (w *warden) SetSpeed(v float64)         { w.state().speed = max(0, min(1024, v)) }
+func (w *warden) viewAction(a world.EntityAction) {
+	world.BroadcastEntityAction(w.tx, w, a)
 }
 
 // angerManagement ports AngerManagement: how angry a warden is at each
@@ -1029,6 +1025,6 @@ func (a *angerManagement) activeEntity(tx *world.Tx, filter func(world.Entity) b
 	return nil
 }
 
-var _ world.EntityVibrationListener = (*Warden)(nil)
+var _ world.EntityVibrationListener = (*warden)(nil)
 
 func (b *wardenState) effectManager() *EffectManager { return b.effects }

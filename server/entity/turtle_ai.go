@@ -79,16 +79,16 @@ func (b *oceanWildlifeBehaviour) registerTurtleGoals(m *Mob) {
 	ai.SetPathfindingMalus(PathDoorIronClosed, -1)
 	ai.SetPathfindingMalus(PathDoorWoodClosed, -1)
 	ai.SetPathfindingMalus(PathDoorOpen, -1)
-	b.turtlePanic = NewPanicGoal(1.2)
+	b.turtlePanic = newPanicGoal(1.2)
 	ai.Goals.Add(0, turtlePanicGoal{b.turtlePanic})
-	ai.Goals.Add(1, NewBreedGoal(1))
+	ai.Goals.Add(1, newBreedGoal(1))
 	ai.Goals.Add(1, &turtleLayEggGoal{goalFlags: goalFlags{GoalMove | GoalJump}, turtle: b})
-	ai.Goals.Add(2, NewTemptGoal(1.1, func(s item.Stack) bool { return itemNamed(s, "minecraft:seagrass") }, false))
+	ai.Goals.Add(2, newTemptGoal(1.1, func(s item.Stack) bool { return itemNamed(s, "minecraft:seagrass") }, false))
 	ai.Goals.Add(3, &turtleGoToWaterGoal{goalFlags: goalFlags{GoalMove | GoalJump}, turtle: b, moveToBlock: moveToBlock{verticalStart: -1, recalcInterval: 160}})
 	ai.Goals.Add(4, &turtleGoHomeGoal{turtle: b})
 	ai.Goals.Add(7, &turtleTravelGoal{turtle: b})
-	ai.Goals.Add(8, NewLookAtPlayerGoal(8))
-	stroll := NewRandomStrollGoal(1)
+	ai.Goals.Add(8, newLookAtPlayerGoal(8))
+	stroll := newRandomStrollGoal(1)
 	stroll.Interval = 100
 	ai.Goals.Add(9, turtleRandomStrollGoal{stroll, b})
 }
@@ -187,7 +187,7 @@ func (c turtleMoveControl) tick(m *Mob) {
 
 // turtlePanicGoal ports Turtle.TurtlePanicGoal: a panicking turtle heads for
 // water within seven blocks, or else a random spot nearby.
-type turtlePanicGoal struct{ *PanicGoal }
+type turtlePanicGoal struct{ *panicGoal }
 
 func (g turtlePanicGoal) CanUse(m *Mob) bool {
 	if !g.shouldPanic(m) {
@@ -197,7 +197,7 @@ func (g turtlePanicGoal) CanUse(m *Mob) bool {
 		g.wanted = water.Vec3()
 		return true
 	}
-	pos, ok := DefaultRandomPos(m, 5, 4)
+	pos, ok := defaultRandomPos(m, 5, 4)
 	if ok {
 		g.wanted = pos
 	}
@@ -330,13 +330,13 @@ func (g *turtleGoHomeGoal) Tick(m *Mob) {
 	}
 	home := b.homePos()
 	homeVec := mgl64.Vec3{float64(home.X()) + .5, float64(home.Y()), float64(home.Z()) + .5}
-	next, ok := DefaultRandomPosTowards(m, 16, 3, homeVec, math.Pi/10)
+	next, ok := defaultRandomPosTowards(m, 16, 3, homeVec, math.Pi/10)
 	if !ok {
-		next, ok = DefaultRandomPosTowards(m, 8, 7, homeVec, math.Pi/2)
+		next, ok = defaultRandomPosTowards(m, 8, 7, homeVec, math.Pi/2)
 	}
 	if ok && !close {
 		if _, water := m.tx.Block(cube.PosFromVec3(next)).(block.Water); !water {
-			next, ok = DefaultRandomPosTowards(m, 16, 5, homeVec, math.Pi/2)
+			next, ok = defaultRandomPosTowards(m, 16, 5, homeVec, math.Pi/2)
 		}
 	}
 	if !ok {
@@ -379,9 +379,9 @@ func (g *turtleTravelGoal) Tick(m *Mob) {
 		return
 	}
 	target := mgl64.Vec3{float64(s.travelPos.X()) + .5, float64(s.travelPos.Y()), float64(s.travelPos.Z()) + .5}
-	next, ok := DefaultRandomPosTowards(m, 16, 3, target, math.Pi/10)
+	next, ok := defaultRandomPosTowards(m, 16, 3, target, math.Pi/10)
 	if !ok {
-		next, ok = DefaultRandomPosTowards(m, 8, 7, target, math.Pi/2)
+		next, ok = defaultRandomPosTowards(m, 8, 7, target, math.Pi/2)
 	}
 	if ok {
 		// Level.hasChunksAt: the turtle only travels where every chunk
@@ -410,11 +410,11 @@ func (g *turtleTravelGoal) Stop(*Mob) { g.turtle.turtle.travelPos = nil }
 // turtleRandomStrollGoal ports Turtle.TurtleRandomStrollGoal, which only a
 // turtle on land without an egg and not heading home runs.
 type turtleRandomStrollGoal struct {
-	*RandomStrollGoal
+	*randomStrollGoal
 	turtle *oceanWildlifeBehaviour
 }
 
 func (g turtleRandomStrollGoal) CanUse(m *Mob) bool {
 	b := g.turtle
-	return !m.InWater() && !b.turtle.goingHome && !b.hasEgg && g.RandomStrollGoal.CanUse(m)
+	return !m.InWater() && !b.turtle.goingHome && !b.hasEgg && g.randomStrollGoal.CanUse(m)
 }

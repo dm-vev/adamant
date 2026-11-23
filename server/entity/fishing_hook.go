@@ -18,7 +18,7 @@ import (
 const fishingHookGravity = 0.03
 
 // FishingHookConfig holds configuration to spawn a fishing hook.
-type FishingHookConfig struct {
+type fishingHookConfig struct {
 	Owner *world.EntityHandle
 	Rod   item.Stack
 }
@@ -26,7 +26,7 @@ type FishingHookConfig struct {
 // Apply applies the configuration to the entity data: the rod's Luck of
 // the Sea gives the hook its luck and Lure takes five seconds a level off
 // the wait for a fish, as FishingRodItem.use.
-func (conf FishingHookConfig) Apply(data *world.EntityData) {
+func (conf fishingHookConfig) Apply(data *world.EntityData) {
 	b := &FishingHookBehaviour{owner: conf.Owner, openWater: true, mc: &MovementComputer{}}
 	for _, enchant := range conf.Rod.Enchantments() {
 		switch enchant.Type() {
@@ -289,11 +289,7 @@ func (b *FishingHookBehaviour) catchingFish(e *Ent, tx *world.Tx, blockPos cube.
 }
 
 func (b *FishingHookBehaviour) viewAction(e *Ent, tx *world.Tx, a world.EntityAction) {
-	viewers := tx.Viewers(e.Position())
-	for _, v := range viewers {
-		v.ViewEntityAction(e, a)
-	}
-	tx.ReleaseViewers(viewers)
+	world.BroadcastEntityAction(tx, e, a)
 }
 
 // openWaterType is FishingHook.OpenWaterType.
@@ -421,7 +417,7 @@ func (b *FishingHookBehaviour) loot(e *Ent, tx *world.Tx, owner world.Entity) (i
 }
 
 // FishingHookType is a world.EntityType implementation for FishingHook.
-var FishingHookType fishingHookType
+var entityFishingHookType fishingHookType
 
 type fishingHookType struct{}
 
@@ -436,7 +432,7 @@ func (f fishingHookType) BBox(world.Entity) cube.BBox {
 }
 
 func (f fishingHookType) DecodeNBT(_ map[string]any, data *world.EntityData) {
-	conf := FishingHookConfig{}
+	conf := fishingHookConfig{}
 	conf.Apply(data)
 }
 

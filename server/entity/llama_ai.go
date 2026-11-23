@@ -29,7 +29,7 @@ func (m *Mount) leashedToKnot(tx *world.Tx) bool {
 	}
 	for e := range tx.Entities() {
 		if e.H().UniqueID() == id {
-			return e.H().Type() == LeashKnotType
+			return e.H().Type() == entityLeashKnotType
 		}
 	}
 	return false
@@ -52,7 +52,7 @@ func llamaMount(tx *world.Tx, h *world.EntityHandle) *Mount {
 }
 
 // leaveCaravan ports Llama.leaveCaravan.
-func (b *MountBehaviour) leaveCaravan(tx *world.Tx) {
+func (b *mountBehaviour) leaveCaravan(tx *world.Tx) {
 	s := &b.llamaState
 	if head := llamaMount(tx, s.caravanHead); head != nil {
 		head.b().llamaState.caravanTail = nil

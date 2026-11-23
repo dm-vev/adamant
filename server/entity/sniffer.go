@@ -16,26 +16,26 @@ import (
 
 // NewSniffer creates an adult sniffer with no active dig memory.
 func NewSniffer(o world.EntitySpawnOpts) *world.EntityHandle {
-	return o.New(SnifferType, SnifferConfig{})
+	return o.New(entitySnifferType, snifferConfig{})
 }
 
 // SnifferType is the registered Java sniffer type.
-var SnifferType snifferType
+var entitySnifferType snifferType
 
 type snifferType struct{}
 
 func (snifferType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
-		SnifferConfig{}.Apply(d)
+		snifferConfig{}.Apply(d)
 	}
-	return &Sniffer{Ent: &Ent{tx: tx, handle: h, data: d}}
+	return &sniffer{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
 func (snifferType) EncodeEntity() string { return "minecraft:sniffer" }
 func (snifferType) BBox(e world.Entity) cube.BBox {
 	// EntityTypes.SNIFFER and Sniffer.DIGGING_DIMENSIONS, halved for
 	// snifflets by AgeableMob.getAgeScale.
 	w, h := 1.9, 1.75
-	if s, ok := e.(*Sniffer); ok {
+	if s, ok := e.(*sniffer); ok {
 		b := s.behaviour()
 		if b.state == snifferDigging {
 			h -= .4
@@ -47,11 +47,11 @@ func (snifferType) BBox(e world.Entity) cube.BBox {
 	return cube.Box(-w/2, 0, -w/2, w/2, h, w/2)
 }
 func (snifferType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	s := ReadNativeMobJavaState(m)
+	s := readNativeMobJavaState(m)
 	if s == nil {
 		s = m
 	}
-	c := SnifferConfig{Age: int(nbtconv.Int32(s, "Age"))}
+	c := snifferConfig{Age: int(nbtconv.Int32(s, "Age"))}
 	if positions, ok := s["ExploredPositions"].([]int32); ok {
 		for i := 0; i+2 < len(positions); i += 3 {
 			c.Explored = append(c.Explored, cube.Pos{int(positions[i]), int(positions[i+1]), int(positions[i+2])})
@@ -61,35 +61,35 @@ func (snifferType) DecodeNBT(m map[string]any, d *world.EntityData) {
 		c.Health, c.MaxHealth = a.Current, a.Base
 	}
 	d.Data = c.New()
-	d.Data.(*SnifferBehaviour).breeding.decodeNBT(s)
+	d.Data.(*snifferBehaviour).breeding.decodeNBT(s)
 }
 func (snifferType) EncodeNBT(d *world.EntityData) map[string]any {
-	b := d.Data.(*SnifferBehaviour)
-	a := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
+	b := d.Data.(*snifferBehaviour)
+	a := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
 	explored := b.explored()
 	positions := make([]int32, 0, len(explored)*3)
 	for _, p := range explored {
 		positions = append(positions, int32(p[0]), int32(p[1]), int32(p[2]))
 	}
-	return MergeNativeMobJavaState(map[string]any{"Attributes": a}, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "ExploredPositions": positions})))
+	return mergeNativeMobJavaState(map[string]any{"Attributes": a}, mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "ExploredPositions": positions})))
 }
 
 // SnifferConfig restores the age and explored positions of a sniffer.
-type SnifferConfig struct {
+type snifferConfig struct {
 	Health, MaxHealth float64
 	Age               int
 	Explored          []cube.Pos
 }
 
-func (c SnifferConfig) Apply(d *world.EntityData) { d.Data = c.New() }
-func (c SnifferConfig) New() *SnifferBehaviour {
+func (c snifferConfig) Apply(d *world.EntityData) { d.Data = c.New() }
+func (c snifferConfig) New() *snifferBehaviour {
 	if c.MaxHealth <= 0 {
 		c.MaxHealth = 14
 	}
 	if c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	b := &SnifferBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, speed: .1, effects: NewEffectManager()}
+	b := &snifferBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, speed: .1, effects: NewEffectManager()}
 	b.br = newSnifferBrain(b)
 	if len(c.Explored) > 0 {
 		b.br.set(memSnifferExploredPositions, append([]cube.Pos(nil), c.Explored...))
@@ -111,11 +111,11 @@ const (
 )
 
 // Sniffer is an ancient mob that sniffs out and digs up seeds.
-type Sniffer struct{ *Ent }
-type SnifferBehaviour struct {
+type sniffer struct{ *Ent }
+type snifferBehaviour struct {
 	effects           *EffectManager
 	ai                MobAI
-	br                *Brain
+	br                *brain
 	health, maxHealth float64
 	age               int
 	dead              bool
@@ -127,20 +127,20 @@ type SnifferBehaviour struct {
 	dropSeedAt int
 }
 
-func (s *Sniffer) behaviour() *SnifferBehaviour { return s.Behaviour().(*SnifferBehaviour) }
-func (s *Sniffer) Tick(tx *world.Tx, t int64) {
+func (s *sniffer) behaviour() *snifferBehaviour { return s.Behaviour().(*snifferBehaviour) }
+func (s *sniffer) Tick(tx *world.Tx, t int64) {
 	s.behaviour().effects.Tick(s, tx)
 	s.Ent.Tick(tx, t)
 }
 
-func (b *SnifferBehaviour) mobAI() *MobAI   { return &b.ai }
-func (b *SnifferBehaviour) brain() *Brain   { return b.br }
-func (b *SnifferBehaviour) panicking() bool { return b.br.has(memIsPanicking) }
+func (b *snifferBehaviour) mobAI() *MobAI   { return &b.ai }
+func (b *snifferBehaviour) brain() *brain   { return b.br }
+func (b *snifferBehaviour) panicking() bool { return b.br.has(memIsPanicking) }
 
 // Tick runs a tick of the sniffer: its digging, its ageing and love, and its
 // MobAI with its brain.
-func (b *SnifferBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	s := &Sniffer{Ent: e}
+func (b *snifferBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+	s := &sniffer{Ent: e}
 	b.ai.MovementSpeed = b.speed
 	if b.ai.started {
 		// Sniffer.getMaxHeadYRot.
@@ -168,29 +168,29 @@ func (b *SnifferBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 
 // customServerAiStep ports Sniffer.customServerAiStep and
 // SnifferAi.updateActivity.
-func (b *SnifferBehaviour) customServerAiStep(m *Mob) {
+func (b *snifferBehaviour) customServerAiStep(m *Mob) {
 	b.br.tick(m)
 	b.br.setActiveToFirstValid(activityDig, activitySniff, activityIdle)
 }
 
 // walkTargetValue ports Animal.getWalkTargetValue.
-func (b *SnifferBehaviour) walkTargetValue(m *Mob, pos cube.Pos) float64 {
+func (b *snifferBehaviour) walkTargetValue(m *Mob, pos cube.Pos) float64 {
 	return animalWalkTargetValue(m, pos)
 }
 
 // onPathfindingStart and onPathfindingDone port those of Sniffer: a burning
 // sniffer or one in water may swim to get out.
-func (b *SnifferBehaviour) onPathfindingStart(m *Mob) {
+func (b *snifferBehaviour) onPathfindingStart(m *Mob) {
 	if m.OnFireDuration() > 0 || m.InWater() {
 		m.AI.SetPathfindingMalus(PathWater, 0)
 	}
 }
 
-func (b *SnifferBehaviour) onPathfindingDone(m *Mob) { m.AI.SetPathfindingMalus(PathWater, -1) }
+func (b *snifferBehaviour) onPathfindingDone(m *Mob) { m.AI.SetPathfindingMalus(PathWater, -1) }
 
 // jumpFromGround ports Sniffer.jumpFromGround: a sniffer that wants to go
 // somewhere and barely moves gets a push forward as it jumps.
-func (b *SnifferBehaviour) jumpFromGround(m *Mob) bool {
+func (b *snifferBehaviour) jumpFromGround(m *Mob) bool {
 	if power := m.AI.jumpPower(m); power > 1e-5 {
 		m.data.Vel[1] = math.Max(power, m.data.Vel[1])
 	}
@@ -200,10 +200,10 @@ func (b *SnifferBehaviour) jumpFromGround(m *Mob) bool {
 	return true
 }
 
-func (b *SnifferBehaviour) jumpInLiquid(*Mob, bool) bool { return false }
+func (b *snifferBehaviour) jumpInLiquid(*Mob, bool) bool { return false }
 
 // transitionTo ports Sniffer.transitionTo.
-func (b *SnifferBehaviour) transitionTo(m *Mob, state snifferState) {
+func (b *snifferBehaviour) transitionTo(m *Mob, state snifferState) {
 	if state == snifferDigging {
 		// Sniffer.onDiggingStart.
 		b.dropSeedAt = m.AI.tickCount + 120
@@ -215,30 +215,30 @@ func (b *SnifferBehaviour) transitionTo(m *Mob, state snifferState) {
 }
 
 // resetSniffing ports SnifferAi.resetSniffing.
-func (b *SnifferBehaviour) resetSniffing(m *Mob) {
-	m.Brain().erase(memSnifferDigging)
-	m.Brain().erase(memSnifferSniffingTarget)
+func (b *snifferBehaviour) resetSniffing(m *Mob) {
+	m.brain().erase(memSnifferDigging)
+	m.brain().erase(memSnifferSniffingTarget)
 	b.transitionTo(m, snifferIdling)
 }
 
 // tempted ports Sniffer.isTempted.
-func (b *SnifferBehaviour) tempted() bool { return b.br.has(memTemptingPlayer) }
+func (b *snifferBehaviour) tempted() bool { return b.br.has(memTemptingPlayer) }
 
 // canSniff ports Sniffer.canSniff.
-func (b *SnifferBehaviour) canSniff(m *Mob) bool {
+func (b *snifferBehaviour) canSniff(m *Mob) bool {
 	return !b.tempted() && !b.panicking() && !m.InWater() && !b.breeding.InLove() && m.OnGround() && m.data.Riding == nil && m.Ent.HolderLeashID() == 0
 }
 
 // canDig ports Sniffer.canDig: the sniffer may dig the block in front of
 // its head.
-func (b *SnifferBehaviour) canDig(m *Mob) bool {
+func (b *snifferBehaviour) canDig(m *Mob) bool {
 	return !b.panicking() && !b.tempted() && b.age >= 0 && !m.InWater() && m.OnGround() && m.data.Riding == nil &&
 		b.canDigAt(m, snifferHeadBlock(m).Side(cube.FaceDown))
 }
 
 // canDigAt ports Sniffer.canDig(BlockPos): a block the sniffer may dig that
 // it has not dug before and can walk up to.
-func (b *SnifferBehaviour) canDigAt(m *Mob, pos cube.Pos) bool {
+func (b *snifferBehaviour) canDigAt(m *Mob, pos cube.Pos) bool {
 	if !blockInTag(m.tx.Block(pos), "sniffer_diggable_block") || slices.Contains(b.explored(), pos) {
 		return false
 	}
@@ -246,7 +246,7 @@ func (b *SnifferBehaviour) canDigAt(m *Mob, pos cube.Pos) bool {
 	return path != nil && path.CanReach()
 }
 
-func (b *SnifferBehaviour) explored() []cube.Pos {
+func (b *snifferBehaviour) explored() []cube.Pos {
 	v, _ := b.br.get(memSnifferExploredPositions)
 	positions, _ := v.([]cube.Pos)
 	return positions
@@ -254,7 +254,7 @@ func (b *SnifferBehaviour) explored() []cube.Pos {
 
 // storeExploredPosition ports Sniffer.storeExploredPosition: a sniffer
 // remembers the last 21 blocks it dug up.
-func (b *SnifferBehaviour) storeExploredPosition(pos cube.Pos) {
+func (b *snifferBehaviour) storeExploredPosition(pos cube.Pos) {
 	old := b.explored()
 	positions := make([]cube.Pos, 0, min(len(old), 20)+1)
 	positions = append(positions, pos)
@@ -264,9 +264,9 @@ func (b *SnifferBehaviour) storeExploredPosition(pos cube.Pos) {
 
 // calculateDigPosition ports Sniffer.calculateDigPosition: of five random
 // spots ever further away, the first above a block the sniffer may dig.
-func (b *SnifferBehaviour) calculateDigPosition(m *Mob) (cube.Pos, bool) {
+func (b *snifferBehaviour) calculateDigPosition(m *Mob) (cube.Pos, bool) {
 	for i := range 5 {
-		v, ok := LandRandomPos(m, 10+2*i, 3)
+		v, ok := landRandomPos(m, 10+2*i, 3)
 		if !ok {
 			continue
 		}
@@ -291,7 +291,7 @@ func snifferHeadBlock(m *Mob) cube.Pos {
 
 // dropSeed ports Sniffer.dropSeed: the sniffer digs up the loot of the
 // sniffer digging table at its head.
-func (b *SnifferBehaviour) dropSeed(m *Mob) {
+func (b *snifferBehaviour) dropSeed(m *Mob) {
 	head := snifferHeadBlock(m)
 	stacks, err := loot.Generate("minecraft:gameplay/sniffer_digging", m.Random().NextLong(), loot.Context{Entity: "minecraft:sniffer", Origin: head.Vec3()})
 	if err == nil {
@@ -303,7 +303,7 @@ func (b *SnifferBehaviour) dropSeed(m *Mob) {
 }
 
 // newSnifferBrain ports SnifferAi and the brain provider of Sniffer.
-func newSnifferBrain(b *SnifferBehaviour) *Brain {
+func newSnifferBrain(b *snifferBehaviour) *brain {
 	br := newBrain(nearestLivingEntitySensor{}, hurtBySensor{}, playerSensor{}, temptingSensor{items: animalTemptation})
 	br.register(memSnifferExploredPositions)
 	resetFirst := func(bh *behavior) *behavior {
@@ -325,7 +325,7 @@ func newSnifferBrain(b *SnifferBehaviour) *Brain {
 	br.addActivityWith(activityDig, []prioritizedBehavior{{0, newSnifferDigging(b, 160, 180)}, {0, newSnifferFinishedDigging(b, 40)}},
 		[]memoryCondition{{memIsPanicking, memAbsent}, {memWalkTarget, memAbsent}, {memSnifferDigging, memPresent}}, nil)
 	br.addActivityWith(activityIdle, []prioritizedBehavior{
-		{0, resetFirst(newAnimalMakeLove(SnifferType, 1, 2))},
+		{0, resetFirst(newAnimalMakeLove(entitySnifferType, 1, 2))},
 		{1, resetFirst(newFollowTemptation(constSpeed(1.25), func(*Mob) float64 {
 			if b.age < 0 {
 				return 2.5
@@ -348,20 +348,20 @@ func newSnifferBrain(b *SnifferBehaviour) *Brain {
 
 // newSnifferDigging ports SnifferAi.Digging: a sniffer digs for eight or
 // nine seconds, after which it may not sniff for eight minutes.
-func newSnifferDigging(b *SnifferBehaviour, minDuration, maxDuration int) *behavior {
+func newSnifferDigging(b *snifferBehaviour, minDuration, maxDuration int) *behavior {
 	bh := &behavior{
 		entry: []memoryCondition{{memIsPanicking, memAbsent}, {memWalkTarget, memAbsent}, {memSnifferDigging, memPresent},
 			{memSniffCooldown, memAbsent}},
 		minDuration: minDuration, maxDuration: maxDuration,
 		checkExtra: b.canSniff,
 		canStillUse: func(m *Mob, _ int64) bool {
-			return m.Brain().has(memSnifferDigging) && b.canDig(m) && !b.breeding.InLove()
+			return m.brain().has(memSnifferDigging) && b.canDig(m) && !b.breeding.InLove()
 		},
 		start: func(m *Mob, _ int64) { b.transitionTo(m, snifferDigging) },
 	}
 	bh.stop = func(m *Mob, time int64) {
 		if time > bh.endTimestamp {
-			m.Brain().setWithExpiry(memSniffCooldown, true, 9600)
+			m.brain().setWithExpiry(memSniffCooldown, true, 9600)
 		} else {
 			b.resetSniffing(m)
 		}
@@ -371,12 +371,12 @@ func newSnifferDigging(b *SnifferBehaviour, minDuration, maxDuration int) *behav
 
 // newSnifferFinishedDigging ports SnifferAi.FinishedDigging: a sniffer done
 // digging rises for two seconds and is glad of it.
-func newSnifferFinishedDigging(b *SnifferBehaviour, duration int) *behavior {
+func newSnifferFinishedDigging(b *snifferBehaviour, duration int) *behavior {
 	bh := &behavior{
 		entry: []memoryCondition{{memIsPanicking, memAbsent}, {memWalkTarget, memAbsent}, {memSnifferDigging, memPresent},
 			{memSniffCooldown, memPresent}},
 		minDuration: duration, maxDuration: duration,
-		canStillUse: func(m *Mob, _ int64) bool { return m.Brain().has(memSnifferDigging) },
+		canStillUse: func(m *Mob, _ int64) bool { return m.brain().has(memSnifferDigging) },
 		start:       func(m *Mob, _ int64) { b.transitionTo(m, snifferRising) },
 	}
 	bh.stop = func(m *Mob, time int64) {
@@ -385,14 +385,14 @@ func newSnifferFinishedDigging(b *SnifferBehaviour, duration int) *behavior {
 			// Sniffer.onDiggingComplete.
 			b.storeExploredPosition(m.BlockPos().Side(cube.FaceDown))
 		}
-		m.Brain().erase(memSnifferDigging)
-		m.Brain().set(memSnifferHappy, true)
+		m.brain().erase(memSnifferDigging)
+		m.brain().set(memSnifferHappy, true)
 	}
 	return bh
 }
 
 // newSnifferFeelingHappy ports SnifferAi.FeelingHappy.
-func newSnifferFeelingHappy(b *SnifferBehaviour, minDuration, maxDuration int) *behavior {
+func newSnifferFeelingHappy(b *snifferBehaviour, minDuration, maxDuration int) *behavior {
 	return &behavior{
 		entry:       []memoryCondition{{memSnifferHappy, memPresent}},
 		minDuration: minDuration, maxDuration: maxDuration,
@@ -400,13 +400,13 @@ func newSnifferFeelingHappy(b *SnifferBehaviour, minDuration, maxDuration int) *
 		start:       func(m *Mob, _ int64) { b.transitionTo(m, snifferFeelingHappy) },
 		stop: func(m *Mob, _ int64) {
 			b.transitionTo(m, snifferIdling)
-			m.Brain().erase(memSnifferHappy)
+			m.brain().erase(memSnifferHappy)
 		},
 	}
 }
 
 // newSnifferScenting ports SnifferAi.Scenting.
-func newSnifferScenting(b *SnifferBehaviour, minDuration, maxDuration int) *behavior {
+func newSnifferScenting(b *snifferBehaviour, minDuration, maxDuration int) *behavior {
 	return &behavior{
 		entry: []memoryCondition{{memIsPanicking, memAbsent}, {memSnifferDigging, memAbsent}, {memSnifferSniffingTarget, memAbsent},
 			{memSnifferHappy, memAbsent}, {memBreedTarget, memAbsent}},
@@ -420,7 +420,7 @@ func newSnifferScenting(b *SnifferBehaviour, minDuration, maxDuration int) *beha
 
 // newSnifferSniffing ports SnifferAi.Sniffing: an adult sniffer that sniffs
 // for its full time picks a block to dig up and walks to it.
-func newSnifferSniffing(b *SnifferBehaviour, minDuration, maxDuration int) *behavior {
+func newSnifferSniffing(b *snifferBehaviour, minDuration, maxDuration int) *behavior {
 	bh := &behavior{
 		entry:       []memoryCondition{{memWalkTarget, memAbsent}, {memSnifferSniffingTarget, memAbsent}, {memSniffCooldown, memAbsent}},
 		minDuration: minDuration, maxDuration: maxDuration,
@@ -434,8 +434,8 @@ func newSnifferSniffing(b *SnifferBehaviour, minDuration, maxDuration int) *beha
 			return
 		}
 		if pos, ok := b.calculateDigPosition(m); ok {
-			m.Brain().set(memSnifferSniffingTarget, pos)
-			m.Brain().set(memWalkTarget, walkTarget{target: newBlockPosTracker(pos), speed: 1.25})
+			m.brain().set(memSnifferSniffingTarget, pos)
+			m.brain().set(memWalkTarget, walkTarget{target: newBlockPosTracker(pos), speed: 1.25})
 		}
 	}
 	return bh
@@ -443,7 +443,7 @@ func newSnifferSniffing(b *SnifferBehaviour, minDuration, maxDuration int) *beha
 
 // newSnifferSearching ports SnifferAi.Searching: a sniffer walks to the
 // block it sniffed out and, once there, digs it up.
-func newSnifferSearching(b *SnifferBehaviour) *behavior {
+func newSnifferSearching(b *snifferBehaviour) *behavior {
 	return &behavior{
 		entry:       []memoryCondition{{memWalkTarget, memPresent}, {memIsPanicking, memAbsent}, {memSnifferSniffingTarget, memPresent}},
 		minDuration: 600, maxDuration: 600,
@@ -453,7 +453,7 @@ func newSnifferSearching(b *SnifferBehaviour) *behavior {
 				b.transitionTo(m, snifferIdling)
 				return false
 			}
-			br := m.Brain()
+			br := m.brain()
 			wv, ok := br.get(memWalkTarget)
 			tv, ok2 := br.get(memSnifferSniffingTarget)
 			return ok && ok2 && wv.(walkTarget).target.currentBlockPos(m.tx) == tv.(cube.Pos)
@@ -461,26 +461,26 @@ func newSnifferSearching(b *SnifferBehaviour) *behavior {
 		start: func(m *Mob, _ int64) { b.transitionTo(m, snifferSearching) },
 		stop: func(m *Mob, _ int64) {
 			if b.canDig(m) && b.canSniff(m) {
-				m.Brain().set(memSnifferDigging, true)
+				m.brain().set(memSnifferDigging, true)
 			}
-			m.Brain().erase(memWalkTarget)
-			m.Brain().erase(memSnifferSniffingTarget)
+			m.brain().erase(memWalkTarget)
+			m.brain().erase(memSnifferSniffingTarget)
 		},
 	}
 }
 
-func (s *Sniffer) Health() float64    { return s.behaviour().health }
-func (s *Sniffer) MaxHealth() float64 { return s.behaviour().maxHealth }
-func (s *Sniffer) SetMaxHealth(v float64) {
+func (s *sniffer) Health() float64    { return s.behaviour().health }
+func (s *sniffer) MaxHealth() float64 { return s.behaviour().maxHealth }
+func (s *sniffer) SetMaxHealth(v float64) {
 	b := s.behaviour()
 	b.maxHealth = v
 	b.health = math.Min(v, b.health)
 }
-func (s *Sniffer) Dead() bool { return s.behaviour().dead || s.Health() <= 0 }
+func (s *sniffer) Dead() bool { return s.behaviour().dead || s.Health() <= 0 }
 
 // Panicking reports whether the sniffer runs from danger.
-func (s *Sniffer) Panicking() bool { return s.behaviour().panicking() }
-func (s *Sniffer) Hurt(v float64, src world.DamageSource) (float64, bool) {
+func (s *sniffer) Panicking() bool { return s.behaviour().panicking() }
+func (s *sniffer) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if s.Dead() || v <= 0 {
 		return 0, false
 	}
@@ -507,7 +507,7 @@ func (s *Sniffer) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	}
 	return v, true
 }
-func (s *Sniffer) Heal(v float64, _ world.HealingSource) float64 {
+func (s *sniffer) Heal(v float64, _ world.HealingSource) float64 {
 	if s.Dead() || v <= 0 {
 		return 0
 	}
@@ -516,36 +516,32 @@ func (s *Sniffer) Heal(v float64, _ world.HealingSource) float64 {
 	b.health = math.Min(b.maxHealth, b.health+v)
 	return b.health - old
 }
-func (s *Sniffer) KnockBack(src mgl64.Vec3, f, h float64) {
+func (s *sniffer) KnockBack(src mgl64.Vec3, f, h float64) {
 	knockBack(s, src, f, h)
 }
-func (s *Sniffer) viewAction(a world.EntityAction) {
-	vs := s.tx.Viewers(s.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(s, a)
-	}
-	s.tx.ReleaseViewers(vs)
+func (s *sniffer) viewAction(a world.EntityAction) {
+	world.BroadcastEntityAction(s.tx, s, a)
 }
 
 // SnifferState returns the flag Bedrock shows for the state of the sniffer:
 // feeling happy, scenting, sniffing, searching, digging or rising, or none
 // while it idles.
-func (s *Sniffer) SnifferState() string {
+func (s *sniffer) SnifferState() string {
 	return [...]string{"", "feeling_happy", "scenting", "sniffing", "searching", "digging", "rising"}[s.behaviour().state]
 }
 
 // Sniffing reports whether the sniffer sniffs the air.
-func (s *Sniffer) Sniffing() bool { return s.behaviour().state == snifferSniffing }
+func (s *sniffer) Sniffing() bool { return s.behaviour().state == snifferSniffing }
 
 // Digging reports whether the sniffer digs.
-func (s *Sniffer) Digging() bool { return s.behaviour().state == snifferDigging }
+func (s *sniffer) Digging() bool { return s.behaviour().state == snifferDigging }
 
 // SetAge sets the age in ticks; negative ages are babies growing up.
-func (s *Sniffer) SetAge(age int) { s.behaviour().age = age }
+func (s *sniffer) SetAge(age int) { s.behaviour().age = age }
 
 // Interact feeds the sniffer torchflower seeds to breed it or let a snifflet
 // grow up faster.
-func (s *Sniffer) Interact(tx *world.Tx, u item.User, c *item.UseContext) bool {
+func (s *sniffer) Interact(tx *world.Tx, u item.User, c *item.UseContext) bool {
 	if !feedBreeder(s, u, c) {
 		return false
 	}
@@ -555,8 +551,8 @@ func (s *Sniffer) Interact(tx *world.Tx, u item.User, c *item.UseContext) bool {
 }
 
 // canMateWith ports Sniffer.canMate: both sniffers idle, scent or are glad.
-func (s *Sniffer) canMateWith(partner breeder) bool {
-	other, ok := partner.(*Sniffer)
+func (s *sniffer) canMateWith(partner breeder) bool {
+	other, ok := partner.(*sniffer)
 	if !ok {
 		return false
 	}
@@ -567,25 +563,25 @@ func (s *Sniffer) canMateWith(partner breeder) bool {
 }
 
 // InLove reports whether the sniffer is in love.
-func (s *Sniffer) InLove() bool { return s.behaviour().breeding.InLove() }
+func (s *sniffer) InLove() bool { return s.behaviour().breeding.InLove() }
 
-func (s *Sniffer) breedingState() *breeding { return &s.behaviour().breeding }
-func (s *Sniffer) ageTicks() *int           { return &s.behaviour().age }
+func (s *sniffer) breedingState() *breeding { return &s.behaviour().breeding }
+func (s *sniffer) ageTicks() *int           { return &s.behaviour().age }
 
-func (s *Sniffer) breedingFood(stack item.Stack) bool { return inItemTag(stack, "sniffer_food") }
+func (s *sniffer) breedingFood(stack item.Stack) bool { return inItemTag(stack, "sniffer_food") }
 
-func (s *Sniffer) breedOffspring(_ *world.Tx, _ breeder) *world.EntityHandle {
-	return babyAt(s).New(SnifferType, SnifferConfig{Age: babyStartAge})
+func (s *sniffer) breedOffspring(_ *world.Tx, _ breeder) *world.EntityHandle {
+	return babyAt(s).New(entitySnifferType, snifferConfig{Age: babyStartAge})
 }
 
 // spawnChildFromBreeding ports Sniffer.spawnChildFromBreeding: instead of a
 // snifflet, the sniffer lays a sniffer egg item with a plop.
-func (s *Sniffer) spawnChildFromBreeding(tx *world.Tx, partner breeder) {
+func (s *sniffer) spawnChildFromBreeding(tx *world.Tx, partner breeder) {
 	finishBreeding(s, partner, tx)
 	tx.PlaySound(s.Position(), sound.Event{Name: "plop", Entity: "minecraft:sniffer"})
 	tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: s.Position()}, item.NewStack(block.SnifferEgg{}, 1)))
 }
 
-var _ Interactable = (*Sniffer)(nil)
+var _ Interactable = (*sniffer)(nil)
 
-func (b *SnifferBehaviour) effectManager() *EffectManager { return b.effects }
+func (b *snifferBehaviour) effectManager() *EffectManager { return b.effects }

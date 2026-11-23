@@ -64,10 +64,10 @@ func (sulfurCubeType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	if body, ok := m["BodyItem"].(map[string]any); ok {
 		c.BodyItem = decodeSulfurCubeStack(body)
 	}
-	data.Data = c.New()
+	data.Data = c.newBehaviour()
 }
 func (sulfurCubeType) EncodeNBT(data *world.EntityData) map[string]any {
-	b := data.Data.(*SulfurCubeBehaviour)
+	b := data.Data.(*sulfurCubeBehaviour)
 	m := map[string]any{"Health": float32(b.health.Health()), "MaxHealth": float32(b.health.MaxHealth()), "Size": uint8(b.size - 1), "Age": int32(b.age), "pickup_timer": int32(b.pickupTimer), "fuse": int32(b.fuse)}
 	if b.fromBucket {
 		m["from_bucket"] = byte(1)
@@ -87,8 +87,8 @@ type SulfurCubeBehaviourConfig struct {
 	healthSet                    bool
 }
 
-func (c SulfurCubeBehaviourConfig) Apply(data *world.EntityData) { data.Data = c.New() }
-func (c SulfurCubeBehaviourConfig) New() *SulfurCubeBehaviour {
+func (c SulfurCubeBehaviourConfig) Apply(data *world.EntityData) { data.Data = c.newBehaviour() }
+func (c SulfurCubeBehaviourConfig) newBehaviour() *sulfurCubeBehaviour {
 	size := c.Size
 	if size <= 0 {
 		size = 1
@@ -107,7 +107,7 @@ func (c SulfurCubeBehaviourConfig) New() *SulfurCubeBehaviour {
 		// A cube nobody primed has no fuse.
 		fuse = -1
 	}
-	b := &SulfurCubeBehaviour{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), size: size, age: c.Age, pickupTimer: c.PickupTimer, fuse: fuse, fromBucket: c.FromBucket, bodyItem: c.BodyItem}
+	b := &sulfurCubeBehaviour{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), size: size, age: c.Age, pickupTimer: c.PickupTimer, fuse: fuse, fromBucket: c.FromBucket, bodyItem: c.BodyItem}
 	b.archetype = sulfurCubeArchetypeOf(b.bodyItem)
 	return b
 }
@@ -117,7 +117,7 @@ func (c SulfurCubeBehaviourConfig) New() *SulfurCubeBehaviour {
 type SulfurCube struct{ *Ent }
 
 // SulfurCubeBehaviour is the state of a sulfur cube.
-type SulfurCubeBehaviour struct {
+type sulfurCubeBehaviour struct {
 	health  *HealthManager
 	effects *EffectManager
 	ai      MobAI
@@ -126,7 +126,7 @@ type SulfurCubeBehaviour struct {
 	fromBucket, dead                                bool
 	bodyItem                                        item.Stack
 	archetype                                       *sulfurCubeArchetype
-	tempt                                           *TemptGoal
+	tempt                                           *temptGoal
 	// goalsRegistered reports if the cube has goals, which it drops while
 	// it holds a block.
 	goalsRegistered bool
@@ -136,7 +136,7 @@ type SulfurCubeBehaviour struct {
 	hitDamage float64
 }
 
-func (s *SulfurCube) b() *SulfurCubeBehaviour { return s.Behaviour().(*SulfurCubeBehaviour) }
+func (s *SulfurCube) b() *sulfurCubeBehaviour { return s.Behaviour().(*sulfurCubeBehaviour) }
 func (s *SulfurCube) Tick(tx *world.Tx, current int64) {
 	s.b().effects.Tick(s, tx)
 	s.Ent.Tick(tx, current)
@@ -238,20 +238,12 @@ func (s *SulfurCube) Size() int                    { return s.b().size }
 func (s *SulfurCube) SetSpeed(v float64)           { s.b().ai.MovementSpeed = v }
 func (s *SulfurCube) hasEffect(t effect.Type) bool { _, ok := s.b().effects.Effect(t); return ok }
 func (s *SulfurCube) viewAction(a world.EntityAction) {
-	vs := s.tx.Viewers(s.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(s, a)
-	}
-	s.tx.ReleaseViewers(vs)
+	world.BroadcastEntityAction(s.tx, s, a)
 }
 
 // viewBody shows viewers the block the cube holds and its archetype.
 func (s *SulfurCube) viewBody() {
-	vs := s.tx.Viewers(s.Position())
-	for _, v := range vs {
-		v.ViewEntityArmour(s)
-	}
-	s.tx.ReleaseViewers(vs)
+	world.BroadcastEntityArmour(s.tx, s)
 	s.updateState()
 }
 
@@ -583,7 +575,7 @@ var _ BodyArmorable = (*SulfurCube)(nil)
 var _ ItemAcceptor = (*SulfurCube)(nil)
 var _ Interactable = (*SulfurCube)(nil)
 
-func (b *SulfurCubeBehaviour) effectManager() *EffectManager { return b.effects }
+func (b *sulfurCubeBehaviour) effectManager() *EffectManager { return b.effects }
 
 // canFreeze ports SulfurCube.canFreeze: a cube holding an item does not
 // freeze.
@@ -592,5 +584,5 @@ func (s *SulfurCube) canFreeze() bool { return s.b().bodyItem.Empty() }
 // canBreatheUnderwater ports SulfurCube.canBreatheUnderwater: a cube holding
 // an item does.
 func (s *SulfurCube) canBreatheUnderwater() bool {
-	return !s.Behaviour().(*SulfurCubeBehaviour).bodyItem.Empty()
+	return !s.Behaviour().(*sulfurCubeBehaviour).bodyItem.Empty()
 }

@@ -41,22 +41,22 @@ func (b *beeBehaviour) registerGoals(m *Mob) {
 	b.pollinate = &beePollinateGoal{goalFlags: goalFlags{GoalMove}, bee: b, unreachable: map[cube.Pos]int64{}}
 	b.goToHive = &beeGoToHiveGoal{goalFlags: goalFlags{GoalMove}, bee: b}
 
-	ai.Goals.Add(0, beeAttackGoal{NewMeleeAttackGoal(1.4, true), b})
+	ai.Goals.Add(0, beeAttackGoal{newMeleeAttackGoal(1.4, true), b})
 	ai.Goals.Add(1, &beeEnterHiveGoal{bee: b})
-	ai.Goals.Add(2, NewBreedGoal(1))
-	ai.Goals.Add(3, NewTemptGoal(1.25, func(s item.Stack) bool { return blockItemInTag(s, "bee_attractive") }, false))
+	ai.Goals.Add(2, newBreedGoal(1))
+	ai.Goals.Add(3, newTemptGoal(1.25, func(s item.Stack) bool { return blockItemInTag(s, "bee_attractive") }, false))
 	ai.Goals.Add(3, &beeValidateGoal{bee: b, cooldown: 20 + int(r.NextInt(21)), lastTick: -1, validate: b.validateHive})
 	ai.Goals.Add(3, &beeValidateGoal{bee: b, cooldown: 20 + int(r.NextInt(21)), lastTick: -1, validate: b.validateFlower})
 	ai.Goals.Add(4, b.pollinate)
-	ai.Goals.Add(5, NewFollowParentGoal(1.25))
+	ai.Goals.Add(5, newFollowParentGoal(1.25))
 	ai.Goals.Add(5, &beeLocateHiveGoal{bee: b})
 	ai.Goals.Add(5, b.goToHive)
 	ai.Goals.Add(6, &beeGoToKnownFlowerGoal{goalFlags: goalFlags{GoalMove}, bee: b})
 	ai.Goals.Add(7, &beeGrowCropGoal{bee: b})
 	ai.Goals.Add(8, &beeWanderGoal{goalFlags{GoalMove}, b})
-	ai.Goals.Add(9, NewFloatGoal(m))
+	ai.Goals.Add(9, newFloatGoal(m))
 
-	hurt := NewHurtByTargetGoal()
+	hurt := newHurtByTargetGoal()
 	hurt.AlertOthers = true
 	// BeeHurtByOtherGoal.alertOther: a hurt bee alerts the bees around that
 	// it sees the attacker from.
@@ -66,7 +66,7 @@ func (b *beeBehaviour) registerGoals(m *Mob) {
 		}
 	}
 	ai.Targets.Add(1, beeHurtByOtherGoal{hurt, b})
-	angry := &NearestAttackableTargetGoal{targetGoal: newTargetGoal(true, false), RandomInterval: reducedTickDelay(10), IsType: isPlayerEntity}
+	angry := &nearestAttackableTargetGoal{targetGoal: newTargetGoal(true, false), RandomInterval: reducedTickDelay(10), IsType: isPlayerEntity}
 	angry.Selector = func(m *Mob, target world.Entity) bool { return b.angryAt(m, target) }
 	ai.Targets.Add(2, beeBecomeAngryTargetGoal{angry, b})
 	ai.Targets.Add(3, &resetUniversalAngerTargetGoal{lastHurtByPlayer: -1, alertSameType: true})
@@ -239,13 +239,13 @@ func (b *beeBehaviour) hiveNearFire(m *Mob) bool {
 // for the hive, which keeps what it saved but its hive and counters.
 func (b *beeBehaviour) enterHive(m *Mob, home beeHome) {
 	pos := *b.hive
-	data := BeeType.EncodeNBT(m.data)
-	if j := ReadNativeMobJavaState(data); j != nil {
+	data := entityBeeType.EncodeNBT(m.data)
+	if j := readNativeMobJavaState(data); j != nil {
 		// BeehiveBlockEntity.IGNORED_BEE_TAGS.
 		for _, key := range [...]string{"NoGravity", "CannotEnterHiveTicks", "TicksSincePollination", "CropsGrownSincePollination", "hive_pos"} {
 			delete(j, key)
 		}
-		data = MergeNativeMobJavaState(data, j)
+		data = mergeNativeMobJavaState(data, j)
 	}
 	next, ok := home.AddBeeOccupant(data)
 	if !ok {
@@ -273,7 +273,7 @@ func (b *beeBehaviour) pathfindRandomlyTowards(m *Mob, target cube.Pos) {
 	if dist := absInt(beePos.X()-target.X()) + absInt(beePos.Y()-target.Y()) + absInt(beePos.Z()-target.Z()); dist < 15 {
 		xzDist, yDist = dist/2, dist/2
 	}
-	if next, ok := AirRandomPosTowards(m, xzDist, yDist, yAdjust, targetVec, math.Pi/10); ok {
+	if next, ok := airRandomPosTowards(m, xzDist, yDist, yAdjust, targetVec, math.Pi/10); ok {
 		m.AI.nav.SetMaxVisitedNodesMultiplier(.5)
 		m.AI.nav.MoveToPos(m, next[0], next[1], next[2], 1)
 	}
@@ -310,16 +310,16 @@ func (c beeLookControl) tick(m *Mob) {
 // beeAttackGoal ports BeeAttackGoal: an angry bee that still has its stinger
 // attacks.
 type beeAttackGoal struct {
-	*MeleeAttackGoal
+	*meleeAttackGoal
 	bee *beeBehaviour
 }
 
 func (g beeAttackGoal) CanUse(m *Mob) bool {
-	return g.MeleeAttackGoal.CanUse(m) && g.bee.angry() && !g.bee.hasStung
+	return g.meleeAttackGoal.CanUse(m) && g.bee.angry() && !g.bee.hasStung
 }
 
 func (g beeAttackGoal) CanContinueToUse(m *Mob) bool {
-	return g.MeleeAttackGoal.CanContinueToUse(m) && g.bee.angry() && !g.bee.hasStung
+	return g.meleeAttackGoal.CanContinueToUse(m) && g.bee.angry() && !g.bee.hasStung
 }
 
 // beeEnterHiveGoal ports BeeEnterHiveGoal: a bee within two blocks of its
@@ -567,30 +567,30 @@ func (g *beeGrowCropGoal) Tick(m *Mob) {
 // beeHurtByOtherGoal ports BeeHurtByOtherGoal, which only keeps an angry
 // bee after its attacker.
 type beeHurtByOtherGoal struct {
-	*HurtByTargetGoal
+	*hurtByTargetGoal
 	bee *beeBehaviour
 }
 
 func (g beeHurtByOtherGoal) CanContinueToUse(m *Mob) bool {
-	return g.bee.angry() && g.HurtByTargetGoal.CanContinueToUse(m)
+	return g.bee.angry() && g.hurtByTargetGoal.CanContinueToUse(m)
 }
 
 // beeBecomeAngryTargetGoal ports BeeBecomeAngryTargetGoal: an angry bee that
 // still has its stinger targets the player it is angry at.
 type beeBecomeAngryTargetGoal struct {
-	*NearestAttackableTargetGoal
+	*nearestAttackableTargetGoal
 	bee *beeBehaviour
 }
 
 func (g beeBecomeAngryTargetGoal) canTarget() bool { return g.bee.angry() && !g.bee.hasStung }
 
 func (g beeBecomeAngryTargetGoal) CanUse(m *Mob) bool {
-	return g.canTarget() && g.NearestAttackableTargetGoal.CanUse(m)
+	return g.canTarget() && g.nearestAttackableTargetGoal.CanUse(m)
 }
 
 func (g beeBecomeAngryTargetGoal) CanContinueToUse(m *Mob) bool {
 	if g.canTarget() && m.Target() != nil {
-		return g.NearestAttackableTargetGoal.CanContinueToUse(m)
+		return g.nearestAttackableTargetGoal.CanContinueToUse(m)
 	}
 	g.target = nil
 	return false
@@ -839,9 +839,9 @@ func (g *beeWanderGoal) Start(m *Mob) {
 	if b.hiveValid(m) && !beeCloserThan(m, *b.hive, threshold) {
 		dir = b.hive.Vec3Centre().Sub(m.data.Pos).Normalize()
 	}
-	pos, ok := HoverRandomPos(m, 8, 7, dir[0], dir[2], math.Pi/2, 3, 1)
+	pos, ok := hoverRandomPos(m, 8, 7, dir[0], dir[2], math.Pi/2, 3, 1)
 	if !ok {
-		pos, ok = AirAndWaterRandomPos(m, 8, 4, -2, dir[0], dir[2], math.Pi/2)
+		pos, ok = airAndWaterRandomPos(m, 8, 4, -2, dir[0], dir[2], math.Pi/2)
 	}
 	if ok {
 		m.AI.nav.MoveTo(m, m.AI.nav.CreatePath(m, cube.PosFromVec3(pos), 1), 1)

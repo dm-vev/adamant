@@ -15,24 +15,24 @@ import (
 )
 
 // ParrotType is the source minecraft:parrot actor.
-var ParrotType parrotType
+var entityParrotType parrotType
 
 type parrotType struct{}
 
 func (parrotType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
-		ParrotConfig{}.Apply(d)
+		parrotConfig{}.Apply(d)
 	}
 	return &Parrot{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
 func (parrotType) EncodeEntity() string        { return "minecraft:parrot" }
 func (parrotType) BBox(world.Entity) cube.BBox { return cube.Box(-.25, 0, -.25, .25, .9, .25) }
 func (parrotType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	s := ReadNativeMobJavaState(m)
+	s := readNativeMobJavaState(m)
 	if s == nil {
 		s = m
 	}
-	c := ParrotConfig{Variant: int(nbtconv.Int32(m, "Variant")), Tame: nbtconv.Bool(s, "Tame"), Sitting: nbtconv.Bool(s, "Sitting"), Owner: catReadOwner(s["Owner"])}
+	c := parrotConfig{Variant: int(nbtconv.Int32(m, "Variant")), Tame: nbtconv.Bool(s, "Tame"), Sitting: nbtconv.Bool(s, "Sitting"), Owner: catReadOwner(s["Owner"])}
 	if _, ok := s["Health"]; ok {
 		c.Health, c.healthSet = float64(nbtconv.Float32(s, "Health")), true
 	} else if a, ok := nativeMobAttribute(m, "minecraft:health"); ok {
@@ -46,20 +46,20 @@ func (parrotType) DecodeNBT(m map[string]any, d *world.EntityData) {
 func (parrotType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*parrotBehaviour)
 	h := b.health
-	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: h.MaxHealth(), Current: h.Health(), DefaultMin: 0, DefaultMax: 6, Min: 0, Max: 6}, {Name: "minecraft:movement", Base: .2, Current: .2, DefaultMin: 0, DefaultMax: .2, Min: 0, Max: .2}, {Name: "minecraft:flying_speed", Base: .4, Current: .4, DefaultMin: 0, DefaultMax: .4, Min: 0, Max: .4}, {Name: "minecraft:attack_damage", Base: 3, Current: 3, DefaultMin: 0, DefaultMax: 3, Min: 0, Max: 3}})
-	m := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs, "Variant": int32(b.variant)})
-	extra := MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), map[string]any{"Health": float32(h.Health()), "MaxHealth": float32(h.MaxHealth()), "Tame": byte(catBool(b.tamed)), "Sitting": byte(catBool(b.orderedToSit))})
+	attrs := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: h.MaxHealth(), Current: h.Health(), DefaultMin: 0, DefaultMax: 6, Min: 0, Max: 6}, {Name: "minecraft:movement", Base: .2, Current: .2, DefaultMin: 0, DefaultMax: .2, Min: 0, Max: .2}, {Name: "minecraft:flying_speed", Base: .4, Current: .4, DefaultMin: 0, DefaultMax: .4, Min: 0, Max: .4}, {Name: "minecraft:attack_damage", Base: 3, Current: 3, DefaultMin: 0, DefaultMax: 3, Min: 0, Max: 3}})
+	m := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs, "Variant": int32(b.variant)})
+	extra := mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), map[string]any{"Health": float32(h.Health()), "MaxHealth": float32(h.MaxHealth()), "Tame": byte(catBool(b.tamed)), "Sitting": byte(catBool(b.orderedToSit))})
 	if owner := catOwnerNBT(b.ownerUUID); owner != nil {
 		extra["Owner"] = owner
 	} else {
 		delete(extra, "Owner")
 	}
-	return MergeNativeMobJavaState(m, extra)
+	return mergeNativeMobJavaState(m, extra)
 }
 
 // ParrotConfig is the configuration of a parrot: its health, variant and
 // whether it is tamed, by whom and ordered to sit.
-type ParrotConfig struct {
+type parrotConfig struct {
 	Health, MaxHealth float64
 	Variant           int
 	Tame, Sitting     bool
@@ -67,8 +67,8 @@ type ParrotConfig struct {
 	healthSet         bool
 }
 
-func (c ParrotConfig) Apply(d *world.EntityData) { d.Data = c.New() }
-func (c ParrotConfig) New() *parrotBehaviour {
+func (c parrotConfig) Apply(d *world.EntityData) { d.Data = c.New() }
+func (c parrotConfig) New() *parrotBehaviour {
 	if c.MaxHealth <= 0 {
 		c.MaxHealth = 6
 	}
@@ -100,14 +100,14 @@ type parrotShownState struct{ tamed, sitting, party bool }
 type Parrot struct{ *Ent }
 
 func NewParrot(opts world.EntitySpawnOpts) *world.EntityHandle {
-	return opts.New(ParrotType, ParrotConfig{})
+	return opts.New(entityParrotType, parrotConfig{})
 }
 func (p *Parrot) FinalizeSpawn(_ string, r *vanilla.Random) {
 	if r != nil {
 		p.b().variant = int(r.NextInt(5))
 	}
 }
-func (*Parrot) SpeciesType() world.EntityType { return ParrotType }
+func (*Parrot) SpeciesType() world.EntityType { return entityParrotType }
 func (p *Parrot) b() *parrotBehaviour         { return p.Behaviour().(*parrotBehaviour) }
 func (p *Parrot) Tick(tx *world.Tx, n int64) {
 	p.b().effects.Tick(p, tx)
@@ -241,11 +241,7 @@ func (p *Parrot) Effects() []effect.Effect   { return p.b().effects.Effects() }
 func (p *Parrot) Speed() float64             { return p.b().speed }
 func (p *Parrot) SetSpeed(v float64)         { p.b().speed = v }
 func (p *Parrot) viewAction(a world.EntityAction) {
-	vs := p.tx.Viewers(p.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(p, a)
-	}
-	p.tx.ReleaseViewers(vs)
+	world.BroadcastEntityAction(p.tx, p, a)
 }
 
 var _ Living = (*Parrot)(nil)

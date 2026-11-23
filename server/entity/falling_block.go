@@ -14,7 +14,7 @@ func NewFallingBlock(opts world.EntitySpawnOpts, block world.Block) *world.Entit
 	return opts.New(FallingBlockType, conf)
 }
 
-var fallingBlockConf = FallingBlockBehaviourConfig{
+var fallingBlockConf = fallingBlockBehaviourConfig{
 	Gravity: 0.04,
 	Drag:    0.02,
 }

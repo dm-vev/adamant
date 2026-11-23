@@ -156,7 +156,7 @@ func TestGoatsGiveMilk(t *testing.T) {
 		if !e.(*Goat).Milk(tx) {
 			t.Fatal("adult goat gave no milk")
 		}
-		kid := tx.AddEntity(world.EntitySpawnOpts{Position: mgl64.Vec3{3.5, 64, .5}}.New(GoatType, GoatConfig{Age: -24000})).(*Goat)
+		kid := tx.AddEntity(world.EntitySpawnOpts{Position: mgl64.Vec3{3.5, 64, .5}}.New(entityGoatType, goatConfig{Age: -24000})).(*Goat)
 		if kid.Milk(tx) {
 			t.Fatal("kid gave milk")
 		}

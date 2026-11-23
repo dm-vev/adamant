@@ -25,7 +25,7 @@ func TestMobsWalkOnFrostWalker(t *testing.T) {
 			}
 		}
 		tx.SetBlock(cube.Pos{0, 63, 0}, block.Stone{}, nil)
-		zombie := tx.AddEntity(NewZombie(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 64, .5}})).(*Zombie)
+		zombie := tx.AddEntity(NewZombie(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 64, .5}})).(*zombie)
 		zombie.state().feet = item.NewStack(item.Boots{Tier: item.ArmourTierIron{}}, 1).WithEnchantments(item.NewEnchantment(enchantment.FrostWalker, 1))
 		FrostWalk(tx, zombie, zombie.Position())
 

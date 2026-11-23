@@ -34,7 +34,7 @@ func (p *dragonPath) missingOrDone() bool { return !p.valid || p.done() }
 
 // ensureDragonNodes ports the first part of EnderDragon.findClosestNode: the
 // 24 nodes in three rings above the island, built once.
-func (b *EnderDragonBehaviour) ensureDragonNodes(tx *world.Tx) {
+func (b *enderDragonBehaviour) ensureDragonNodes(tx *world.Tx) {
 	if b.nodesInitialized {
 		return
 	}
@@ -62,7 +62,7 @@ func (b *EnderDragonBehaviour) ensureDragonNodes(tx *world.Tx) {
 }
 
 // closestNode ports EnderDragon.findClosestNode().
-func (b *EnderDragonBehaviour) closestNode(tx *world.Tx, e *Ent) int {
+func (b *enderDragonBehaviour) closestNode(tx *world.Tx, e *Ent) int {
 	b.ensureDragonNodes(tx)
 	pos := e.Position()
 	return b.closestNodeTo(tx, pos[0], pos[1], pos[2])
@@ -70,7 +70,7 @@ func (b *EnderDragonBehaviour) closestNode(tx *world.Tx, e *Ent) int {
 
 // closestNodeTo ports EnderDragon.findClosestNode(x, y, z): the outer ring is
 // left out once no crystal is alive.
-func (b *EnderDragonBehaviour) closestNodeTo(tx *world.Tx, x, y, z float64) int {
+func (b *enderDragonBehaviour) closestNodeTo(tx *world.Tx, x, y, z float64) int {
 	b.ensureDragonNodes(tx)
 	start := 0
 	if b.fight == nil || b.fight.AliveCrystals() == 0 {
@@ -188,7 +188,7 @@ func (h *dragonHeap) down(i int) {
 // findPath ports EnderDragon.findPath: A* over the node graph, leaving out
 // the outer ring once no crystal is alive. It ends at the final node if one
 // is given, and at the closest node reached if the end cannot be.
-func (b *EnderDragonBehaviour) findPath(tx *world.Tx, start, end int, final *cube.Pos) dragonPath {
+func (b *enderDragonBehaviour) findPath(tx *world.Tx, start, end int, final *cube.Pos) dragonPath {
 	b.ensureDragonNodes(tx)
 	var g, f [24]float32
 	var idx [24]int

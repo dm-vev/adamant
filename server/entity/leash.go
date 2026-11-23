@@ -102,7 +102,7 @@ type fenceKnot interface {
 }
 
 // TieLeashedEntities creates a fence knot when the user has nearby leashable mobs.
-func TieLeashedEntities(pos cube.Pos, tx *world.Tx, user world.Entity) bool {
+func tieLeashedEntities(pos cube.Pos, tx *world.Tx, user world.Entity) bool {
 	switch tx.Block(pos).(type) {
 	case block.WoodFence, block.NetherBrickFence:
 	default:
@@ -151,7 +151,9 @@ func TieLeashedEntities(pos cube.Pos, tx *world.Tx, user world.Entity) bool {
 	if !leashed {
 		if !existing {
 			if k, ok := knot.Entity(tx); ok {
-				_ = k.(*LeashKnot).CloseIn(tx)
+				if c, ok := k.(interface{ CloseIn(*world.Tx) error }); ok {
+					_ = c.CloseIn(tx)
+				}
 			}
 		}
 		return false

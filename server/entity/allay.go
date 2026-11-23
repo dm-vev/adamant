@@ -16,21 +16,21 @@ import (
 )
 
 // AllayType is the Java minecraft:allay entity type.
-var AllayType allayType
+var entityAllayType allayType
 
 type allayType struct{}
 
 func (allayType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
-		AllayBehaviourConfig{}.Apply(d)
+		allayBehaviourConfig{}.Apply(d)
 	}
-	return &Allay{Ent: &Ent{tx: tx, handle: h, data: d}}
+	return &allay{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
 func (allayType) EncodeEntity() string        { return "minecraft:allay" }
 func (allayType) BBox(world.Entity) cube.BBox { return cube.Box(-.35, 0, -.35, .35, .6, .35) }
 func (allayType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	c := AllayBehaviourConfig{}
-	javaState := ReadNativeMobJavaState(m)
+	c := allayBehaviourConfig{}
+	javaState := readNativeMobJavaState(m)
 	source := m
 	if javaState != nil {
 		source = javaState
@@ -62,7 +62,7 @@ func (allayType) DecodeNBT(m map[string]any, d *world.EntityData) {
 			}
 		}
 	} else {
-		for _, native := range ReadNativeMobEquipment(m).ChestItems {
+		for _, native := range readNativeMobEquipment(m).ChestItems {
 			if s, ok := allayNativeStack(native); ok {
 				c.Inventory = append(c.Inventory, s)
 			}
@@ -75,7 +75,7 @@ func (allayType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	} else if tag, ok := source["HeldItem"].(map[string]any); ok {
 		c.Held, _ = item.StackFromStructureNBT(tag)
 	} else {
-		equipment := ReadNativeMobEquipment(m)
+		equipment := readNativeMobEquipment(m)
 		if len(equipment.Mainhand) > 0 {
 			c.Held, _ = allayNativeStack(equipment.Mainhand[0])
 		}
@@ -83,25 +83,25 @@ func (allayType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	d.Data = c.New()
 }
 func (allayType) EncodeNBT(d *world.EntityData) map[string]any {
-	b := d.Data.(*AllayBehaviour)
-	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: b.health.MaxHealth(), Current: b.health.Health(), DefaultMin: 0, DefaultMax: b.health.MaxHealth(), Min: 0, Max: b.health.MaxHealth()}, {Name: "minecraft:movement", Base: .1, Current: .1, DefaultMin: 0, DefaultMax: .1, Min: 0, Max: .1}, {Name: "minecraft:attack_damage", Base: 2, Current: 2, DefaultMin: 0, DefaultMax: 2, Min: 0, Max: 2}})
-	native := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs})
-	equipment := ReadNativeMobEquipment(d.NativeNBT)
+	b := d.Data.(*allayBehaviour)
+	attrs := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: b.health.MaxHealth(), Current: b.health.Health(), DefaultMin: 0, DefaultMax: b.health.MaxHealth(), Min: 0, Max: b.health.MaxHealth()}, {Name: "minecraft:movement", Base: .1, Current: .1, DefaultMin: 0, DefaultMax: .1, Min: 0, Max: .1}, {Name: "minecraft:attack_damage", Base: 2, Current: 2, DefaultMin: 0, DefaultMax: 2, Min: 0, Max: 2}})
+	native := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs})
+	equipment := readNativeMobEquipment(d.NativeNBT)
 	if len(equipment.Mainhand) == 0 {
-		equipment.Mainhand = []NativeMobItem{{}}
+		equipment.Mainhand = []nativeMobItem{{}}
 	}
 	if len(equipment.Offhand) == 0 {
-		equipment.Offhand = []NativeMobItem{{}}
+		equipment.Offhand = []nativeMobItem{{}}
 	}
 	equipment.Mainhand[0] = allayNativeItem(b.held, equipment.Mainhand[0])
 	if len(equipment.ChestItems) == 0 {
-		equipment.ChestItems = []NativeMobItem{{}}
+		equipment.ChestItems = []nativeMobItem{{}}
 	}
 	slot := int32(0)
 	equipment.ChestItems[0].Slot = &slot
 	equipment.ChestItems[0] = allayNativeItem(b.inventory, equipment.ChestItems[0])
 	equipment.ChestItems[0].Slot = &slot
-	native = MergeNativeMobNBT(native, EncodeNativeMobEquipment(equipment))
+	native = mergeNativeMobNBT(native, encodeNativeMobEquipment(equipment))
 	inv := make([]any, 0, 1)
 	if !b.inventory.Empty() {
 		inv = append(inv, allayWriteStack(b.inventory))
@@ -110,11 +110,11 @@ func (allayType) EncodeNBT(d *world.EntityData) map[string]any {
 	if v, ok := b.br.get(memLikedPlayer); ok {
 		liked = v.(uuid.UUID).String()
 	}
-	java := MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), map[string]any{"Health": float32(b.health.Health()), "MaxHealth": float32(b.health.MaxHealth()), "LikedPlayer": liked, "DuplicationCooldown": int64(b.duplicationCooldown), "Dancing": byte(catBool(b.dancing)), "Inventory": inv, "HandItems": []any{allayWriteStack(b.held), map[string]any{}}})
-	return MergeNativeMobJavaState(native, java)
+	java := mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), map[string]any{"Health": float32(b.health.Health()), "MaxHealth": float32(b.health.MaxHealth()), "LikedPlayer": liked, "DuplicationCooldown": int64(b.duplicationCooldown), "Dancing": byte(catBool(b.dancing)), "Inventory": inv, "HandItems": []any{allayWriteStack(b.held), map[string]any{}}})
+	return mergeNativeMobJavaState(native, java)
 }
-func allayNativeItem(s item.Stack, previous NativeMobItem) NativeMobItem {
-	out := NativeMobItem{Raw: previous.Raw}
+func allayNativeItem(s item.Stack, previous nativeMobItem) nativeMobItem {
+	out := nativeMobItem{Raw: previous.Raw}
 	if s.Empty() {
 		out.Name = ""
 		out.Count = 0
@@ -132,7 +132,7 @@ func allayNativeItem(s item.Stack, previous NativeMobItem) NativeMobItem {
 	}
 	return out
 }
-func allayNativeStack(s NativeMobItem) (item.Stack, bool) {
+func allayNativeStack(s nativeMobItem) (item.Stack, bool) {
 	if s.Name == "" || s.Count == 0 {
 		return item.Stack{}, false
 	}
@@ -158,7 +158,7 @@ func allayWriteStack(s item.Stack) map[string]any {
 	return out
 }
 
-type AllayBehaviourConfig struct {
+type allayBehaviourConfig struct {
 	Health, MaxHealth float64
 	LikedPlayer       string
 	Cooldown          int
@@ -168,15 +168,15 @@ type AllayBehaviourConfig struct {
 	healthSet         bool
 }
 
-func (c AllayBehaviourConfig) Apply(d *world.EntityData) { d.Data = c.New() }
-func (c AllayBehaviourConfig) New() *AllayBehaviour {
+func (c allayBehaviourConfig) Apply(d *world.EntityData) { d.Data = c.New() }
+func (c allayBehaviourConfig) New() *allayBehaviour {
 	if c.MaxHealth <= 0 {
 		c.MaxHealth = 20
 	}
 	if !c.healthSet && c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	b := &AllayBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), speed: .1, duplicationCooldown: max(0, c.Cooldown), dancing: c.Dancing, held: c.Held,
+	b := &allayBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), speed: .1, duplicationCooldown: max(0, c.Cooldown), dancing: c.Dancing, held: c.Held,
 		vibrations: &world.VibrationData{}}
 	if len(c.Inventory) > 0 {
 		b.inventory = c.Inventory[0]
@@ -188,11 +188,11 @@ func (c AllayBehaviourConfig) New() *AllayBehaviour {
 	return b
 }
 
-type AllayBehaviour struct {
+type allayBehaviour struct {
 	health              *HealthManager
 	effects             *EffectManager
 	ai                  MobAI
-	br                  *Brain
+	br                  *brain
 	speed               float64
 	duplicationCooldown int
 	dancing, dead       bool
@@ -210,14 +210,14 @@ type likedNoteblock struct {
 	pos cube.Pos
 }
 
-type Allay struct{ *Ent }
+type allay struct{ *Ent }
 
 func NewAllay(opts world.EntitySpawnOpts) *world.EntityHandle {
-	return opts.New(AllayType, AllayBehaviourConfig{})
+	return opts.New(entityAllayType, allayBehaviourConfig{})
 }
-func (a *Allay) SpeciesType() world.EntityType { return AllayType }
-func (a *Allay) b() *AllayBehaviour            { return a.Behaviour().(*AllayBehaviour) }
-func (a *Allay) Tick(tx *world.Tx, n int64) {
+func (a *allay) SpeciesType() world.EntityType { return entityAllayType }
+func (a *allay) b() *allayBehaviour            { return a.Behaviour().(*allayBehaviour) }
+func (a *allay) Tick(tx *world.Tx, n int64) {
 	b := a.b()
 	b.effects.Tick(a, tx)
 	a.Ent.Tick(tx, n)
@@ -232,13 +232,13 @@ func (a *Allay) Tick(tx *world.Tx, n int64) {
 	}
 }
 
-func (b *AllayBehaviour) mobAI() *MobAI   { return &b.ai }
-func (b *AllayBehaviour) brain() *Brain   { return b.br }
-func (b *AllayBehaviour) panicking() bool { return b.br.has(memIsPanicking) }
+func (b *allayBehaviour) mobAI() *MobAI   { return &b.ai }
+func (b *allayBehaviour) brain() *brain   { return b.br }
+func (b *allayBehaviour) panicking() bool { return b.br.has(memIsPanicking) }
 
 // Tick runs the MobAI of the allay with its brain.
-func (b *AllayBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	a := &Allay{Ent: e}
+func (b *allayBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+	a := &allay{Ent: e}
 	// Allay.createAttributes.
 	b.ai.MovementSpeed, b.ai.FlyingSpeed = b.speed, float64(float32(.1))
 	return b.ai.Tick(e, a, func(m *Mob) {
@@ -251,13 +251,13 @@ func (b *AllayBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 }
 
 // customServerAiStep ports Allay.customServerAiStep and AllayAi.updateActivity.
-func (b *AllayBehaviour) customServerAiStep(m *Mob) {
+func (b *allayBehaviour) customServerAiStep(m *Mob) {
 	b.br.tick(m)
 	b.br.setActiveToFirstValid(activityIdle)
 }
 
 // travel ports Allay.travel: an allay flies at its speed.
-func (b *AllayBehaviour) travel(m *Mob, input mgl64.Vec3) bool {
+func (b *allayBehaviour) travel(m *Mob, input mgl64.Vec3) bool {
 	m.AI.travelFlying(m, input, m.AI.speed, m.AI.speed, m.AI.speed)
 	return true
 }
@@ -266,8 +266,8 @@ func (b *AllayBehaviour) travel(m *Mob, input mgl64.Vec3) bool {
 // of the allay: it picks up the items it wants, heals a point every half
 // second, stops dancing once the jukebox is gone and counts down until it
 // may duplicate again.
-func (b *AllayBehaviour) afterAiStep(m *Mob) {
-	a := m.Self.(*Allay)
+func (b *allayBehaviour) afterAiStep(m *Mob) {
+	a := m.Self.(*allay)
 	if b.canPickUpLoot() && !b.dead && !mobGriefingDisabled(m.tx) {
 		box := m.BBox().Grow(1)
 		for e := range m.tx.EntitiesOfTypesWithin(box.Grow(1), itemEntityTypes) {
@@ -294,13 +294,13 @@ func (b *AllayBehaviour) afterAiStep(m *Mob) {
 
 // canPickUpLoot ports Allay.canPickUpLoot: an allay holding an item picks up
 // more, unless it just gave some away.
-func (b *AllayBehaviour) canPickUpLoot() bool {
+func (b *allayBehaviour) canPickUpLoot() bool {
 	return !b.br.has(memItemPickupCooldownTicks) && !b.held.Empty()
 }
 
 // wantsToPickUp ports Allay.wantsToPickUp: items like the one it holds that
 // fit in its inventory.
-func (b *AllayBehaviour) wantsToPickUp(tx *world.Tx, stack item.Stack) bool {
+func (b *allayBehaviour) wantsToPickUp(tx *world.Tx, stack item.Stack) bool {
 	return !b.held.Empty() && !mobGriefingDisabled(tx) && allayCanAddItem(b.inventory, stack) && allaySameItem(b.held, stack)
 }
 
@@ -322,7 +322,7 @@ func allayCanAddItem(slot, stack item.Stack) bool {
 }
 
 // pickUpItem ports InventoryCarrier.pickUpItem.
-func (b *AllayBehaviour) pickUpItem(m *Mob, e world.Entity, stack item.Stack) {
+func (b *allayBehaviour) pickUpItem(m *Mob, e world.Entity, stack item.Stack) {
 	if !allayCanAddItem(b.inventory, stack) {
 		return
 	}
@@ -333,20 +333,16 @@ func (b *AllayBehaviour) pickUpItem(m *Mob, e world.Entity, stack item.Stack) {
 		merged, left := b.inventory.AddStack(stack)
 		b.inventory, taken = merged, stack.Count()-left.Count()
 	}
-	viewers := m.tx.Viewers(e.Position())
-	for _, v := range viewers {
-		v.ViewEntityAction(e, PickedUpAction{Collector: m.Self.(Collector)})
-	}
-	m.tx.ReleaseViewers(viewers)
+	world.BroadcastEntityAction(m.tx, e, PickedUpAction{Collector: m.Self.(Collector)})
 	takeItemEntity(m, e, taken)
 }
 
 // Collect is never used by item entities: an allay picks up items itself.
-func (a *Allay) Collect(item.Stack) (int, bool) { return 0, false }
+func (a *allay) Collect(item.Stack) (int, bool) { return 0, false }
 
 // shouldStopDancing ports Allay.shouldStopDancing: the jukebox is gone or
 // out of earshot.
-func (b *AllayBehaviour) shouldStopDancing(m *Mob) bool {
+func (b *allayBehaviour) shouldStopDancing(m *Mob) bool {
 	if b.jukebox == nil {
 		return true
 	}
@@ -358,7 +354,7 @@ func (b *AllayBehaviour) shouldStopDancing(m *Mob) bool {
 
 // likedPlayer ports AllayAi.getLikedPlayer: the player the allay likes, in
 // survival or creative and within 64 blocks.
-func (b *AllayBehaviour) likedPlayer(m *Mob) world.Entity {
+func (b *allayBehaviour) likedPlayer(m *Mob) world.Entity {
 	v, ok := b.br.get(memLikedPlayer)
 	if !ok {
 		return nil
@@ -380,13 +376,13 @@ func (b *AllayBehaviour) likedPlayer(m *Mob) world.Entity {
 
 // depositPosition ports AllayAi.getItemDepositPosition: the note block the
 // allay likes while it plays, or else the player it likes.
-func (b *AllayBehaviour) depositPosition(m *Mob) (positionTracker, bool) {
+func (b *allayBehaviour) depositPosition(m *Mob) (positionTracker, bool) {
 	if b.likedPos != nil {
 		if b.shouldDepositAtNoteblock(m) {
 			return newBlockPosTracker(b.likedPos.pos.Side(cube.FaceUp)), true
 		}
 		b.likedPos = nil
-		m.Brain().erase(memLikedNoteblockPosition)
+		m.brain().erase(memLikedNoteblockPosition)
 	}
 	if p := b.likedPlayer(m); p != nil {
 		return newEntityTracker(p, true), true
@@ -395,7 +391,7 @@ func (b *AllayBehaviour) depositPosition(m *Mob) (positionTracker, bool) {
 }
 
 // shouldDepositAtNoteblock ports AllayAi.shouldDepositItemsAtLikedNoteblock.
-func (b *AllayBehaviour) shouldDepositAtNoteblock(m *Mob) bool {
+func (b *allayBehaviour) shouldDepositAtNoteblock(m *Mob) bool {
 	l := b.likedPos
 	if l.dim != m.tx.World().Dimension() || distSqrPos(l.pos, m.BlockPos()) >= 1024*1024 {
 		return false
@@ -403,13 +399,13 @@ func (b *AllayBehaviour) shouldDepositAtNoteblock(m *Mob) bool {
 	if _, ok := m.tx.Block(l.pos).(block.Note); !ok {
 		return false
 	}
-	return m.Brain().has(memLikedNoteblockCooldownTicks)
+	return m.brain().has(memLikedNoteblockCooldownTicks)
 }
 
 // hearNoteblock ports AllayAi.hearNoteblock: an allay likes the first note
 // block it hears for 30 seconds after each note.
-func (b *AllayBehaviour) hearNoteblock(m *Mob, pos cube.Pos) {
-	br := m.Brain()
+func (b *allayBehaviour) hearNoteblock(m *Mob, pos cube.Pos) {
+	br := m.brain()
 	dim := m.tx.World().Dimension()
 	switch {
 	case b.likedPos == nil:
@@ -423,7 +419,7 @@ func (b *AllayBehaviour) hearNoteblock(m *Mob, pos cube.Pos) {
 
 // throwItem ports AllayAi.throwItem: an allay throws one of the items it
 // gathered at where it delivers them.
-func (b *AllayBehaviour) throwItem(m *Mob, target mgl64.Vec3) {
+func (b *allayBehaviour) throwItem(m *Mob, target mgl64.Vec3) {
 	if b.inventory.Empty() {
 		return
 	}
@@ -448,7 +444,7 @@ func throwItemTowards(m *Mob, stack item.Stack, target, velocity mgl64.Vec3, han
 }
 
 // newAllayBrain ports AllayAi and the brain provider of Allay.
-func newAllayBrain(b *AllayBehaviour) *Brain {
+func newAllayBrain(b *allayBehaviour) *brain {
 	br := newBrain(nearestLivingEntitySensor{}, playerSensor{}, hurtBySensor{}, nearestItemSensor{wants: func(m *Mob, s item.Stack) bool { return b.wantsToPickUp(m.tx, s) }})
 	br.register(memLikedPlayer)
 	br.register(memLikedNoteblockPosition)
@@ -461,7 +457,7 @@ func newAllayBrain(b *AllayBehaviour) *Brain {
 		newCountDownCooldownTicks(memLikedNoteblockCooldownTicks),
 		newCountDownCooldownTicks(memItemPickupCooldownTicks),
 	)
-	hasWantedItem := func(m *Mob) bool { return m.Brain().has(memNearestVisibleWantedItem) }
+	hasWantedItem := func(m *Mob) bool { return m.brain().has(memNearestVisibleWantedItem) }
 	br.addActivity(activityIdle, 0,
 		newGoToWantedItem(nil, 1.75, true, 32, b.canPickUpLoot),
 		newGoAndGiveItemsToTarget(b.depositPosition, 2.25, 20, b.throwItem, memItemPickupCooldownTicks, 60, func(*Mob) bool { return !b.inventory.Empty() }),
@@ -477,20 +473,20 @@ func newAllayBrain(b *AllayBehaviour) *Brain {
 }
 
 // VibrationUser returns the allay as the user of its vibration listener.
-func (a *Allay) VibrationUser() world.VibrationUser { return allayVibrationUser{a} }
+func (a *allay) VibrationUser() world.VibrationUser { return allayVibrationUser{a} }
 
 // VibrationData returns the vibration listener data of the allay.
-func (a *Allay) VibrationData() *world.VibrationData { return a.b().vibrations }
+func (a *allay) VibrationData() *world.VibrationData { return a.b().vibrations }
 
 // VibrationListenerPosition returns the eyes of the allay, where its
 // EntityPositionSource is.
-func (a *Allay) VibrationListenerPosition() mgl64.Vec3 {
+func (a *allay) VibrationListenerPosition() mgl64.Vec3 {
 	return a.Position().Add(mgl64.Vec3{0, a.H().Type().BBox(a).Height() * .85})
 }
 
 // allayVibrationUser ports Allay.VibrationUser: an allay hears note blocks
 // within 16 blocks, the one it likes only once it likes one.
-type allayVibrationUser struct{ a *Allay }
+type allayVibrationUser struct{ a *allay }
 
 func (allayVibrationUser) VibrationRadius() int { return 16 }
 func (allayVibrationUser) ListensToGameEvent(e world.GameEvent) bool {
@@ -517,24 +513,24 @@ func (u allayVibrationUser) VibrationParticle(destination mgl64.Vec3, travelTick
 	return particle.VibrationSignal{Destination: destination, TravelTicks: travelTicks}
 }
 
-func (a *Allay) HeldItems() (item.Stack, item.Stack) { return a.b().held, item.Stack{} }
-func (a *Allay) SetHeldItems(main, off item.Stack)   { a.setHeld(main) }
+func (a *allay) HeldItems() (item.Stack, item.Stack) { return a.b().held, item.Stack{} }
+func (a *allay) SetHeldItems(main, off item.Stack)   { a.setHeld(main) }
 
 // setHeld changes the item the allay holds and shows viewers, which see it
 // with MobEquipment as BDS sends it.
-func (a *Allay) setHeld(stack item.Stack) {
+func (a *allay) setHeld(stack item.Stack) {
 	a.b().held = stack
 	a.updateState()
 	viewEquipment(a.tx, a)
 }
 
-func (a *Allay) Health() float64        { return a.b().health.Health() }
-func (a *Allay) MaxHealth() float64     { return a.b().health.MaxHealth() }
-func (a *Allay) SetMaxHealth(v float64) { a.b().health.SetMaxHealth(v) }
-func (a *Allay) Dead() bool             { return a.b().dead || a.Health() <= 0 }
+func (a *allay) Health() float64        { return a.b().health.Health() }
+func (a *allay) MaxHealth() float64     { return a.b().health.MaxHealth() }
+func (a *allay) SetMaxHealth(v float64) { a.b().health.SetMaxHealth(v) }
+func (a *allay) Dead() bool             { return a.b().dead || a.Health() <= 0 }
 
 // Hurt ports Allay.hurtServer: the player an allay likes cannot hurt it.
-func (a *Allay) Hurt(d float64, s world.DamageSource) (float64, bool) {
+func (a *allay) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	b := a.b()
 	if a.Dead() || d <= 0 {
 		return 0, false
@@ -560,7 +556,7 @@ func (a *Allay) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	}
 	return d, true
 }
-func (a *Allay) Heal(h float64, _ world.HealingSource) float64 {
+func (a *allay) Heal(h float64, _ world.HealingSource) float64 {
 	if a.Dead() || h <= 0 {
 		return 0
 	}
@@ -568,18 +564,18 @@ func (a *Allay) Heal(h float64, _ world.HealingSource) float64 {
 	a.b().health.AddHealth(h)
 	return a.Health() - old
 }
-func (a *Allay) KnockBack(s mgl64.Vec3, f, h float64) {
+func (a *allay) KnockBack(s mgl64.Vec3, f, h float64) {
 	knockBack(a, s, f, h)
 }
-func (a *Allay) AddEffect(e effect.Effect)  { a.b().effects.Add(e, a) }
-func (a *Allay) RemoveEffect(t effect.Type) { a.b().effects.Remove(t, a) }
-func (a *Allay) Effects() []effect.Effect   { return a.b().effects.Effects() }
-func (a *Allay) Speed() float64             { return a.b().speed }
-func (a *Allay) SetSpeed(v float64)         { a.b().speed = v }
-func (a *Allay) Dancing() bool              { return a.b().dancing }
+func (a *allay) AddEffect(e effect.Effect)  { a.b().effects.Add(e, a) }
+func (a *allay) RemoveEffect(t effect.Type) { a.b().effects.Remove(t, a) }
+func (a *allay) Effects() []effect.Effect   { return a.b().effects.Effects() }
+func (a *allay) Speed() float64             { return a.b().speed }
+func (a *allay) SetSpeed(v float64)         { a.b().speed = v }
+func (a *allay) Dancing() bool              { return a.b().dancing }
 
 // SetDancing ports Allay.setDancing: a panicking allay does not dance.
-func (a *Allay) SetDancing(v bool) {
+func (a *allay) SetDancing(v bool) {
 	b := a.b()
 	if b.ai.NoAI || v && a.Panicking() || b.dancing == v {
 		return
@@ -589,11 +585,11 @@ func (a *Allay) SetDancing(v bool) {
 }
 
 // Panicking reports whether the allay flees from danger.
-func (a *Allay) Panicking() bool { return a.b().panicking() }
+func (a *allay) Panicking() bool { return a.b().panicking() }
 
 // SetJukeboxPlaying ports Allay.setJukeboxPlaying: an allay within earshot of
 // a jukebox that starts playing dances, and stops when it stops.
-func (a *Allay) SetJukeboxPlaying(pos cube.Pos, playing bool) {
+func (a *allay) SetJukeboxPlaying(pos cube.Pos, playing bool) {
 	b := a.b()
 	if pos.Vec3Centre().Sub(a.VibrationListenerPosition()).LenSqr() > 10*10 {
 		// JukeboxListener hears jukeboxes within the radius of
@@ -610,12 +606,12 @@ func (a *Allay) SetJukeboxPlaying(pos cube.Pos, playing bool) {
 		a.SetDancing(false)
 	}
 }
-func (a *Allay) CanDuplicate() bool { return a.b().duplicationCooldown == 0 }
+func (a *allay) CanDuplicate() bool { return a.b().duplicationCooldown == 0 }
 
 // AcceptItem ports Allay.mobInteract: a dancing allay given an amethyst
 // shard duplicates, an allay without an item takes one from the player and
 // likes them, and an allay with one gives it back with all it gathered.
-func (a *Allay) AcceptItem(from world.Entity, tx *world.Tx, ctx *item.UseContext) bool {
+func (a *allay) AcceptItem(from world.Entity, tx *world.Tx, ctx *item.UseContext) bool {
 	u, ok := from.(item.User)
 	if !ok {
 		return false
@@ -661,27 +657,23 @@ func (a *Allay) AcceptItem(from world.Entity, tx *world.Tx, ctx *item.UseContext
 }
 
 // duplicate ports Allay.duplicateAllay.
-func (a *Allay) duplicate(tx *world.Tx) {
-	tx.AddEntity(world.EntitySpawnOpts{Position: a.Position(), SpawnReason: "BREEDING", SpawnFinalized: true}.New(AllayType, AllayBehaviourConfig{Cooldown: 6000}))
+func (a *allay) duplicate(tx *world.Tx) {
+	tx.AddEntity(world.EntitySpawnOpts{Position: a.Position(), SpawnReason: "BREEDING", SpawnFinalized: true}.New(entityAllayType, allayBehaviourConfig{Cooldown: 6000}))
 	a.b().duplicationCooldown = 6000
 	a.updateState()
 }
 
-func (a *Allay) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) bool {
+func (a *allay) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) bool {
 	return a.AcceptItem(u, tx, ctx)
 }
 
-func (a *Allay) viewAction(e world.EntityAction) {
-	vs := a.tx.Viewers(a.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(a, e)
-	}
-	a.tx.ReleaseViewers(vs)
+func (a *allay) viewAction(e world.EntityAction) {
+	world.BroadcastEntityAction(a.tx, a, e)
 }
 
 // die ports Allay.dropEquipment: an allay drops what it gathered and what it
 // holds.
-func (a *Allay) die(src world.DamageSource) {
+func (a *allay) die(src world.DamageSource) {
 	b := a.b()
 	if b.dead {
 		return
@@ -697,13 +689,13 @@ func (a *Allay) die(src world.DamageSource) {
 	dropAllDeathLoot(a.tx, a, src)
 	_ = a.CloseIn(a.tx)
 }
-func (a *Allay) DuplicationCooldown() time.Duration {
+func (a *allay) DuplicationCooldown() time.Duration {
 	return time.Duration(a.b().duplicationCooldown) * time.Second / 20
 }
 
-var _ Living = (*Allay)(nil)
-var _ item.Carrier = (*Allay)(nil)
-var _ ItemAcceptor = (*Allay)(nil)
-var _ world.EntityVibrationListener = (*Allay)(nil)
+var _ Living = (*allay)(nil)
+var _ item.Carrier = (*allay)(nil)
+var _ ItemAcceptor = (*allay)(nil)
+var _ world.EntityVibrationListener = (*allay)(nil)
 
-func (b *AllayBehaviour) effectManager() *EffectManager { return b.effects }
+func (b *allayBehaviour) effectManager() *EffectManager { return b.effects }

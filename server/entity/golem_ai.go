@@ -39,25 +39,25 @@ func (b *golemState) registerGoals(m *Mob) {
 // registerIronGolemGoals ports IronGolem.registerGoals.
 func (b *golemState) registerIronGolemGoals(m *Mob) {
 	ai := m.AI
-	ai.Goals.Add(1, NewMeleeAttackGoal(1, true))
+	ai.Goals.Add(1, newMeleeAttackGoal(1, true))
 	ai.Goals.Add(2, &moveTowardsTargetGoal{goalFlags: goalFlags{GoalMove}, speed: .9, within: 32})
-	back := NewRandomStrollGoal(.6)
+	back := newRandomStrollGoal(.6)
 	back.Interval, back.CheckNoActionTime = 10, false
 	back.Position = moveBackToVillagePosition
 	ai.Goals.Add(2, moveBackToVillageGoal{back})
-	stroll := NewRandomStrollGoal(.6)
+	stroll := newRandomStrollGoal(.6)
 	stroll.Interval, stroll.CheckNoActionTime = 240, false
 	stroll.Position = golemStrollInVillagePosition
 	ai.Goals.Add(4, stroll)
 	ai.Goals.Add(5, &offerFlowerGoal{goalFlags: goalFlags{GoalMove | GoalLook}, golem: b})
-	ai.Goals.Add(7, NewLookAtPlayerGoal(6))
-	ai.Goals.Add(8, NewRandomLookAroundGoal())
+	ai.Goals.Add(7, newLookAtPlayerGoal(6))
+	ai.Goals.Add(8, newRandomLookAroundGoal())
 	ai.Targets.Add(1, &defendVillageTargetGoal{targetGoal: newTargetGoal(false, true)})
-	ai.Targets.Add(2, NewHurtByTargetGoal())
-	angry := NewNearestAttackableTargetGoal(nil, true)
+	ai.Targets.Add(2, newHurtByTargetGoal())
+	angry := newNearestAttackableTargetGoal(nil, true)
 	angry.Selector = func(m *Mob, target world.Entity) bool { return b.angryAt(m, target) }
 	ai.Targets.Add(3, angry)
-	enemies := NewNearestAttackableTargetGoal(func(e world.Entity) bool {
+	enemies := newNearestAttackableTargetGoal(func(e world.Entity) bool {
 		return isEnemy(e) && e.H().Type().EncodeEntity() != "minecraft:creeper"
 	}, false)
 	enemies.RandomInterval = reducedTickDelay(5)
@@ -68,13 +68,13 @@ func (b *golemState) registerIronGolemGoals(m *Mob) {
 // registerSnowGolemGoals ports SnowGolem.registerGoals.
 func (b *golemState) registerSnowGolemGoals(m *Mob) {
 	ai := m.AI
-	ai.Goals.Add(1, NewRangedAttackGoal(1.25, 20, 10, snowGolemThrow))
-	stroll := NewWaterAvoidingRandomStrollGoal(1)
+	ai.Goals.Add(1, newRangedAttackGoal(1.25, 20, 10, snowGolemThrow))
+	stroll := newWaterAvoidingRandomStrollGoal(1)
 	stroll.Probability = 1.0000001e-5
 	ai.Goals.Add(2, stroll)
-	ai.Goals.Add(3, NewLookAtPlayerGoal(6))
-	ai.Goals.Add(4, NewRandomLookAroundGoal())
-	ai.Targets.Add(1, NewNearestAttackableTargetGoal(isEnemy, true))
+	ai.Goals.Add(3, newLookAtPlayerGoal(6))
+	ai.Goals.Add(4, newRandomLookAroundGoal())
+	ai.Targets.Add(1, newNearestAttackableTargetGoal(isEnemy, true))
 }
 
 // canAttackEntity ports IronGolem.canAttack: a golem a player built never
@@ -207,7 +207,7 @@ func (g *moveTowardsTargetGoal) CanUse(m *Mob) bool {
 	if target == nil || m.DistanceToSqr(target) > g.within*g.within {
 		return false
 	}
-	pos, ok := DefaultRandomPosTowards(m, 16, 7, target.Position(), math.Pi/2)
+	pos, ok := defaultRandomPosTowards(m, 16, 7, target.Position(), math.Pi/2)
 	if !ok {
 		return false
 	}
@@ -228,10 +228,10 @@ func (g *moveTowardsTargetGoal) Start(m *Mob) {
 
 // moveBackToVillageGoal ports MoveBackToVillageGoal: a golem outside a
 // village strolls back towards the nearest village section.
-type moveBackToVillageGoal struct{ *RandomStrollGoal }
+type moveBackToVillageGoal struct{ *randomStrollGoal }
 
 func (g moveBackToVillageGoal) CanUse(m *Mob) bool {
-	return !m.tx.POIs().IsVillage(m.BlockPos()) && g.RandomStrollGoal.CanUse(m)
+	return !m.tx.POIs().IsVillage(m.BlockPos()) && g.randomStrollGoal.CanUse(m)
 }
 
 // moveBackToVillagePosition ports MoveBackToVillageGoal.getPosition with
@@ -255,7 +255,7 @@ func moveBackToVillagePosition(m *Mob) (mgl64.Vec3, bool) {
 		return mgl64.Vec3{}, false
 	}
 	centre := mgl64.Vec3{float64(best[0]<<4) + 8.5, float64(best[1]<<4) + 8, float64(best[2]<<4) + 8.5}
-	return DefaultRandomPosTowards(m, 10, 7, centre, math.Pi/2)
+	return defaultRandomPosTowards(m, 10, 7, centre, math.Pi/2)
 }
 
 // golemStrollInVillagePosition ports
@@ -264,7 +264,7 @@ func moveBackToVillagePosition(m *Mob) (mgl64.Vec3, bool) {
 func golemStrollInVillagePosition(m *Mob) (mgl64.Vec3, bool) {
 	r := m.Random()
 	if r.NextFloat() < .3 {
-		return LandRandomPos(m, 10, 7)
+		return landRandomPos(m, 10, 7)
 	}
 	var pos mgl64.Vec3
 	var ok bool
@@ -276,7 +276,7 @@ func golemStrollInVillagePosition(m *Mob) (mgl64.Vec3, bool) {
 		pos, ok = golemTowardsVillager(m)
 	}
 	if !ok {
-		return LandRandomPos(m, 10, 7)
+		return landRandomPos(m, 10, 7)
 	}
 	return pos, true
 }
@@ -292,7 +292,7 @@ func golemTowardsVillager(m *Mob) (mgl64.Vec3, bool) {
 	if len(villagers) == 0 {
 		return mgl64.Vec3{}, false
 	}
-	return LandRandomPosTowards(m, 10, 7, villagers[m.Random().NextInt(int32(len(villagers)))].Position())
+	return landRandomPosTowards(m, 10, 7, villagers[m.Random().NextInt(int32(len(villagers)))].Position())
 }
 
 // golemTowardsPOI ports getPositionTowardsPoi: an occupied POI within eight
@@ -314,7 +314,7 @@ func golemTowardsPOI(m *Mob) (mgl64.Vec3, bool) {
 		return mgl64.Vec3{}, false
 	}
 	target := pois[r.NextInt(int32(len(pois)))]
-	return LandRandomPosTowards(m, 10, 7, mgl64.Vec3{float64(target[0]) + .5, float64(target[1]), float64(target[2]) + .5})
+	return landRandomPosTowards(m, 10, 7, mgl64.Vec3{float64(target[0]) + .5, float64(target[1]), float64(target[2]) + .5})
 }
 
 // offerFlowerGoal ports OfferFlowerGoal: by day an iron golem now and then
@@ -350,11 +350,7 @@ func (g *offerFlowerGoal) CanContinueToUse(*Mob) bool { return g.tick > 0 }
 func (g *offerFlowerGoal) Start(m *Mob) {
 	g.tick = adjustedTickDelay(g, 400)
 	g.golem.offerFlowerTick = 400
-	vs := m.tx.Viewers(m.Self.Position())
-	for _, v := range vs {
-		v.ViewEntityAction(m.Self, OfferFlowerAction{})
-	}
-	m.tx.ReleaseViewers(vs)
+	world.BroadcastEntityAction(m.tx, m.Self, OfferFlowerAction{})
 	m.updateState()
 }
 

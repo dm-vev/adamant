@@ -31,13 +31,13 @@ func frogTestWorld(t *testing.T, pos mgl64.Vec3, build func(tx *world.Tx)) (*wor
 	return w, frog
 }
 
-func frogOf(tx *world.Tx, h *world.EntityHandle) *Frog {
+func frogOf(tx *world.Tx, h *world.EntityHandle) *frog {
 	e, _ := h.Entity(tx)
-	return e.(*Frog)
+	return e.(*frog)
 }
 
 // waitFrog advances the world until cond holds or ticks run out.
-func waitFrog(t *testing.T, w *world.World, h *world.EntityHandle, ticks int, cond func(tx *world.Tx, f *Frog) bool) bool {
+func waitFrog(t *testing.T, w *world.World, h *world.EntityHandle, ticks int, cond func(tx *world.Tx, f *frog) bool) bool {
 	t.Helper()
 	for range ticks {
 		stepTicks(t, w, 1)
@@ -54,7 +54,7 @@ func waitFrog(t *testing.T, w *world.World, h *world.EntityHandle, ticks int, co
 // frog on land finds the water's edge and lays frogspawn on the water.
 func TestFrogsLayFrogspawnBesideWater(t *testing.T) {
 	t.Parallel()
-	w, frog := frogTestWorld(t, mgl64.Vec3{-3.5, 64, .5}, func(tx *world.Tx) {
+	w, fh := frogTestWorld(t, mgl64.Vec3{-3.5, 64, .5}, func(tx *world.Tx) {
 		for x := 2; x <= 5; x++ {
 			for z := -2; z <= 2; z++ {
 				tx.SetBlock(cube.Pos{x, 63, z}, block.Water{Still: true, Depth: 8}, nil)
@@ -62,12 +62,12 @@ func TestFrogsLayFrogspawnBesideWater(t *testing.T) {
 		}
 	})
 	<-w.Exec(func(tx *world.Tx) {
-		f := frogOf(tx, frog)
+		f := frogOf(tx, fh)
 		f.behaviour().br.set(memIsPregnant, true)
 		// A frog that long jumps about takes longer to reach the water.
 		f.behaviour().br.set(memLongJumpCooldownTicks, 100000)
 	})
-	laid := waitFrog(t, w, frog, 2400, func(tx *world.Tx, f *Frog) bool {
+	laid := waitFrog(t, w, fh, 2400, func(tx *world.Tx, f *frog) bool {
 		for x := 2; x <= 5; x++ {
 			for z := -2; z <= 2; z++ {
 				if _, ok := tx.Block(cube.Pos{x, 64, z}).(block.FrogSpawn); ok {
@@ -81,7 +81,7 @@ func TestFrogsLayFrogspawnBesideWater(t *testing.T) {
 		t.Fatal("pregnant frog did not lay frogspawn on water six blocks away in two minutes")
 	}
 	<-w.Exec(func(tx *world.Tx) {
-		if frogOf(tx, frog).Pregnant() {
+		if frogOf(tx, fh).Pregnant() {
 			t.Fatal("frog was still pregnant after laying frogspawn")
 		}
 	})
@@ -90,8 +90,8 @@ func TestFrogsLayFrogspawnBesideWater(t *testing.T) {
 // TestFrogsCroak checks Croak: a frog idling on land croaks now and then.
 func TestFrogsCroak(t *testing.T) {
 	t.Parallel()
-	w, frog := frogTestWorld(t, mgl64.Vec3{.5, 64, .5}, nil)
-	if !waitFrog(t, w, frog, 2400, func(_ *world.Tx, f *Frog) bool { return f.Croaking() }) {
+	w, fh := frogTestWorld(t, mgl64.Vec3{.5, 64, .5}, nil)
+	if !waitFrog(t, w, fh, 2400, func(_ *world.Tx, f *frog) bool { return f.Croaking() }) {
 		t.Fatal("frog did not croak in two minutes")
 	}
 }
@@ -100,7 +100,7 @@ func TestFrogsCroak(t *testing.T) {
 // pit too deep to climb out of leaps onto the ground around it.
 func TestFrogsLongJumpOutOfPits(t *testing.T) {
 	t.Parallel()
-	w, frog := frogTestWorld(t, mgl64.Vec3{.5, 64, .5}, func(tx *world.Tx) {
+	w, fh := frogTestWorld(t, mgl64.Vec3{.5, 64, .5}, func(tx *world.Tx) {
 		for x := -6; x <= 6; x++ {
 			for z := -6; z <= 6; z++ {
 				if x < -1 || x > 1 || z < -1 || z > 1 {
@@ -111,9 +111,9 @@ func TestFrogsLongJumpOutOfPits(t *testing.T) {
 		}
 	})
 	stepTicks(t, w, 5)
-	<-w.Exec(func(tx *world.Tx) { frogOf(tx, frog).behaviour().br.set(memLongJumpCooldownTicks, 1) })
+	<-w.Exec(func(tx *world.Tx) { frogOf(tx, fh).behaviour().br.set(memLongJumpCooldownTicks, 1) })
 	jumped := false
-	out := waitFrog(t, w, frog, 2400, func(_ *world.Tx, f *Frog) bool {
+	out := waitFrog(t, w, fh, 2400, func(_ *world.Tx, f *frog) bool {
 		jumped = jumped || f.JumpGoalJumping()
 		return f.Position()[1] >= 66 && f.OnGround()
 	})
@@ -129,7 +129,7 @@ func TestFrogsLongJumpOutOfPits(t *testing.T) {
 // pool swims to its shore.
 func TestFrogsSwimToLand(t *testing.T) {
 	t.Parallel()
-	w, frog := frogTestWorld(t, mgl64.Vec3{.5, 63.2, .5}, func(tx *world.Tx) {
+	w, fh := frogTestWorld(t, mgl64.Vec3{.5, 63.2, .5}, func(tx *world.Tx) {
 		for x := -3; x <= 3; x++ {
 			for z := -3; z <= 3; z++ {
 				tx.SetBlock(cube.Pos{x, 62, z}, block.Water{Still: true, Depth: 8}, nil)
@@ -137,7 +137,7 @@ func TestFrogsSwimToLand(t *testing.T) {
 			}
 		}
 	})
-	if !waitFrog(t, w, frog, 1200, func(_ *world.Tx, f *Frog) bool {
+	if !waitFrog(t, w, fh, 1200, func(_ *world.Tx, f *frog) bool {
 		return f.OnGround() && f.Position()[1] >= 64 && f.behaviour().ai.waterHeight == 0
 	}) {
 		t.Fatal("frog in a pool did not swim to its shore in a minute")
@@ -150,9 +150,9 @@ func TestFrogPregnancyIsSaved(t *testing.T) {
 	t.Parallel()
 	data := &world.EntityData{}
 	frogConfig{pregnant: true}.Apply(data)
-	nbt := FrogType.EncodeNBT(data)
+	nbt := entityFrogType.EncodeNBT(data)
 	loaded := &world.EntityData{}
-	FrogType.DecodeNBT(nbt, loaded)
+	entityFrogType.DecodeNBT(nbt, loaded)
 	if !loaded.Data.(*frogBehaviour).br.has(memIsPregnant) {
 		t.Fatal("pregnant frog was not pregnant once loaded")
 	}

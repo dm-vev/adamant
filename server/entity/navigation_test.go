@@ -23,7 +23,7 @@ func TestGroundPathDoesNotClipDiagonalCorner(t *testing.T) {
 		}
 		tx.SetBlock(cube.Pos{1, 1, 0}, block.Stone{}, nil)
 		tx.SetBlock(cube.Pos{0, 1, 1}, block.Stone{}, nil)
-		path = FindGroundPath(tx, start, goal, GroundProfile{MaxVisitedNodes: 256})
+		path = findGroundPath(tx, start, goal, groundProfile{MaxVisitedNodes: 256})
 	})
 	if len(path) < 2 {
 		t.Fatalf("route clipped a blocked corner: %v", path)
@@ -44,7 +44,7 @@ func TestGroundPathAvoidsFire(t *testing.T) {
 		}
 		tx.SetBlock(cube.Pos{2, 1, 0}, block.Fire{}, nil)
 		tx.SetBlock(cube.Pos{3, 1, 0}, block.Lava{Depth: 8, Still: true}, nil)
-		path = FindGroundPath(tx, start, goal, GroundProfile{MaxVisitedNodes: 512})
+		path = findGroundPath(tx, start, goal, groundProfile{MaxVisitedNodes: 512})
 	})
 	for _, p := range path {
 		if p == (cube.Pos{2, 1, 0}) || p == (cube.Pos{3, 1, 0}) {
@@ -62,7 +62,7 @@ func TestGroundPathRespectsMaximumFall(t *testing.T) {
 	w.Do(func(tx *world.Tx) {
 		tx.SetBlock(cube.Pos{0, 4, 0}, block.Stone{}, nil)
 		tx.SetBlock(cube.Pos{1, 0, 0}, block.Stone{}, nil)
-		path = FindGroundPath(tx, start, goal, GroundProfile{MaxVisitedNodes: 128, MaxFall: 3})
+		path = findGroundPath(tx, start, goal, groundProfile{MaxVisitedNodes: 128, MaxFall: 3})
 	})
 	if len(path) != 0 {
 		t.Fatalf("found route with a fall beyond maximum: %v", path)
@@ -73,20 +73,20 @@ func TestNavigatorCachesAndReplansFarTargets(t *testing.T) {
 	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
-	var n Navigator
+	var n navigator
 	start, first, far := cube.Pos{0, 1, 0}, cube.Pos{2, 1, 0}, cube.Pos{10, 1, 0}
 	w.Do(func(tx *world.Tx) {
 		for x := -1; x <= 12; x++ {
 			tx.SetBlock(cube.Pos{x, 0, 0}, block.Stone{}, nil)
 		}
-		if !n.MoveTo(tx, start, first, GroundProfile{MaxVisitedNodes: 256}, 1) {
+		if !n.MoveTo(tx, start, first, groundProfile{MaxVisitedNodes: 256}, 1) {
 			t.Fatal("initial path unavailable")
 		}
 		path := append([]cube.Pos(nil), n.Path...)
-		if !n.MoveTo(tx, start, first, GroundProfile{MaxVisitedNodes: 256}, 2) || len(path) != len(n.Path) {
+		if !n.MoveTo(tx, start, first, groundProfile{MaxVisitedNodes: 256}, 2) || len(path) != len(n.Path) {
 			t.Fatal("unchanged target did not reuse path")
 		}
-		if !n.MoveTo(tx, start, far, GroundProfile{MaxVisitedNodes: 256}, 3) || n.Target != far {
+		if !n.MoveTo(tx, start, far, groundProfile{MaxVisitedNodes: 256}, 3) || n.Target != far {
 			t.Fatal("far target was not replanned immediately")
 		}
 	})

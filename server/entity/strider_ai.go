@@ -17,7 +17,7 @@ import (
 // while tempted and scared while panicking, shivers out of lava, which slows
 // it down by a third, and runs its MobAI.
 func (b *striderState) Tick(e *Ent, tx *world.Tx) *Movement {
-	s := &Strider{Ent: e}
+	s := &strider{Ent: e}
 	m := b.ai.Mob(e, s)
 	if b.ai.started {
 		r := m.Random()
@@ -33,7 +33,7 @@ func (b *striderState) Tick(e *Ent, tx *world.Tx) *Movement {
 		warm := striderWarmBlock(tx.Block(pos)) || striderWarmBlock(tx.Block(on)) || b.ai.lavaHeight > 0
 		if !warm && e.data.Riding != nil {
 			if v, ok := e.data.Riding.Entity(tx); ok {
-				if mount, ok := v.(*Strider); ok && !mount.b().suffocating {
+				if mount, ok := v.(*strider); ok && !mount.b().suffocating {
 					warm = true
 				}
 			}
@@ -77,7 +77,7 @@ func (b *striderState) makeSound(m *Mob, name string) {
 // registerGoals ports Strider.registerGoals and the navigation of its
 // constructor: a strider walks through lava and fire as it walks on land,
 // but never into water.
-func (b *striderState) registerGoals(m *Mob, s *Strider) {
+func (b *striderState) registerGoals(m *Mob, s *strider) {
 	ai := m.AI
 	ai.SetPathfindingMalus(PathWater, -1)
 	ai.SetPathfindingMalus(PathLava, 0)
@@ -88,22 +88,22 @@ func (b *striderState) registerGoals(m *Mob, s *Strider) {
 		_, lava := tx.Block(pos).(block.Lava)
 		return lava || ai.nav.groundStable(tx, pos)
 	}
-	b.panic = NewPanicGoal(1.65)
+	b.panic = newPanicGoal(1.65)
 	ai.Goals.Add(1, b.panic)
-	ai.Goals.Add(2, NewBreedGoal(1))
-	b.tempt = NewTemptGoal(1.4, func(st item.Stack) bool {
+	ai.Goals.Add(2, newBreedGoal(1))
+	b.tempt = newTemptGoal(1.4, func(st item.Stack) bool {
 		return s.breedingFood(st) || itemNamed(st, "minecraft:warped_fungus_on_a_stick")
 	}, false)
 	ai.Goals.Add(3, b.tempt)
 	ai.Goals.Add(4, &striderGoToLavaGoal{goalFlags: goalFlags{GoalMove | GoalJump}, moveToBlock: moveToBlock{targetBlock: true, recalcInterval: 20}})
-	ai.Goals.Add(5, NewFollowParentGoal(1))
-	stroll := NewRandomStrollGoal(1)
+	ai.Goals.Add(5, newFollowParentGoal(1))
+	stroll := newRandomStrollGoal(1)
 	stroll.Interval = 60
 	ai.Goals.Add(7, stroll)
-	ai.Goals.Add(8, NewLookAtPlayerGoal(8))
-	ai.Goals.Add(8, NewRandomLookAroundGoal())
-	lookAtStriders := NewLookAtPlayerGoal(8)
-	lookAtStriders.IsType = func(e world.Entity) bool { _, ok := e.(*Strider); return ok }
+	ai.Goals.Add(8, newLookAtPlayerGoal(8))
+	ai.Goals.Add(8, newRandomLookAroundGoal())
+	lookAtStriders := newLookAtPlayerGoal(8)
+	lookAtStriders.IsType = func(e world.Entity) bool { _, ok := e.(*strider); return ok }
 	ai.Goals.Add(9, lookAtStriders)
 }
 
@@ -127,7 +127,7 @@ func (b *striderState) canStandOnFluid(l world.Liquid) bool { return l.LiquidTyp
 // looks, and it walks forward at 0.55 times its speed, 0.35 times while it
 // shivers, faster while boosted.
 func (b *striderState) travel(m *Mob, _ mgl64.Vec3) bool {
-	c := (&Strider{Ent: m.Ent}).controller(m.tx)
+	c := (&strider{Ent: m.Ent}).controller(m.tx)
 	if c == nil || !m.Alive() {
 		return false
 	}

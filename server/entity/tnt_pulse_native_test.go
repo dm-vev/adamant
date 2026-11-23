@@ -84,7 +84,7 @@ func TestTNTPulsesMatchBDS(t *testing.T) {
 					comparePistonEntityNativeBlock(t, tx, frame.Tick, trace.Source, frame.Source)
 					var actors []world.Entity
 					for e := range tx.Entities() {
-						if e.H().Type() == TNTType {
+						if e.H().Type() == tNTType {
 							actors = append(actors, e)
 						}
 					}
