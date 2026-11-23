@@ -10,6 +10,16 @@ import (
 )
 
 func TestParse(t *testing.T) {
+	for _, name := range []string{"1.26.40", "26.40", "1.26.41", "26.41", "1.26.42", "26.42", "1.26.43", "26.43", "1.26.44", "26.44", "2168"} {
+		if p, err := Parse(name); err != nil || p.Number != 2168 {
+			t.Errorf("Parse(%q) = %v, %v, want 2168", name, p, err)
+		}
+	}
+	for _, name := range []string{"1.26.45", "26.45", "2169"} {
+		if p, err := Parse(name); err != nil || p.Number != 2169 {
+			t.Errorf("Parse(%q) = %v, %v, want 2169", name, p, err)
+		}
+	}
 	for _, name := range []string{"1.26.50", "26.50", "1.26.51", "26.51", "1.26.52", "26.52", "2193", " 26.52 "} {
 		p, err := Parse(name)
 		if err != nil {
@@ -20,7 +30,7 @@ func TestParse(t *testing.T) {
 			t.Errorf("Parse(%q) = %d, want 2193", name, p.Number)
 		}
 	}
-	for _, name := range []string{"1.26.60", "26.60", "1.26.61", "26.61", "2225"} {
+	for _, name := range []string{"1.26.60", "26.60", "1.26.61", "26.61", "1.26.62", "26.62", "1.26.65", "26.65", "1.26.66", "26.66", "2225"} {
 		if p, err := Parse(name); err != nil || p != Model() {
 			t.Errorf("Parse(%q) = %v, %v, want 2225", name, p, err)
 		}
@@ -28,13 +38,13 @@ func TestParse(t *testing.T) {
 	if NewestPrimary() != Model() {
 		t.Errorf("the session speaks up to %v as its primary", NewestPrimary())
 	}
-	for _, name := range []string{"", "1.26.40", "26.4", "1.26", "26.70", "1.26.70", "2250", "2192", "v1.26.50", "1.26.50.5", "0x891"} {
+	for _, name := range []string{"", "1.26.30", "26.4", "1.26", "26.70", "1.26.70", "2250", "2192", "v1.26.50", "1.26.50.5", "0x891"} {
 		p, err := Parse(name)
 		if err == nil {
 			t.Errorf("Parse(%q) = %d, want an error", name, p.Number)
 			continue
 		}
-		if want := "this build supports 1.26.50 (26.50–26.52), 1.26.60 (26.60–26.61)"; !strings.Contains(err.Error(), want) {
+		if want := "this build supports 1.26.40 (26.40–26.44), 1.26.45 (26.45), 1.26.50 (26.50–26.52), 1.26.60 (26.60–26.66)"; !strings.Contains(err.Error(), want) {
 			t.Errorf("Parse(%q): %q does not name the protocols supported (%q)", name, err, want)
 		}
 	}
@@ -42,8 +52,10 @@ func TestParse(t *testing.T) {
 
 // TestByNumber finds every protocol the adapter was built with.
 func TestByNumber(t *testing.T) {
-	if p, ok := ByNumber(2193); !ok || p.Number != 2193 {
-		t.Fatalf("ByNumber(2193) = %v, %v", p, ok)
+	for _, n := range []int32{2168, 2169, 2193} {
+		if p, ok := ByNumber(n); !ok || p.Number != n {
+			t.Fatalf("ByNumber(%d) = %v, %v", n, p, ok)
+		}
 	}
 	if p, ok := ByNumber(2225); !ok || p != Model() {
 		t.Fatalf("ByNumber(2225) = %v, %v", p, ok)
@@ -97,7 +109,7 @@ func TestAll(t *testing.T) {
 // 2225, and that 2193, the default, reaches it through c2225.
 func TestModelIsV2225(t *testing.T) {
 	m := Model()
-	if m.Number != v2225.Protocol || m.Version != v2225.Version || m.Range() != "26.60–26.61" {
+	if m.Number != v2225.Protocol || m.Version != v2225.Version || m.Range() != "26.60–26.66" {
 		t.Fatalf("model %d %s %s", m.Number, m.Version, m.Range())
 	}
 	if pk := m.New(v2225.IDLogin); pk == nil || pk.ID() != v2225.IDLogin || !m.FromClient(v2225.IDLogin) {

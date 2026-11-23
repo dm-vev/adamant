@@ -1,0 +1,19 @@
+Protocol 2169: Bedrock Edition 1.26.45.
+
+Taken from BDS 1.26.45.1, downloaded from
+https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-1.26.45.1.zip
+(104,052,820 bytes, sha256 b0db86098ee418a9bb226f6f3f51ff2be36542236839375627b29aef3dfa5cda), over NetherNet, by
+cmd/vanilla-probe as a client of protocol 2169 against a pristine copy
+of the server:
+
+  items.nbt     the ItemRegistry packet BDS sends (1,976 entries),
+                sha256 3a4ba8a19f5743945832c768997e4388e84d6d6047f53a20c5e73ca322257aee
+
+  blocks.nbt    the block definitions of StartGame (0 entries),
+                sha256 6630e884bb3a46b034db84b861a7ce6f3c3cd6d06e871bb2865e77d2af64ac9b
+
+  entities.txt  AvailableActorIdentifiers (136 entries),
+                sha256 b47db6fc1a7d8e17308a19e592a34601e197d92ee97daffd19dfe3ec4fed9d9d
+
+  biomes.txt    BiomeDefinitionList (88 entries),
+                sha256 8da1c80db858f6a79b021557759b33a23da7c341b409214cead493858b871c87

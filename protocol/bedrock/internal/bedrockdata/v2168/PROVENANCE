@@ -1,0 +1,19 @@
+Protocol 2168: Bedrock Edition 1.26.40 to 1.26.44.
+
+Taken from BDS 1.26.44.3, downloaded from
+https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-1.26.44.3.zip
+(104,052,093 bytes, sha256 a6d85efb2d72588b725afc12588bb1aab57547252ff1f84e7f9c3646816438c1), over NetherNet, by
+cmd/vanilla-probe as a client of protocol 2168 against a pristine copy
+of the server:
+
+  items.nbt     the ItemRegistry packet BDS sends (1,976 entries),
+                sha256 5105f43551d8d5729c851d19f033a8fce961aa335afce4cb82566ffaf729755a
+
+  blocks.nbt    the block definitions of StartGame (0 entries),
+                sha256 6630e884bb3a46b034db84b861a7ce6f3c3cd6d06e871bb2865e77d2af64ac9b
+
+  entities.txt  AvailableActorIdentifiers (136 entries),
+                sha256 b47db6fc1a7d8e17308a19e592a34601e197d92ee97daffd19dfe3ec4fed9d9d
+
+  biomes.txt    BiomeDefinitionList (88 entries),
+                sha256 8da1c80db858f6a79b021557759b33a23da7c341b409214cead493858b871c87

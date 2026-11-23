@@ -53,6 +53,23 @@ func (p *Protocol) Range() string {
 	return short[0] + "–" + short[len(short)-1]
 }
 
+// p2168 is protocol 2168, of 1.26.40 to 1.26.44, reaching the model
+// through c2169, c2193 and c2225.
+var p2168 = &Protocol{
+	Codec: *codec.V2168,
+	Names: []string{
+		"1.26.40", "26.40", "1.26.41", "26.41", "1.26.42", "26.42",
+		"1.26.43", "26.43", "1.26.44", "26.44",
+	},
+}
+
+// p2169 is protocol 2169, of 1.26.45, reaching the model through c2193
+// and c2225.
+var p2169 = &Protocol{
+	Codec: *codec.V2169,
+	Names: []string{"1.26.45", "26.45"},
+}
+
 // p2193 is protocol 2193, of 1.26.50, 1.26.51 and 1.26.52, a step before
 // the model: c2225 converts its packets.
 var p2193 = &Protocol{
@@ -60,18 +77,22 @@ var p2193 = &Protocol{
 	Names: []string{"1.26.50", "26.50", "1.26.51", "26.51", "1.26.52", "26.52"},
 }
 
-// p2225 is protocol 2225, of 1.26.60 and 1.26.61, the model.
+// p2225 is protocol 2225, of 1.26.60 to 1.26.66, the model.
 var p2225 = &Protocol{
 	Codec: *codec.V2225,
-	Names: []string{"1.26.60", "26.60", "1.26.61", "26.61"},
+	Names: []string{
+		"1.26.60", "26.60", "1.26.61", "26.61", "1.26.62", "26.62",
+		"1.26.63", "26.63", "1.26.64", "26.64", "1.26.65", "26.65",
+		"1.26.66", "26.66",
+	},
 }
 
 // all holds the protocols, oldest first.
-var all = []*Protocol{p2193, p2225}
+var all = []*Protocol{p2168, p2169, p2193, p2225}
 
 // configurable holds the protocols a config may name, oldest first: those
 // whose content the adapter serves.
-var configurable = []*Protocol{p2193, p2225}
+var configurable = []*Protocol{p2168, p2169, p2193, p2225}
 
 // newestPrimary is the newest protocol a config may name as the primary:
 // the model, 2225, whose features the session uses behind its gates once

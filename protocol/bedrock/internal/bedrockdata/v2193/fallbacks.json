@@ -1,0 +1,394 @@
+{
+  "minecraft:black_concrete_double_slab": {
+    "name": "minecraft:black_concrete",
+    "states": {}
+  },
+  "minecraft:black_concrete_slab": {
+    "name": "minecraft:black_concrete",
+    "states": {}
+  },
+  "minecraft:black_concrete_stairs": {
+    "name": "minecraft:black_concrete",
+    "states": {}
+  },
+  "minecraft:black_wool_double_slab": {
+    "name": "minecraft:black_wool",
+    "states": {}
+  },
+  "minecraft:black_wool_slab": {
+    "name": "minecraft:black_wool",
+    "states": {}
+  },
+  "minecraft:black_wool_stairs": {
+    "name": "minecraft:black_wool",
+    "states": {}
+  },
+  "minecraft:blue_concrete_double_slab": {
+    "name": "minecraft:blue_concrete",
+    "states": {}
+  },
+  "minecraft:blue_concrete_slab": {
+    "name": "minecraft:blue_concrete",
+    "states": {}
+  },
+  "minecraft:blue_concrete_stairs": {
+    "name": "minecraft:blue_concrete",
+    "states": {}
+  },
+  "minecraft:blue_wool_double_slab": {
+    "name": "minecraft:blue_wool",
+    "states": {}
+  },
+  "minecraft:blue_wool_slab": {
+    "name": "minecraft:blue_wool",
+    "states": {}
+  },
+  "minecraft:blue_wool_stairs": {
+    "name": "minecraft:blue_wool",
+    "states": {}
+  },
+  "minecraft:brown_concrete_double_slab": {
+    "name": "minecraft:brown_concrete",
+    "states": {}
+  },
+  "minecraft:brown_concrete_slab": {
+    "name": "minecraft:brown_concrete",
+    "states": {}
+  },
+  "minecraft:brown_concrete_stairs": {
+    "name": "minecraft:brown_concrete",
+    "states": {}
+  },
+  "minecraft:brown_wool_double_slab": {
+    "name": "minecraft:brown_wool",
+    "states": {}
+  },
+  "minecraft:brown_wool_slab": {
+    "name": "minecraft:brown_wool",
+    "states": {}
+  },
+  "minecraft:brown_wool_stairs": {
+    "name": "minecraft:brown_wool",
+    "states": {}
+  },
+  "minecraft:cyan_concrete_double_slab": {
+    "name": "minecraft:cyan_concrete",
+    "states": {}
+  },
+  "minecraft:cyan_concrete_slab": {
+    "name": "minecraft:cyan_concrete",
+    "states": {}
+  },
+  "minecraft:cyan_concrete_stairs": {
+    "name": "minecraft:cyan_concrete",
+    "states": {}
+  },
+  "minecraft:cyan_wool_double_slab": {
+    "name": "minecraft:cyan_wool",
+    "states": {}
+  },
+  "minecraft:cyan_wool_slab": {
+    "name": "minecraft:cyan_wool",
+    "states": {}
+  },
+  "minecraft:cyan_wool_stairs": {
+    "name": "minecraft:cyan_wool",
+    "states": {}
+  },
+  "minecraft:gray_concrete_double_slab": {
+    "name": "minecraft:gray_concrete",
+    "states": {}
+  },
+  "minecraft:gray_concrete_slab": {
+    "name": "minecraft:gray_concrete",
+    "states": {}
+  },
+  "minecraft:gray_concrete_stairs": {
+    "name": "minecraft:gray_concrete",
+    "states": {}
+  },
+  "minecraft:gray_wool_double_slab": {
+    "name": "minecraft:gray_wool",
+    "states": {}
+  },
+  "minecraft:gray_wool_slab": {
+    "name": "minecraft:gray_wool",
+    "states": {}
+  },
+  "minecraft:gray_wool_stairs": {
+    "name": "minecraft:gray_wool",
+    "states": {}
+  },
+  "minecraft:green_concrete_double_slab": {
+    "name": "minecraft:green_concrete",
+    "states": {}
+  },
+  "minecraft:green_concrete_slab": {
+    "name": "minecraft:green_concrete",
+    "states": {}
+  },
+  "minecraft:green_concrete_stairs": {
+    "name": "minecraft:green_concrete",
+    "states": {}
+  },
+  "minecraft:green_wool_double_slab": {
+    "name": "minecraft:green_wool",
+    "states": {}
+  },
+  "minecraft:green_wool_slab": {
+    "name": "minecraft:green_wool",
+    "states": {}
+  },
+  "minecraft:green_wool_stairs": {
+    "name": "minecraft:green_wool",
+    "states": {}
+  },
+  "minecraft:light_blue_concrete_double_slab": {
+    "name": "minecraft:light_blue_concrete",
+    "states": {}
+  },
+  "minecraft:light_blue_concrete_slab": {
+    "name": "minecraft:light_blue_concrete",
+    "states": {}
+  },
+  "minecraft:light_blue_concrete_stairs": {
+    "name": "minecraft:light_blue_concrete",
+    "states": {}
+  },
+  "minecraft:light_blue_wool_double_slab": {
+    "name": "minecraft:light_blue_wool",
+    "states": {}
+  },
+  "minecraft:light_blue_wool_slab": {
+    "name": "minecraft:light_blue_wool",
+    "states": {}
+  },
+  "minecraft:light_blue_wool_stairs": {
+    "name": "minecraft:light_blue_wool",
+    "states": {}
+  },
+  "minecraft:light_gray_concrete_double_slab": {
+    "name": "minecraft:light_gray_concrete",
+    "states": {}
+  },
+  "minecraft:light_gray_concrete_slab": {
+    "name": "minecraft:light_gray_concrete",
+    "states": {}
+  },
+  "minecraft:light_gray_concrete_stairs": {
+    "name": "minecraft:light_gray_concrete",
+    "states": {}
+  },
+  "minecraft:light_gray_wool_double_slab": {
+    "name": "minecraft:light_gray_wool",
+    "states": {}
+  },
+  "minecraft:light_gray_wool_slab": {
+    "name": "minecraft:light_gray_wool",
+    "states": {}
+  },
+  "minecraft:light_gray_wool_stairs": {
+    "name": "minecraft:light_gray_wool",
+    "states": {}
+  },
+  "minecraft:lime_concrete_double_slab": {
+    "name": "minecraft:lime_concrete",
+    "states": {}
+  },
+  "minecraft:lime_concrete_slab": {
+    "name": "minecraft:lime_concrete",
+    "states": {}
+  },
+  "minecraft:lime_concrete_stairs": {
+    "name": "minecraft:lime_concrete",
+    "states": {}
+  },
+  "minecraft:lime_wool_double_slab": {
+    "name": "minecraft:lime_wool",
+    "states": {}
+  },
+  "minecraft:lime_wool_slab": {
+    "name": "minecraft:lime_wool",
+    "states": {}
+  },
+  "minecraft:lime_wool_stairs": {
+    "name": "minecraft:lime_wool",
+    "states": {}
+  },
+  "minecraft:magenta_concrete_double_slab": {
+    "name": "minecraft:magenta_concrete",
+    "states": {}
+  },
+  "minecraft:magenta_concrete_slab": {
+    "name": "minecraft:magenta_concrete",
+    "states": {}
+  },
+  "minecraft:magenta_concrete_stairs": {
+    "name": "minecraft:magenta_concrete",
+    "states": {}
+  },
+  "minecraft:magenta_wool_double_slab": {
+    "name": "minecraft:magenta_wool",
+    "states": {}
+  },
+  "minecraft:magenta_wool_slab": {
+    "name": "minecraft:magenta_wool",
+    "states": {}
+  },
+  "minecraft:magenta_wool_stairs": {
+    "name": "minecraft:magenta_wool",
+    "states": {}
+  },
+  "minecraft:orange_concrete_double_slab": {
+    "name": "minecraft:orange_concrete",
+    "states": {}
+  },
+  "minecraft:orange_concrete_slab": {
+    "name": "minecraft:orange_concrete",
+    "states": {}
+  },
+  "minecraft:orange_concrete_stairs": {
+    "name": "minecraft:orange_concrete",
+    "states": {}
+  },
+  "minecraft:orange_wool_double_slab": {
+    "name": "minecraft:orange_wool",
+    "states": {}
+  },
+  "minecraft:orange_wool_slab": {
+    "name": "minecraft:orange_wool",
+    "states": {}
+  },
+  "minecraft:orange_wool_stairs": {
+    "name": "minecraft:orange_wool",
+    "states": {}
+  },
+  "minecraft:pink_concrete_double_slab": {
+    "name": "minecraft:pink_concrete",
+    "states": {}
+  },
+  "minecraft:pink_concrete_slab": {
+    "name": "minecraft:pink_concrete",
+    "states": {}
+  },
+  "minecraft:pink_concrete_stairs": {
+    "name": "minecraft:pink_concrete",
+    "states": {}
+  },
+  "minecraft:pink_wool_double_slab": {
+    "name": "minecraft:pink_wool",
+    "states": {}
+  },
+  "minecraft:pink_wool_slab": {
+    "name": "minecraft:pink_wool",
+    "states": {}
+  },
+  "minecraft:pink_wool_stairs": {
+    "name": "minecraft:pink_wool",
+    "states": {}
+  },
+  "minecraft:purple_concrete_double_slab": {
+    "name": "minecraft:purple_concrete",
+    "states": {}
+  },
+  "minecraft:purple_concrete_slab": {
+    "name": "minecraft:purple_concrete",
+    "states": {}
+  },
+  "minecraft:purple_concrete_stairs": {
+    "name": "minecraft:purple_concrete",
+    "states": {}
+  },
+  "minecraft:purple_wool_double_slab": {
+    "name": "minecraft:purple_wool",
+    "states": {}
+  },
+  "minecraft:purple_wool_slab": {
+    "name": "minecraft:purple_wool",
+    "states": {}
+  },
+  "minecraft:purple_wool_stairs": {
+    "name": "minecraft:purple_wool",
+    "states": {}
+  },
+  "minecraft:red_concrete_double_slab": {
+    "name": "minecraft:red_concrete",
+    "states": {}
+  },
+  "minecraft:red_concrete_slab": {
+    "name": "minecraft:red_concrete",
+    "states": {}
+  },
+  "minecraft:red_concrete_stairs": {
+    "name": "minecraft:red_concrete",
+    "states": {}
+  },
+  "minecraft:red_shrub": {
+    "name": "minecraft:deadbush",
+    "states": {}
+  },
+  "minecraft:red_wool_double_slab": {
+    "name": "minecraft:red_wool",
+    "states": {}
+  },
+  "minecraft:red_wool_slab": {
+    "name": "minecraft:red_wool",
+    "states": {}
+  },
+  "minecraft:red_wool_stairs": {
+    "name": "minecraft:red_wool",
+    "states": {}
+  },
+  "minecraft:shelf_mushroom": {
+    "name": "minecraft:brown_mushroom",
+    "states": {}
+  },
+  "minecraft:white_concrete_double_slab": {
+    "name": "minecraft:white_concrete",
+    "states": {}
+  },
+  "minecraft:white_concrete_slab": {
+    "name": "minecraft:white_concrete",
+    "states": {}
+  },
+  "minecraft:white_concrete_stairs": {
+    "name": "minecraft:white_concrete",
+    "states": {}
+  },
+  "minecraft:white_wool_double_slab": {
+    "name": "minecraft:white_wool",
+    "states": {}
+  },
+  "minecraft:white_wool_slab": {
+    "name": "minecraft:white_wool",
+    "states": {}
+  },
+  "minecraft:white_wool_stairs": {
+    "name": "minecraft:white_wool",
+    "states": {}
+  },
+  "minecraft:yellow_concrete_double_slab": {
+    "name": "minecraft:yellow_concrete",
+    "states": {}
+  },
+  "minecraft:yellow_concrete_slab": {
+    "name": "minecraft:yellow_concrete",
+    "states": {}
+  },
+  "minecraft:yellow_concrete_stairs": {
+    "name": "minecraft:yellow_concrete",
+    "states": {}
+  },
+  "minecraft:yellow_wool_double_slab": {
+    "name": "minecraft:yellow_wool",
+    "states": {}
+  },
+  "minecraft:yellow_wool_slab": {
+    "name": "minecraft:yellow_wool",
+    "states": {}
+  },
+  "minecraft:yellow_wool_stairs": {
+    "name": "minecraft:yellow_wool",
+    "states": {}
+  }
+}

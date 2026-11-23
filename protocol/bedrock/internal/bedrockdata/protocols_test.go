@@ -30,7 +30,12 @@ var (
 )
 
 // geyserPalettes names the palette files of Geyser by protocol.
-var geyserPalettes = map[int32]string{2193: "block_palette.26_50.nbt", 2225: "block_palette.26_60.nbt"}
+var geyserPalettes = map[int32]string{
+	2168: "block_palette.26_40.nbt",
+	2169: "block_palette.26_40.nbt",
+	2193: "block_palette.26_50.nbt",
+	2225: "block_palette.26_60.nbt",
+}
 
 // TestWriteOracles writes the oracles from the dumps and palettes the
 // flags name, through testfixture; it does nothing without them.
@@ -44,32 +49,37 @@ func TestWriteOracles(t *testing.T) {
 			t.Fatal(err)
 		}
 		if *oraclesFrom != "" {
-			for _, name := range []string{"creative.json", "crafting.json"} {
-				b, err := os.ReadFile(filepath.Join(*oraclesFrom, fmt.Sprintf("v%d", p), name))
-				if err != nil {
-					t.Fatal(err)
-				}
-				if err := testfixture.Write(filepath.Join(dir, name), b); err != nil {
-					t.Fatal(err)
+			if _, err := os.Stat(filepath.Join(*oraclesFrom, fmt.Sprintf("v%d", p))); err == nil {
+				for _, name := range []string{"creative.json", "crafting.json"} {
+					b, err := os.ReadFile(filepath.Join(*oraclesFrom, fmt.Sprintf("v%d", p), name))
+					if err != nil {
+						t.Fatal(err)
+					}
+					if err := testfixture.Write(filepath.Join(dir, name), b); err != nil {
+						t.Fatal(err)
+					}
 				}
 			}
 		}
 		if *palettesFrom != "" {
-			f, err := os.Open(filepath.Join(*palettesFrom, geyserPalettes[p]))
-			if err != nil {
-				t.Fatal(err)
-			}
-			r, err := gzip.NewReader(f)
-			if err != nil {
-				t.Fatal(err)
-			}
-			b, err := io.ReadAll(r)
-			_ = f.Close()
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := testfixture.Write(filepath.Join(dir, "palette.nbt"), b); err != nil {
-				t.Fatal(err)
+			palPath := filepath.Join(*palettesFrom, geyserPalettes[p])
+			if _, err := os.Stat(palPath); err == nil {
+				f, err := os.Open(palPath)
+				if err != nil {
+					t.Fatal(err)
+				}
+				r, err := gzip.NewReader(f)
+				if err != nil {
+					t.Fatal(err)
+				}
+				b, err := io.ReadAll(r)
+				_ = f.Close()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := testfixture.Write(filepath.Join(dir, "palette.nbt"), b); err != nil {
+					t.Fatal(err)
+				}
 			}
 		}
 	}
@@ -261,8 +271,14 @@ func upgrade(t *testing.T, s state, schema upgradeSchema) state {
 // ball BDS lists among its entities, the same biomes and block
 // definitions.
 func TestProtocolsOfBDS(t *testing.T) {
-	if got := bedrockdata.Protocols(); fmt.Sprint(got) != "[2193 2225]" {
+	if got := bedrockdata.Protocols(); fmt.Sprint(got) != "[2168 2169 2193 2225]" {
 		t.Fatalf("protocols %v", got)
+	}
+	for _, p := range []int32{2168, 2169} {
+		v, ok := bedrockdata.VanillaOf(p)
+		if !ok || len(v.Items()) != 1976 || len(v.Blocks()) != 0 || len(v.Entities) != 136 || len(v.Biomes) != 88 {
+			t.Fatalf("%d: ok=%v items=%d blocks=%d entities=%d biomes=%d", p, ok, len(v.Items()), len(v.Blocks()), len(v.Entities), len(v.Biomes))
+		}
 	}
 	a, _ := bedrockdata.VanillaOf(2193)
 	b, ok := bedrockdata.VanillaOf(2225)
@@ -424,8 +440,8 @@ func TestMapStateTo2193(t *testing.T) {
 // through their fallbacks.
 func TestBlockStepDownTo2193(t *testing.T) {
 	step, ok := bedrockdata.BlockStepOf(2225)
-	if _, first := bedrockdata.BlockStepOf(2193); !ok || first {
-		t.Fatal("2225 has no step, or 2193 has one")
+	if _, first := bedrockdata.BlockStepOf(2168); !ok || first {
+		t.Fatal("2225 has no step, or 2168 has one")
 	}
 	older := map[state]bool{}
 	for _, s := range palette(t, 2193) {
@@ -448,5 +464,41 @@ func TestBlockStepDownTo2193(t *testing.T) {
 	}
 	if fmt.Sprint(fallen) != "map[minecraft:disc_press:true minecraft:ice_crystal:true minecraft:icicle:true]" {
 		t.Errorf("fallbacks taken for %v", fallen)
+	}
+}
+
+// TestMapStateTo2168And2169 maps every state of the game through both
+// block steps (2225->2193->2169/2168): every mapped state is a valid state
+// of the 26.40 palette, and GameState maps every state back to a valid state
+// of the game.
+func TestMapStateTo2168And2169(t *testing.T) {
+	for _, p := range []int32{2168, 2169} {
+		if bedrockdata.NamesBlocksAsTheGame(p) {
+			t.Fatalf("%d should not name blocks as the game does", p)
+		}
+		older := map[state]bool{}
+		for _, s := range palette(t, p) {
+			older[s] = true
+		}
+		game := map[state]bool{}
+		for _, s := range gameStates(t) {
+			game[s] = true
+		}
+		for s := range game {
+			name, props := parseState(s)
+			in := make(map[string]any, len(props))
+			for k, v := range props {
+				in[k] = v
+			}
+			outName, out := bedrockdata.MapState(p, name, in)
+			down := stateOf(outName, out)
+			if !older[down] && name != "minecraft:chalkboard" {
+				t.Errorf("%d: %s maps to %s, no state of 26.40 palette", p, s, down)
+			}
+			backName, back := bedrockdata.GameState(p, outName, out)
+			if b := stateOf(backName, back); !game[b] && name != "minecraft:chalkboard" {
+				t.Errorf("%d: %s maps back to %s, no state of the game", p, down, b)
+			}
+		}
 	}
 }

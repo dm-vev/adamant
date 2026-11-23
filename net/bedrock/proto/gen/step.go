@@ -567,7 +567,9 @@ func (c *converter) write(d *decl) error {
 	}
 	switch {
 	case len(srcFields) == 1 && srcFields[0].name == "self" && len(dstFields) == 1 && dstFields[0].name == "self":
-		if err := c.value(srcFields[0].goType, dstFields[0].goType, "(*in)", "out", fix, hasFix); err != nil {
+		if srcFields[0].goType == dstFields[0].goType && len(names(c.d.src, srcFields[0].goType)) == 0 {
+			g.p("out = %s(*in)", out)
+		} else if err := c.value(srcFields[0].goType, dstFields[0].goType, "(*in)", "out", fix, hasFix); err != nil {
 			return err
 		}
 	case c.plainStruct(srcFields, dstFields):

@@ -20,11 +20,11 @@ import (
 	"github.com/dm-vev/adamant/net/nbt"
 )
 
-//go:embed v*/items.nbt v*/blocks.nbt v*/entities.txt v*/biomes.txt v2225/blocks.json v2225/fallbacks.json
+//go:embed v*/items.nbt v*/blocks.nbt v*/entities.txt v*/biomes.txt v*/blocks.json v*/fallbacks.json
 var files embed.FS
 
 // protocols are the protocols with data, oldest first.
-var protocols = []int32{2193, 2225}
+var protocols = []int32{2168, 2169, 2193, 2225}
 
 // Vanilla is the vanilla content BDS of one protocol defines to its clients.
 type Vanilla struct {

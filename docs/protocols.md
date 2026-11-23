@@ -1,11 +1,13 @@
 # Bedrock protocols
 
-Adamant speaks two protocols of Bedrock Edition:
+Adamant speaks four protocols of Bedrock Edition (the full NetherNet-capable 26.40–26.66 range):
 
 | Protocol | Versions of the game | Notes |
 |---|---|---|
-| 2193 | 1.26.50, 1.26.51, 1.26.52 | reaches the session through the step in `net/bedrock/proto/convert/c2225` |
-| 2225 | 1.26.60, 1.26.61 | the model: the session is compiled against its packets |
+| 2168 | 1.26.40, 1.26.41, 1.26.42, 1.26.43, 1.26.44 | reaches the session through `c2169` → `c2193` → `c2225` |
+| 2169 | 1.26.45 | reaches the session through `c2193` → `c2225` |
+| 2193 | 1.26.50, 1.26.51, 1.26.52 | reaches the session through `c2225` |
+| 2225 | 1.26.60, 1.26.61, 1.26.62, 1.26.63, 1.26.64, 1.26.65, 1.26.66 | the model: the session is compiled against its packets |
 
 Two keys of `[Network]` in `config.toml` choose what a server does with them:
 

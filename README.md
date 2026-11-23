@@ -4,7 +4,7 @@
 
 **High-performance Minecraft: Bedrock Edition server in Go — drop-in BDS alternative with Java 26.3 parity and clean extensibility.**
 
-<p align="center"><a href=".github/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/dm-vev/adamant/ci.yml?branch=main&label=CI" alt="CI" height="20"></a> <a href="go.mod"><img src="https://img.shields.io/badge/Go-1.27%2B-00ADD8?logo=go&logoColor=white" alt="Go 1.27+" height="20"></a> <a href="docs/protocols.md"><img src="https://img.shields.io/badge/Bedrock-1.26.50%E2%80%931.26.61-62B47A" alt="Bedrock 1.26.50-1.26.61" height="20"></a> <a href="docs/protocols.md"><img src="https://img.shields.io/badge/protocol-2193%20%7C%202225-0284C7" alt="Protocol 2193 | 2225" height="20"></a> <a href="vanilla-reference.json"><img src="https://img.shields.io/badge/Java-26.3-E76F00" alt="Java 26.3" height="20"></a> <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-64748B" alt="License: MIT" height="20"></a></p>
+<p align="center"><a href=".github/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/dm-vev/adamant/ci.yml?branch=main&label=CI" alt="CI" height="20"></a> <a href="go.mod"><img src="https://img.shields.io/badge/Go-1.27%2B-00ADD8?logo=go&logoColor=white" alt="Go 1.27+" height="20"></a> <a href="docs/protocols.md"><img src="https://img.shields.io/badge/Bedrock-1.26.40%E2%80%931.26.66-62B47A" alt="Bedrock 1.26.40-1.26.66" height="20"></a> <a href="docs/protocols.md"><img src="https://img.shields.io/badge/protocols-2168%E2%80%932225-0284C7" alt="Protocols 2168-2225" height="20"></a> <a href="vanilla-reference.json"><img src="https://img.shields.io/badge/Java-26.3-E76F00" alt="Java 26.3" height="20"></a> <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-64748B" alt="License: MIT" height="20"></a></p>
 
 [**Quick Start**](#quick-start) ·
 [**Why Adamant?**](#why-adamant) ·
@@ -27,7 +27,7 @@
 | **Full Vanilla Mob AI (`MobAI` + `Brain`, Raids, Villagers)** | ✅ | ✅ | ❌ | ❌ |
 | **Redstone, Crafting, Loot & Survival Parity** | ✅ | ✅ | ⚠️ Partial | ⚠️ Partial |
 | **Multi-Core Regions, Parallel AI & Crowd Batching** | ✅ | ⚠️ Limited | ❌ Single-tick bottlenecks | ⚠️ Single-world loop |
-| **Multi-Version Bedrock Protocol (`2193` & `2225`)** | ✅ Built-in | ❌ Single version | ⚠️ Via plugins | ❌ Single version |
+| **Multi-Version Bedrock Protocol (`2168` – `2225`)** | ✅ Built-in | ❌ Single version | ⚠️ Via plugins | ❌ Single version |
 | **Typed Zero-Allocation Plugin SDK** | ✅ Go (`api/`) | ❌ Closed C++ | PHP / Java | Go (core-coupled) |
 | **Single Static Binary (`MIT`, Linux / Windows / macOS)** | ✅ | ❌ Proprietary | ❌ Runtime required | ✅ |
 
@@ -57,14 +57,14 @@ go run .
 ```
 
 - Generates default [`config.toml`](config.toml) on first launch and listens on UDP `:19132`.
-- Accepts Bedrock **1.26.50 – 1.26.61** clients out of the box (protocols `2193` and `2225` with automatic wire translation).
+- Accepts Bedrock **1.26.40 – 1.26.66** clients out of the box (protocols `2168`, `2169`, `2193`, and `2225` with automatic wire & block-state translation).
 - Pass `-headless` for non-interactive systemd/Docker deployments; stop cleanly with `Ctrl+C` or `stop`.
 
 ## Status
 
 | Subsystem | State | Highlights |
 |---|:---:|---|
-| Protocol & networking | ✅ | Protocols `2193` & `2225`, NetherNet (WebRTC) + RakNet, `Flate` & `Snappy` crowd batching |
+| Protocol & networking | ✅ | Protocols `2168`, `2169`, `2193` & `2225`, NetherNet (WebRTC), `Flate` & `Snappy` crowd batching |
 | Registries & persistence | ✅ | 2,076 BDS items, 22,079 block states, 89 biomes, LevelDB (`mcdb`), background chunk saving |
 | World generation | 🟢 | Java 26.3 Overworld, Nether & End, structures, single-pass 4-color DAG decoration |
 | Mob AI & spawning | 🟢 | Java `MobAI` + `Brain` for all species, riding, raids, villagers, `NaturalSpawner` |

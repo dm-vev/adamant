@@ -108,13 +108,13 @@ type NetworkConfig struct {
 	// Protocols lists the protocols of Bedrock Edition clients may join
 	// with. "all" allows every protocol this build supports, the newest it
 	// will support too; it is the default. A list of versions allows those
-	// alone, each by a version of it: "1.26.50" (or "26.50", "26.51",
-	// "26.52", "1.26.52", "2193") names protocol 2193, "1.26.60" (or
-	// "26.60", "26.61", "1.26.61", "2225") protocol 2225. Several names of
-	// one protocol count once. A client of a protocol that is not listed is
-	// refused, so a list leaves out the protocols of builds newer than the
-	// list. An empty list allows "all", or the pinned PrimaryProtocol alone
-	// if there is one.
+	// alone, each by a version of it: "1.26.40" ("26.40"–"26.44", "2168")
+	// names protocol 2168, "1.26.45" ("26.45", "2169") protocol 2169,
+	// "1.26.50" ("26.50"–"26.52", "2193") protocol 2193, and "1.26.60"
+	// ("26.60"–"26.66", "2225") protocol 2225. Several names of one protocol
+	// count once. A client of a protocol that is not listed is refused, so a
+	// list leaves out the protocols of builds newer than the list. An empty
+	// list allows "all", or the pinned PrimaryProtocol alone if there is one.
 	Protocols []string
 	// PrimaryProtocol is the protocol the server speaks, one of Protocols:
 	// the packets and fields it uses are those of that protocol, and clients

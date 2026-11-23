@@ -255,7 +255,7 @@ func (p *parseState) body(depth int, text string) error {
 func newNode(word, rest string) *node {
 	nd := &node{kind: word}
 	switch word {
-	case "if", "present", "switch":
+	case "if", "present", "doublepresent", "switch":
 		nd.expr = rest
 	case "case":
 		for _, v := range strings.Split(rest, ",") {
@@ -281,7 +281,7 @@ func (p *parseState) add(top *frame, word string, nd *node) {
 	}
 	*top.list = append(*top.list, nd)
 	top.last = nd
-	if word == "if" || word == "present" || word == "switch" {
+	if word == "if" || word == "present" || word == "doublepresent" || word == "switch" {
 		p.stack = append(p.stack, frame{list: &nd.body})
 	}
 }
@@ -347,6 +347,8 @@ func (s *schema) findHand(out string) error {
 // base splits a wire type into its kind and element.
 func baseOf(w string) (kind, elem, count string) {
 	switch {
+	case strings.HasPrefix(w, "??"):
+		return "doubleoptional", w[2:], ""
 	case strings.HasPrefix(w, "?"):
 		return "optional", w[1:], ""
 	case strings.HasPrefix(w, "[]"):
@@ -529,7 +531,7 @@ func (s *schema) fields(d *decl) ([]field, error) {
 func (s *schema) goType(w string) (string, error) {
 	kind, elem, _ := baseOf(w)
 	switch kind {
-	case "optional":
+	case "optional", "doubleoptional":
 		t, err := s.goType(elem)
 		return "proto.Optional[" + t + "]", err
 	case "list":
@@ -862,6 +864,24 @@ func (g *gen) body(nodes []*node, enc bool) error {
 				return err
 			}
 			g.p("}")
+		case "doublepresent":
+			cond, err := g.cond(n.expr)
+			if err != nil {
+				return err
+			}
+			if enc {
+				g.p("w.Bool(true)")
+				ok := g.temp()
+				g.p("%s := %s", ok, cond)
+				g.p("w.Bool(%s)", ok)
+				g.p("if %s {", ok)
+			} else {
+				g.p("if r.Bool() && r.Bool() {")
+			}
+			if err := g.body(n.body, enc); err != nil {
+				return err
+			}
+			g.p("}")
 		case "switch":
 			tag, err := g.cond(n.expr)
 			if err != nil {
@@ -954,12 +974,31 @@ func (g *gen) temp() string {
 func (g *gen) value(w, v string, enc bool) error {
 	kind, elem, count := baseOf(w)
 	switch kind {
+	case "doubleoptional":
+		return g.doubleOptional(elem, v, enc)
 	case "optional":
 		return g.optional(elem, v, enc)
 	case "list":
 		return g.list(elem, count, v, enc)
 	}
 	return g.single(w, v, enc)
+}
+
+// doubleOptional writes the code of a double-optional value: an outer
+// presence bool (always true on write) followed by an optional value.
+func (g *gen) doubleOptional(elem, v string, enc bool) error {
+	if enc {
+		g.p("w.Bool(true)")
+		return g.optional(elem, v, true)
+	}
+	g.p("if r.Bool() {")
+	if err := g.optional(elem, v, false); err != nil {
+		return err
+	}
+	g.p("} else {")
+	g.p("%s.Set = false", v)
+	g.p("}")
+	return nil
 }
 
 // optional writes the code of an optional value of a wire type.

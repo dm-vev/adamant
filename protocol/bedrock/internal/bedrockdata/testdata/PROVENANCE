@@ -5,12 +5,13 @@ vNNNN, and what the session sends, to. The binary embeds none of them.
   vNNNN/crafting.json  and its recipes, items by name, as cmd/vanilla-probe
                        -creative and -crafting write them, from the runs of
                        scripts/bedrock-data.sh that ../vNNNN/PROVENANCE
-                       records: BDS 1.26.52.3 for 2193, BDS 1.26.61.1 for
-                       2225.
+                       records: BDS 1.26.44.3 for 2168, BDS 1.26.45.1 for
+                       2169, BDS 1.26.52.3 for 2193, BDS 1.26.61.1 for 2225.
 
   vNNNN/palette.nbt    the block palette of the protocol, as Geyser keeps it
                        (GeyserMC/Geyser, core/src/main/resources/bedrock/,
                        MIT license, below), ungzipped:
+                       v2168 / v2169 block_palette.26_40.nbt
                        v2193 block_palette.26_50.nbt of commit
                          50115039af4cd92e50545075d3a13eea6880cf88,
                          sha256 (gzipped)

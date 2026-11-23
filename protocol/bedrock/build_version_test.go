@@ -48,7 +48,8 @@ func TestListenerGameVersions(t *testing.T) {
 		t.Errorf("GameVersions() = %q, %v, want 1.26.50, [26.50–26.52]", primary, joinable)
 	}
 	l = session.Listen(nil, session.ListenConfig{})
-	if primary, joinable := l.GameVersions(); primary != version.Minecraft || !slices.Equal(joinable, []string{"26.50–26.52", "26.60–26.61"}) {
-		t.Errorf("GameVersions() = %q, %v, want %s, [26.50–26.52 26.60–26.61]", primary, joinable, version.Minecraft)
+	want := []string{"26.40–26.44", "26.45", "26.50–26.52", "26.60–26.66"}
+	if primary, joinable := l.GameVersions(); primary != version.Minecraft || !slices.Equal(joinable, want) {
+		t.Errorf("GameVersions() = %q, %v, want %s, %v", primary, joinable, version.Minecraft, want)
 	}
 }

@@ -18,6 +18,12 @@ type Enum struct {
 
 // Enums are the enums corrected, by codec package.
 var Enums = map[string][]Enum{
+	"v2168": {
+		{Prefix: "PlayerVideoCaptureAction", Values: map[string]int64{"Start": 0, "Stop": 1}},
+	},
+	"v2169": {
+		{Prefix: "PlayerVideoCaptureAction", Values: map[string]int64{"Start": 0, "Stop": 1}},
+	},
 	"v2193": {
 		// Mojang's json/PlayerVideoCapturePacketPayload.json of v1.26.50
 		// is a variant of Start Video Capture (x-ordinal-index 0) and

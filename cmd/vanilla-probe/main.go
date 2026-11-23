@@ -75,7 +75,7 @@ func parseOptions(args []string) (options, error) {
 	fs.StringVar(&o.address, "address", "", "NetherNet server URL, including scheme and port")
 	fs.BoolVar(&o.authenticate, "auth", false, "authenticate a test account using Microsoft device-code login; tokens are not saved")
 	fs.DurationVar(&o.timeout, "timeout", 5*time.Minute, "total authentication, login and spawn deadline")
-	number := fs.Int("protocol", int(codec.V2193.Number), "the protocol to join as: 2193 (1.26.50-1.26.52) or 2225 (1.26.60-1.26.61)")
+	number := fs.Int("protocol", int(codec.V2193.Number), "the protocol to join as: 2168 (1.26.40-1.26.44), 2169 (1.26.45), 2193 (1.26.50-1.26.52) or 2225 (1.26.60-1.26.66)")
 	fs.StringVar(&o.itemsNBT, "items-nbt", "", "write the complete item registry as items.nbt to PATH (must not already exist)")
 	fs.StringVar(&o.blocksNBT, "blocks-nbt", "", "write the block definitions of StartGame as blocks.nbt to PATH (must not already exist)")
 	fs.StringVar(&o.biomesPacket, "biomes-packet", "", "request client generation data and write the complete biome-definition packet body to PATH (must not already exist)")
@@ -95,7 +95,7 @@ func parseOptions(args []string) (options, error) {
 	}
 	var ok bool
 	if o.protocol, ok = codec.ByNumber(int32(*number)); !ok {
-		return o, fmt.Errorf("protocol %d: want 2193 or 2225", *number)
+		return o, fmt.Errorf("protocol %d: want 2168, 2169, 2193 or 2225", *number)
 	}
 	return o, nil
 }

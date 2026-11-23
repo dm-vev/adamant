@@ -170,7 +170,7 @@ func TestLogProtocols(t *testing.T) {
 		want    []string
 		not     []string
 	}{
-		{[]string{"all"}, "latest", []string{"level=INFO", `allowed="1.26.50, 1.26.60"`, "primary=1.26.60"}, []string{"WARN"}},
+		{[]string{"all"}, "latest", []string{"level=INFO", `allowed="1.26.40, 1.26.45, 1.26.50, 1.26.60"`, "primary=1.26.60"}, []string{"WARN"}},
 		{[]string{"1.26.50"}, "1.26.50", []string{"level=INFO", `allowed=1.26.50`, "primary=1.26.50", "level=WARN", `Protocols = [\"all\"]`}, []string{`PrimaryProtocol = \"latest\"`}},
 		{[]string{"all"}, "1.26.50", []string{"level=INFO", "primary=1.26.50", "level=WARN", `PrimaryProtocol = \"latest\"`}, []string{`Protocols = [\"all`}},
 	} {
@@ -204,7 +204,7 @@ func TestOldestProtocol(t *testing.T) {
 	if p := (Config{Protocols: []*versions.Protocol{b, a}}).oldestProtocol(); p != a {
 		t.Errorf("oldest of 20 and 10: %v", p)
 	}
-	if p := (Config{}).oldestProtocol(); p != oldProtocol() {
-		t.Errorf("oldest of none: %v", p)
+	if p := (Config{}).oldestProtocol(); p != versions.Configurable()[0] {
+		t.Errorf("oldest of none: %v, want %v", p, versions.Configurable()[0])
 	}
 }

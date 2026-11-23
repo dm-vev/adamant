@@ -107,6 +107,32 @@ var corrections = []correction{
 			{name: "CameraSplineRotationKeyFrame", lines: []string{"Value vec3", "Time float32", "EaseType Optional"}},
 		},
 	},
+	{
+		// Mojang's json/StackResponseSlotInfo.json holds the filtered custom
+		// name as Bedrock::Safety::RedactableString (Redacted optional), as
+		// gophertunnel PR #512 fixed for v1.61.0. gophertunnel v1.59.0 wrote
+		// it as a plain string.
+		name: "StackResponseSlotInfo",
+		wrong: []string{"Slot uint8", "HotbarSlot uint8", "Count uint8",
+			"doublepresent StackNetworkID > 0", "\tStackNetworkID varint32",
+			"CustomName string", "FilteredCustomName string", "DurabilityCorrection varint32"},
+		right: []string{"Slot uint8", "HotbarSlot uint8", "Count uint8",
+			"doublepresent StackNetworkID > 0", "\tStackNetworkID varint32",
+			"CustomName string", "FilteredCustomName ?string", "DurabilityCorrection varint32"},
+	},
+	{
+		// Mojang's ClientboundUpdateSoundData writes its seven SoundDataUpdate
+		// fields unconditionally (not optional), as gophertunnel b8bd7357
+		// fixed for v1.62.0. gophertunnel v1.59.0 and v1.61.0 wrapped each in
+		// OptionalMarshaler.
+		name: "ClientboundUpdateSoundData",
+		wrong: []string{"ServerSoundHandle uint64", "Stop ?SoundDataUpdate", "SetVolume ?SoundDataUpdate",
+			"SetPitch ?SoundDataUpdate", "Fade ?SoundDataUpdate", "SeekTo ?SoundDataUpdate",
+			"Pause ?SoundDataUpdate", "Resume ?SoundDataUpdate"},
+		right: []string{"ServerSoundHandle uint64", "Stop SoundDataUpdate", "SetVolume SoundDataUpdate",
+			"SetPitch SoundDataUpdate", "Fade SoundDataUpdate", "SeekTo SoundDataUpdate",
+			"Pause SoundDataUpdate", "Resume SoundDataUpdate"},
+	},
 }
 
 // correct applies the corrections to the declarations imported, and

@@ -626,7 +626,8 @@ func (c *ctx) impliedOptional(stmts []ast.Stmt, depth int) (int, error) {
 		if !ok || len(codec.Args) != 3 {
 			return 0, nil
 		}
-		if fn := c.callee(codec); fn == nil || fn.Name() != "OptionalFunc" {
+		fn := c.callee(codec)
+		if fn == nil || (fn.Name() != "OptionalFunc" && fn.Name() != "DoubleOptionalFunc") {
 			return 0, nil
 		}
 		u, ok := codec.Args[1].(*ast.UnaryExpr)
@@ -644,7 +645,7 @@ func (c *ctx) impliedOptional(stmts []ast.Stmt, depth int) (int, error) {
 		w, ok := c.ioFunc(codec.Args[2], c.optionalElem(codec.Args[1]))
 		if !ok {
 			if w, ok = c.closureList(codec.Args[2]); !ok {
-				return 0, fmt.Errorf("OptionalFunc with %s", c.src(codec.Args[2]))
+				return 0, fmt.Errorf("%s with %s", fn.Name(), c.src(codec.Args[2]))
 			}
 		}
 		if o.wire != "" {
@@ -653,7 +654,11 @@ func (c *ctx) impliedOptional(stmts []ast.Stmt, depth int) (int, error) {
 			}
 			w = o.wire
 		}
-		c.emit(depth, "present "+o.cond)
+		if fn.Name() == "DoubleOptionalFunc" {
+			c.emit(depth, "doublepresent "+o.cond)
+		} else {
+			c.emit(depth, "present "+o.cond)
+		}
 		return 1, c.put(depth+1, o.path, w)
 	case *ast.IfStmt:
 		init, ok := st.Init.(*ast.AssignStmt)
@@ -1271,7 +1276,7 @@ func (c *ctx) call(call *ast.CallExpr, depth int) error {
 // helpers are the generic helpers of package protocol helper translates.
 var helpers = map[string]bool{
 	"SliceOfLen": true, "FuncSliceOfLen": true, "Single": true, "OptionalFunc": true,
-	"OptionalMarshaler": true, "IntegerFunc": true,
+	"DoubleOptionalFunc": true, "OptionalMarshaler": true, "IntegerFunc": true,
 }
 
 // codecFunc translates a call of a function of package protocol taking the
@@ -1416,7 +1421,7 @@ func (c *ctx) helper(name string, call *ast.CallExpr, depth int) error {
 			return fmt.Errorf("single of %s", c.src(args[1]))
 		}
 		return c.put(depth, path, t)
-	case "OptionalFunc":
+	case "OptionalFunc", "DoubleOptionalFunc":
 		path, err := c.field(args[1])
 		if err != nil {
 			return err
@@ -1424,10 +1429,14 @@ func (c *ctx) helper(name string, call *ast.CallExpr, depth int) error {
 		w, ok := c.ioFunc(args[2], c.optionalElem(args[1]))
 		if !ok {
 			if w, ok = c.closureList(args[2]); !ok {
-				return fmt.Errorf("OptionalFunc with %s", c.src(args[2]))
+				return fmt.Errorf("%s with %s", name, c.src(args[2]))
 			}
 		}
-		return c.put(depth, path, "?"+w)
+		prefix := "?"
+		if name == "DoubleOptionalFunc" {
+			prefix = "??"
+		}
+		return c.put(depth, path, prefix+w)
 	case "OptionalMarshaler":
 		path, err := c.field(args[1])
 		if err != nil {
@@ -1523,6 +1532,23 @@ func (c *ctx) closureList(e ast.Expr) (string, bool) {
 			return c.im.ref(p.Elem())
 		}
 		return c.im.ref(c.pkg.TypesInfo.TypeOf(sel.X))
+	}
+	if fn.Name() == "FuncSliceOfLen" && len(call.Args) == 4 {
+		n, err := c.expr(call.Args[1])
+		if err != nil {
+			return "", false
+		}
+		var elem types.Type
+		if p, ok := c.pkg.TypesInfo.TypeOf(call.Args[2]).(*types.Pointer); ok {
+			if sl, ok := p.Elem().Underlying().(*types.Slice); ok {
+				elem = sl.Elem()
+			}
+		}
+		w, ok := c.ioFunc(call.Args[3], elem)
+		if !ok {
+			return "", false
+		}
+		return "[]" + w + " len " + n, true
 	}
 	count, ok := countTypes[fn.Name()]
 	if !ok {
