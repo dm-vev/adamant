@@ -19,7 +19,7 @@ import (
 // command, which might be the player or a websocket server. Each message is written with
 // bedrocktext.Message: a translation as its key and parameters, which the client translates.
 func (s *Session) SendCommandOutput(o client.CommandOutput) {
-	if s == Nop {
+	if s == nop {
 		return
 	}
 	messages := make([]mc.CommandOutputMessage, 0, len(o.Messages))

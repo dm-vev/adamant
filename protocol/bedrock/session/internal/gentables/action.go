@@ -34,20 +34,21 @@ func generateActions(rows []row) []byte {
 import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
-// literalEntityAction writes the packet of an action of entity_action_table.go
-// and returns true, or returns false for an action the table does not hold,
-// whose packets ViewEntityAction works out.
-func (s *Session) literalEntityAction(e world.Entity, a world.EntityAction) bool {
+// literalEntityActionPacket returns the packet of an action of entity_action_table.go
+// and true, or nil and false for an action the table does not hold, whose packets
+// ViewEntityAction works out.
+func literalEntityActionPacket(id uint64, a world.EntityAction) (proto.Packet, bool) {
 	switch act := a.(type) {
 `)
 	for _, r := range rows {
 		fmt.Fprintf(&b, "\tcase entity.%s:\n", r["Action"])
 		b.WriteString(actionCase(r))
 	}
-	b.WriteString("\tdefault:\n\t\treturn false\n\t}\n\treturn true\n}\n")
+	b.WriteString("\tdefault:\n\t\treturn nil, false\n\t}\n}\n")
 	return b.Bytes()
 }
 
@@ -62,11 +63,11 @@ func actionCase(r row) string {
 		if count <= 0 {
 			count = %[2]s
 		}
-		s.writePacket(&mc.AnimatePacket{
+		return &mc.AnimatePacket{
 			ActionType:      mc.%[3]s,
-			EntityRuntimeID: s.entityRuntimeID(e),
+			EntityRuntimeID: id,
 			Data:            float32(count),
-		})
+		}, true
 `, r["Count"], r["Default"], r["Animate"])
 	}
 	if !r.has("Event") || r.has("Count") || r.has("Default") {
@@ -87,13 +88,13 @@ func actionCase(r row) string {
 		fmt.Fprintf(&b, "\t\tevent := byte(mc.%s)\n\t\tif act.%s {\n\t\t\tevent = mc.%s\n\t\t}\n", r["Event"], r["When"], r["Alt"])
 		event = "event"
 	}
-	fmt.Fprintf(&b, "\t\ts.writePacket(&mc.ActorEventPacket{\n\t\t\tEntityRuntimeID: s.entityRuntimeID(e),\n\t\t\tEventType:       %s,\n", event)
+	fmt.Fprintf(&b, "\t\treturn &mc.ActorEventPacket{\n\t\t\tEntityRuntimeID: id,\n\t\t\tEventType:       %s,\n", event)
 	switch {
 	case r.has("Data"):
 		fmt.Fprintf(&b, "\t\t\tEventData:       int32(act.%s),\n", r["Data"])
 	case r.has("Ticks"):
 		fmt.Fprintf(&b, "\t\t\tEventData:       int32(act.%s.Milliseconds() / 50),\n", r["Ticks"])
 	}
-	b.WriteString("\t\t})\n")
+	b.WriteString("\t\t}, true\n")
 	return b.String()
 }

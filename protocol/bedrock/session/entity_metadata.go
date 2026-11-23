@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/ecs"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item"
@@ -388,6 +389,11 @@ func (s *Session) parseEntityMetadataWith(e world.Entity, meta *entityTypeMeta, 
 	if caps.hi&capAppearance != 0 {
 		s.writeActorAppearance(e, m, &flags)
 	}
+	if mayHaveMetaPatch(e, caps, beh, behCaps) {
+		if patch, ok := collectEntityMetaPatch(e, caps, beh, behCaps); ok {
+			flags = applyActorMetaPatch(e, beh, m, flags, &patch)
+		}
+	}
 	switch flags.low {
 	case meta.baseFlags0:
 		m[mc.EntityDataKeyFlags] = meta.baseFlags0Boxed
@@ -506,13 +512,23 @@ func (s *Session) parseEntityMetadataSlow(e world.Entity, t world.EntityType) mc
 	}
 	writeSeatMetadata(m, seat)
 	s.addSpecificMetadata(e, m)
-	if beh, ok := e.(behaviourHolder); ok {
-		s.addSpecificMetadata(beh.Behaviour(), m)
+	var behEntity any
+	var behCaps metaCaps
+	if bh, ok := e.(behaviourHolder); ok {
+		behEntity = bh.Behaviour()
+		behCaps = metaCapsOf(behEntity)
+		s.addSpecificMetadata(behEntity, m)
 	}
 	f0, _ := m[mc.EntityDataKeyFlags].(int64)
 	f1, _ := m[mc.EntityDataKeyFlagsTwo].(int64)
 	f := actorFlags{low: f0, high: f1}
 	s.writeActorAppearance(e, m, &f)
+	caps := metaCapsOf(e)
+	if mayHaveMetaPatch(e, caps, behEntity, behCaps) {
+		if patch, ok := collectEntityMetaPatch(e, caps, behEntity, behCaps); ok {
+			f = applyActorMetaPatch(e, behEntity, m, f, &patch)
+		}
+	}
 	if f.touchedLow {
 		m[mc.EntityDataKeyFlags] = boxInt64(f.low)
 	}
@@ -520,6 +536,184 @@ func (s *Session) parseEntityMetadataSlow(e world.Entity, t world.EntityType) mc
 		m[mc.EntityDataKeyFlagsTwo] = boxInt64(f.high)
 	}
 	return m
+}
+
+// mayHaveMetaPatch reports whether e, its behaviour, or its ECS component bag
+// could carry an ActorMetaPatch override.
+func mayHaveMetaPatch(e world.Entity, caps metaCaps, beh any, behCaps metaCaps) bool {
+	if caps.hi&capMetadataContributor != 0 || (beh != nil && behCaps.hi&capMetadataContributor != 0) {
+		return true
+	}
+	h := e.H()
+	return h != nil && !h.Components().Empty()
+}
+
+// collectEntityMetaPatch gathers and merges metadata overrides contributed by e,
+// its behaviour, and its EntityHandle's MetaPatchKey component.
+func collectEntityMetaPatch(e world.Entity, caps metaCaps, beh any, behCaps metaCaps) (world.ActorMetaPatch, bool) {
+	var patch world.ActorMetaPatch
+	var hasContrib bool
+	if caps.hi&capMetadataContributor != 0 {
+		e.(world.MetadataContributor).ContributeMetadata(&patch)
+		hasContrib = true
+	}
+	if beh != nil && behCaps.hi&capMetadataContributor != 0 {
+		beh.(world.MetadataContributor).ContributeMetadata(&patch)
+		hasContrib = true
+	}
+	if h := e.H(); h != nil {
+		if bag := h.Components(); !bag.Empty() {
+			if ecsPatch, ok := ecs.Get(bag, world.MetaPatchKey); ok {
+				if !hasContrib {
+					return ecsPatch, !ecsPatch.IsZero()
+				}
+				mergeActorMetaPatch(&patch, &ecsPatch)
+			}
+		}
+	}
+	return patch, hasContrib && !patch.IsZero()
+}
+
+func mergeActorMetaPatch(dst, src *world.ActorMetaPatch) {
+	if src.NameTag != nil {
+		dst.NameTag = src.NameTag
+	}
+	if src.AlwaysShowNameTag != nil {
+		dst.AlwaysShowNameTag = src.AlwaysShowNameTag
+	}
+	if src.ScoreTag != nil {
+		dst.ScoreTag = src.ScoreTag
+	}
+	if src.Scale != nil {
+		dst.Scale = src.Scale
+	}
+	if src.Width != nil {
+		dst.Width = src.Width
+	}
+	if src.Height != nil {
+		dst.Height = src.Height
+	}
+	if src.Variant != nil {
+		dst.Variant = src.Variant
+	}
+	if src.MarkVariant != nil {
+		dst.MarkVariant = src.MarkVariant
+	}
+	if src.Color != nil {
+		dst.Color = src.Color
+	}
+	if src.Invisible != nil {
+		dst.Invisible = src.Invisible
+	}
+	if src.OnFire != nil {
+		dst.OnFire = src.OnFire
+	}
+	if src.NoAI != nil {
+		dst.NoAI = src.NoAI
+	}
+	dst.FlagSet = (dst.FlagSet &^ src.FlagClear) | src.FlagSet
+	dst.FlagClear = (dst.FlagClear &^ src.FlagSet) | src.FlagClear
+	dst.Flag2Set = (dst.Flag2Set &^ src.Flag2Clear) | src.Flag2Set
+	dst.Flag2Clear = (dst.Flag2Clear &^ src.Flag2Set) | src.Flag2Clear
+	if len(src.CustomStrings) > 0 {
+		if dst.CustomStrings == nil {
+			dst.CustomStrings = make(map[string]string, len(src.CustomStrings))
+		}
+		maps.Copy(dst.CustomStrings, src.CustomStrings)
+	}
+	if len(src.CustomInts) > 0 {
+		if dst.CustomInts == nil {
+			dst.CustomInts = make(map[string]int32, len(src.CustomInts))
+		}
+		maps.Copy(dst.CustomInts, src.CustomInts)
+	}
+	if len(src.CustomFloats) > 0 {
+		if dst.CustomFloats == nil {
+			dst.CustomFloats = make(map[string]float32, len(src.CustomFloats))
+		}
+		maps.Copy(dst.CustomFloats, src.CustomFloats)
+	}
+}
+
+func applyActorMetaPatch(e world.Entity, beh any, m mc.Metadata, f actorFlags, patch *world.ActorMetaPatch) actorFlags {
+	if patch.NameTag != nil || patch.AlwaysShowNameTag != nil {
+		nameTag, _ := m[mc.EntityDataKeyName].(string)
+		alwaysShow := entityAlwaysShowNameTag(e, beh)
+		if patch.NameTag != nil {
+			nameTag = *patch.NameTag
+		}
+		if patch.AlwaysShowNameTag != nil {
+			alwaysShow = *patch.AlwaysShowNameTag
+		}
+		f = writeNameTagMetadataFlags(m, f, nameTag, alwaysShow)
+	}
+	if patch.ScoreTag != nil {
+		m[mc.EntityDataKeyScore] = boxString(*patch.ScoreTag)
+	}
+	if patch.Scale != nil {
+		m[mc.EntityDataKeyScale] = boxFloat32(*patch.Scale)
+	}
+	if patch.Width != nil {
+		m[mc.EntityDataKeyWidth] = boxFloat32(*patch.Width)
+	}
+	if patch.Height != nil {
+		m[mc.EntityDataKeyHeight] = boxFloat32(*patch.Height)
+	}
+	if patch.Variant != nil {
+		m[mc.EntityDataKeyVariant] = boxInt32(*patch.Variant)
+	}
+	if patch.MarkVariant != nil {
+		m[mc.EntityDataKeyMarkVariant] = boxInt32(*patch.MarkVariant)
+	}
+	if patch.Color != nil {
+		m[mc.EntityDataKeyColorIndex] = boxByte(*patch.Color)
+	}
+	if patch.Invisible != nil {
+		setOrUnsetActorFlag(&f, mc.EntityDataFlagInvisible, *patch.Invisible)
+	}
+	if patch.OnFire != nil {
+		setOrUnsetActorFlag(&f, mc.EntityDataFlagOnFire, *patch.OnFire)
+	}
+	if patch.NoAI != nil {
+		setOrUnsetActorFlag(&f, mc.EntityDataFlagNoAI, *patch.NoAI)
+	}
+	if patch.FlagSet != 0 {
+		f.low |= int64(patch.FlagSet)
+		f.touchedLow = true
+	}
+	if patch.FlagClear != 0 {
+		f.low &^= int64(patch.FlagClear)
+		f.touchedLow = true
+	}
+	if patch.Flag2Set != 0 {
+		f.high |= int64(patch.Flag2Set)
+		f.touchedHigh = true
+	}
+	if patch.Flag2Clear != 0 {
+		f.high &^= int64(patch.Flag2Clear)
+		f.touchedHigh = true
+	}
+	return f
+}
+
+func entityAlwaysShowNameTag(e, beh any) bool {
+	if a, ok := e.(alwaysShowNameTag); ok {
+		return a.AlwaysShowNameTag()
+	}
+	if beh != nil {
+		if a, ok := beh.(alwaysShowNameTag); ok {
+			return a.AlwaysShowNameTag()
+		}
+	}
+	return true
+}
+
+func setOrUnsetActorFlag(f *actorFlags, flag uint8, on bool) {
+	if on {
+		f.set(flag)
+		return
+	}
+	f.unset(flag)
 }
 
 // addSpecificMetadata writes the metadata of e that depends on its dynamic type,

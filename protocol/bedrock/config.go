@@ -13,6 +13,7 @@ import (
 
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/protocol/bedrock/query"
+	"github.com/df-mc/dragonfly/protocol/bedrock/session"
 	"github.com/df-mc/dragonfly/server/config"
 	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/dm-vev/adamant/net/bedrock"
@@ -213,6 +214,9 @@ type Config struct {
 	// Compression compresses the batches of the connections: bedrock.Flate
 	// (at level 1 if nil) or bedrock.None.
 	Compression bedrock.Compression
+	// Interceptors are installed on every session accepted by the adapter's
+	// Listener.
+	Interceptors []session.PacketInterceptor
 }
 
 // Config converts a UserConfig to a Config. An error is returned if Check

@@ -11,7 +11,7 @@ import (
 // those of sound.Custom, and one with no Bedrock counterpart, which plays
 // nothing, sends nothing unless all is set.
 func (s *Session) StopSound(name string, all bool) {
-	if s == Nop {
+	if s == nop {
 		return
 	}
 	name, ok := bedrockSoundName(name)
@@ -25,7 +25,7 @@ func (s *Session) StopSound(name string, all bool) {
 // particle type of Java Edition or a name passed on as it is, at pos in the
 // dimension dim to the session.
 func (s *Session) ViewNamedParticle(pos mgl64.Vec3, name string, dim world.Dimension) {
-	if s == Nop {
+	if s == nop {
 		return
 	}
 	id, _ := world.DimensionID(dim)

@@ -9,6 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player/form"
 	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
@@ -16,13 +17,20 @@ import (
 // client as the reason, written with bedrocktext.Inline, so that a translation without arguments is
 // translated by the client; a message that renders empty disconnects the client with no screen.
 func (s *Session) Disconnect(message text.Text) {
-	if s != Nop {
+	if s != nop {
 		msg := bedrocktext.Inline(message)
-		s.connWriteMu.Lock()
-		_ = s.conn.WritePacket(&mc.DisconnectPacket{
+		var pk proto.Packet = &mc.DisconnectPacket{
 			HideDisconnectionScreen: msg == "",
 			Message:                 msg,
-		})
+		}
+		if s.hasOutInterceptors.Load() {
+			var ok bool
+			if pk, ok = s.runOutInterceptors(pk); !ok || pk == nil {
+				return
+			}
+		}
+		s.connWriteMu.Lock()
+		_ = s.conn.WritePacket(pk)
 		_ = s.conn.Flush()
 		s.connWriteMu.Unlock()
 	}
@@ -31,8 +39,8 @@ func (s *Session) Disconnect(message text.Text) {
 // SendDialogue sends an NPC dialogue to the client of the connection. The Submit method of the dialogue is
 // called when the client interacts with a button in the dialogue.
 func (s *Session) SendDialogue(d dialogue.Dialogue, e world.Entity) {
-	// Nop sessions are returned for offline players and must remain safe to call.
-	if s == Nop || s.handlers == nil {
+	// nop sessions are returned for offline players and must remain safe to call.
+	if s == nop || s.handlers == nil {
 		return
 	}
 	if e == nil {
@@ -96,7 +104,7 @@ func (s *Session) SendDialogue(d dialogue.Dialogue, e world.Entity) {
 }
 
 func (s *Session) CloseDialogue() {
-	if s == Nop || s.handlers == nil {
+	if s == nop || s.handlers == nil {
 		return
 	}
 	h, ok := s.handlers[mc.IDNPCRequest].(*NPCRequestHandler)
@@ -126,7 +134,7 @@ func (s *Session) CloseDialogue() {
 // SendForm sends a form to the client of the connection. The Submit method of the form is called when the
 // client submits the form.
 func (s *Session) SendForm(f form.Form) {
-	if s == Nop || s.handlers == nil {
+	if s == nop || s.handlers == nil {
 		return
 	}
 	b, err := json.Marshal(f)

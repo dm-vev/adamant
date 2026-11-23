@@ -57,7 +57,7 @@ func (s *Session) SendFood(food int, saturation, exhaustion float64) {
 // SendGameMode sends the game mode of the Controllable entity of the session to the client. It makes sure the right
 // flags are set to create the full game mode.
 func (s *Session) SendGameMode(c Controllable) {
-	if s == Nop {
+	if s == nop {
 		return
 	}
 	s.writePacket(&mc.SetPlayerGameTypePacket{GameType: GameTypeFromMode(c.GameMode())})
@@ -98,7 +98,7 @@ func (s *Session) resendAbilities(c Controllable) {
 
 // SendAbilities sends the abilities of the Controllable entity of the session to the client.
 func (s *Session) SendAbilities(c Controllable) {
-	if s == Nop {
+	if s == nop {
 		return
 	}
 	if !c.GameMode().HasCollision() {
@@ -117,7 +117,7 @@ func (s *Session) SendAbilities(c Controllable) {
 // SendPermissions refreshes abilities for this player and the other clients
 // that have the player in their player list, then refreshes command access.
 func (s *Session) SendPermissions(c Controllable) {
-	if s == Nop {
+	if s == nop {
 		return
 	}
 	s.SendAbilities(c)

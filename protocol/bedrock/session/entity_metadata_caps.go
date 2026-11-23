@@ -204,6 +204,7 @@ const (
 	capCreakingState
 	capAppearance
 	capPropEntity
+	capMetadataContributor
 )
 
 const (
@@ -524,6 +525,9 @@ func computeMetaCapsHi(e any) (hi uint64) {
 	}
 	if hasActorPropEntity(e) {
 		hi |= capPropEntity
+	}
+	if _, ok := e.(world.MetadataContributor); ok {
+		hi |= capMetadataContributor
 	}
 	return hi
 }

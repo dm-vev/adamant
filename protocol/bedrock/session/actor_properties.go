@@ -1,7 +1,9 @@
 package session
 
 import (
+	"cmp"
 	"slices"
+	"strconv"
 
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
@@ -116,42 +118,178 @@ func entityProperties(e world.Entity) mc.EntityProperties {
 	if t == nil {
 		return mc.EntityProperties{}
 	}
-	meta := entityTypeMetaOf(t)
-	if len(meta.props) == 0 {
-		return mc.EntityProperties{}
-	}
-	return entityPropertiesWith(e, meta, metaCapsOf(e))
+	return entityPropertiesWith(e, entityTypeMetaOf(t), metaCapsOf(e))
 }
 
 func entityPropertiesWith(e world.Entity, meta *entityTypeMeta, caps metaCaps) mc.EntityProperties {
-	if meta == nil || len(meta.props) == 0 {
+	var beh any
+	var behCaps metaCaps
+	if caps.hi&capBehaviour != 0 {
+		beh = e.(behaviourHolder).Behaviour()
+		behCaps = metaCapsOf(beh)
+	}
+	hasPatch := mayHaveMetaPatch(e, caps, beh, behCaps)
+	var props []actorProperty
+	if meta != nil {
+		props = meta.props
+	}
+	if len(props) == 0 && !hasPatch {
 		return mc.EntityProperties{}
 	}
+	var intProps []mc.IntegerEntityProperty
+	var isDefault bool
+	if len(props) > 0 {
+		intProps, isDefault = baseIntegerProperties(e, meta, caps, beh, behCaps)
+	}
+	if !hasPatch {
+		return mc.EntityProperties{IntegerProperties: intProps}
+	}
+	patch, ok := collectEntityMetaPatch(e, caps, beh, behCaps)
+	if !ok || (len(patch.CustomStrings) == 0 && len(patch.CustomInts) == 0 && len(patch.CustomFloats) == 0) {
+		return mc.EntityProperties{IntegerProperties: intProps}
+	}
+	return applyMetaPatchProperties(props, intProps, isDefault, &patch)
+}
+
+func baseIntegerProperties(e world.Entity, meta *entityTypeMeta, caps metaCaps, beh any, behCaps metaCaps) ([]mc.IntegerEntityProperty, bool) {
 	props := meta.props
 	if len(props) > 8 {
 		out := make([]mc.IntegerEntityProperty, len(props))
 		copy(out, meta.defaultProps)
 		fillActorPropertiesWith(e, props, out, caps)
-		if caps.hi&capBehaviour != 0 {
-			beh := e.(behaviourHolder).Behaviour()
-			fillActorPropertiesWith(beh, props, out, metaCapsOf(beh))
+		if beh != nil {
+			fillActorPropertiesWith(beh, props, out, behCaps)
 		}
-		return mc.EntityProperties{IntegerProperties: out}
+		return out, false
 	}
 	var stackBuf [8]mc.IntegerEntityProperty
 	buf := stackBuf[:len(props)]
 	copy(buf, meta.defaultProps)
 	fillActorPropertiesWith(e, props, buf, caps)
-	if caps.hi&capBehaviour != 0 {
-		beh := e.(behaviourHolder).Behaviour()
-		fillActorPropertiesWith(beh, props, buf, metaCapsOf(beh))
+	if beh != nil {
+		fillActorPropertiesWith(beh, props, buf, behCaps)
 	}
 	if slices.Equal(buf, meta.defaultProps) {
-		return mc.EntityProperties{IntegerProperties: meta.defaultProps}
+		return meta.defaultProps, true
 	}
 	out := make([]mc.IntegerEntityProperty, len(props))
 	copy(out, buf)
-	return mc.EntityProperties{IntegerProperties: out}
+	return out, false
+}
+
+func applyMetaPatchProperties(props []actorProperty, intProps []mc.IntegerEntityProperty, isDefault bool, patch *world.ActorMetaPatch) mc.EntityProperties {
+	ints := intProps
+	ensureMutableInts := func() {
+		if isDefault {
+			ints = slices.Clone(intProps)
+			isDefault = false
+		}
+	}
+	for k, v := range patch.CustomStrings {
+		if i := actorPropertyIndex(props, k); i >= 0 {
+			ensureMutableInts()
+			if props[i].enum != nil {
+				ints[i].Value = props[i].stringValue(v)
+			} else if props[i].boolean {
+				ints[i].Value = int32(boolByte(v == "true" || v == "1"))
+			}
+		}
+	}
+	var extraInts []string
+	for k, v := range patch.CustomInts {
+		if i := actorPropertyIndex(props, k); i >= 0 {
+			ensureMutableInts()
+			if props[i].boolean {
+				ints[i].Value = int32(boolByte(v != 0))
+			} else {
+				ints[i].Value = props[i].int32Value(v)
+			}
+			continue
+		}
+		extraInts = append(extraInts, k)
+	}
+	if len(extraInts) > 0 {
+		ensureMutableInts()
+		ints = mergeExtraIntProperties(ints, uint32(len(props)), extraInts, patch.CustomInts)
+	}
+	var floats []mc.FloatEntityProperty
+	if len(patch.CustomFloats) > 0 {
+		floats = buildCustomFloatProperties(patch.CustomFloats)
+	}
+	return mc.EntityProperties{IntegerProperties: ints, FloatProperties: floats}
+}
+
+func actorPropertyIndex(props []actorProperty, name string) int {
+	for i, p := range props {
+		if p.name == name {
+			return i
+		}
+	}
+	return -1
+}
+
+func mergeExtraIntProperties(ints []mc.IntegerEntityProperty, baseNext uint32, keys []string, src map[string]int32) []mc.IntegerEntityProperty {
+	used := make(map[uint32]bool, len(ints)+len(keys))
+	for _, p := range ints {
+		used[p.Index] = true
+	}
+	var named []string
+	for _, k := range keys {
+		if idx, err := strconv.ParseUint(k, 10, 32); err == nil {
+			u := uint32(idx)
+			val := src[k]
+			if used[u] {
+				for i := range ints {
+					if ints[i].Index == u {
+						ints[i].Value = val
+						break
+					}
+				}
+			} else {
+				used[u] = true
+				ints = append(ints, mc.IntegerEntityProperty{Index: u, Value: val})
+			}
+			continue
+		}
+		named = append(named, k)
+	}
+	slices.Sort(named)
+	nextIdx := baseNext
+	for _, k := range named {
+		for used[nextIdx] {
+			nextIdx++
+		}
+		used[nextIdx] = true
+		ints = append(ints, mc.IntegerEntityProperty{Index: nextIdx, Value: src[k]})
+	}
+	slices.SortFunc(ints, func(a, b mc.IntegerEntityProperty) int { return cmp.Compare(a.Index, b.Index) })
+	return ints
+}
+
+func buildCustomFloatProperties(src map[string]float32) []mc.FloatEntityProperty {
+	used := make(map[uint32]bool, len(src))
+	floats := make([]mc.FloatEntityProperty, 0, len(src))
+	var named []string
+	for k, v := range src {
+		if idx, err := strconv.ParseUint(k, 10, 32); err == nil {
+			u := uint32(idx)
+			used[u] = true
+			floats = append(floats, mc.FloatEntityProperty{Index: u, Value: v})
+			continue
+		}
+		named = append(named, k)
+	}
+	slices.Sort(named)
+	var nextIdx uint32
+	for _, k := range named {
+		for used[nextIdx] {
+			nextIdx++
+		}
+		used[nextIdx] = true
+		floats = append(floats, mc.FloatEntityProperty{Index: nextIdx, Value: src[k]})
+	}
+	slices.SortFunc(floats, func(a, b mc.FloatEntityProperty) int { return cmp.Compare(a.Index, b.Index) })
+	return floats
 }
 
 type creakingState interface {

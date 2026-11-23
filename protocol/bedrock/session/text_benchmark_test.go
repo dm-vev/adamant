@@ -9,7 +9,7 @@ import (
 
 // BenchmarkSessionSendTip measures what a tip costs the session beyond its
 // packet: the string a player is given read as text and rendered back, for a
-// plain string and for a status line of seven § codes. Nop drops the packet.
+// plain string and for a status line of seven § codes. nop drops the packet.
 func BenchmarkSessionSendTip(b *testing.B) {
 	for name, s := range map[string]string{
 		"plain": "Welcome to the server",
@@ -18,7 +18,7 @@ func BenchmarkSessionSendTip(b *testing.B) {
 		b.Run(name, func(b *testing.B) {
 			b.ReportAllocs()
 			for b.Loop() {
-				Nop.SendTip(text.ParseLegacy(s))
+				nop.SendTip(text.ParseLegacy(s))
 			}
 		})
 	}
@@ -26,7 +26,7 @@ func BenchmarkSessionSendTip(b *testing.B) {
 
 // BenchmarkSessionSendMessage measures a chat message as Player.Message sends
 // one: the string read as text and rendered back as the message of a raw
-// TextPacket, for a plain line and for a line of chat with § codes. Nop drops
+// TextPacket, for a plain line and for a line of chat with § codes. nop drops
 // the packet.
 func BenchmarkSessionSendMessage(b *testing.B) {
 	for name, s := range map[string]string{
@@ -36,7 +36,7 @@ func BenchmarkSessionSendMessage(b *testing.B) {
 		b.Run(name, func(b *testing.B) {
 			b.ReportAllocs()
 			for b.Loop() {
-				Nop.SendMessage(text.ParseLegacy(s))
+				nop.SendMessage(text.ParseLegacy(s))
 			}
 		})
 	}

@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net"
 	runtimedebug "runtime/debug"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -232,6 +233,12 @@ type Session struct {
 	// wire holds the tables of the protocol of the connection and of br,
 	// by which the session encodes blocks, items, biomes and entities.
 	wire *wireTables
+
+	interceptorsMu     sync.Mutex
+	nextInterceptorID  uint64
+	interceptors       atomic.Pointer[[]interceptorEntry]
+	hasInInterceptors  atomic.Bool
+	hasOutInterceptors atomic.Bool
 }
 
 // debugShapeUpdate represents a pending debug shape mutation. A nil shape removes the matching ID.
@@ -270,8 +277,8 @@ type Conn interface {
 	StartGameContext(ctx context.Context, data netconn.GameData) error
 }
 
-// Nop represents a no-operation session. It does not do anything when sending a packet to it.
-var Nop = &Session{conf: Config{Log: slog.New(slog.DiscardHandler)}}
+// nop represents a no-operation session. It does not do anything when sending a packet to it.
+var nop = &Session{conf: Config{Log: slog.New(slog.DiscardHandler)}}
 
 // selfEntityRuntimeID is the entity runtime (or unique) ID of the controllable that the session holds.
 const selfEntityRuntimeID = 1
@@ -312,6 +319,8 @@ type Config struct {
 	// the Session a Roster of its own, on which it lists only its own
 	// player.
 	Roster *client.Roster
+	// Interceptors are installed on the Session created from this Config.
+	Interceptors []PacketInterceptor
 }
 
 func (conf Config) New(conn Conn) *Session {
@@ -336,6 +345,7 @@ func (conf Config) New(conn Conn) *Session {
 	if conf.Roster == nil {
 		conf.Roster = new(client.Roster)
 	}
+	conf.Interceptors = slices.Clone(conf.Interceptors)
 	conf.Log = logging.Sub(conf.Log, logging.Session).With("name", conn.IdentityData().DisplayName, "uuid", conn.IdentityData().Identity, "raddr", conn.RemoteAddr().String())
 
 	s := &Session{}
@@ -383,6 +393,7 @@ func (conf Config) New(conn Conn) *Session {
 	s.wire.hashes()
 
 	s.registerHandlers()
+	s.initInterceptors(conf.Interceptors)
 	s.sendBiomes()
 	s.writePacket(s.wire.creativePacket())
 	s.sendRecipes()
@@ -665,9 +676,9 @@ func (s *Session) ClientData() login.ClientData {
 }
 
 // Profile returns what the client told of the device it runs on in the
-// client data of its login; the zero Profile for Nop.
+// client data of its login; the zero Profile for nop.
 func (s *Session) Profile() client.Profile {
-	if s == Nop {
+	if s == nop {
 		return client.Profile{}
 	}
 	return ProfileOf(s.conn.ClientData())
@@ -971,6 +982,12 @@ func (s *Session) ChunkRadius() int32 {
 // otherwise not valid in its context, an error is returned.
 func (s *Session) handlePacket(pk proto.Packet, tx *world.Tx, c Controllable) (err error) {
 	s.lastActivity.Store(time.Now().UnixNano())
+	if s.hasInInterceptors.Load() {
+		var ok bool
+		if pk, ok = s.runInInterceptors(pk); !ok || pk == nil {
+			return nil
+		}
+	}
 	handler, ok := s.handlers[pk.ID()]
 	if !ok {
 		s.logUnhandled(pk)

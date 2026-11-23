@@ -51,6 +51,8 @@ type ListenConfig struct {
 	// tells the server what GameVersions reports: the clients that join are
 	// admitted by the listener of the connections.
 	Allowed []*versions.Protocol
+	// Interceptors are installed on every Session accepted by the Listener.
+	Interceptors []PacketInterceptor
 }
 
 // Listener is the listener of the Bedrock Edition adapter. It hands the
@@ -184,6 +186,7 @@ func (j *join) Start(ctx context.Context, g client.Game) (client.Joining, error)
 		Permissions:    g.PermissionsOf,
 		RequestRole:    g.RequestRole,
 		Roster:         g.Roster,
+		Interceptors:   j.l.conf.Interceptors,
 	}.New(j.conn), nil
 }
 

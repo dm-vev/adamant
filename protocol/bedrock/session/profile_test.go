@@ -24,7 +24,7 @@ func TestProfileFromClientData(t *testing.T) {
 	if got := s.Profile(); got != want {
 		t.Errorf("Profile() = %+v, want %+v", got, want)
 	}
-	if got := Nop.Profile(); got != (client.Profile{}) {
-		t.Errorf("Nop.Profile() = %+v, want the zero Profile", got)
+	if got := nop.Profile(); got != (client.Profile{}) {
+		t.Errorf("nop.Profile() = %+v, want the zero Profile", got)
 	}
 }

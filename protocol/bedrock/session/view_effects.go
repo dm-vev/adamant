@@ -55,7 +55,7 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 // PlaySound plays a world.Sound to the client. The volume is not dependent on the distance to the source if it is a
 // sound of the LevelSoundEvent packet.
 func (s *Session) PlaySound(t world.Sound, pos mgl64.Vec3) {
-	if s == Nop {
+	if s == nop {
 		return
 	}
 	s.playSound(pos, t, true)

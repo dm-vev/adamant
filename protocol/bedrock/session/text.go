@@ -91,7 +91,7 @@ const scoreboardSpaces = "                                                      
 
 // SendScoreboard ...
 func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
-	if s == Nop || sb == nil {
+	if s == nop || sb == nil {
 		return
 	}
 	currentScoreboard := s.currentScoreboard.Load()
@@ -190,7 +190,7 @@ func scoreboardLines(lines []text.Text, name string, padding, descending bool) [
 
 // RemoveScoreboard ...
 func (s *Session) RemoveScoreboard() {
-	if s == Nop {
+	if s == nop {
 		return
 	}
 	current := s.currentScoreboard.Load()

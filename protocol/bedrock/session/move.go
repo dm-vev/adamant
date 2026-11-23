@@ -81,13 +81,13 @@ func (s *Session) ViewEntityMove(e world.Entity, m *world.EntityMove) {
 // ClientMoving reports whether the session is applying a move its client
 // made, which the client is not shown again.
 func (s *Session) ClientMoving() bool {
-	return s != Nop && s.moving.Load()
+	return s != nop && s.moving.Load()
 }
 
 // HandlingInput reports whether the session is handling a packet of its
 // client.
 func (s *Session) HandlingInput() bool {
-	return s != Nop && s.handlingInput.Load()
+	return s != nop && s.handlingInput.Load()
 }
 
 // CorrectMove puts the player of the session back at pos, moving at vel: a

@@ -5,131 +5,131 @@ package session
 import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
-// literalEntityAction writes the packet of an action of entity_action_table.go
-// and returns true, or returns false for an action the table does not hold,
-// whose packets ViewEntityAction works out.
-func (s *Session) literalEntityAction(e world.Entity, a world.EntityAction) bool {
+// literalEntityActionPacket returns the packet of an action of entity_action_table.go
+// and true, or nil and false for an action the table does not hold, whose packets
+// ViewEntityAction works out.
+func literalEntityActionPacket(id uint64, a world.EntityAction) (proto.Packet, bool) {
 	switch act := a.(type) {
 	case entity.CriticalHitAction:
 		count := act.Count
 		if count <= 0 {
 			count = 55
 		}
-		s.writePacket(&mc.AnimatePacket{
+		return &mc.AnimatePacket{
 			ActionType:      mc.AnimateActionCriticalHit,
-			EntityRuntimeID: s.entityRuntimeID(e),
+			EntityRuntimeID: id,
 			Data:            float32(count),
-		})
+		}, true
 	case entity.EnchantedHitAction:
 		count := act.Count
 		if count <= 0 {
 			count = 15
 		}
-		s.writePacket(&mc.AnimatePacket{
+		return &mc.AnimatePacket{
 			ActionType:      mc.AnimateActionMagicCriticalHit,
-			EntityRuntimeID: s.entityRuntimeID(e),
+			EntityRuntimeID: id,
 			Data:            float32(count),
-		})
+		}, true
 	case entity.DragonDeathAction:
-		s.writePacket(&mc.ActorEventPacket{
-			EntityRuntimeID: s.entityRuntimeID(e),
+		return &mc.ActorEventPacket{
+			EntityRuntimeID: id,
 			EventType:       mc.ActorEventDragonStartDeathAnim,
-		})
+		}, true
 	case entity.WitchMagicAction:
-		s.writePacket(&mc.ActorEventPacket{
-			EntityRuntimeID: s.entityRuntimeID(e),
+		return &mc.ActorEventPacket{
+			EntityRuntimeID: id,
 			EventType:       mc.ActorEventWitchHatMagic,
-		})
+		}, true
 	case entity.SilverfishMergeAction:
-		s.writePacket(&mc.ActorEventPacket{
-			EntityRuntimeID: s.entityRuntimeID(e),
+		return &mc.ActorEventPacket{
+			EntityRuntimeID: id,
 			EventType:       mc.ActorEventSilverfishMergeAnimation,
-		})
+		}, true
 	case entity.ItemStackSizeAction:
-		s.writePacket(&mc.ActorEventPacket{
-			EntityRuntimeID: s.entityRuntimeID(e),
+		return &mc.ActorEventPacket{
+			EntityRuntimeID: id,
 			EventType:       mc.ActorEventUpdateStackSize,
 			EventData:       int32(act.Count),
-		})
+		}, true
 	case entity.WolfShakeAction:
-		s.writePacket(&mc.ActorEventPacket{
-			EntityRuntimeID: s.entityRuntimeID(e),
+		return &mc.ActorEventPacket{
+			EntityRuntimeID: id,
 			EventType:       mc.ActorEventShakeWetness,
-		})
+		}, true
 	case entity.VibrationDetectedAction:
-		s.writePacket(&mc.ActorEventPacket{
-			EntityRuntimeID: s.entityRuntimeID(e),
+		return &mc.ActorEventPacket{
+			EntityRuntimeID: id,
 			EventType:       mc.ActorEventVibrationDetected,
-		})
+		}, true
 	case entity.SquidInkAction:
-		s.writePacket(&mc.ActorEventPacket{
-			EntityRuntimeID: s.entityRuntimeID(e),
+		return &mc.ActorEventPacket{
+			EntityRuntimeID: id,
 			EventType:       mc.ActorEventSquidFleeing,
-		})
+		}, true
 	case entity.ArrowShakeAction:
-		s.writePacket(&mc.ActorEventPacket{
-			EntityRuntimeID: s.entityRuntimeID(e),
+		return &mc.ActorEventPacket{
+			EntityRuntimeID: id,
 			EventType:       mc.ActorEventShake,
 			EventData:       int32(act.Duration.Milliseconds() / 50),
-		})
+		}, true
 	case entity.FireworkExplosionAction:
-		s.writePacket(&mc.ActorEventPacket{
-			EntityRuntimeID: s.entityRuntimeID(e),
+		return &mc.ActorEventPacket{
+			EntityRuntimeID: id,
 			EventType:       mc.ActorEventFireworksExplode,
-		})
+		}, true
 	case entity.TotemUseAction:
-		s.writePacket(&mc.ActorEventPacket{
-			EntityRuntimeID: s.entityRuntimeID(e),
+		return &mc.ActorEventPacket{
+			EntityRuntimeID: id,
 			EventType:       mc.ActorEventTalismanActivate,
-		})
+		}, true
 	case entity.FishHookBubbleAction:
-		s.writePacket(&mc.ActorEventPacket{
-			EntityRuntimeID: s.entityRuntimeID(e),
+		return &mc.ActorEventPacket{
+			EntityRuntimeID: id,
 			EventType:       mc.ActorEventFishhookBubble,
-		})
+		}, true
 	case entity.FishHookBiteAction:
-		s.writePacket(&mc.ActorEventPacket{
-			EntityRuntimeID: s.entityRuntimeID(e),
+		return &mc.ActorEventPacket{
+			EntityRuntimeID: id,
 			EventType:       mc.ActorEventFishhookHookTime,
-		})
+		}, true
 	case entity.FishHookTeaseAction:
-		s.writePacket(&mc.ActorEventPacket{
-			EntityRuntimeID: s.entityRuntimeID(e),
+		return &mc.ActorEventPacket{
+			EntityRuntimeID: id,
 			EventType:       mc.ActorEventFishhookTease,
-		})
+		}, true
 	case entity.TameAction:
 		event := byte(mc.ActorEventTamingFailed)
 		if act.Succeeded {
 			event = mc.ActorEventTamingSucceeded
 		}
-		s.writePacket(&mc.ActorEventPacket{
-			EntityRuntimeID: s.entityRuntimeID(e),
+		return &mc.ActorEventPacket{
+			EntityRuntimeID: id,
 			EventType:       event,
-		})
+		}, true
 	case entity.DrinkAction:
 		event := byte(mc.ActorEventDrinkPotion)
 		if act.Milk {
 			event = mc.ActorEventDrinkMilk
 		}
-		s.writePacket(&mc.ActorEventPacket{
-			EntityRuntimeID: s.entityRuntimeID(e),
+		return &mc.ActorEventPacket{
+			EntityRuntimeID: id,
 			EventType:       event,
-		})
+		}, true
 	case entity.EatGrassAction:
-		s.writePacket(&mc.ActorEventPacket{
-			EntityRuntimeID: s.entityRuntimeID(e),
+		return &mc.ActorEventPacket{
+			EntityRuntimeID: id,
 			EventType:       mc.ActorEventEatGrass,
-		})
+		}, true
 	case entity.LoveHeartsAction:
-		s.writePacket(&mc.ActorEventPacket{
-			EntityRuntimeID: s.entityRuntimeID(e),
+		return &mc.ActorEventPacket{
+			EntityRuntimeID: id,
 			EventType:       mc.ActorEventLoveHearts,
-		})
+		}, true
 	default:
-		return false
+		return nil, false
 	}
-	return true
 }

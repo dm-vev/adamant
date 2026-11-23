@@ -3,6 +3,7 @@ package session
 import (
 	"math"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -407,6 +408,30 @@ func (s *Session) ViewEntityVelocity(e world.Entity, velocity mgl64.Vec3) {
 	})
 }
 
+// ViewEntityVelocityShared views the velocity of an entity using b to share
+// packet encoding across non-self viewers.
+func (s *Session) ViewEntityVelocityShared(e world.Entity, vel mgl64.Vec3, b *world.Broadcast) {
+	if s == nop || s.entityHidden(e) || s.keepBack(e) {
+		return
+	}
+	if e.H() == s.ent || b == nil || s.hasOutInterceptors.Load() {
+		s.writePacket(&mc.SetActorMotionPacket{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			Velocity:        vec64To32(vel),
+		})
+		return
+	}
+	sh, ok := b.Load().(*netconn.Shared)
+	if !ok {
+		sh = &netconn.Shared{Packet: &mc.SetActorMotionPacket{
+			EntityRuntimeID: e.H().RuntimeID(),
+			Velocity:        vec64To32(vel),
+		}}
+		b.Store(sh)
+	}
+	s.writePacket(sh)
+}
+
 // entityOffset returns the offset that entities have client-side.
 func entityOffset(e world.Entity) mgl64.Vec3 {
 	if e.H().Type().EncodeEntity() == "minecraft:player" {
@@ -527,6 +552,25 @@ func (s *Session) ViewEntityTeleport(e world.Entity, position mgl64.Vec3) {
 	})
 }
 
+func entityHeldItems(e world.Entity) (mainHand, offHand item.Stack, ok bool) {
+	c, ok := e.(interface {
+		HeldItems() (mainHand, offHand item.Stack)
+	})
+	if !ok {
+		b, ok2 := e.(*entity.Ent)
+		if !ok2 {
+			return item.Stack{}, item.Stack{}, false
+		}
+		if c, ok = b.Behaviour().(interface {
+			HeldItems() (mainHand, offHand item.Stack)
+		}); !ok {
+			return item.Stack{}, item.Stack{}, false
+		}
+	}
+	mainHand, offHand = c.HeldItems()
+	return mainHand, offHand, true
+}
+
 // ViewEntityItems ...
 func (s *Session) ViewEntityItems(e world.Entity) {
 	runtimeID := s.entityRuntimeID(e)
@@ -534,22 +578,11 @@ func (s *Session) ViewEntityItems(e world.Entity) {
 		// Don't view the items of the entity if the entity is the Controllable entity of the session.
 		return
 	}
-	c, ok := e.(interface {
-		HeldItems() (mainHand, offHand item.Stack)
-	})
+	mainHand, offHand, ok := entityHeldItems(e)
 	if !ok {
-		if b, ok2 := e.(*entity.Ent); ok2 {
-			if c, ok = b.Behaviour().(interface {
-				HeldItems() (mainHand, offHand item.Stack)
-			}); !ok {
-				return
-			}
-		} else {
-			return
-		}
+		return
 	}
 
-	mainHand, offHand := c.HeldItems()
 	// An entity just shown holds nothing until told otherwise.
 	shown := s.justShownEquipment(e.H(), false)
 
@@ -570,6 +603,55 @@ func (s *Session) ViewEntityItems(e world.Entity) {
 	}
 }
 
+type sharedEntityItems struct {
+	mainEmpty bool
+	offEmpty  bool
+	main      netconn.Shared
+	off       netconn.Shared
+}
+
+// ViewEntityItemsShared views the items held by an entity using b to share
+// packet encoding across non-self viewers.
+func (s *Session) ViewEntityItemsShared(e world.Entity, b *world.Broadcast) {
+	if s == nop || e.H() == s.ent || s.entityHidden(e) {
+		return
+	}
+	if b == nil || s.tables().proto != versions.Model() || s.hasOutInterceptors.Load() {
+		s.ViewEntityItems(e)
+		return
+	}
+	st, ok := b.Load().(*sharedEntityItems)
+	if !ok {
+		mainHand, offHand, hasItems := entityHeldItems(e)
+		if !hasItems {
+			return
+		}
+		id := e.H().RuntimeID()
+		tables := s.tables()
+		st = &sharedEntityItems{
+			mainEmpty: mainHand.Empty(),
+			offEmpty:  offHand.Empty(),
+			main: netconn.Shared{Packet: &mc.MobEquipmentPacket{
+				EntityRuntimeID: id,
+				NewItem:         instanceFromItem(tables, mainHand),
+			}},
+			off: netconn.Shared{Packet: &mc.MobEquipmentPacket{
+				EntityRuntimeID: id,
+				NewItem:         instanceFromItem(tables, offHand),
+				WindowID:        mc.WindowIDOffHand,
+			}},
+		}
+		b.Store(st)
+	}
+	shown := s.justShownEquipment(e.H(), false)
+	if !shown || !st.mainEmpty {
+		s.writePacket(&st.main)
+	}
+	if !shown || !st.offEmpty {
+		s.writePacket(&st.off)
+	}
+}
+
 // justShownEquipment reports whether the entity of a handle was shown and
 // its equipment not yet, forgetting it once done is set: the armour goes
 // last.
@@ -583,6 +665,38 @@ func (s *Session) justShownEquipment(h *world.EntityHandle, done bool) bool {
 	return shown
 }
 
+func entityArmourItems(e world.Entity) (helm, chestplate, leggings, boots, body item.Stack, ok bool) {
+	var equipment any = e
+	bodyItem, hasBody := e.(interface{ BodyItem() item.Stack })
+	if b, isEnt := e.(*entity.Ent); isEnt {
+		equipment = b.Behaviour()
+		if !hasBody {
+			bodyItem, hasBody = equipment.(interface{ BodyItem() item.Stack })
+		}
+	}
+	if armoured, isArmoured := equipment.(interface {
+		EquipmentArmour() (item.Stack, item.Stack, item.Stack, item.Stack)
+	}); isArmoured {
+		helm, chestplate, leggings, boots = armoured.EquipmentArmour()
+	} else if armoured, isArmoured := equipment.(interface {
+		Armour() *inventory.Armour
+	}); isArmoured {
+		if inv := armoured.Armour(); inv != nil {
+			helm, chestplate, leggings, boots = inv.Helmet(), inv.Chestplate(), inv.Leggings(), inv.Boots()
+		}
+	} else if !hasBody {
+		return item.Stack{}, item.Stack{}, item.Stack{}, item.Stack{}, item.Stack{}, false
+	}
+	if hasBody {
+		body = bodyItem.BodyItem()
+	}
+	return helm, chestplate, leggings, boots, body, true
+}
+
+func (s *Session) hasViewLayerInvisible(e world.Entity) bool {
+	return s.viewLayer != nil && (!s.viewLayerOwned || s.viewLayerActive.Load()) && s.viewLayer.Visibility(e) == world.EnforceInvisible()
+}
+
 // ViewEntityArmour ...
 func (s *Session) ViewEntityArmour(e world.Entity) {
 	runtimeID := s.entityRuntimeID(e)
@@ -590,32 +704,11 @@ func (s *Session) ViewEntityArmour(e world.Entity) {
 		// Don't view the items of the entity if the entity is the Controllable entity of the session.
 		return
 	}
-	var helm, chestplate, leggings, boots, body item.Stack
-	var equipment any = e
-	bodyItem, hasBody := e.(interface{ BodyItem() item.Stack })
-	if b, ok := e.(*entity.Ent); ok {
-		equipment = b.Behaviour()
-		if !hasBody {
-			bodyItem, hasBody = equipment.(interface{ BodyItem() item.Stack })
-		}
-	}
-	if armoured, ok := equipment.(interface {
-		EquipmentArmour() (item.Stack, item.Stack, item.Stack, item.Stack)
-	}); ok {
-		helm, chestplate, leggings, boots = armoured.EquipmentArmour()
-	} else if armoured, ok := equipment.(interface {
-		Armour() *inventory.Armour
-	}); ok {
-		if inv := armoured.Armour(); inv != nil {
-			helm, chestplate, leggings, boots = inv.Helmet(), inv.Chestplate(), inv.Leggings(), inv.Boots()
-		}
-	} else if !hasBody {
+	helm, chestplate, leggings, boots, body, ok := entityArmourItems(e)
+	if !ok {
 		return
 	}
-	if hasBody {
-		body = bodyItem.BodyItem()
-	}
-	if s.viewLayer != nil && s.viewLayer.Visibility(e) == world.EnforceInvisible() {
+	if s.hasViewLayerInvisible(e) {
 		helm, chestplate, leggings, boots, body = item.Stack{}, item.Stack{}, item.Stack{}, item.Stack{}, item.Stack{}
 	}
 	if s.justShownEquipment(e.H(), true) && helm.Empty() && chestplate.Empty() && leggings.Empty() && boots.Empty() && body.Empty() {
@@ -634,6 +727,48 @@ func (s *Session) ViewEntityArmour(e world.Entity) {
 	})
 }
 
+type sharedEntityArmour struct {
+	empty bool
+	pk    netconn.Shared
+}
+
+// ViewEntityArmourShared views the armour equipped by an entity using b to share
+// packet encoding across non-self viewers.
+func (s *Session) ViewEntityArmourShared(e world.Entity, b *world.Broadcast) {
+	if s == nop || e.H() == s.ent || s.entityHidden(e) {
+		return
+	}
+	if s.hasViewLayerInvisible(e) || b == nil || s.tables().proto != versions.Model() || s.hasOutInterceptors.Load() {
+		s.ViewEntityArmour(e)
+		return
+	}
+	st, ok := b.Load().(*sharedEntityArmour)
+	if !ok {
+		helm, chestplate, leggings, boots, body, hasArmour := entityArmourItems(e)
+		if !hasArmour {
+			return
+		}
+		tables := s.tables()
+		st = &sharedEntityArmour{
+			empty: helm.Empty() && chestplate.Empty() && leggings.Empty() && boots.Empty() && body.Empty(),
+			pk: netconn.Shared{Packet: &mc.MobArmourEquipmentPacket{
+				EntityRuntimeID: e.H().RuntimeID(),
+				Helmet:          instanceFromItem(tables, helm),
+				Chestplate:      instanceFromItem(tables, chestplate),
+				Leggings:        instanceFromItem(tables, leggings),
+				Boots:           instanceFromItem(tables, boots),
+				Body:            instanceFromItem(tables, body),
+			}},
+		}
+		b.Store(st)
+	}
+	if s.justShownEquipment(e.H(), true) && st.empty {
+		// An entity just shown wears nothing until told otherwise.
+		return
+	}
+	s.writePacket(&st.pk)
+}
+
 // clientRemovesDyingMob excludes players and entities with special death
 // sequences. Ordinary Bedrock mobs remove themselves at the end of tickDeath.
 func clientRemovesDyingMob(e world.Entity) bool {
@@ -645,11 +780,14 @@ func clientRemovesDyingMob(e world.Entity) bool {
 	return living
 }
 
-var _ world.EntityStateSharedViewer = (*Session)(nil)
+var (
+	_ world.EntityStateSharedViewer = (*Session)(nil)
+	_ world.EntityBroadcastViewer   = (*Session)(nil)
+)
 
 // ViewEntityState ...
 func (s *Session) ViewEntityState(e world.Entity) {
-	if s == Nop {
+	if s == nop {
 		return
 	}
 	meta := entityTypeMetaOf(e.H().Type())
@@ -680,10 +818,10 @@ type sharedEntityState struct {
 // ViewEntityStateShared views the current state of an entity using b to share
 // metadata serialization and wire encoding across viewers observing identical state.
 func (s *Session) ViewEntityStateShared(e world.Entity, b *world.Broadcast) {
-	if s == Nop {
+	if s == nop {
 		return
 	}
-	if e.H() == s.ent || b == nil || s.hasViewLayerOverride(e) {
+	if e.H() == s.ent || b == nil || s.hasViewLayerOverride(e) || s.hasOutInterceptors.Load() {
 		s.ViewEntityState(e)
 		return
 	}
@@ -795,6 +933,14 @@ func (s *Session) entityMetadataWith(e world.Entity, meta *entityTypeMeta, caps 
 	as, asSet := s.viewLayer.AlwaysShowNameTag(e)
 	if ntSet || asSet {
 		nameTag, alwaysShow, _ := nameTagState(e)
+		if cur, ok := metadata[mc.EntityDataKeyName].(string); ok {
+			nameTag = cur
+			if cur != "" {
+				if b, ok := metadata[mc.EntityDataKeyAlwaysShowNameTag].(byte); ok {
+					alwaysShow = b != 0
+				}
+			}
+		}
 		if ntSet {
 			nameTag = nt
 		}

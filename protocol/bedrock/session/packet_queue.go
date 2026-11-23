@@ -10,6 +10,7 @@ import (
 	"github.com/dm-vev/adamant/net/nethernet"
 
 	"github.com/df-mc/dragonfly/internal/faultcheck"
+	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 )
 
 // maxQueuedPackets bounds retained packets for a connection whose writes
@@ -21,8 +22,15 @@ const maxQueuedPackets = 16 * 1024
 // the world owner. Packets keep their order. Outside a batch the session is
 // handed to the flushers at once; within one, when the batch ends.
 func (s *Session) writePacket(pk proto.Packet) {
-	if s == Nop {
+	if s == nop {
 		return
+	}
+	if s.hasOutInterceptors.Load() {
+		pk = netconn.Unwrap(pk)
+		var ok bool
+		if pk, ok = s.runOutInterceptors(pk); !ok || pk == nil {
+			return
+		}
 	}
 	s.packetsMu.Lock()
 	if s.closing.Load() {
@@ -68,7 +76,7 @@ func (s *Session) scheduleFlushLocked() bool {
 // takes what a tick of the world of the session shows at once rather than
 // packet by packet.
 func (s *Session) BeginBatch() {
-	if s == Nop {
+	if s == nop {
 		return
 	}
 	s.packetsMu.Lock()
@@ -78,7 +86,7 @@ func (s *Session) BeginBatch() {
 
 // EndBatch hands the packets held since BeginBatch to a flusher.
 func (s *Session) EndBatch() {
-	if s == Nop {
+	if s == nop {
 		return
 	}
 	s.flushBlockUpdates()

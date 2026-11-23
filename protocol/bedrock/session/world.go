@@ -13,6 +13,10 @@ import (
 // writeBroadcast writes the packets of a broadcast: those the first viewer
 // made, encoded once for all, or makes them with build.
 func (s *Session) writeBroadcast(b *world.Broadcast, build func(out func(proto.Packet))) {
+	if s.hasOutInterceptors.Load() {
+		build(s.writePacket)
+		return
+	}
 	pks, ok := b.Load().([]*netconn.Shared)
 	if !ok {
 		build(func(pk proto.Packet) { pks = append(pks, &netconn.Shared{Packet: pk}) })

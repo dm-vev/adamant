@@ -40,7 +40,7 @@ type sharedBlockUpdates struct {
 
 // ViewBlockUpdates ...
 func (s *Session) ViewBlockUpdates(u *world.BlockUpdates) {
-	if s == Nop {
+	if s == nop {
 		return
 	}
 	if len(u.Updates) > 0 {
@@ -80,7 +80,7 @@ func (s *Session) ViewBlockUpdates(u *world.BlockUpdates) {
 
 // ViewBlockUpdate ...
 func (s *Session) ViewBlockUpdate(pos cube.Pos, b world.Block, layer int) {
-	if s != Nop {
+	if s != nop {
 		s.enqueueBlockUpdate(pos, b, layer)
 	}
 }

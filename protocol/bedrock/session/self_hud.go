@@ -104,7 +104,7 @@ func (s *Session) SendHudUpdates() {
 // AddDebugShape adds a debug shape to be rendered to the player. If the shape already exists, it will be
 // updated with the new information.
 func (s *Session) AddDebugShape(shape debug.Shape) {
-	if s == Nop {
+	if s == nop {
 		return
 	}
 	s.queueDebugShapeUpdate(debugShapeUpdate{id: shape.ShapeID(), shape: shape})
@@ -112,7 +112,7 @@ func (s *Session) AddDebugShape(shape debug.Shape) {
 
 // RemoveDebugShape removes a debug shape from the player by its unique identifier.
 func (s *Session) RemoveDebugShape(shape debug.Shape) {
-	if s == Nop {
+	if s == nop {
 		return
 	}
 	s.queueDebugShapeUpdate(debugShapeUpdate{id: shape.ShapeID()})
@@ -129,7 +129,7 @@ func (s *Session) VisibleDebugShapes() []debug.Shape {
 // RemoveAllDebugShapes removes all rendered debug shapes from the player, as well as any shapes that have
 // not yet been rendered.
 func (s *Session) RemoveAllDebugShapes() {
-	if s == Nop {
+	if s == nop {
 		return
 	}
 	s.debugShapesMu.Lock()
@@ -143,7 +143,7 @@ func (s *Session) RemoveAllDebugShapes() {
 // SendDebugShapes sends any pending additions/removals of debug shapes to the player. Shapes should be sent
 // every tick to allow for batching and time-efficient updates.
 func (s *Session) SendDebugShapes(dim world.Dimension) {
-	if s == Nop {
+	if s == nop {
 		return
 	}
 	s.debugShapesMu.Lock()

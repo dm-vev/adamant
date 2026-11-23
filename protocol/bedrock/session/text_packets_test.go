@@ -109,7 +109,7 @@ func oldSetTitle(action int32) func(s *Session, message string) {
 
 // oldDisconnect is Disconnect as it was for a string.
 func oldDisconnect(s *Session, message string) {
-	if s != Nop {
+	if s != nop {
 		s.connWriteMu.Lock()
 		_ = s.conn.WritePacket(&mc.DisconnectPacket{
 			HideDisconnectionScreen: message == "",

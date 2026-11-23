@@ -193,7 +193,7 @@ func (s *Session) playerListEntry() *netconn.Shared {
 // whether it sees the player or only lists it, with one PlayerSkin encoded
 // once, and lists the player with it for sessions that join later.
 func (s *Session) ShowSkin(sk skin.Skin) {
-	if s == Nop {
+	if s == nop {
 		return
 	}
 	s.listEntry.Store(s.newListEntry(sk))
