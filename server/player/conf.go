@@ -226,10 +226,7 @@ func portalTeleport(e entity.Traveller, pos mgl64.Vec3, rotation cube.Rotation, 
 
 // portalTeleportAllowed asks the handler of the traveller if it may teleport.
 func portalTeleportAllowed(e entity.Traveller, pos mgl64.Vec3) bool {
-	p := e.(*Player)
-	ctx := NewEventContext(p.tx, p)
-	p.Handler().HandleTeleport(ctx, pos)
-	return !ctx.Cancelled()
+	return e.(*Player).dispatchTeleportEvent(pos)
 }
 
 // portalDestination returns the function that finds the world a traveller

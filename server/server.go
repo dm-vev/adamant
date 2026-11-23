@@ -21,6 +21,7 @@ import (
 	"github.com/df-mc/dragonfly/server/audit"
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/cmd"
+	"github.com/df-mc/dragonfly/server/event"
 	"github.com/df-mc/dragonfly/server/identity"
 	_ "github.com/df-mc/dragonfly/server/item" // Imported for maintaining correct initialisation order.
 	"github.com/df-mc/dragonfly/server/logging"
@@ -81,6 +82,7 @@ type Server struct {
 	// it counts of itself for them.
 	metrics *metrics.Registry
 	stats   serverStats
+	events  event.Bus
 
 	// players holds the players online.
 	players players
@@ -183,6 +185,7 @@ func (srv *Server) Accept() iter.Seq[*player.Player] {
 				p := tx.AddEntity(inc.p.handle).(*player.Player)
 				inc.c.Spawn(p, tx)
 				srv.welcome(p)
+				srv.emitJoin(tx, p)
 				return !yield(p), nil
 			})
 			if err != nil {
@@ -210,6 +213,31 @@ func (srv *Server) Accept() iter.Seq[*player.Player] {
 // edited. The default world may be configured to any supported dimension.
 func (srv *Server) World() *world.World {
 	return srv.world
+}
+
+// Events returns the server-wide prioritized event bus.
+func (srv *Server) Events() *event.Bus {
+	if srv == nil {
+		return nil
+	}
+	return &srv.events
+}
+
+// emitJoin dispatches a player.JoinEvent to the server and world event buses if
+// any listeners are registered.
+func (srv *Server) emitJoin(tx *world.Tx, p *player.Player) {
+	hasSrv := event.HasListeners[player.JoinEvent](&srv.events)
+	hasWorld := tx != nil && !tx.Closed() && event.HasListeners[player.JoinEvent](tx.Events())
+	if !hasSrv && !hasWorld {
+		return
+	}
+	ev := player.JoinEvent{Player: p, Tx: tx}
+	if hasSrv {
+		event.Emit(&srv.events, &ev)
+	}
+	if hasWorld {
+		event.Emit(tx.Events(), &ev)
+	}
 }
 
 // StartTime returns the time the server started listening for connections.
@@ -817,6 +845,10 @@ func (srv *Server) left(tx *world.Tx, c *player.Player) {
 	// The player stays online until it is saved: a client logging in as it
 	// waits for it to go before the server loads what it saved.
 	defer srv.players.remove(c.UUID())
+	if event.HasListeners[player.QuitEvent](&srv.events) {
+		ev := player.QuitEvent{Player: c, Tx: tx}
+		event.Emit(&srv.events, &ev)
+	}
 
 	if tx != nil {
 		// The snapshot holds inventories of its own: the player's are

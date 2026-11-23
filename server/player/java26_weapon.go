@@ -80,8 +80,7 @@ func (p *Player) tryKineticWeapon(weapon item.KineticWeapon) {
 		}
 
 		force, height, critical := 0.4, 0.0, false
-		ctx := NewEventContext(p.tx, p)
-		if p.Handler().HandleAttackEntity(ctx, target, &force, &height, &critical); ctx.Cancelled() {
+		if !p.dispatchAttackEntityEvent(target, &force, &height, &critical) {
 			continue
 		}
 		damage := 1 + math.Floor(relativeSpeed*info.DamageMultiplier)
@@ -164,8 +163,7 @@ func (p *Player) attackPiercingWeapon(info item.PiercingWeaponInfo) bool {
 			damage -= damage * effect.Weakness.Multiplier(weakness.Level())
 		}
 		force, height, critical := 0.4, 0.0, false
-		ctx := NewEventContext(p.tx, p)
-		if p.Handler().HandleAttackEntity(ctx, target, &force, &height, &critical); ctx.Cancelled() {
+		if !p.dispatchAttackEntityEvent(target, &force, &height, &critical) {
 			continue
 		}
 		_, affected := living.Hurt(damage, world.DamageSource(entity.SpearDamageSource{AttackDamageSource: entity.AttackDamageSource{Attacker: p}}))

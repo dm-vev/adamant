@@ -124,8 +124,7 @@ func (p *Player) RemoveBossBarID(id string) {
 // player and is formatted following the rules of fmt.Sprintln.
 func (p *Player) Chat(msg ...any) {
 	message := format(msg)
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleChat(ctx, &message); ctx.Cancelled() {
+	if !p.dispatchChatEvent(&message) {
 		return
 	}
 	_, _ = fmt.Fprintf(chat.Global, "<%v> %v\n", p.Name(), message)
@@ -139,11 +138,7 @@ func (p *Player) ExecuteCommand(commandLine string) {
 		return
 	}
 	cmd.ExecuteLine(p, commandLine, p.tx, func(command cmd.Command, args []string) bool {
-		ctx := NewEventContext(p.tx, p)
-		if p.Handler().HandleCommandExecution(ctx, command, args); ctx.Cancelled() {
-			return false
-		}
-		return true
+		return p.dispatchCommandEvent(command, args)
 	})
 }
 

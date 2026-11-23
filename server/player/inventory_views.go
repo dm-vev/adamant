@@ -52,16 +52,10 @@ func viewInventories(tx *world.Tx, p *Player) {
 		// The item put on with an operation of a menu is heard put on.
 		equipped := !after.Empty() && pd.menuTx.Load()
 		h.Do(func(tx *world.Tx, e world.Entity) {
-			viewers := tx.Viewers(e.Position())
-			// Armour changes are noisy in PvP encounters: the pooled slice
-			// keeps repeated swaps cheap.
-			for _, viewer := range viewers {
-				viewer.ViewEntityArmour(e)
-			}
+			world.BroadcastEntityArmour(tx, e)
 			if equipped {
 				tx.PlaySound(entity.EyePosition(e), sound.EquipItem{Item: after.Item()})
 			}
-			tx.ReleaseViewers(viewers)
 		})
 	})
 	pd.ui.SlotFunc(func(slot int, before, after item.Stack) {
@@ -82,13 +76,7 @@ func viewInventories(tx *world.Tx, p *Player) {
 
 // showHeldItems shows the viewers of e, a player, the items it holds.
 func showHeldItems(tx *world.Tx, e world.Entity) {
-	viewers := tx.Viewers(e.Position())
-	// Equipment changes are frequent: the pooled slice keeps hotbar spam
-	// from making garbage.
-	for _, viewer := range viewers {
-		viewer.ViewEntityItems(e)
-	}
-	tx.ReleaseViewers(viewers)
+	world.BroadcastEntityItems(tx, e)
 }
 
 // view calls f, what a client shows of a change of a slot, unless it is nil.

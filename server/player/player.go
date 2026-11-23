@@ -1,10 +1,13 @@
 package player
 
 import (
+	"sync/atomic"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/client"
+	"github.com/df-mc/dragonfly/server/ecs"
 	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/df-mc/dragonfly/server/event"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -38,6 +41,7 @@ type playerData struct {
 	lastXPPickup *time.Time
 	enchantSeed  int64
 	hunger       *hungerManager
+	events       atomic.Pointer[event.Bus]
 }
 
 // Player is an implementation of a player entity. It has methods that implement the behaviour that players
@@ -97,6 +101,38 @@ func (p *Player) simulated() bool { return p.c == nil }
 // Handler returns the Handler of the player.
 func (p *Player) Handler() Handler {
 	return p.h
+}
+
+// Components returns the ECS component bag attached to the player.
+func (p *Player) Components() *ecs.Bag {
+	if p == nil || p.data == nil {
+		return nil
+	}
+	return &p.data.Components
+}
+
+// Events returns the player's prioritized event bus, lazily initializing it on
+// first call so players without listeners incur zero heap allocations.
+func (p *Player) Events() *event.Bus {
+	if p == nil || p.playerData == nil {
+		return nil
+	}
+	if bus := p.events.Load(); bus != nil {
+		return bus
+	}
+	bus := event.NewBus()
+	if p.events.CompareAndSwap(nil, bus) {
+		return bus
+	}
+	return p.events.Load()
+}
+
+// eventBus returns the player's event bus without allocating if unused.
+func (p *Player) eventBus() *event.Bus {
+	if p == nil || p.playerData == nil {
+		return nil
+	}
+	return p.events.Load()
 }
 
 // hasNopHandler reports whether the player uses the default no-op Handler.

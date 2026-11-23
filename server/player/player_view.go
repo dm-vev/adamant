@@ -155,6 +155,111 @@ func (p *Player) updateState() {
 	p.tx.ReleaseViewers(viewers)
 }
 
+// broadcastAction shows an entity action performed by p to all viewers and p's
+// own client, sharing encoded broadcast payloads when viewers support
+// world.EntityBroadcastViewer.
+func (p *Player) broadcastAction(a world.EntityAction) {
+	if p.c == nil {
+		world.BroadcastEntityAction(p.tx, p, a)
+		return
+	}
+	if p.tx == nil || p.tx.Closed() {
+		p.c.ViewEntityAction(p, a)
+		return
+	}
+	viewers := p.tx.Viewers(p.Position())
+	var b world.Broadcast
+	seenSelf := false
+	for _, v := range viewers {
+		if v == world.Viewer(p.c) {
+			seenSelf = true
+		}
+		if bv, ok := v.(world.EntityBroadcastViewer); ok {
+			bv.ViewEntityActionShared(p, a, &b)
+		} else {
+			v.ViewEntityAction(p, a)
+		}
+	}
+	if !seenSelf {
+		if bv, ok := world.Viewer(p.c).(world.EntityBroadcastViewer); ok {
+			bv.ViewEntityActionShared(p, a, &b)
+		} else {
+			p.c.ViewEntityAction(p, a)
+		}
+	}
+	p.tx.ReleaseViewers(viewers)
+}
+
+// broadcastVelocity shows p's velocity to all viewers and p's own client,
+// sharing encoded broadcast payloads when viewers support
+// world.EntityBroadcastViewer.
+func (p *Player) broadcastVelocity(vel mgl64.Vec3) {
+	if p.c == nil {
+		world.BroadcastEntityVelocity(p.tx, p, vel)
+		return
+	}
+	if p.tx == nil || p.tx.Closed() {
+		p.c.ViewEntityVelocity(p, vel)
+		return
+	}
+	viewers := p.tx.Viewers(p.Position())
+	var b world.Broadcast
+	seenSelf := false
+	for _, v := range viewers {
+		if v == world.Viewer(p.c) {
+			seenSelf = true
+		}
+		if bv, ok := v.(world.EntityBroadcastViewer); ok {
+			bv.ViewEntityVelocityShared(p, vel, &b)
+		} else {
+			v.ViewEntityVelocity(p, vel)
+		}
+	}
+	if !seenSelf {
+		if bv, ok := world.Viewer(p.c).(world.EntityBroadcastViewer); ok {
+			bv.ViewEntityVelocityShared(p, vel, &b)
+		} else {
+			p.c.ViewEntityVelocity(p, vel)
+		}
+	}
+	p.tx.ReleaseViewers(viewers)
+}
+
+// broadcastHeldItems shows p's held items to all viewers and p's own client,
+// sharing encoded broadcast payloads when viewers support
+// world.EntityBroadcastViewer.
+func (p *Player) broadcastHeldItems() {
+	if p.c == nil {
+		world.BroadcastEntityItems(p.tx, p)
+		return
+	}
+	if p.tx == nil || p.tx.Closed() {
+		p.c.ViewEntityItems(p)
+		return
+	}
+	viewers := p.tx.Viewers(p.Position())
+	var b world.Broadcast
+	seenSelf := false
+	for _, v := range viewers {
+		if v == world.Viewer(p.c) {
+			seenSelf = true
+		}
+		if bv, ok := v.(world.EntityBroadcastViewer); ok {
+			bv.ViewEntityItemsShared(p, &b)
+		} else {
+			v.ViewEntityItems(p)
+		}
+	}
+	if !seenSelf {
+		if bv, ok := world.Viewer(p.c).(world.EntityBroadcastViewer); ok {
+			bv.ViewEntityItemsShared(p, &b)
+		} else {
+			p.c.ViewEntityItems(p)
+		}
+	}
+	p.tx.ReleaseViewers(viewers)
+}
+
 // viewers returns a list of all viewers of the Player.
 func (p *Player) viewers() ([]world.Viewer, bool) {
 	viewers, ok := borrowViewers(p.tx, p.Position())

@@ -93,7 +93,7 @@ func (m *hungerManager) Reset() {
 }
 
 // exhaust ports FoodData.addExhaustion: exhaustion builds up to at most 40
-// and is only turned into lost saturation or food by drainExhaustion.
+// and is only turned into lost saturation or food by drainAndSnapshot.
 func (m *hungerManager) exhaust(points float64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -101,16 +101,10 @@ func (m *hungerManager) exhaust(points float64) {
 	m.exhaustionLevel = min(m.exhaustionLevel+points, 40)
 }
 
-// drainExhaustion runs the first step of FoodData.tick: above 4 exhaustion, 4
+// drainAndSnapshot runs the first step of FoodData.tick: above 4 exhaustion, 4
 // is removed and a point of saturation is lost, or, without saturation and
-// outside Peaceful, a point of food. It returns the food level and whether
-// that point of food is to be lost; the caller removes it.
-func (m *hungerManager) drainExhaustion(peaceful bool) (food int, loseFood bool) {
-	snap, lose := m.drainAndSnapshot(peaceful)
-	return snap.foodLevel, lose
-}
-
-// drainAndSnapshot performs drainExhaustion and returns a consistent snapshot under one lock.
+// outside Peaceful, a point of food. It returns a consistent snapshot and
+// whether that point of food is to be lost; the caller removes it.
 func (m *hungerManager) drainAndSnapshot(peaceful bool) (snap hungerSnapshot, loseFood bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

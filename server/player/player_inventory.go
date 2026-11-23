@@ -212,11 +212,7 @@ func (p *Player) SetHeldSlot(to int) error {
 	p.cancelItemUse()
 	p.itemUseRecentlyCompleted = false
 
-	viewers, release := p.viewers()
-	for _, viewer := range viewers {
-		viewer.ViewEntityItems(p)
-	}
-	releaseBorrowedViewers(p.tx, viewers, release)
+	p.broadcastHeldItems()
 	p.client().SendHeldSlot(to, p, false)
 	return nil
 }
@@ -279,8 +275,7 @@ func (p *Player) Collect(s item.Stack) (int, bool) {
 // The number of items that was dropped in the end is returned. It is generally the count of the stack passed
 // or 0 if dropping the item.Stack was cancelled.
 func (p *Player) Drop(s item.Stack) int {
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleItemDrop(ctx, s); ctx.Cancelled() {
+	if !p.dispatchDropEvent(s) {
 		return 0
 	}
 	opts := world.EntitySpawnOpts{Position: p.Position().Add(mgl64.Vec3{0, 1.4}), Velocity: p.Rotation().Vec3().Mul(0.4)}
@@ -482,13 +477,7 @@ func (p *Player) addNewItem(ctx *item.UseContext) {
 
 // broadcastItems broadcasts the items held to viewers.
 func (p *Player) broadcastItems(int, item.Stack, item.Stack) {
-	viewers, release := p.viewers()
-	// broadcastItems is called for every hotbar mutation. Recycling the borrowed viewer slice avoids flooding the
-	// garbage collector during inventory spam.
-	for _, viewer := range viewers {
-		viewer.ViewEntityItems(p)
-	}
-	releaseBorrowedViewers(p.tx, viewers, release)
+	world.BroadcastEntityItems(p.tx, p)
 }
 
 // broadcastArmour broadcasts the armour equipped to viewers.
@@ -504,10 +493,5 @@ func (p *Player) broadcastArmour(_ int, before, after item.Stack) {
 		}
 		p.emitGameEvent(event, p.Position(), nil)
 	}
-	viewers, release := p.viewers()
-	// Armour changes are similarly noisy in PvP encounters; reusing the pooled slice keeps repeated swaps cheap.
-	for _, viewer := range viewers {
-		viewer.ViewEntityArmour(p)
-	}
-	releaseBorrowedViewers(p.tx, viewers, release)
+	world.BroadcastEntityArmour(p.tx, p)
 }

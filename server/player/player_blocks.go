@@ -216,8 +216,7 @@ func (p *Player) placeBlock(pos cube.Pos, b world.Block, ignoreBBox bool) bool {
 		return false
 	}
 
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleBlockPlace(ctx, pos, b); ctx.Cancelled() {
+	if !p.dispatchBlockPlaceEvent(pos, b) {
 		p.resendNearbyBlocks(pos, cube.Faces()...)
 		return false
 	}
@@ -293,8 +292,7 @@ func (p *Player) BreakBlock(pos cube.Pos) {
 		}
 	}
 
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleBlockBreak(ctx, pos, &drops, &xp); ctx.Cancelled() {
+	if !p.dispatchBlockBreakEvent(pos, b, &drops, &xp) {
 		p.resendNearbyBlocks(pos)
 		return
 	}
