@@ -17,7 +17,7 @@
 
 ---
 
-**Adamant** is an open-source, high-performance **Minecraft: Bedrock Edition server written in Go** — designed as a fast, extensible drop-in alternative to **Bedrock Dedicated Server (BDS)**. Clients connect over native **NetherNet (WebRTC)** or **RakNet**, while world generation, structures, mob AI (`MobAI` & `Brain`), redstone, and survival mechanics are ported directly from vanilla **Java Edition 26.3** and **BDS 1.26.52.3** references ([`vanilla-reference.json`](vanilla-reference.json)).
+**Adamant** is an open-source, high-performance **Minecraft: Bedrock Edition server written in Go** — designed as a fast, extensible drop-in alternative to **Bedrock Dedicated Server (BDS)**. Clients across **1.26.40 – 1.26.66** connect over native **NetherNet (WebRTC)**, while world generation, structures, mob AI (`MobAI` & `Brain`), redstone, and survival mechanics are ported directly from vanilla **Java Edition 26.3** and official **BDS 1.26.44 – 1.26.66** references ([`vanilla-reference.json`](vanilla-reference.json)).
 
 ## Why Adamant?
 
@@ -56,16 +56,24 @@ cd adamant
 go run .
 ```
 
-- Generates default [`config.toml`](config.toml) on first launch and listens on UDP `:19132`.
-- Accepts Bedrock **1.26.40 – 1.26.66** clients out of the box (protocols `2168`, `2169`, `2193`, and `2225` with automatic wire & block-state translation).
+- Generates default [`config.toml`](config.toml) on first launch and listens on `:19132` (NetherNet).
+- Accepts Bedrock **1.26.40 – 1.26.66** clients simultaneously out of the box (`Protocols = ["all"]`, `PrimaryProtocol = "latest"`):
+
+| Protocol | Bedrock versions | Pipeline |
+|---|---|---|
+| `2225` | `1.26.60` – `1.26.66` | Primary model (zero-conversion wire fast path) |
+| `2193` | `1.26.50` – `1.26.52` | Wire & block/item translation (`c2225`) |
+| `2169` | `1.26.45` | Multi-step wire, biome & block/item translation (`c2193` → `c2225`) |
+| `2168` | `1.26.40` – `1.26.44` | Multi-step wire, biome & block/item translation (`c2169` → `c2193` → `c2225`) |
+
 - Pass `-headless` for non-interactive systemd/Docker deployments; stop cleanly with `Ctrl+C` or `stop`.
 
 ## Status
 
 | Subsystem | State | Highlights |
 |---|:---:|---|
-| Protocol & networking | ✅ | Protocols `2168`, `2169`, `2193` & `2225`, NetherNet (WebRTC), `Flate` & `Snappy` crowd batching |
-| Registries & persistence | ✅ | 2,076 BDS items, 22,079 block states, 89 biomes, LevelDB (`mcdb`), background chunk saving |
+| Protocol & networking | ✅ | Multiprotocol `2168`–`2225` (`1.26.40`–`1.26.66`), native NetherNet (WebRTC), `Flate` & `Snappy` crowd batching |
+| Registries & persistence | ✅ | Per-protocol BDS registries (up to 2,080 items, 23,900+ block states, 138 entities, 89 biomes), LevelDB (`mcdb`) |
 | World generation | 🟢 | Java 26.3 Overworld, Nether & End, structures, single-pass 4-color DAG decoration |
 | Mob AI & spawning | 🟢 | Java `MobAI` + `Brain` for all species, riding, raids, villagers, `NaturalSpawner` |
 | Blocks, items & redstone | 🟢 | All vanilla blocks (except 5 Education blocks), BDS crafting, Java smelting/loot, [redstone](docs/redstone-audit.md) |
@@ -96,7 +104,7 @@ defer app.Close()
 
 Runtime settings are documented in [`config.toml`](config.toml). Deep-dive guides live in [`docs/`](docs):
 
-- [`docs/protocols.md`](docs/protocols.md) — Bedrock versions, NetherNet signalling/WebRTC, and RakNet
+- [`docs/protocols.md`](docs/protocols.md) — Bedrock multiprotocol (`2168`–`2225`), version selection, and wire translation
 - [`docs/anticheat.md`](docs/anticheat.md) — movement, combat, interaction, and timer checks (`[AntiCheat]`)
 - [`docs/admin.md`](docs/admin.md) — RBAC permissions, bans, online backups, audit log, and HTTPS Remote Admin API
 - [`docs/identity.md`](docs/identity.md) — Xbox Live authentication, `IdentityKey`, and `server-key.pem`
