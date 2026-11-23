@@ -96,3 +96,52 @@ func BenchmarkViewEntityState(b *testing.B) {
 		}
 	})
 }
+
+// BenchmarkViewEntityStateShared measures broadcasting entity state updates for
+// 50 registered entity types across 20 viewing sessions using a shared
+// world.Broadcast per entity, demonstrating O(1) metadata construction across
+// viewers even when each session owns a ViewLayer.
+func BenchmarkViewEntityStateShared(b *testing.B) {
+	w := metadataWorld(b)
+	const numViewers = 20
+	viewers := make([]*Session, numViewers)
+	for i := range viewers {
+		s := testSession(fmt.Sprintf("shared-viewer-%d", i))
+		s.br = world.DefaultBlockRegistry
+		s.viewLayer = world.NewViewLayer(s)
+		s.viewLayerOwned = true
+		viewers[i] = s
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		all, err := registryEntities(tx)
+		if err != nil {
+			b.Error(err)
+			return
+		}
+		var ents []world.Entity
+		for _, e := range all {
+			if len(ents) < 50 && !metadataPanics(viewers[0], e) {
+				ents = append(ents, e)
+			}
+		}
+		if len(ents) < 50 {
+			b.Errorf("the session writes the metadata of %d types, want 50", len(ents))
+			return
+		}
+		b.ReportAllocs()
+		for b.Loop() {
+			for _, e := range ents {
+				var bc world.Broadcast
+				for _, s := range viewers {
+					s.ViewEntityStateShared(e, &bc)
+				}
+			}
+			for _, s := range viewers {
+				s.packetsMu.Lock()
+				clear(s.heldPackets)
+				s.heldPackets = s.heldPackets[:0]
+				s.packetsMu.Unlock()
+			}
+		}
+	})
+}

@@ -207,7 +207,9 @@ type Session struct {
 	debugShapes       map[int]debug.Shape
 	debugShapeUpdates []debugShapeUpdate
 
-	viewLayer *world.ViewLayer
+	viewLayer       *world.ViewLayer
+	viewLayerOwned  bool
+	viewLayerActive atomic.Bool
 
 	// inbox holds what the client sent that the world of the player did not
 	// take to handle yet, in order, and inboxCost the bytes of memory it
@@ -359,6 +361,7 @@ func (conf Config) New(conn Conn) *Session {
 	}
 	s.lastActivity.Store(time.Now().UnixNano())
 	s.viewLayer = world.NewViewLayer(s)
+	s.viewLayerOwned = true
 	// Initialize heldSlot before any inventory callbacks can fire.
 	s.heldSlot.Store(new(uint32))
 	s.chunkRadius.Store(int32(r))
@@ -728,12 +731,30 @@ func (s *Session) updateSafely(tx *world.Tx, c Controllable) (err error) {
 
 // handleInbox handles the packets taken from the inbox, clearing them, and
 // reports a packet that failed, which ends the session, or one that took
-// the player to another world, whose ticks handle the rest.
+// the player to another world, whose ticks handle the rest. A single panic
+// recovery frame wraps the batch so a panicking handler closes this session
+// rather than taking down the tick of the world.
 func (s *Session) handleInbox(packets []received, tx *world.Tx, c Controllable) (failed, left bool) {
+	if len(packets) == 0 {
+		return false, false
+	}
+	var curIdx int
+	var curPk proto.Packet
+	defer func() {
+		if v := recover(); v != nil {
+			s.handlingInput.Store(false)
+			faultcheck.Report("session packet handler", v)
+			s.conf.Log.Error("panic handling a packet", "packet", fmt.Sprintf("%T", curPk), "panic", v, "stack", string(runtimedebug.Stack()))
+			s.conf.Log.Debug("process packet: " + fmt.Errorf("%T: panic: %v", curPk, v).Error())
+			clear(packets[curIdx+1:])
+			failed, left = true, false
+		}
+	}()
 	for i, r := range packets {
 		packets[i] = received{}
+		curIdx, curPk = i, r.pk
 		s.handlingArrived = r.at
-		if err := s.handlePacketSafely(r.pk, tx, c); err != nil {
+		if err := s.handlePacket(r.pk, tx, c); err != nil {
 			if errors.Is(err, errInputDeferred) {
 				// The client is ahead of time, as the game judges it: its
 				// input and what came after it wait for a later tick, in
@@ -777,20 +798,6 @@ func (s *Session) requeue(packets []received) {
 		s.inboxCost += r.cost
 	}
 	s.inboxMu.Unlock()
-}
-
-// handlePacketSafely handles a packet, turning a panic of its handler into
-// an error that closes this session rather than taking down the tick of
-// the world.
-func (s *Session) handlePacketSafely(pk proto.Packet, tx *world.Tx, c Controllable) (err error) {
-	defer func() {
-		if v := recover(); v != nil {
-			faultcheck.Report("session packet handler", v)
-			s.conf.Log.Error("panic handling a packet", "packet", fmt.Sprintf("%T", pk), "panic", v, "stack", string(runtimedebug.Stack()))
-			err = fmt.Errorf("%T: panic: %v", pk, v)
-		}
-	}()
-	return s.handlePacket(pk, tx, c)
 }
 
 // closeControllable closes the Controllable of a session whose connection

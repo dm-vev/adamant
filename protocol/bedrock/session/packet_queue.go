@@ -12,21 +12,6 @@ import (
 	"github.com/df-mc/dragonfly/internal/faultcheck"
 )
 
-// writeQueued writes a packet taken from the queue to the connection. A
-// packet that does not encode, as a Text without a message, is a bug of
-// the server: it is dropped and logged rather than taking the server down
-// from this goroutine.
-func (s *Session) writeQueued(pk proto.Packet) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			faultcheck.Report("session packet encode", r)
-			s.conf.Log.Error("drop session packet that does not encode", "packet", fmt.Sprintf("%T", pk), "panic", r)
-			err = nil
-		}
-	}()
-	return s.conn.WritePacket(pk)
-}
-
 // maxQueuedPackets bounds retained packets for a connection whose writes
 // cannot keep up. Chunk and entity publication may queue hundreds of packets
 // in a single tick, so it is far above what a tick shows.
@@ -187,12 +172,35 @@ const maxKeptBatch = 1024
 func (s *Session) writeBatch(batch []proto.Packet) error {
 	s.connWriteMu.Lock()
 	defer s.connWriteMu.Unlock()
-	for _, pk := range batch {
-		if err := s.writeQueued(pk); err != nil {
+	for i := 0; i < len(batch); {
+		next, err := s.writeBatchFrom(batch, i)
+		if err != nil {
 			return err
 		}
+		i = next
 	}
 	return s.conn.Flush()
+}
+
+// writeBatchFrom writes batch[start:] to the connection under a single panic
+// recovery frame. A packet that does not encode, as a Text without a message,
+// is a bug of the server: it is dropped and logged, and writing resumes at
+// the next packet rather than taking the server down from this goroutine.
+func (s *Session) writeBatchFrom(batch []proto.Packet, start int) (next int, err error) {
+	i := start
+	defer func() {
+		if r := recover(); r != nil {
+			faultcheck.Report("session packet encode", r)
+			s.conf.Log.Error("drop session packet that does not encode", "packet", fmt.Sprintf("%T", batch[i]), "panic", r)
+			next, err = i+1, nil
+		}
+	}()
+	for ; i < len(batch); i++ {
+		if err = s.conn.WritePacket(batch[i]); err != nil {
+			return len(batch), err
+		}
+	}
+	return len(batch), nil
 }
 
 // clearPacketQueue releases payloads retained by a session that is closing.

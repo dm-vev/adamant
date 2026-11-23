@@ -3,6 +3,7 @@ package session
 import (
 	"math"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
@@ -204,20 +205,45 @@ func mobAttributes(e world.Entity) []mc.AttributeValue {
 	return attributes
 }
 
+// singleAttrPacket packs UpdateAttributesPacket with its 1-element Attributes
+// slice into a single allocation.
+type singleAttrPacket struct {
+	pk   mc.UpdateAttributesPacket
+	attr [1]mc.Attribute
+}
+
+func mobHealthPacket(id uint64, e world.Entity, meta *entityTypeMeta, caps metaCaps) *mc.UpdateAttributesPacket {
+	if caps.hi&capMobHealth == 0 {
+		return nil
+	}
+	if meta != nil {
+		if meta.isPlayer {
+			return nil
+		}
+	} else if e.H().Type().EncodeEntity() == "minecraft:player" {
+		return nil
+	}
+	h := e.(mobHealth)
+	maxHealth := float32(h.MaxHealth())
+	p := &singleAttrPacket{
+		pk: mc.UpdateAttributesPacket{EntityRuntimeID: id},
+		attr: [1]mc.Attribute{{
+			Name:       "minecraft:health",
+			Value:      float32(h.Health()),
+			Max:        maxHealth,
+			DefaultMax: maxHealth,
+			Default:    maxHealth,
+		}},
+	}
+	p.pk.Attributes = p.attr[:]
+	return &p.pk
+}
+
 // viewMobHealth sends the current health of a mob other than a player.
 func (s *Session) viewMobHealth(e world.Entity) {
-	h, ok := e.(mobHealth)
-	if !ok || e.H().Type().EncodeEntity() == "minecraft:player" {
-		return
+	if pk := mobHealthPacket(s.entityRuntimeID(e), e, entityTypeMetaOf(e.H().Type()), metaCapsOf(e)); pk != nil {
+		s.writePacket(pk)
 	}
-	s.writePacket(&mc.UpdateAttributesPacket{
-		EntityRuntimeID: s.entityRuntimeID(e),
-		Attributes: []mc.Attribute{{
-			Name: "minecraft:health", Value: float32(h.Health()), Max: float32(h.MaxHealth()),
-			DefaultMax: float32(h.MaxHealth()),
-			Default:    float32(h.MaxHealth()),
-		}},
-	})
 }
 
 // ViewEntityLink sends a link update between the ridden entity and the rider.
@@ -619,24 +645,150 @@ func clientRemovesDyingMob(e world.Entity) bool {
 	return living
 }
 
+var _ world.EntityStateSharedViewer = (*Session)(nil)
+
 // ViewEntityState ...
 func (s *Session) ViewEntityState(e world.Entity) {
-	s.writePacket(&mc.SetActorDataPacket{
-		EntityRuntimeID:  s.entityRuntimeID(e),
-		EntityMetadata:   toMetadata(s.entityMetadata(e)),
-		EntityProperties: entityProperties(e),
-	})
-	if _, mount := e.(interface{ MountState() entity.MountState }); mount {
-		// Riders see the health of their mount, which feeding restores.
-		s.viewMobHealth(e)
+	if s == Nop {
+		return
 	}
+	meta := entityTypeMetaOf(e.H().Type())
+	caps := metaCapsOf(e)
+	id := s.entityRuntimeID(e)
+	s.writePacket(&mc.SetActorDataPacket{
+		EntityRuntimeID:  id,
+		EntityMetadata:   toMetadata(s.entityMetadataWith(e, meta, caps)),
+		EntityProperties: entityPropertiesWith(e, meta, caps),
+	})
+	if caps.hi&capMountState != 0 {
+		// Riders see the health of their mount, which feeding restores.
+		if pk := mobHealthPacket(id, e, meta, caps); pk != nil {
+			s.writePacket(pk)
+		}
+	}
+}
+
+// sharedEntityState packs SetActorDataPacket, its netconn.Shared wrapper, and
+// an optional mount health packet so a single pointer is cached in world.Broadcast
+// with zero per-viewer allocations.
+type sharedEntityState struct {
+	dataPk mc.SetActorDataPacket
+	data   netconn.Shared
+	health *netconn.Shared
+}
+
+// ViewEntityStateShared views the current state of an entity using b to share
+// metadata serialization and wire encoding across viewers observing identical state.
+func (s *Session) ViewEntityStateShared(e world.Entity, b *world.Broadcast) {
+	if s == Nop {
+		return
+	}
+	if e.H() == s.ent || b == nil || s.hasViewLayerOverride(e) {
+		s.ViewEntityState(e)
+		return
+	}
+	caps := metaCapsOf(e)
+	if s.needsPrivateEntityState(e, caps) {
+		s.ViewEntityState(e)
+		return
+	}
+	st, ok := b.Load().(*sharedEntityState)
+	if !ok {
+		st = s.buildSharedEntityState(e, caps)
+		b.Store(st)
+	}
+	s.writePacket(&st.data)
+	if st.health != nil {
+		s.writePacket(st.health)
+	}
+}
+
+func (s *Session) buildSharedEntityState(e world.Entity, caps metaCaps) *sharedEntityState {
+	meta := entityTypeMetaOf(e.H().Type())
+	id := e.H().RuntimeID()
+	st := &sharedEntityState{
+		dataPk: mc.SetActorDataPacket{
+			EntityRuntimeID:  id,
+			EntityMetadata:   toMetadata(s.parseEntityMetadataWith(e, meta, caps)),
+			EntityProperties: entityPropertiesWith(e, meta, caps),
+		},
+	}
+	st.data.Packet = &st.dataPk
+	if caps.hi&capMountState != 0 {
+		// Riders see the health of their mount, which feeding restores.
+		if healthPk := mobHealthPacket(id, e, meta, caps); healthPk != nil {
+			st.health = &netconn.Shared{Packet: healthPk}
+		}
+	}
+	return st
+}
+
+// needsPrivateEntityState reports whether e currently holds viewer-relative
+// entity IDs (such as owner, leash holder, attack target, or wither head
+// targets) that differ for s compared to the shared public broadcast.
+func (s *Session) needsPrivateEntityState(e world.Entity, caps metaCaps) bool {
+	if s.conf.Protocol != nil {
+		if caps.lo&capDisplayTile != 0 {
+			return true
+		}
+		if caps.hi&capAppearance != 0 {
+			if _, ok := e.(*entity.Enderman); ok {
+				return true
+			}
+		}
+	}
+	if caps.lo&capSessionRefLo != 0 && s.hasSessionRef(e, caps.lo) {
+		return true
+	}
+	if caps.hi&capBehaviour != 0 {
+		beh := e.(behaviourHolder).Behaviour()
+		if behCaps := metaCapsOf(beh); behCaps.lo&capSessionRefLo != 0 && s.hasSessionRef(beh, behCaps.lo) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Session) hasSessionRef(e any, lo uint64) bool {
+	if lo&capWither != 0 {
+		for _, h := range e.(witherMeta).HeadTargets() {
+			if h != nil {
+				return true
+			}
+		}
+	}
+	if s.ent == nil {
+		return false
+	}
+	if lo&capOwned != 0 && e.(owned).Owner() == s.ent {
+		return true
+	}
+	if lo&capLeashed != 0 {
+		if id := e.(leashed).HolderLeashID(); id != 0 && id == s.ent.UniqueID() {
+			return true
+		}
+	}
+	if lo&capBeamTarget != 0 && e.(beamTargetMeta).BeamTargetHandle() == s.ent {
+		return true
+	}
+	if lo&capShootTarget != 0 && e.(shootTargetMeta).ShootTargetHandle() == s.ent {
+		return true
+	}
+	if lo&capTongueTarget != 0 && e.(tongueTargetMeta).TongueTargetHandle() == s.ent {
+		return true
+	}
+	return false
 }
 
 // entityMetadata returns the metadata of an entity as viewed by the session, including any overrides
 // applied through its ViewLayer.
 func (s *Session) entityMetadata(e world.Entity) mc.Metadata {
-	metadata := s.parseEntityMetadata(e)
-	if s.viewLayer == nil {
+	return s.entityMetadataWith(e, entityTypeMetaOf(e.H().Type()), metaCapsOf(e))
+}
+
+func (s *Session) entityMetadataWith(e world.Entity, meta *entityTypeMeta, caps metaCaps) mc.Metadata {
+	metadata := s.parseEntityMetadataWith(e, meta, caps)
+	if s.viewLayer == nil || (s.viewLayerOwned && !s.viewLayerActive.Load()) {
 		return metadata
 	}
 	nt, ntSet := s.viewLayer.NameTag(e)
