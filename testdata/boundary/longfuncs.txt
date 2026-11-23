@@ -26,13 +26,12 @@ cmd/loadtest/bot.go bot.play 170 tool
 cmd/loadtest/run.go run 141 tool
 cmd/vanilla-block-catalog/main.go parseCatalog 115 tool
 cmd/vanilla-snbt-export/main.go export 105 tool
-cmd/vanilla-solid-export/main.go generate 240 tool
-protocol/bedrock/session/actor_appearance.go Session.writeActorAppearance 153
+cmd/vanilla-solid-export/main.go generate 227 tool
 protocol/bedrock/session/command.go BuildAvailableCommands 137
 protocol/bedrock/session/self_hud.go debugShapeToProtocol 116
 protocol/bedrock/session/static.go newRecipeData 115
 protocol/bedrock/session/view_entity.go Session.ViewEntity 109
-server/block/explosion.go ExplosionConfig.Explode 140
+server/block/explosion.go ExplosionConfig.Explode 139
 server/block/smelter.go smelter.tickSmelting 117
 server/block/vine.go Vines.RandomTick 116
 server/checkpoint.go checkpointer.checkpoint 101
@@ -59,7 +58,7 @@ server/world/generator/advanced/internal/structure/jigsaw_graph.go JigsawStart.B
 server/world/generator/advanced/internal/structure/nbt_adapter.go BlockEntityPayload 225 port
 server/world/generator/advanced/internal/structure/nbt_adapter_structure.go convertStructureBlock 110 port
 server/world/generator/advanced/internal/structure/nbt_decode.go nbtReader.readPayload 112 port
-server/world/generator/advanced/nether/material.go Nether.applyNetherMaterial 123 port
+server/world/generator/advanced/nether/material.go Nether.applyNetherMaterial 121 port
 server/world/generator/advanced/nether/structures_fortress_pieces.go netherBridgeNetherStalkRoom.addComponentParts 113 port
 server/world/generator/advanced/nether/structures_portal.go netherPortalStart.place 110 port
 server/world/generator/advanced/overworld/modern_carver.go sampleInt 122 port
@@ -69,10 +68,10 @@ server/world/generator/advanced/overworld/modern_feature_cave_fossil.go placeMod
 server/world/generator/advanced/overworld/modern_feature_cave_geode.go placeModernGeode 239 port
 server/world/generator/advanced/overworld/modern_feature_cave_lake.go placeModernLake 141 port
 server/world/generator/advanced/overworld/modern_feature_cave_vegetation.go placeModernVegetationPatch 145 port
-server/world/generator/advanced/overworld/modern_feature_placement.go ModernFeatures.modifyPlacement 154 port
+server/world/generator/advanced/overworld/modern_feature_placement.go ModernFeatures.modifyPlacement 153 port
 server/world/generator/advanced/overworld/modern_feature_region.go ModernFeatures.placeConfiguredData 166 port
-server/world/generator/advanced/overworld/modern_feature_region.go featurePredicate 129 port
-server/world/generator/advanced/overworld/modern_feature_region.go placeModernOreRegion 156 port
+server/world/generator/advanced/overworld/modern_feature_region.go featurePredicate 118 port
+server/world/generator/advanced/overworld/modern_feature_region.go placeModernOreRegion 124 port
 server/world/generator/advanced/overworld/modern_feature_template.go placeModernTemplateFeature 158 port
 server/world/generator/advanced/overworld/modern_feature_template_fluids.go applyTemplateFluidsForStructureWrites 170 port
 server/world/generator/advanced/overworld/modern_feature_tree.go placeModernHugeFungus 121 port
@@ -101,5 +100,4 @@ server/world/tick.go ticker.tickBlocksRandomly 189
 server/world/tick.go ticker.tickEntityHandle 122
 server/world/tick.go ticker.tickWorld 116
 server/world/tx_blocks.go Tx.buildStructure 113
-server/world/tx_blocks.go Tx.setBlock 133
 server/world/world_chunks.go World.loadChunk 112

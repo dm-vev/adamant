@@ -22,6 +22,9 @@ type soulSandModel struct{ model.Solid }
 // BBox returns the collision shape of soul sand.
 func (soulSandModel) BBox(cube.Pos, world.BlockSource) []cube.BBox { return soulSandBoxes }
 
+// StaticCollisionKind reports that soul sand has a reduced 14-pixel collision box rather than a full 1x1x1 cube.
+func (soulSandModel) StaticCollisionKind() world.CollisionKind { return world.CollisionDynamic }
+
 // Model returns the model of soul sand.
 func (SoulSand) Model() world.BlockModel { return soulSandModel{} }
 
