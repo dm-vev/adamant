@@ -3,6 +3,7 @@ package player
 import (
 	"math"
 	"math/rand/v2"
+	"sync/atomic"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/entity"
@@ -23,12 +24,20 @@ const swordAttackSpeed = 1.6
 // another item (ItemStack.isSameItem), which restarts the count.
 func (p *Player) tickAttackStrength() {
 	p.attackStrengthTicks++
-	held, _ := p.HeldItems()
+	slot := atomic.LoadUint32(p.heldSlot)
+	ver := p.invVersion.Load()
+	if p.lastMainHand.valid && p.lastMainHand.slot == slot && p.lastMainHand.ver == ver {
+		return
+	}
+	held, _ := p.inv.Item(int(slot))
 	var name string
 	var meta int16
 	if !held.Empty() {
 		name, meta = held.Item().EncodeItem()
 	}
+	p.lastMainHand.slot = slot
+	p.lastMainHand.ver = ver
+	p.lastMainHand.valid = true
 	if name != p.lastMainHand.name || meta != p.lastMainHand.meta {
 		p.attackStrengthTicks = 0
 		p.lastMainHand.name, p.lastMainHand.meta = name, meta

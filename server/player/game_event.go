@@ -16,25 +16,38 @@ func (p *Player) emitMovementGameEvents(delta mgl64.Vec3) {
 	if p.GameMode() == world.GameModeSpectator || p.Flying() || p.onGround && p.Sneaking() || p.Riding() != nil {
 		return
 	}
-	supportPos := p.movementOnPos(float32(1e-5))
-	support, loaded := p.tx.BlockLoaded(supportPos)
 	distance := math.Sqrt(delta[0]*delta[0] + delta[2]*delta[2])
+	nextStep := p.nextMoveEventStep
+	if nextStep == 0 {
+		nextStep = 1
+	}
+	if delta[1] == 0 {
+		nextDist := p.moveEventDistance + float32(distance*float64(float32(0.6)))
+		if nextDist <= nextStep {
+			p.moveEventDistance = nextDist
+			p.nextMoveEventStep = nextStep
+			return
+		}
+	}
+	supportPos := p.movementOnPos(float32(1e-5))
+	rid, loaded := p.tx.BlockRID(supportPos)
 	if !loaded {
 		p.moveEventDistance += float32(distance * float64(float32(0.6)))
-		if p.nextMoveEventStep == 0 {
-			p.nextMoveEventStep = 1
-		}
+		p.nextMoveEventStep = nextStep
 		return
 	}
-	climbing, _ := p.tx.MovementBlockProperties(support)
-	if climbing {
+	reg := p.tx.World().BlockRegistry()
+	flags := reg.BlockFlags(rid)
+	if delta[1] != 0 && (flags.IsClimbable() || flags.IsPowderSnow()) {
 		distance = delta.Len()
 	}
 	p.moveEventDistance += float32(distance * float64(float32(0.6)))
-	if p.nextMoveEventStep == 0 {
-		p.nextMoveEventStep = 1
+	p.nextMoveEventStep = nextStep
+	if p.moveEventDistance <= p.nextMoveEventStep || rid == reg.AirRuntimeID() {
+		return
 	}
-	if p.moveEventDistance <= p.nextMoveEventStep {
+	support, ok := p.blockAtRID(supportPos, rid, flags, reg)
+	if !ok {
 		return
 	}
 	if _, air := support.(block.Air); air {
@@ -43,9 +56,12 @@ func (p *Player) emitMovementGameEvents(delta mgl64.Vec3) {
 
 	effectPos := p.movementOnPos(float32(0.2))
 	same := effectPos == supportPos
-	effect, loaded := p.tx.BlockLoaded(effectPos)
-	if !loaded {
-		return
+	effect := support
+	if !same {
+		effect, loaded = p.tx.BlockLoaded(effectPos)
+		if !loaded {
+			return
+		}
 	}
 	produced := p.movementStep(effect, delta, same)
 	if !same {
@@ -95,25 +111,24 @@ func (p *Player) movementOnPos(offset float32) cube.Pos {
 }
 
 func (p *Player) movementTouchesWater() bool {
+	reg := p.tx.World().BlockRegistry()
 	bounds := Type.BBox(p).Translate(p.Position()).Grow(-0.001)
 	low, high := cube.PosFromVec3(bounds.Min()), cube.PosFromVec3(bounds.Max())
 	for x := low[0]; x <= high[0]; x++ {
 		for y := low[1]; y <= high[1]; y++ {
 			for z := low[2]; z <= high[2]; z++ {
 				pos := cube.Pos{x, y, z}
-				if !p.movementChunkReady(pos) {
-					continue
-				}
-				liquid, ok := p.tx.Liquid(pos)
+				rid, ok := p.tx.LiquidRID(pos)
 				if !ok {
 					continue
 				}
-				if _, water := liquid.(block.Water); !water {
+				if kind, _, _ := reg.LiquidInfo(rid); kind != 1 {
 					continue
 				}
-				height := float64(float32(8-liquid.SpreadDecay()) / 9)
-				if above, ok := p.tx.Liquid(pos.Side(cube.FaceUp)); ok {
-					if _, water := above.(block.Water); water {
+				// block.Water.SpreadDecay() is 1.
+				height := float64(float32(7) / 9)
+				if aboveRID, ok := p.tx.LiquidRID(pos.Side(cube.FaceUp)); ok {
+					if aboveKind, _, _ := reg.LiquidInfo(aboveRID); aboveKind == 1 {
 						height = 1
 					}
 				}

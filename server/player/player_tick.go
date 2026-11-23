@@ -113,11 +113,14 @@ func (p *Player) tickSleeping(tx *world.Tx) {
 // tickShoulderParrots releases the parrots on the shoulders of a player that moves too much for them to stay:
 // in water, flying, sleeping, falling or in powder snow (Player.removeEntitiesOnShoulder).
 func (p *Player) tickShoulderParrots() {
-	blockName := ""
-	if b, loaded := p.tx.BlockLoaded(cube.PosFromVec3(p.Position())); loaded {
-		blockName, _ = b.EncodeBlock()
+	if p.shoulderLeft == nil && p.shoulderRight == nil {
+		return
 	}
-	if p.insideOfWater() || p.Flying() || p.sleeping || p.fallDistance > 0.5 || blockName == "minecraft:powder_snow" {
+	if p.Flying() || p.sleeping || p.fallDistance > 0.5 || p.insideOfWater() {
+		p.ReleaseShoulderParrots()
+		return
+	}
+	if rid, loaded := p.tx.BlockRID(cube.PosFromVec3(p.Position())); loaded && p.tx.World().BlockRegistry().BlockFlags(rid).IsPowderSnow() {
 		p.ReleaseShoulderParrots()
 	}
 }
@@ -125,13 +128,14 @@ func (p *Player) tickShoulderParrots() {
 // tickSwimming stops the player swimming when it is not in a liquid, and gives it Water Breathing for a turtle
 // shell on its head (Player.turtleHelmetTick).
 func (p *Player) tickSwimming() {
+	if !p.swimming && !p.hasTurtleHelmet.Load() {
+		return
+	}
 	liquidPos := cube.PosFromVec3(p.Position())
-	if p.movementChunkReady(liquidPos) {
-		if _, ok := p.tx.Liquid(liquidPos); !ok {
-			p.StopSwimming()
-			if _, ok := p.Armour().Helmet().Item().(item.TurtleShell); ok {
-				p.AddEffect(effect.New(effect.WaterBreathing, 1, time.Second*10).WithoutParticles())
-			}
+	if _, ok := p.tx.LiquidRID(liquidPos); !ok && p.movementChunkReady(liquidPos) {
+		p.StopSwimming()
+		if _, ok := p.Armour().Helmet().Item().(item.TurtleShell); ok {
+			p.AddEffect(effect.New(effect.WaterBreathing, 1, time.Second*10).WithoutParticles())
 		}
 	}
 }
@@ -139,7 +143,10 @@ func (p *Player) tickSwimming() {
 // tickFallFlying wears the elytra of a gliding player, a point of durability a second, and ends the glide when
 // it is about to break (LivingEntity.updateFallFlying).
 func (p *Player) tickFallFlying() {
-	if _, ok := p.Armour().Chestplate().Item().(item.Elytra); ok && p.Gliding() {
+	if !p.Gliding() {
+		return
+	}
+	if _, ok := p.Armour().Chestplate().Item().(item.Elytra); ok {
 		if p.glideTicks += 1; p.glideTicks%20 == 0 {
 			d := p.damageItem(p.Armour().Chestplate(), 1)
 			p.armour.SetChestplate(d)

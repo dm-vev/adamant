@@ -24,12 +24,15 @@ func viewInventories(tx *world.Tx, p *Player) {
 	views := pd.c.ViewInventories(tx, p, menu.Inventories{Main: pd.inv, OffHand: pd.offHand, EnderChest: pd.enderChest, UI: pd.ui, Armour: pd.armour}, pd.heldSlot)
 
 	pd.inv.SlotFunc(func(slot int, before, after item.Stack) {
+		pd.invVersion.Add(1)
+		pd.trackMapSlot(before, after)
 		if slot == int(atomic.LoadUint32(pd.heldSlot)) {
 			h.Do(showHeldItems)
 		}
 		view(views.Main, slot, before, after)
 	})
 	pd.offHand.SlotFunc(func(slot int, before, after item.Stack) {
+		pd.trackMapSlot(before, after)
 		h.Do(showHeldItems)
 		view(views.OffHand, slot, before, after)
 	})
@@ -37,6 +40,10 @@ func viewInventories(tx *world.Tx, p *Player) {
 		view(views.EnderChest, slot, before, after)
 	})
 	pd.armour.Inventory().SlotFunc(func(slot int, before, after item.Stack) {
+		pd.trackMapSlot(before, after)
+		if slot == 0 {
+			pd.refreshTurtleHelmet()
+		}
 		view(views.Armour, slot, before, after)
 		if before.Comparable(after) && before.Empty() == after.Empty() {
 			// Only show the armour if the type of the item changed.

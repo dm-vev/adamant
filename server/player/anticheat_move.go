@@ -34,13 +34,19 @@ type lastMove struct {
 func (p *Player) moveState(ac *acState, delta mgl64.Vec3) anticheat.State {
 	pos := p.Position()
 	ground := p.clientGround(ac)
+	reg := p.tx.World().BlockRegistry()
+	feetPos := cube.PosFromVec3(pos)
+	feetRID, feetLoaded := p.tx.BlockRID(feetPos)
+	belowPos := cube.PosFromVec3(pos.Sub(mgl64.Vec3{0, 0.5000001, 0}))
+	belowRID, belowLoaded := p.tx.BlockRID(belowPos)
+	latency := p.latencyTicks(ac)
 	return anticheat.State{
 		Lenient:        ground && !p.onGround,
 		PrevLenient:    ac.last.lenient,
-		Speed:          p.heldSpeed(ac),
+		Speed:          p.heldSpeedWithLatency(ac, latency),
 		MaySprint:      !p.sprinting && !p.crawling && (p.hunger.canSprint() || !p.GameMode().AllowsTakingDamage()),
 		Ground:         ground,
-		Friction:       p.frictionBelow(pos),
+		Friction:       frictionAtRID(belowRID, belowLoaded, reg),
 		Liquid:         p.inLiquid(),
 		Rises:          delta[1] > 1e-6,
 		PrevHorizontal: ac.last.horizontal,
@@ -48,13 +54,13 @@ func (p *Player) moveState(ac *acState, delta mgl64.Vec3) anticheat.State {
 		PrevFriction:   ac.last.friction,
 		PrevLiquid:     ac.last.liquid,
 		PrevVertical:   ac.last.vertical,
-		Climbing:       p.climbing(pos),
-		Bubbles:        p.upwardBubbles(pos),
-		JumpBoost:      p.heldEffect(ac, &ac.jumpBoost, effect.JumpBoost),
-		Levitation:     p.heldEffect(ac, &ac.levitation, effect.Levitation),
-		JumpFactor:     p.jumpFactorAt(pos),
+		Climbing:       p.climbingAt(feetPos, feetRID, feetLoaded, reg),
+		Bubbles:        p.upwardBubblesAt(feetPos, feetRID, feetLoaded, belowPos, belowRID, belowLoaded, reg),
+		JumpBoost:      p.heldEffectWithLatency(ac, &ac.jumpBoost, effect.JumpBoost, latency),
+		Levitation:     p.heldEffectWithLatency(ac, &ac.levitation, effect.Levitation, latency),
+		JumpFactor:     jumpFactorAtRID(feetRID, feetLoaded, belowRID, belowLoaded, reg),
 		SlowFalling:    p.hasEffect(effect.SlowFalling),
-		Bounce:         p.bounce(ac, pos, ground),
+		Bounce:         p.bounceAt(ac, belowRID, belowLoaded, ground, reg),
 		Step:           ac.conf.Ascend.StepHeight,
 		Impulse:        p.pendingImpulse(ac),
 	}
@@ -66,77 +72,92 @@ func (p *Player) hasEffect(t effect.Type) bool {
 	return ok
 }
 
-// climbing reports whether a player at pos climbs: on a ladder, a vine or
-// another climbable block, in scaffolding, or in powder snow in leather
-// boots.
-func (p *Player) climbing(pos mgl64.Vec3) bool {
-	if p.onClimbable() {
-		return true
-	}
-	b, loaded := p.tx.BlockLoaded(cube.PosFromVec3(pos))
+// climbingAt reports whether a player at feetPos climbs: on a ladder, a vine or
+// another climbable block, in scaffolding, or in powder snow in leather boots.
+func (p *Player) climbingAt(feetPos cube.Pos, rid uint32, loaded bool, reg world.BlockRegistry) bool {
 	if !loaded {
 		return false
 	}
-	switch b.(type) {
-	case block.Scaffolding:
-		return true
-	case block.PowderSnow:
+	flags := reg.BlockFlags(rid)
+	if flags.IsPowderSnow() {
 		boots, ok := p.Armour().Boots().Item().(item.Boots)
 		_, leather := boots.Tier.(item.ArmourTierLeather)
 		return ok && leather
 	}
-	return false
-}
-
-// upwardBubbles reports whether a player at pos is in or on an upward
-// bubble column.
-func (p *Player) upwardBubbles(pos mgl64.Vec3) bool {
-	feet := cube.PosFromVec3(pos)
-	for _, at := range []cube.Pos{feet, feet.Side(cube.FaceDown)} {
-		if b, loaded := p.tx.BlockLoaded(at); loaded {
-			if c, ok := b.(block.BubbleColumn); ok && !c.DragDown {
+	if flags.IsClimbable() {
+		if p.GameMode() != world.GameModeSpectator {
+			if !p.Gliding() || p.onClimbableSlow(feetPos) {
 				return true
 			}
 		}
+		_, scaffolding := reg.BlockByRuntimeIDOrAir(rid).(block.Scaffolding)
+		return scaffolding
 	}
-	return false
+	if flags.EmptyCollision() || flags.FullCubeCollision() {
+		return false
+	}
+	return p.GameMode() != world.GameModeSpectator && p.onClimbableSlow(feetPos)
 }
 
-// jumpFactorAt returns what the block a player at pos is in or stands on
-// scales its jump by: 0.5 for honey, 1 otherwise.
-func (p *Player) jumpFactorAt(pos mgl64.Vec3) float64 {
-	for _, at := range []mgl64.Vec3{pos, pos.Sub(mgl64.Vec3{0, 0.5000001, 0})} {
-		if b, loaded := p.tx.BlockLoaded(cube.PosFromVec3(at)); loaded {
-			if _, honey := b.(block.HoneyBlock); honey {
-				return 0.5
-			}
-		}
+// upwardBubblesAt reports whether a player at feetPos is in or on an upward
+// bubble column.
+func (p *Player) upwardBubblesAt(feetPos cube.Pos, feetRID uint32, feetLoaded bool, belowPos cube.Pos, belowRID uint32, belowLoaded bool, reg world.BlockRegistry) bool {
+	if isUpwardBubbleRID(feetRID, feetLoaded, reg) {
+		return true
+	}
+	downPos := feetPos.Side(cube.FaceDown)
+	if downPos == belowPos {
+		return isUpwardBubbleRID(belowRID, belowLoaded, reg)
+	}
+	downRID, downLoaded := p.tx.BlockRID(downPos)
+	return isUpwardBubbleRID(downRID, downLoaded, reg)
+}
+
+func isUpwardBubbleRID(rid uint32, loaded bool, reg world.BlockRegistry) bool {
+	if !loaded {
+		return false
+	}
+	flags := reg.BlockFlags(rid)
+	if !flags.HasEntityInsider() || !flags.LiquidDisplacing() {
+		return false
+	}
+	c, ok := reg.BlockByRuntimeIDOrAir(rid).(block.BubbleColumn)
+	return ok && !c.DragDown
+}
+
+// jumpFactorAtRID returns what the block a player is in or stands on scales
+// its jump by: 0.5 for honey, 1 otherwise.
+func jumpFactorAtRID(feetRID uint32, feetLoaded bool, belowRID uint32, belowLoaded bool, reg world.BlockRegistry) float64 {
+	if feetLoaded && reg.BlockFlags(feetRID).IsHoneyBlock() {
+		return 0.5
+	}
+	if belowLoaded && reg.BlockFlags(belowRID).IsHoneyBlock() {
+		return 0.5
 	}
 	return 1
 }
 
-// bounce returns the speed a bouncy block below a player at pos throws it
-// up at, from the speed it fell with in the two moves before: slime gives
-// it back whole to a player that does not sneak, a bed two thirds of it.
-func (p *Player) bounce(ac *acState, pos mgl64.Vec3, ground bool) float64 {
-	if !ground || p.sneaking {
+// bounceAt returns the speed a bouncy block below a player throws it up at,
+// from the speed it fell with in the two moves before: slime gives it back
+// whole to a player that does not sneak, a bed two thirds of it.
+func (p *Player) bounceAt(ac *acState, belowRID uint32, belowLoaded bool, ground bool, reg world.BlockRegistry) float64 {
+	if !ground || p.sneaking || !belowLoaded {
 		return 0
 	}
-	b, loaded := p.tx.BlockLoaded(cube.PosFromVec3(pos.Sub(mgl64.Vec3{0, 0.5000001, 0})))
-	if !loaded {
+	fell := max(-ac.last.vertical, -ac.last.prevVertical, 0)
+	if fell == 0 {
+		return 0
+	}
+	if reg.BlockFlags(belowRID).EmptyCollision() {
 		return 0
 	}
 	restitution := 0.0
-	switch b.(type) {
+	switch reg.BlockByRuntimeIDOrAir(belowRID).(type) {
 	case block.Slime:
 		restitution = 1
 	case block.Bed:
 		restitution = 2.0 / 3
 	default:
-		return 0
-	}
-	fell := max(-ac.last.vertical, -ac.last.prevVertical, 0)
-	if fell == 0 {
 		return 0
 	}
 	return (fell + anticheat.Gravity) * restitution
@@ -152,29 +173,43 @@ func (p *Player) groundAt(pos mgl64.Vec3) bool {
 // of a block, or a block that is not loaded: the box of the player, grown
 // by margin to its sides and reaching depth below its feet.
 func (p *Player) groundWithin(pos mgl64.Vec3, margin, depth float64) bool {
-	box := p.H().Type().BBox(p).Translate(pos).GrowVec3(mgl64.Vec3{margin, 0, margin}).Extend(mgl64.Vec3{0, -depth, 0})
+	box := Type.BBox(p).Translate(pos).GrowVec3(mgl64.Vec3{margin, 0, margin}).Extend(mgl64.Vec3{0, -depth, 0})
 	low, high := cube.PosFromVec3(box.Min()), cube.PosFromVec3(box.Max())
 	if p.chunksFailed(low, high) {
 		// The blocks of a chunk that failed to load are not the ground the
 		// client stands on.
 		return true
 	}
+	reg := p.tx.World().BlockRegistry()
+	worldRange := p.tx.Range()
 	for x := low[0]; x <= high[0]; x++ {
 		for z := low[2]; z <= high[2]; z++ {
 			for y := low[1]; y <= high[1]; y++ {
 				bp := cube.Pos{x, y, z}
-				b, loaded := p.tx.BlockLoaded(bp)
+				rid, loaded := p.tx.BlockRID(bp)
 				if !loaded {
 					// A block the server does not have may be the ground; the
 					// void below the world is not.
-					if !bp.OutOfBounds(p.tx.Range()) {
+					if !bp.OutOfBounds(worldRange) {
 						return true
 					}
 					continue
 				}
-				for _, bb := range b.Model().BBox(bp, p.tx) {
-					if bb.Translate(bp.Vec3()).IntersectsWith(box) {
+				flags := reg.BlockFlags(rid)
+				if flags.EmptyCollision() {
+					continue
+				}
+				if flags.FullCubeCollision() {
+					if cube.Box(float64(x), float64(y), float64(z), float64(x+1), float64(y+1), float64(z+1)).IntersectsWith(box) {
 						return true
+					}
+					continue
+				}
+				if b, ok := p.blockAtRID(bp, rid, flags, reg); ok {
+					for _, bb := range b.Model().BBox(bp, p.tx) {
+						if bb.Translate(bp.Vec3()).IntersectsWith(box) {
+							return true
+						}
 					}
 				}
 			}
@@ -224,12 +259,13 @@ func (p *Player) clientGround(ac *acState) bool {
 	return (ac.last.claim || ac.last.vertical <= restEpsilon) && p.groundWithin(pos, conf.GroundMargin, conf.GroundDepth)
 }
 
-// frictionBelow returns the friction of the block below pos that the
-// movement of a player there is slowed by, Java's
-// getBlockPosBelowThatAffectsMyMovement: 0.6 but on ice, slime and honey.
-func (p *Player) frictionBelow(pos mgl64.Vec3) float64 {
-	b, loaded := p.tx.BlockLoaded(cube.PosFromVec3(pos.Sub(mgl64.Vec3{0, 0.5000001, 0})))
-	if f, ok := b.(block.Frictional); ok && loaded {
+// frictionAtRID returns the friction of the block with runtime ID rid below a
+// player: 0.6 except on ice, slime and honey.
+func frictionAtRID(rid uint32, loaded bool, reg world.BlockRegistry) float64 {
+	if !loaded || reg.BlockFlags(rid).EmptyCollision() {
+		return anticheat.DefaultFriction
+	}
+	if f, ok := reg.BlockByRuntimeIDOrAir(rid).(block.Frictional); ok {
 		return f.Friction()
 	}
 	return anticheat.DefaultFriction
@@ -238,17 +274,14 @@ func (p *Player) frictionBelow(pos mgl64.Vec3) float64 {
 // inLiquid reports whether the box of the player touches water or lava, in
 // the chunks the world has loaded.
 func (p *Player) inLiquid() bool {
-	box := p.H().Type().BBox(p).Translate(p.Position()).Grow(-.001)
-	for x := int(math.Floor(box.Min()[0])); x <= int(math.Floor(box.Max()[0])); x++ {
-		for y := int(math.Floor(box.Min()[1])); y <= int(math.Floor(box.Max()[1])); y++ {
-			for z := int(math.Floor(box.Min()[2])); z <= int(math.Floor(box.Max()[2])); z++ {
-				pos := cube.Pos{x, y, z}
-				// A liquid is looked up in the chunks the world has: asking for
-				// one it does not would load it, and wait for its generation.
-				if _, loaded := p.tx.BlockLoaded(pos); !loaded {
-					continue
-				}
-				if _, ok := p.tx.Liquid(pos); ok {
+	box := Type.BBox(p).Translate(p.Position()).Grow(-.001)
+	minX, minY, minZ := int(math.Floor(box.Min()[0])), int(math.Floor(box.Min()[1])), int(math.Floor(box.Min()[2]))
+	maxX, maxY, maxZ := int(math.Floor(box.Max()[0])), int(math.Floor(box.Max()[1])), int(math.Floor(box.Max()[2]))
+	for x := minX; x <= maxX; x++ {
+		for y := minY; y <= maxY; y++ {
+			for z := minZ; z <= maxZ; z++ {
+				// LiquidRID never loads or generates chunks.
+				if _, ok := p.tx.LiquidRID(cube.Pos{x, y, z}); ok {
 					return true
 				}
 			}
@@ -290,7 +323,7 @@ func (p *Player) checkMove(ac *acState, m client.Move, delta mgl64.Vec3, st anti
 	}
 	// NoClip first: a move into blocks is set back before it is judged by
 	// how fast it went.
-	if trusted && p.checkNoClip(ac, m) || p.checkSpeed(ac, m, delta, st) || trusted && p.checkFly(ac, m, delta) {
+	if trusted && p.checkNoClip(ac, m) || p.checkSpeed(ac, m, delta, st) || trusted && p.checkFly(ac, m, delta, st.Levitation) {
 		return moveVerdict{refused: true}
 	}
 	verdict := p.checkAscend(ac, m, delta, st)
@@ -310,7 +343,7 @@ const maxTrustedChunks = 4
 // not the empty stand-in of a chunk that failed to load. A move too long to
 // be a walk is not.
 func (p *Player) blocksTrusted(m client.Move) bool {
-	box := p.H().Type().BBox(p)
+	box := Type.BBox(p)
 	from, to := p.Position(), m.Position
 	lo := cube.PosFromVec3(mgl64.Vec3{min(from[0], to[0]) + box.Min()[0] - 1, 0, min(from[2], to[2]) + box.Min()[2] - 1})
 	hi := cube.PosFromVec3(mgl64.Vec3{max(from[0], to[0]) + box.Max()[0] + 1, 0, max(from[2], to[2]) + box.Max()[2] + 1})
@@ -445,17 +478,19 @@ const supportResendTicks = 200
 // setback puts the player where it last had blocks around it, after the
 // blocks below it are resent if ResendSupport, which heals a ghost block.
 // A player that may fly, levitates, glides or flies is not judged.
-func (p *Player) checkFly(ac *acState, m client.Move, delta mgl64.Vec3) (refused bool) {
-	if !p.checks(ac, anticheat.Fly) || p.GameMode().AllowsFlying() || p.Flying() || p.Gliding() ||
-		p.heldEffect(ac, &ac.levitation, effect.Levitation) > 0 {
+func (p *Player) checkFly(ac *acState, m client.Move, delta mgl64.Vec3, levitation int) (refused bool) {
+	if !p.checks(ac, anticheat.Fly) || p.GameMode().AllowsFlying() || p.Flying() || p.Gliding() || levitation > 0 {
 		ac.hover = 0
 		return false
 	}
-	if delta[1] < -ac.conf.Fly.HoverDescent || !p.onlyAirAround(m.Position) {
+	onlyAir := p.onlyAirAround(m.Position)
+	if !onlyAir {
 		ac.hover = 0
-		if !p.onlyAirAround(m.Position) {
-			ac.support, ac.supported = m.Position, true
-		}
+		ac.support, ac.supported = m.Position, true
+		return false
+	}
+	if delta[1] < -ac.conf.Fly.HoverDescent {
+		ac.hover = 0
 		return false
 	}
 	ac.hover++
@@ -484,7 +519,7 @@ func (p *Player) checkFly(ac *acState, m client.Move, delta mgl64.Vec3) (refused
 // floatBox returns the box Java's noBlocksAround looks in for a player at
 // pos: its box grown by 0.0625 and reaching 0.55 lower.
 func (p *Player) floatBox(pos mgl64.Vec3) cube.BBox {
-	return p.H().Type().BBox(p).Translate(pos).Grow(0.0625).Extend(mgl64.Vec3{0, -0.55, 0})
+	return Type.BBox(p).Translate(pos).Grow(0.0625).Extend(mgl64.Vec3{0, -0.55, 0})
 }
 
 // onlyAirAround reports whether nothing but air is around a player at pos,
@@ -493,18 +528,16 @@ func (p *Player) floatBox(pos mgl64.Vec3) cube.BBox {
 func (p *Player) onlyAirAround(pos mgl64.Vec3) bool {
 	box := p.floatBox(pos)
 	low, high := cube.PosFromVec3(box.Min()), cube.PosFromVec3(box.Max())
+	airRID := p.tx.World().BlockRegistry().AirRuntimeID()
 	for x := low[0]; x <= high[0]; x++ {
 		for y := low[1]; y <= high[1]; y++ {
 			for z := low[2]; z <= high[2]; z++ {
 				bp := cube.Pos{x, y, z}
-				b, loaded := p.tx.BlockLoaded(bp)
-				if !loaded {
+				rid, loaded := p.tx.BlockRID(bp)
+				if !loaded || rid != airRID {
 					return false
 				}
-				if _, air := b.(block.Air); !air {
-					return false
-				}
-				if _, liquid := p.tx.Liquid(bp); liquid {
+				if _, liquid := p.tx.LiquidRID(bp); liquid {
 					return false
 				}
 			}
@@ -543,7 +576,7 @@ func (p *Player) refuseFlightToggle() {
 // of the client m with: that of its pose, or the lower one the client
 // claims to start in the move, as the flags of a move are handled after it.
 func (p *Player) clipBox(m client.Move) cube.BBox {
-	box := p.H().Type().BBox(p)
+	box := Type.BBox(p)
 	s := p.Scale()
 	switch {
 	case m.Crawling || m.Swimming || m.Gliding:
@@ -561,16 +594,31 @@ func (p *Player) clipBox(m client.Move) cube.BBox {
 // are left out, and so are unloaded blocks. f returns false to stop.
 func (p *Player) solidBoxes(box cube.BBox, f func(pos cube.Pos, bb cube.BBox) bool) {
 	low, high := cube.PosFromVec3(box.Min()), cube.PosFromVec3(box.Max())
+	reg := p.tx.World().BlockRegistry()
 	for x := low[0]; x <= high[0]; x++ {
 		for y := low[1]; y <= high[1]; y++ {
 			for z := low[2]; z <= high[2]; z++ {
 				pos := cube.Pos{x, y, z}
-				b, loaded := p.tx.BlockLoaded(pos)
+				rid, loaded := p.tx.BlockRID(pos)
 				if !loaded {
 					continue
 				}
+				flags := reg.BlockFlags(rid)
+				if flags.EmptyCollision() {
+					continue
+				}
+				if flags.FullCubeCollision() {
+					if !f(pos, cube.Box(float64(x), float64(y), float64(z), float64(x+1), float64(y+1), float64(z+1))) {
+						return
+					}
+					continue
+				}
+				b, ok := p.blockAtRID(pos, rid, flags, reg)
+				if !ok {
+					continue
+				}
 				switch b.(type) {
-				case block.Air, block.Scaffolding, block.PowderSnow, block.Cobweb, block.MovingBlock:
+				case block.Scaffolding, block.MovingBlock:
 					continue
 				}
 				for _, bb := range b.Model().BBox(pos, p.tx) {
@@ -631,12 +679,13 @@ func (p *Player) checkNoClip(ac *acState, m client.Move) (refused bool) {
 // NoClip let through, and not while an impulse the client may still apply
 // pushes the player, Java's post-impulse grace.
 func (p *Player) checkPhase(ac *acState, m client.Move, delta mgl64.Vec3) (refused bool) {
-	if !p.checks(ac, anticheat.Phase) || !p.GameMode().HasCollision() || delta.Len() <= 0.05 ||
-		p.pendingImpulse(ac) != (mgl64.Vec3{}) {
+	// sweep only clamps horizontal deltas toward zero, so miss <= Hypot(delta[0], delta[2]) always holds.
+	if !p.checks(ac, anticheat.Phase) || !p.GameMode().HasCollision() || delta.LenSqr() <= 0.05*0.05 ||
+		math.Hypot(delta[0], delta[2]) <= ac.conf.Phase.Tolerance || p.pendingImpulse(ac) != (mgl64.Vec3{}) {
 		return false
 	}
 	pos := p.Position()
-	before := p.H().Type().BBox(p).Translate(pos).Grow(-1e-5)
+	before := Type.BBox(p).Translate(pos).Grow(-1e-5)
 	free := true
 	p.solidBoxes(before, func(_ cube.Pos, bb cube.BBox) bool {
 		free = !bb.IntersectsWith(before)
@@ -657,16 +706,95 @@ func (p *Player) checkPhase(ac *acState, m client.Move, delta mgl64.Vec3) (refus
 // collisions of the blocks: straight, or stepping up StepHeight if the
 // player stood on the ground and that goes farther.
 func (p *Player) sweep(ac *acState, pos, delta mgl64.Vec3) mgl64.Vec3 {
-	got, _ := ac.mc.CheckCollision(p.tx, p, pos, delta)
+	got := p.sweepStep(pos, delta)
 	if !p.onGround || (math.Abs(got[0]-delta[0]) < 1e-7 && math.Abs(got[2]-delta[2]) < 1e-7) {
 		return got
 	}
 	step := ac.conf.Ascend.StepHeight
-	up, _ := ac.mc.CheckCollision(p.tx, p, pos, mgl64.Vec3{0, step, 0})
-	across, _ := ac.mc.CheckCollision(p.tx, p, pos.Add(up), mgl64.Vec3{delta[0], 0, delta[2]})
-	down, _ := ac.mc.CheckCollision(p.tx, p, pos.Add(up).Add(across), mgl64.Vec3{0, -up[1] + min(delta[1], 0), 0})
+	up := p.sweepStep(pos, mgl64.Vec3{0, step, 0})
+	across := p.sweepStep(pos.Add(up), mgl64.Vec3{delta[0], 0, delta[2]})
+	down := p.sweepStep(pos.Add(up).Add(across), mgl64.Vec3{0, -up[1] + min(delta[1], 0), 0})
 	if stepped := up.Add(across).Add(down); stepped[0]*stepped[0]+stepped[2]*stepped[2] > got[0]*got[0]+got[2]*got[2] {
 		return stepped
 	}
 	return got
+}
+
+// sweepStep clips a single axis-separated move of delta from pos against
+// nearby block collision boxes using a stack-backed buffer.
+func (p *Player) sweepStep(pos, delta mgl64.Vec3) mgl64.Vec3 {
+	const epsilon = 0.001
+	deltaX, deltaY, deltaZ := delta[0], delta[1], delta[2]
+	moveY := !mgl64.FloatEqualThreshold(deltaY, 0, epsilon)
+	moveX := !mgl64.FloatEqualThreshold(deltaX, 0, epsilon)
+	moveZ := !mgl64.FloatEqualThreshold(deltaZ, 0, epsilon)
+	if !moveX && !moveY && !moveZ {
+		return delta
+	}
+
+	entityBBox := Type.BBox(p).Translate(pos)
+	swept := entityBBox.Extend(delta)
+	sweptMin, sweptMax := swept.Min(), swept.Max()
+	grown := swept.Grow(0.25)
+	low, high := grown.Min(), grown.Max()
+	minX, minY, minZ := int(math.Floor(low[0])), int(math.Floor(low[1])), int(math.Floor(low[2]))
+	maxX, maxY, maxZ := int(math.Ceil(high[0])), int(math.Ceil(high[1])), int(math.Ceil(high[2]))
+
+	reg := p.tx.World().BlockRegistry()
+	worldRange := p.tx.Range()
+	var stackBlocks [64]cube.BBox
+	blocks := stackBlocks[:0]
+	for x := minX; x < maxX; x++ {
+		for z := minZ; z < maxZ; z++ {
+			for y := minY; y < maxY; y++ {
+				bp := cube.Pos{x, y, z}
+				rid, loaded := p.tx.BlockRID(bp)
+				if !loaded {
+					if !bp.OutOfBounds(worldRange) {
+						for _, bb := range p.tx.Block(bp).Model().BBox(bp, p.tx) {
+							blocks = append(blocks, bb.Translate(bp.Vec3()))
+						}
+					}
+					continue
+				}
+				flags := reg.BlockFlags(rid)
+				if flags.EmptyCollision() {
+					continue
+				}
+				if flags.FullCubeCollision() {
+					fx, fy, fz := float64(x), float64(y), float64(z)
+					if fx+1 > sweptMin[0] && fx < sweptMax[0] && fy+1 > sweptMin[1] && fy < sweptMax[1] && fz+1 > sweptMin[2] && fz < sweptMax[2] {
+						blocks = append(blocks, cube.Box(fx, fy, fz, fx+1, fy+1, fz+1))
+					}
+					continue
+				}
+				if b, ok := p.blockAtRID(bp, rid, flags, reg); ok {
+					for _, bb := range b.Model().BBox(bp, p.tx) {
+						blocks = append(blocks, bb.Translate(bp.Vec3()))
+					}
+				}
+			}
+		}
+	}
+	if len(blocks) == 0 {
+		return delta
+	}
+	if moveY {
+		for _, bb := range blocks {
+			deltaY = entityBBox.YOffset(bb, deltaY)
+		}
+		entityBBox = entityBBox.Translate(mgl64.Vec3{0, deltaY})
+	}
+	if moveX {
+		for _, bb := range blocks {
+			deltaX = entityBBox.XOffset(bb, deltaX)
+		}
+		entityBBox = entityBBox.Translate(mgl64.Vec3{deltaX})
+	}
+	if moveZ {
+		for _, bb := range blocks {
+			deltaZ = entityBBox.ZOffset(bb, deltaZ)
+		}
+	}
+	return mgl64.Vec3{deltaX, deltaY, deltaZ}
 }

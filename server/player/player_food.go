@@ -97,55 +97,75 @@ func (p *Player) Exhaust(points float64) {
 // starves it.
 func (p *Player) tickFood() {
 	w := p.tx.World()
-	naturalRegeneration := w.GameRuleBool("natural_health_regeneration")
 	difficulty := w.Difficulty()
 	peaceful := difficulty == world.DifficultyPeaceful
-	if peaceful && naturalRegeneration {
-		if p.tickCount%20 == 0 {
-			if p.Health() < p.MaxHealth() {
-				p.Heal(1, entity.FoodHealingSource{})
+	naturalRegeneration := false
+	natRegenKnown := false
+	if peaceful {
+		naturalRegeneration = w.GameRuleBool("natural_health_regeneration")
+		natRegenKnown = true
+		if naturalRegeneration {
+			if p.tickCount%20 == 0 {
+				if p.Health() < p.MaxHealth() {
+					p.Heal(1, entity.FoodHealingSource{})
+				}
+				p.hunger.regeneratePeaceful()
 			}
-			p.hunger.regeneratePeaceful()
-		}
-		if p.tickCount%10 == 0 && p.hunger.Food() < 20 {
-			p.hunger.AddFood(1)
+			if p.tickCount%10 == 0 && p.hunger.Food() < 20 {
+				p.hunger.AddFood(1)
+			}
 		}
 	}
 
-	if before, lose := p.hunger.drainExhaustion(peaceful); lose {
+	state, lose := p.hunger.drainAndSnapshot(peaceful)
+	mutated := false
+	if lose {
+		before := state.foodLevel
 		after := before - 1
 		ctx := NewEventContext(p.tx, p)
 		if p.Handler().HandleFoodLoss(ctx, before, &after); !ctx.Cancelled() {
 			p.hunger.SetFood(after)
+			mutated = true
 		}
+		state = p.hunger.snapshot()
 	}
 
-	state := p.hunger.snapshot()
 	hurt := p.Health() > 0 && p.Health() < p.MaxHealth()
+	if hurt && state.foodLevel >= 18 && !natRegenKnown {
+		naturalRegeneration = w.GameRuleBool("natural_health_regeneration")
+	}
 	switch {
 	case naturalRegeneration && state.saturationLevel > 0 && hurt && state.foodLevel >= 20:
 		if p.hunger.advanceTimer(10) {
 			spent := min(state.saturationLevel, 6)
 			p.Heal(spent/6, entity.FoodHealingSource{QuickRegeneration: true})
 			p.hunger.exhaust(spent)
+			mutated = true
 		}
 	case naturalRegeneration && state.foodLevel >= 18 && hurt:
 		if p.hunger.advanceTimer(80) {
 			p.Heal(1, entity.FoodHealingSource{})
 			p.hunger.exhaust(6)
+			mutated = true
 		}
 	case state.foodLevel <= 0:
 		if p.hunger.advanceTimer(80) && p.Health() > difficulty.StarvationHealthLimit() {
 			p.Hurt(1, StarvationDamageSource{})
 		}
 	default:
-		p.hunger.resetTimer()
+		if state.foodTick != 0 {
+			p.hunger.resetTimer()
+		}
 	}
 
-	if !p.hunger.canSprint() {
+	sent := state
+	if mutated {
+		sent = p.hunger.snapshot()
+	}
+	if sent.foodLevel <= 6 {
 		p.StopSprinting()
 	}
-	if sent := p.hunger.snapshot(); sent.foodLevel != p.sentFood.foodLevel || sent.saturationLevel != p.sentFood.saturationLevel || sent.exhaustionLevel != p.sentFood.exhaustionLevel {
+	if sent.foodLevel != p.sentFood.foodLevel || sent.saturationLevel != p.sentFood.saturationLevel || sent.exhaustionLevel != p.sentFood.exhaustionLevel {
 		p.sentFood = sent
 		p.client().SendFood(sent.foodLevel, sent.saturationLevel, sent.exhaustionLevel)
 	}

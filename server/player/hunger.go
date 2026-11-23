@@ -106,18 +106,30 @@ func (m *hungerManager) exhaust(points float64) {
 // outside Peaceful, a point of food. It returns the food level and whether
 // that point of food is to be lost; the caller removes it.
 func (m *hungerManager) drainExhaustion(peaceful bool) (food int, loseFood bool) {
+	snap, lose := m.drainAndSnapshot(peaceful)
+	return snap.foodLevel, lose
+}
+
+// drainAndSnapshot performs drainExhaustion and returns a consistent snapshot under one lock.
+func (m *hungerManager) drainAndSnapshot(peaceful bool) (snap hungerSnapshot, loseFood bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if m.exhaustionLevel <= 4 {
-		return m.foodLevel, false
+	if m.exhaustionLevel > 4 {
+		m.exhaustionLevel -= 4
+		if m.saturationLevel > 0 {
+			m.saturationLevel = max(m.saturationLevel-1, 0)
+		} else {
+			loseFood = !peaceful && m.foodLevel > 0
+		}
 	}
-	m.exhaustionLevel -= 4
-	if m.saturationLevel > 0 {
-		m.saturationLevel = max(m.saturationLevel-1, 0)
-		return m.foodLevel, false
+	snap = hungerSnapshot{
+		foodLevel:       m.foodLevel,
+		foodTick:        m.foodTick,
+		exhaustionLevel: m.exhaustionLevel,
+		saturationLevel: m.saturationLevel,
 	}
-	return m.foodLevel, !peaceful && m.foodLevel > 0
+	return snap, loseFood
 }
 
 // advanceTimer counts one tick of the food timer and reports, resetting the

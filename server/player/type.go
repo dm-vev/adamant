@@ -33,13 +33,25 @@ func (t ptype) Open(tx *world.Tx, handle *world.EntityHandle, data *world.Entity
 		viewInventories(tx, p)
 	} else {
 		pd.inv.SlotFunc(func(slot int, before, after item.Stack) {
+			pd.invVersion.Add(1)
+			pd.trackMapSlot(before, after)
 			if slot == int(atomic.LoadUint32(p.heldSlot)) {
 				p.broadcastItems(slot, before, after)
 			}
 		})
-		pd.offHand.SlotFunc(p.broadcastItems)
-		pd.armour.Inventory().SlotFunc(p.broadcastArmour)
+		pd.offHand.SlotFunc(func(slot int, before, after item.Stack) {
+			pd.trackMapSlot(before, after)
+			p.broadcastItems(slot, before, after)
+		})
+		pd.armour.Inventory().SlotFunc(func(slot int, before, after item.Stack) {
+			pd.trackMapSlot(before, after)
+			if slot == 0 {
+				pd.refreshTurtleHelmet()
+			}
+			p.broadcastArmour(slot, before, after)
+		})
 	}
+	pd.initInventoryTracking()
 	return p
 }
 

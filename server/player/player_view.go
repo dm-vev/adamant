@@ -124,11 +124,35 @@ func (p *Player) RemoveViewLayer(entity world.Entity) {
 
 // updateState updates the state of the player to all viewers of the player.
 func (p *Player) updateState() {
-	viewers, release := p.viewers()
-	for _, v := range viewers {
-		v.ViewEntityState(p)
+	if p.c == nil {
+		world.BroadcastEntityState(p.tx, p)
+		return
 	}
-	releaseBorrowedViewers(p.tx, viewers, release)
+	if p.tx == nil || p.tx.Closed() {
+		p.c.ViewEntityState(p)
+		return
+	}
+	viewers := p.tx.Viewers(p.Position())
+	var b world.Broadcast
+	seenSelf := false
+	for _, v := range viewers {
+		if v == world.Viewer(p.c) {
+			seenSelf = true
+		}
+		if sv, ok := v.(world.EntityStateSharedViewer); ok {
+			sv.ViewEntityStateShared(p, &b)
+		} else {
+			v.ViewEntityState(p)
+		}
+	}
+	if !seenSelf {
+		if sv, ok := world.Viewer(p.c).(world.EntityStateSharedViewer); ok {
+			sv.ViewEntityStateShared(p, &b)
+		} else {
+			p.c.ViewEntityState(p)
+		}
+	}
+	p.tx.ReleaseViewers(viewers)
 }
 
 // viewers returns a list of all viewers of the Player.
