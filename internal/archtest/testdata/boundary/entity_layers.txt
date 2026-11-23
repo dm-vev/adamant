@@ -14,7 +14,7 @@
 #
 # Regenerate it with:
 #
-#	go test -run TestEntityLayers -update-entity-layers .
+#	go test -run TestEntityLayers -update-entity-layers ./internal/archtest
 #
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 
@@ -23,7 +23,7 @@
 # They are recorded here, not checked: only the lines above are.
 #
 #	ai         from aquatic       1
-#	ai         from core         80
+#	ai         from core         88
 #	ai         from hostile      24
 #	ai         from nether        3
 #	ai         from object        3
@@ -35,7 +35,7 @@
 #	aquatic    from object        1
 #	aquatic    from passive      16
 #	aquatic    from villager      1
-#	core       from ai          197
+#	core       from ai          218
 #	dragon     from ai            7
 #	dragon     from core         10
 #	dragon     from object        1

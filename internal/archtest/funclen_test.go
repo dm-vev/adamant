@@ -1,4 +1,4 @@
-package main
+package archtest
 
 import (
 	"flag"
@@ -45,7 +45,7 @@ const longFuncHeader = `# Hand-written functions over 100 lines that still exist
 #
 # Regenerate it with (the tags of entries that stay are kept, and new ones are tagged by their directory):
 #
-#	go test -run TestLongFunctions -update-longfuncs .
+#	go test -run TestLongFunctions -update-longfuncs ./internal/archtest
 #
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 `
@@ -177,7 +177,7 @@ func TestLongFunctions(t *testing.T) {
 	var listed []longFunc
 	entries, err := readAllowlist(longFuncRatchet)
 	if err != nil && !*updateLongFuncs {
-		t.Fatalf("read the ratchet: %v (generate it with: go test -run TestLongFunctions -update-longfuncs .)", err)
+		t.Fatalf("read the ratchet: %v (generate it with: go test -run TestLongFunctions -update-longfuncs ./internal/archtest)", err)
 	}
 	for _, entry := range entries {
 		f, err := parseLongFunc(entry)

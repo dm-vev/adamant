@@ -1,4 +1,4 @@
-package main
+package archtest
 
 import (
 	"bufio"
@@ -36,7 +36,7 @@ const apiHeader = `# The exported API of the module.
 #
 # Regenerate it with:
 #
-#	go test -run TestExportedAPI -update-api .
+#	go test -run TestExportedAPI -update-api ./internal/archtest
 #
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 `
@@ -53,7 +53,7 @@ const implHeader = `# What implements what in the module.
 #
 # Regenerate it with:
 #
-#	go test -run TestExportedAPI -update-api .
+#	go test -run TestExportedAPI -update-api ./internal/archtest
 #
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 `
@@ -216,7 +216,7 @@ func compareSnapshot(t *testing.T, p string, current []string) {
 	t.Helper()
 	listed, err := readSnapshot(p)
 	if err != nil {
-		t.Fatalf("read the snapshot: %v (generate it with: go test -run TestExportedAPI -update-api .)", err)
+		t.Fatalf("read the snapshot: %v (generate it with: go test -run TestExportedAPI -update-api ./internal/archtest)", err)
 	}
 	const limit = 50
 	added, removed := 0, 0
@@ -242,7 +242,7 @@ func compareSnapshot(t *testing.T, p string, current []string) {
 		t.Errorf("%s: %d lines new and %d gone in all", p, added, removed)
 	}
 	if added > 0 || removed > 0 {
-		t.Errorf("%s differs: if the change is deliberate, review it and regenerate with: go test -run TestExportedAPI -update-api .", p)
+		t.Errorf("%s differs: if the change is deliberate, review it and regenerate with: go test -run TestExportedAPI -update-api ./internal/archtest", p)
 	}
 	if !slices.IsSorted(listed) {
 		t.Errorf("%s: entries are out of order, regenerate with -update-api", p)

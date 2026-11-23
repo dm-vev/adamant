@@ -16,7 +16,7 @@ import (
 
 // bedrockNamesFile lists the Bedrock sound names the game still plays by,
 // relative to this package.
-const bedrockNamesFile = "../../../testdata/sounds/bedrock_names.txt"
+const bedrockNamesFile = "testdata/bedrock_names.txt"
 
 // bedrockSoundPrefixes are the prefixes of Bedrock's sound definitions that
 // Java sound event IDs do not start with.

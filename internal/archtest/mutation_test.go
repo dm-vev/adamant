@@ -1,4 +1,4 @@
-package main
+package archtest
 
 import (
 	"flag"
@@ -39,7 +39,7 @@ const mutationHeader = `# Uses of the world by protocol adapters that still exis
 #
 # Regenerate it with:
 #
-#	go test -run TestAdaptersKeepOffTheWorld -update-mutations .
+#	go test -run TestAdaptersKeepOffTheWorld -update-mutations ./internal/archtest
 #
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 `
@@ -456,7 +456,7 @@ func TestAdaptersKeepOffTheWorld(t *testing.T) {
 
 	listed, err := readAllowlist(mutationRatchet)
 	if err != nil {
-		t.Fatalf("read the ratchet: %v (generate it with: go test -run TestAdaptersKeepOffTheWorld -update-mutations .)", err)
+		t.Fatalf("read the ratchet: %v (generate it with: go test -run TestAdaptersKeepOffTheWorld -update-mutations ./internal/archtest)", err)
 	}
 	left := map[string]int{}
 	for i, entry := range listed {

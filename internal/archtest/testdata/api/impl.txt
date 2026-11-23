@@ -9,7 +9,7 @@
 #
 # Regenerate it with:
 #
-#	go test -run TestExportedAPI -update-api .
+#	go test -run TestExportedAPI -update-api ./internal/archtest
 #
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 

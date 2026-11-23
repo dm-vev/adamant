@@ -3,7 +3,7 @@
 .zed/
 .vscode/
 
-# Adamant
+# Local workspaces, caches, and symbol dumps
 auto.sh
 .codex/
 .gocache/
@@ -12,26 +12,35 @@ auto.sh
 .tmp/
 Lumi-master/
 codex.sh
-fixes/*
-!fixes/go.mod
 mcp940-master/
-players/
-/world/
 memory.md
+pdb/
 tools/
 
 # Build artifacts and test binaries (kept out of VCS; CI builds its own binary)
+adamant
 dragonfly
 app-linux
 *.test
+*.prof
 __pycache__/
 server_run.err
 server_run.log
 temp.txt
 temp_merge.diff
 
-# Empty server data files (generated at runtime)
+# Runtime server data, worlds, backups, and credentials
+/backups/
+/logs/
+/players/
+/resources/
+/world/
+admin-tokens.txt
+audit.log
+banned-players.json
+ops.json
 ops.txt
+permissions.json
 white-list.txt
 whitelist.toml
 server-key.pem

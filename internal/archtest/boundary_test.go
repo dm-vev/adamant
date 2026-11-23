@@ -1,4 +1,4 @@
-package main
+package archtest
 
 import (
 	"bufio"
@@ -20,7 +20,9 @@ import (
 var updateBoundary = flag.Bool("update-boundary", false, "rewrite testdata/boundary/allowlist.txt to the current import boundary violations")
 
 const (
-	// boundaryAllowlist is the path of the allowlist, relative to the repository root.
+	// repoRoot is the path of the repository root relative to this package.
+	repoRoot = "../.."
+	// boundaryAllowlist is the path of the allowlist, relative to this package.
 	boundaryAllowlist = "testdata/boundary/allowlist.txt"
 
 	rootModule = "github.com/df-mc/dragonfly"
@@ -38,7 +40,7 @@ const boundaryHeader = `# Import boundary violations that still exist.
 #
 # Regenerate it with:
 #
-#	go test -run TestImportBoundary -update-boundary .
+#	go test -run TestImportBoundary -update-boundary ./internal/archtest
 #
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 `
@@ -170,7 +172,7 @@ func readAllowlist(p string) ([]string, error) {
 }
 
 func TestImportBoundary(t *testing.T) {
-	current, rules, err := violations(".")
+	current, rules, err := violations(repoRoot)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +196,7 @@ func TestImportBoundary(t *testing.T) {
 
 	allowed, err := readAllowlist(boundaryAllowlist)
 	if err != nil {
-		t.Fatalf("read allowlist: %v (generate it with: go test -run TestImportBoundary -update-boundary .)", err)
+		t.Fatalf("read allowlist: %v (generate it with: go test -run TestImportBoundary -update-boundary ./internal/archtest)", err)
 	}
 	allowedSet := make(map[string]bool, len(allowed))
 	for i, entry := range allowed {

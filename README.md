@@ -1,168 +1,37 @@
-<!--suppress ALL -->
-
 <div align="center">
 
 # Adamant
 
-**A Minecraft: Bedrock Edition server in Go, built for full vanilla parity.**
+**High-performance Minecraft: Bedrock Edition server in Go, built for vanilla parity and clean extensibility.**
 
-[![Go](https://img.shields.io/badge/Go-1.26%2B-00ADD8?logo=go&logoColor=white)](go.mod)
-[![Bedrock](https://img.shields.io/badge/Bedrock-1.26.52-62B47A)](vanilla-reference.json)
+[![Go](https://img.shields.io/badge/Go-1.27%2B-00ADD8?logo=go&logoColor=white)](go.mod)
+[![Bedrock](https://img.shields.io/badge/Bedrock-1.26.52%20%E2%80%93%201.26.61-62B47A)](docs/protocols.md)
 [![Protocol](https://img.shields.io/badge/protocol-2193%20%7C%202225-blue)](docs/protocols.md)
 [![Java reference](https://img.shields.io/badge/Java%20reference-26.3-E76F00)](vanilla-reference.json)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
-[Goal](#goal-full-vanilla-parity) ·
+[Quick start](#quick-start) ·
 [Status](#status) ·
-[Features](#whats-implemented) ·
-[Getting started](#getting-started) ·
-[Configuration](#configuration) ·
-[Development](#development) ·
-[Verification notes](docs/verification.md)
+[Architecture & SDK](#architecture--sdk) ·
+[Documentation](#documentation) ·
+[Development](#development)
 
 </div>
 
 ---
 
-Adamant is a Minecraft: Bedrock Edition server written in Go, forked from [Dragonfly](https://github.com/df-mc/dragonfly). Bedrock clients connect to it as they would to Bedrock Dedicated Server (BDS), while the world behaves as the vanilla game does. Terrain, structures, mobs, blocks, redstone and survival rules are ported from the game's own sources rather than approximated.
+Adamant is a Minecraft: Bedrock Edition server in Go (originally forked from [Dragonfly](https://github.com/df-mc/dragonfly)). Clients connect over native NetherNet or RakNet as they would to Bedrock Dedicated Server, while world generation, mob AI, redstone, and survival rules are ported directly from vanilla references:
 
-> [!IMPORTANT]
-> Adamant aims for **full vanilla parity** but has not reached it yet. Large parts of the game already behave as vanilla does; the [status table](#status) and [known gaps](#known-gaps) list what is complete, partial or missing.
-
-## Goal: full vanilla parity
-
-Vanilla parity means that a world played on Adamant is indistinguishable from the same world played on vanilla Minecraft. The same seed should give the same terrain, mobs should make the same decisions, machines should keep the same timing, and saves should load in vanilla.
-
-Adamant uses two pinned references:
-
-| Reference | Version | Used for |
+| Reference | Version | Scope |
 |---|---|---|
-| Java Edition sources ([MCP-Reborn](https://github.com/Hexeption/MCP-Reborn)) | **26.3** | Gameplay and generation: terrain, features, structures, mob AI, blocks, items, survival logic |
-| Bedrock Dedicated Server | **1.26.52.3** (build 51798919) | Wire protocol, block and item registries, biome definitions, NBT and world format |
+| Java Edition ([MCP-Reborn](https://github.com/Hexeption/MCP-Reborn)) | **26.3** | World generation, structures, mob AI (`MobAI` & `Brain`), blocks, items, commands, survival |
+| Bedrock Dedicated Server | **1.26.52.3** | Wire protocol, 2,076 items, 22,079 block states, 89 biomes, LevelDB & NBT layout |
 
-Exact revisions and checksums are recorded in [`vanilla-reference.json`](vanilla-reference.json).
+Exact reference checksums are pinned in [`vanilla-reference.json`](vanilla-reference.json); parity checks are documented in [`docs/verification.md`](docs/verification.md).
 
-These rules follow from that:
+## Quick start
 
-- **Port behaviour, don't imitate it.** Logic is translated from the reference sources, including their random-number streams, tick ordering and edge cases, instead of being reimplemented to look similar.
-- **Prove it against the reference.** Behaviour is checked against executed Java fixtures, captures from the pinned BDS and regression tests. Values produced by the implementation under test are never taken as the expected result. [`docs/verification.md`](docs/verification.md) records each check and what it does and does not establish.
-- **Stay native on the wire and on disk.** Clients see exactly what BDS would send, and worlds are saved in the native Bedrock LevelDB format with BDS's NBT layout.
-- **Keep it vanilla.** Adamant implements the game itself. Data packs and scripting add-ons are out of scope.
-
-## Status
-
-| Area | Status | Notes |
-|---|:---:|---|
-| Protocol and transport | ✅ | Protocols 2193 (1.26.50–1.26.52) and 2225 (1.26.60–1.26.61), the newest the primary ([protocols](docs/protocols.md)); NetherNet |
-| Registries | ✅ | All 2,076 items, 22,079 block states (1,477 blocks) and 89 biomes match BDS |
-| Terrain generation | 🟢 | Java 26.3 noise, climate, biomes and aquifers in the Overworld, Nether and End |
-| Features and structures | 🟢 | Configured features and nearly all structures; see [World generation](#world-generation) |
-| Mob AI | 🟢 | Java's goal and brain AI drives every mob species; mobs ride and steer mobs |
-| Redstone | 🟢 | Shared circuit timing checked against BDS; [audit coverage and remaining gaps](docs/redstone-audit.md) |
-| Blocks and items | 🟢 | All vanilla blocks but five Education Edition ones; some behaviour is incomplete |
-| Commands | 🟢 | Java 26.3 command system with selectors, `execute` and scoreboards |
-| Persistence | ✅ | Native LevelDB worlds, BDS NBT, background chunk saving |
-| Natural spawning and ecology | 🟢 | `NaturalSpawner`, spawn rules, caps and despawning compared with Java |
-
-✅ complete · 🟢 ported, gaps remain · 🟡 partial
-
-## What's implemented
-
-### Networking and server
-
-- Bedrock protocols 2193 (clients 1.26.50–1.26.52) and 2225 (1.26.60–1.26.61) together: the newest is the primary by default, and older clients get its packets converted ([`docs/protocols.md`](docs/protocols.md)).
-- Native NetherNet transport (HTTP signalling and WebRTC), with RakNet available for older or custom clients.
-- A persistent P-384 server identity that survives restarts.
-- An admin console and server CLI, a Nukkit-style whitelist and RakNet Query.
-- Concurrency and input hardening throughout sessions, inventories, containers and packet validation.
-- A configurable anti-cheat in the game: speed, flight, noclip, reach, break time, placing, attacks, item use, menus and the timer of clients, each logged, corrected or kicked for as `[AntiCheat]` says ([`docs/anticheat.md`](docs/anticheat.md)).
-
-### World generation
-
-- **Generation kernel:** a port of Java 26.3's random streams, noise, terrain splines, climate lookup, biome zoom, aquifers, carvers, material rules and feature placement. These are checked against the executed Java runtime.
-- **Whole-chunk parity:** complete Overworld chunks generated by the Java 26.3 dedicated server match Adamant's in 99.9% of their blocks where Java had fully generated their neighbours. The remainder is Java's own: ticks it ran after generation and features crossing chunk borders, which depend on the order Java decorates neighbouring chunks.
-- **Structure starts:** the structure locator answers 928 `locate structure` queries for 29 structures on two seeds exactly as the Java server does, biome checks and exclusion zones included.
-- **Features:** ores, trees and saplings, vegetation, lakes, springs, geodes, dripstone, basalt deltas, fungi, fallen trees, multiface growth and more. Saplings, fungi and bone meal grow the same configured features in the live world.
-- **Overworld structures:**
-  - strongholds and mineshafts
-  - desert pyramids, jungle temples, swamp huts and igloos
-  - shipwrecks, ocean ruins and ocean monuments
-  - woodland mansions, buried treasure and ruined portals
-  - jigsaw structures: villages, pillager outposts, ancient cities, trail ruins and trial chambers
-- **Nether:** fortresses, bastion remnants, nether fossils and ruined portals.
-- **The End:** the main island, outer islands, end cities, gateways and the full dragon fight, including respawning.
-- **Structure state:** loot, spawner flags and structure mobs (with their Java spawn initialisation) survive saves as Java keeps them.
-- **Asynchronous generator:** generation runs on parallel worker goroutines. It has `fast-cores` and `many-cores` profiles and prioritises the chunks nearest each player. On a 16-thread desktop CPU it generates 64–100 Overworld chunks per second and stays at 20 TPS during fast flight.
-
-### Mobs
-
-- **AI frameworks:** Java's two mob AI frameworks are ported: the goal and target selectors (`MobAI`) and the memory-and-activity `Brain`, with its sensors and behaviours. Navigation, pathfinding, move/look/jump controls and body rotation follow Java as well.
-- **Brain-driven mobs:** villagers, wardens, piglins and piglin brutes, hoglins and zoglins, breezes, creakings, copper golems, allays, sniffers, camels, axolotls, frogs, tadpoles, goats, armadillos and baby happy ghasts.
-- **Goal-driven mobs:** every other mob runs its Java goals. This covers zombies and their variants, skeletons, creepers, spiders, endermen, slimes, blazes, ghasts, illagers and ravagers, witches, guardians, drowned, phantoms, shulkers and the wither. It also covers farm animals, horses and llamas, wolves, cats, foxes, bees, parrots, pandas, polar bears, dolphins, turtles, fish, squids, bats, striders, golems and wandering traders.
-- **Villagers:** professions taken from job sites, daily schedules, sleeping in beds, farming and bread making, trading and restocking, gossip, breeding, panic, iron golem summoning and raid behaviour.
-- **Riding:** a mob riding another mob steers it with its own goals, as Java's `getNavigation` and `getMoveControl` do. This covers chicken jockeys, spider and strider jockeys, drowned on zombie nautili, zombie horsemen, ravager riders in raids and baby piglins riding baby hoglins.
-- **Encounters:**
-  - Raids, pillager patrols and wandering traders with their llamas.
-  - Warden anger, sonic booms, digging and emerging.
-  - Creaking hearts.
-  - Trial spawners and vaults.
-- **Breeding, taming, panic, tempting, item pickup, mob conversions and the death and loot pipeline**, including entity cramming and fall damage.
-
-### Blocks and mechanics
-
-- **Redstone:** repeaters, comparators, observers, pistons, droppers, dispensers, the crafter, rails, buttons, plates, tripwires, bells, lamps, doors and trapdoors. Native Bedrock timing checks and remaining differences are recorded in the [redstone audit](docs/redstone-audit.md).
-- **Sculk:** sensors (including calibrated sensors), shriekers and catalysts, with vibration selection, occlusion and persistence.
-- **Other blocks:** conduits, cauldrons, powder snow and freezing, pointed dripstone, amethyst and dripleaves, lightning rods, suspicious sand and gravel, scaffolding, plant and crop growth.
-- **Structure tools:** structure blocks, jigsaws and Bedrock `.mcstructure` templates.
-- **Fluids and ticks:** Java fluid identity, and scheduled block and fluid ticks saved as native BDS records.
-- **Fluid currents:** water and lava currents carry mobs, items and experience orbs as Java's `EntityFluidInteraction` does; items and orbs float up in water.
-- **Light:** Java's light engine rules (dampening, sky sources and face occlusion from the Java 26.3 block data); block edits relight the world incrementally, so torches stop mobs spawning and frosted ice and snow melt by the light around them.
-
-### Items, crafting and loot
-
-- Every BDS recipe from the 1.26.52 crafting data:
-  - shaped, shapeless and user-data shapeless recipes
-  - smithing transforms
-  - crafter crafting
-  - the `limited_crafting` game rule
-- Java's smelting, blasting, smoking and campfire recipes and cooking fuels, generated from the 26.3 data; furnaces follow `AbstractFurnaceBlockEntity`, including cooking progress that cools down without fuel and experience counted per recipe.
-- Java loot tables resolved onto Bedrock items, with independent loot random streams that survive restarts.
-- The 26.3 enchantment set with Java's selection rules, plus Trial Chambers effects and potions.
-- Spears and other Java 26.x combat items.
-- Maps with native persistence, scaling and locking.
-
-### Survival
-
-- Hunger follows Java's `FoodData`: exhaustion drains one point of saturation or food a tick, saturation heals by the amount spent, Peaceful refills health, food and saturation, and walking, sprinting and swimming cost what `ServerPlayer.checkMovementStatistics` charges.
-
-### Worlds and rules
-
-- The Java 26.3 game rule registry and its subsystems, including spawning, drops, portals, precipitation and world borders.
-- Nether portals found through the POI index, and End transit with Java's player and non-player transitions.
-- Weather and lightning.
-- Scoreboards and operators.
-- Background chunk saving, saved seeds that are authoritative, and entity and generator state that survive restarts.
-
-### Commands
-
-- **Java 26.3 command system:** coordinates, target selectors, `execute` with all its subcommands (`as`, `at`, `in`, `on`, `positioned`, `rotated`, `facing`, `align`, `anchored`, `summon`, `if`/`unless`, `store`), scoreboards, and `data`, `give`, `tp`, `kill`, `effect`, `xp`, `tag`, `place`, `rotate`, `spectate`, `clear`, `tick`.
-- **Server administration:** Java's permission levels 0–4 for every command and BDS's roles (visitor, member, operator, custom) for what players may do; `op` with levels, `permission`, `ban`, `tempban`, `ban-ip` (addresses, networks, players online), `pardon`, `banlist`, `whitelist`, `kick`; online backups with `backup` and BDS's `save hold|query|resume`; a remote admin API over HTTPS; an audit log. See [`docs/admin.md`](docs/admin.md).
-
-## Known gaps
-
-Parity work is ongoing. These are the main known differences from vanilla:
-
-- Five Education Edition blocks (the chalkboard and the chemistry tables) are not implemented, and states vanilla never produces, such as invalid facings and Education bits, load as placeholders. Some implemented blocks still have incomplete behaviour.
-- Natural spawning has been compared line by line with Java and checked in synthetic worlds and generated terrain; the mobs of generated terrain have not been counted on the Java server itself.
-- Maps show no banner markers: Bedrock has no banner map decorations.
-- The ender dragon's fireball sound and the boss bar's sky fog are not sent; Bedrock has no matching sound name or protocol field.
-- How some features render on a real Bedrock client, such as the resource-pack knowledge book and the dragon's death beams, is unverified.
-
-Each claim of parity in this repository is backed by a recorded check; see [`docs/verification.md`](docs/verification.md).
-
-## Getting started
-
-Requirements: **Go 1.27** or newer. The modules pin `toolchain go1.27.3`; an older Go downloads that toolchain unless `GOTOOLCHAIN=local` is set.
+Requires **Go 1.27+** (`toolchain go1.27.3`).
 
 ```shell
 git clone https://github.com/dm-vev/adamant
@@ -170,115 +39,77 @@ cd adamant
 go run .
 ```
 
-Run from the repository root; `config.toml` is read from the current working directory. Stop the server with `Ctrl+C` or the console command `stop`. Use `go run . -headless` to run without the interactive console; termination signals still shut the server down cleanly.
+- Reads [`config.toml`](config.toml) from the working directory (generates defaults on first run) and listens on `:19132`.
+- Supports Bedrock **1.26.50 – 1.26.61** (protocols `2193` and `2225`, automatic packet translation).
+- Pass `-headless` to disable the interactive console; stop cleanly with `Ctrl+C` or `stop`.
 
-Connect with Bedrock 1.26.60 (1.26.50 to 1.26.61 join, see [protocols](docs/protocols.md)) to the address in `config.toml` (`:19132` by default).
+## Status
 
-## Configuration
+| Area | State | Summary |
+|---|:---:|---|
+| Protocol & networking | ✅ | Protocols 2193 & 2225, NetherNet (WebRTC) + RakNet, `Flate` & `Snappy` crowd batching |
+| Registries & persistence | ✅ | Full BDS item/block/biome registries, native LevelDB worlds, background chunk saving |
+| World generation | 🟢 | Java 26.3 Overworld, Nether & End, structures, single-pass 4-color DAG decoration |
+| Mob AI & spawning | 🟢 | Java `MobAI` + `Brain` for all species, riding, raids, villagers, `NaturalSpawner` |
+| Blocks, items & redstone | 🟢 | All vanilla blocks (except 5 Education blocks), BDS crafting, Java smelting/loot, [redstone](docs/redstone-audit.md) |
+| Commands & admin | 🟢 | Java 26.3 commands (`execute`, selectors, scoreboards), RBAC, bans, backups, anti-cheat |
 
-Settings live in `config.toml`.
+**Known gaps:** 5 Education Edition blocks are unimplemented; Bedrock lacks banner map markers and a few Java-only Dragon effects; natural mob counts on generated terrain have not yet been cross-counted live on a Java server.
 
-| Section | Keys |
-|---|---|
-| `Network` | `Address` (default `:19132`), `Transport` (`nethernet` default, or `raknet`), `IdentityFile` (default `server-key.pem`), `EnableQuery` |
-| `Server` | `Name`, `AuthEnabled`, `IdentityKey` (`auto` default, `xuid` or `name`), `DisableJoinQuitMessages`, `MuteEmoteChat`, `ReconnectPolicy` |
-| `World` | `Seed`, `SaveData`, `SaveChunks` (`modified` default, or `all`), `Folder`, `GeneratorProfile` (`auto`, `fast-cores`, `many-cores`), `GeneratorWorkers`, `GeneratorQueueSize` |
-| `Players` | `MaxCount`, `MaximumChunkRadius`, `SaveData`, `Folder` |
-| `Resources` | `AutoBuildPack`, `Folder`, `Required` |
-| `Whitelist` | `Enabled`, `Enforce`, `File` (default `white-list.txt`), `Reason` |
-| `AntiCheat` | `Enabled`, `ExemptOperators`, `ExemptPlayers`, `LogInterval`, `MaxLatencyTicks`; `[AntiCheat.Grace]`: `Join`, `Teleport`, `WorldChange`, `Respawn`, `Dismount`, `GameMode`, `Impulse`; one table a check (`MovedTooQuickly`, `Speed`, `Fly`, `Ascend`, `NoClip`, `Phase`, `EntityReach`, `BlockReach`, `BreakTime`, `Place`, `Attack`, `AttackAim`, `FastUse`, `Timer`, `Menu`), each with `Enabled`, `Action`, `ActAt`, `KickAt`, `KickMessage`, `Decay`, `ExemptGameModes` and settings of its own |
-| `Log` | `Format` (`text` default, or `json`), `RateLimit` (default 100 lines a second per component), `Levels` (a level per component; `[Server] LogLevel`, default `info`, for the rest) |
-| `Monitoring` | `Address` (default `localhost:6060`), `Health`, `Metrics`, `Pprof`, `Token`, `LiveTimeout`, `ReadyTickAge` |
-| `Permissions` | `DefaultLevel` (0), `OperatorLevel` (4), `CommandBlockLevel` (2), `RoleLevel` (3), `DefaultRole` (`member`), `BroadcastConsoleToOps`, `BroadcastRemoteToOps`; `[Permissions.Commands]`: a level per command |
-| `Bans` | `Message`, `IPMessage`, `ReasonMessage`, `DefaultReason`, `ExpiresMessage`, `TimeFormat` (Java's texts by default), `IPv6Prefix` (64), `MaxDuration` (`0s`: no cap) |
-| `Backup` | `Enabled` (on), `Folder` (`backups`), `Format` (`folder` or `zip`), `Interval` (`6h`), `Keep` (10), `MaxAge`, `MinFreeSpace` (`1GiB`), `SaveFirst`, `Verify` (`record`, `full` or `off`) |
-| `Audit` | `Enabled` (on), `File` (`audit.log`), `MaxSize` (`64MiB`), `Keep` (10), `MinLevel` (2), `RecordAddresses` |
-| `RemoteAdmin` | `Enabled` (off), `Address` (`localhost:19140`), `CertFile`, `KeyFile`, `AllowPlaintext`, `AllowedHosts`, `CommandTimeout` (`10s`), `MaxFailures` (5), `TokenFile` (`admin-tokens.txt`), `TrustedProxies` |
+## Architecture & SDK
 
-**Transport.** NetherNet serves HTTP signalling on `Network.Address` over TCP and uses WebRTC over UDP for gameplay. Behind NAT or a firewall, the negotiated ICE connectivity must be allowed; opening only the old RakNet UDP port is not enough. The endpoint is plain HTTP, so terminate TLS at a reverse proxy if you need it. RakNet must be selected explicitly; the server never falls back to it.
+The engine separates a lean, data-oriented simulation core (`server/`) from protocol adapters (`protocol/`, `net/`) and an external plugin SDK (`api/`, `api/bedrock/`):
 
-**Identity.** `IdentityFile` holds the server's private key. Back it up privately and keep it across restarts. A corrupt key stops startup instead of being replaced.
+- **Zero-alloc ECS & EventBus (`server/ecs`, `server/event`):** dense typed component bags (`Key[T]` / `Bag` with optional NBT persistence) on entities, players, chunks, and worlds; zero-reflection prioritized `event.Bus` (`Cancellable`) on `Server`, `World`/`Tx`, and `Player`.
+- **Parallel world & crowd AI (`server/world`, `server/entity`):** `World.AddSystem(TickPhase)` with panic containment, `SetBlockRID` / `FillRID` volume ops, 4×4 checkerboard parallel world `Regions`, multi-core `Prefetch` (fluids, collisions, melee/ranged/brain A* paths), 64-shard `sharedPathCache`, and 4×4 sub-cell parallel broadphase collisions.
+- **High-density network pipeline (`net/bedrock`, `protocol/bedrock`):** pre-framed `netconn.Shared` broadcasts, single-lock `Conn.WriteBatch` session flushing, composable RFC 1951 sync-flushed DEFLATE segments in `BatchCache` (eliminating `N-1` crowd recompression), and a zero-dependency pure-Go `bedrock.Snappy` codec.
+- **External SDK (`api`, `api/bedrock`):** `App` / `Plugin` lifecycle, player facets (`Movement`, `Combat`, `UI`, `Net`), custom blocks, entities, AI goals, menus, commands, Overworld generation hooks (`overworld.Hooks`), and Bedrock `PacketInterceptor` / raw packet injection — without modifying core packages.
 
-**Seed.** `World.Seed` applies only when a world is created. After that, the seed in `level.dat` is authoritative.
+```go
+app := api.New(srv).Use(api.FuncPlugin{
+	OnEnable: func(app *api.App) {
+		api.On(app.Events(), api.PriorityNormal, func(ev *player.PlayerJoinEvent) {
+			ev.Player.Message("Welcome to Adamant!")
+		})
+	},
+})
+defer app.Close()
+```
 
-> [!WARNING]
-> Adamant versions before the seed fix wrote a timestamp to `level.dat.RandomSeed`. Back up such worlds and restore their original generation seed before upgrading. See [World seed and saved settings](docs/verification.md#world-seed-and-saved-settings).
+## Documentation
 
-**Generator.** `GeneratorProfile = "auto"` picks `many-cores` on hosts with 24 or more logical CPUs. `GeneratorWorkers = 0` runs one worker per physical core, half the logical CPUs the Go scheduler uses (`fast-cores`), or a worker on every logical CPU but two (`many-cores`): on a 4-CPU server with 50 players a third worker generated 45% more terrain but held the world at 17.7 TPS. `GeneratorQueueSize` defaults to four times `GeneratorWorkers`. If the logs warn `world generator queue saturated`, raise both values.
+All runtime settings live in [`config.toml`](config.toml). Detailed subsystem guides are in [`docs/`](docs):
 
-**Saving chunks.** `SaveChunks = "modified"` writes a chunk when it was generated or changed since its last save, or holds entities or block entities. `SaveChunks = "all"` writes every loaded chunk at every save and unload, changed or not, for pregenerating a world. A chunk that failed to load is never written over in either mode.
-
-**Whitelist.** Enable it under `[Whitelist]`, then manage it with `whitelist add <player>`, `whitelist remove <player>` and `whitelist list`. A player is a name or `xuid:<XUID>`; `op`, `deop`, `ban` and `pardon` take the same.
-
-**Players.** `IdentityKey` chooses what the whitelist, the operators, the bans and the data of players are keyed by: the Xbox account with sign-in on (`auto` with `AuthEnabled = true`, or `xuid`), or the name (`auto` with sign-in off, or `name`). Without sign-in anyone can join under any name, an operator's included: keep such servers on a network you trust. The first start keyed by account moves the names on the lists to accounts, keeping the old files as `*.before-xuid`. See [`docs/identity.md`](docs/identity.md).
-
-**Anti-cheat.** The game checks what clients ask of their players: moves, breaks, places, attacks, item uses, menus and the rate of their ticks. Every check is switched on by default, and each is configured under `[AntiCheat.<Check>]`: whether it runs, what it does (`log`, `setback`, `cancel`, `throttle` or `kick`), at which violation level, and its thresholds. Operators are not exempt unless `ExemptOperators = true`. A config.toml without `[AntiCheat]` runs every check with its defaults. See [`docs/anticheat.md`](docs/anticheat.md) for the checks, their keys and defaults, and how they map to BDS and Java.
-
-**Administration.** Commands need Java's permission levels: operators of `ops.json` have their entry's level or `OperatorLevel` (4), other players `DefaultLevel` (0), the console 4 and command blocks 2; `[Permissions.Commands]` changes the level of any command. Players also have BDS's roles of `permissions.json`, which the server enforces. Bans may be for a time and of networks, with Java's texts. A backup of the running world is made every 6 hours into `backups/` and with `/backup`; the remote admin API is off until `[RemoteAdmin] Enabled = true`, and needs TLS off localhost; admin actions are recorded in `audit.log`. See [`docs/admin.md`](docs/admin.md) for the levels, roles, files, bans, backups and how to restore one, the remote admin API and its threat model, and the audit log.
-
-**Monitoring.** The server serves Prometheus metrics on `/metrics`, the probes `/livez` and `/readyz`, and Go profiles under `/debug/pprof/`, on `localhost:6060` by default. Profiles on another address need `Monitoring.Token`. Logs go to stderr as text or JSON, with a level per component. See [`docs/operations.md`](docs/operations.md) for the metrics, the checks of the probes and a Kubernetes example.
-
-**Query.** Query requires `Network.Transport = "raknet"` and `Network.EnableQuery = true`. It is disabled by default and not served over NetherNet.
+- [`docs/protocols.md`](docs/protocols.md) — supported Bedrock versions, NetherNet signalling/WebRTC, and RakNet
+- [`docs/anticheat.md`](docs/anticheat.md) — movement, combat, interaction, and timer checks (`[AntiCheat]`)
+- [`docs/admin.md`](docs/admin.md) — permission levels, roles, bans, online backups, audit log, and HTTPS Remote Admin API
+- [`docs/identity.md`](docs/identity.md) — Xbox Live authentication, `IdentityKey` (`xuid` / `name`), and `server-key.pem`
+- [`docs/operations.md`](docs/operations.md) — Prometheus `/metrics`, `/livez` & `/readyz` probes, `pprof`, and structured logging
+- [`docs/protocol-boundary.md`](docs/protocol-boundary.md) — core/adapter architecture and R1–R5 boundary ratchets
+- [`docs/redstone-audit.md`](docs/redstone-audit.md) & [`docs/verification.md`](docs/verification.md) — BDS & Java 26.3 parity verification
+- [`docs/localization.md`](docs/localization.md) — command localization
 
 ## Development
 
 ```shell
 go build ./...
 go test ./...
-make lint
+go test ./internal/archtest   # boundary, mutation, wait, API, entity-layer & func-length ratchets
+make lint                     # golangci-lint v2.15.0
 ```
-
-`make lint` runs golangci-lint v2.15.0 with `.golangci.yml` and reports every finding, including the ones the code already had.
-
-### Continuous integration
-
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request:
-
-- **vet:** `go vet` in each module.
-- **test:** `go test` for the root module and `net/`. `server/entity`, `server/block` and the Overworld generator each run as their own job.
-- **race:** `go test -race` on `server/world/...` without the generators, `protocol/bedrock/session`, `server/menu` and `server/player/...`. `TestGoldenJoin` is skipped there: its fixed 5 s wait is too short under `-race`.
-- **lint:** golangci-lint fails only on findings that are new since the merge base (`--new-from-rev`).
-- **golden:** the protocol golden snapshots and the import, mutation and wait boundary rules.
-
-The head comment of the workflow lists the known flaky tests.
-
-### Repository layout
 
 | Path | Contents |
 |---|---|
-| `server/world` | World, chunks, ticking, scheduled updates, persistence and the generation API |
-| `server/world/generator/advanced` | Overworld, Nether and End generators and their structures |
-| `server/internal/vanilla` | Java generation kernel: random streams, noise, splines, climate and features |
-| `server/internal/gamedata` | Block, tag and resource tables taken from the references |
-| `server/entity` | Entities, the `MobAI` and `Brain` frameworks, and every mob's AI |
-| `server/block`, `server/item` | Block and item behaviour |
-| `server/player` | Players |
-| `protocol/bedrock` | The Bedrock adapter: the NetherNet listener, the network session (`session`), connections (`netconn`) and the query protocol (`query`) |
-| `protocol/java` | The Java Edition adapter: the server-list status for now |
-| `server/cmd` | Command system and built-in commands |
-| `cmd/` | Tools for comparing against BDS and auditing registries |
-
-### Contribution workflow
-
-- **Reference first.** Every behaviour change starts from the Java 26.3 source or a BDS 1.26.52.3 capture, and includes a reproducible scenario against it.
-- **Regression tests.** Fix root causes and add a test that fails without the fix.
-- **Honest claims.** Record what a check establishes, and what it does not, in [`docs/verification.md`](docs/verification.md).
-- **Dragonfly conventions.** Adamant keeps Dragonfly's package structure and Go API style; upstream API docs are at [pkg.go.dev](https://pkg.go.dev/github.com/df-mc/dragonfly/server).
-
-The registry comparison harness, which runs the pinned BDS next to Adamant and diffs their registries, is described in [Native registry comparison](docs/verification.md#native-registry-comparison).
-
-To add a language or translate command descriptions, see [Command description localization](docs/localization.md).
-
-## Contributing
-
-Issues and pull requests are welcome. Keep changes focused, and state the edition and version that your reference behaviour comes from. Never replace a reference expectation with a value generated by the implementation under test.
-
-## Acknowledgements
-
-Adamant builds on [Dragonfly](https://github.com/df-mc/dragonfly) by the df-mc maintainers and community, and on [gophertunnel](https://github.com/Sandertv/gophertunnel). Java references come from [MCP-Reborn](https://github.com/Hexeption/MCP-Reborn).
+| `main.go`, `internal/app` | Entrypoint, `config.toml` loader, logging, metrics, and service lifecycle |
+| `api`, `api/bedrock` | External plugin SDK and Bedrock packet interception / raw packet helpers |
+| `server/ecs`, `server/event` | Zero-allocation component bags and prioritized typed event bus |
+| `server/world` | World, chunks, tick systems, 4×4 parallel regions, LevelDB (`mcdb`), and generators (`generator/advanced`) |
+| `server/entity` | Entities, `MobAI` & `Brain` frameworks, parallel prefetch, `sharedPathCache`, and mob behaviours |
+| `server/player` | Players, zero-allocation facets, typed events, and anti-cheat |
+| `server/block`, `server/item`, `server/cmd` | Block/item registries & mechanics, Java 26.3 command engine |
+| `protocol/bedrock`, `net` | Bedrock adapter (`session`, `netconn`, `query`) and stdlib-only `net` transport/compression module |
+| `internal/archtest`, `cmd` | Architectural ratchets (R1–R5, API snapshot) and standalone BDS/Java audit tools |
 
 ## License
 
-Adamant is released under the [MIT License](LICENSE), inherited from Dragonfly.
-
-*Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.*
+Released under the [MIT License](LICENSE). Originally built on [Dragonfly](https://github.com/df-mc/dragonfly) and [gophertunnel](https://github.com/Sandertv/gophertunnel), with Java reference sources via [MCP-Reborn](https://github.com/Hexeption/MCP-Reborn). *Not an official Minecraft product; not approved by or associated with Mojang or Microsoft.*

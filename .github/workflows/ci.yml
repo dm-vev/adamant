@@ -44,8 +44,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # fixes/ is an empty module that only keeps its directory out of the
-        # root module; it has no packages to vet.
         module: [., net, net/interop, net/interop/v2225, scripts/redstone_client]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -222,7 +220,7 @@ jobs:
       - name: Protocol golden snapshots
         run: go test -count=1 -run 'TestGolden|BDS' ./protocol/bedrock/session
       - name: Boundary rules
-        run: go test -count=1 -run 'TestImportBoundary|TestBoundaryRules|TestAdaptersKeepOffTheWorld|TestMutationRules|TestWaitRules|TestOwnersDoNotWait|TestExportedAPI|TestLongFunctions|TestLongFunctionRules' .
+        run: go test -count=1 -run 'TestImportBoundary|TestBoundaryRules|TestAdaptersKeepOffTheWorld|TestMutationRules|TestWaitRules|TestOwnersDoNotWait|TestExportedAPI|TestLongFunctions|TestLongFunctionRules|TestEntityLayers' ./internal/archtest
       # Every centre of every dimension, and the totals: about 85 s of CPU. The
       # test jobs generate only the first centre of each dimension.
       - name: Generation hash

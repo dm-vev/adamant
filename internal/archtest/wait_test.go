@@ -1,4 +1,4 @@
-package main
+package archtest
 
 import (
 	"flag"
@@ -38,7 +38,7 @@ const waitHeader = `# Waits for a world owner inside a transaction that still ex
 #
 # Regenerate it with:
 #
-#	go test -run TestOwnersDoNotWait -update-waits .
+#	go test -run TestOwnersDoNotWait -update-waits ./internal/archtest
 #
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 `
@@ -67,7 +67,7 @@ var (
 // source takes seconds; R4 and R5 share it.
 func loadModule() (*loadedModule, error) {
 	moduleOnce.Do(func() {
-		abs, err := filepath.Abs(".")
+		abs, err := filepath.Abs(repoRoot)
 		if err != nil {
 			moduleErr = err
 			return
@@ -488,7 +488,7 @@ func TestOwnersDoNotWait(t *testing.T) {
 
 	listed, err := readAllowlist(waitRatchet)
 	if err != nil {
-		t.Fatalf("read the ratchet: %v (generate it with: go test -run TestOwnersDoNotWait -update-waits .)", err)
+		t.Fatalf("read the ratchet: %v (generate it with: go test -run TestOwnersDoNotWait -update-waits ./internal/archtest)", err)
 	}
 	left := map[string]int{}
 	for i, entry := range listed {

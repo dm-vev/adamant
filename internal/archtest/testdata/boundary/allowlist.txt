@@ -8,7 +8,7 @@
 #
 # Regenerate it with:
 #
-#	go test -run TestImportBoundary -update-boundary .
+#	go test -run TestImportBoundary -update-boundary ./internal/archtest
 #
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 

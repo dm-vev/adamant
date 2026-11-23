@@ -1,4 +1,4 @@
-package main
+package archtest
 
 import (
 	"flag"
@@ -50,7 +50,7 @@ const entityLayersHeader = `# Unexported identifiers of the families of server/e
 #
 # Regenerate it with:
 #
-#	go test -run TestEntityLayers -update-entity-layers .
+#	go test -run TestEntityLayers -update-entity-layers ./internal/archtest
 #
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 `
@@ -297,7 +297,7 @@ func TestEntityLayers(t *testing.T) {
 
 	listed, err := readAllowlist(entityLayers)
 	if err != nil {
-		t.Fatalf("read the ratchet: %v (generate it with: go test -run TestEntityLayers -update-entity-layers .)", err)
+		t.Fatalf("read the ratchet: %v (generate it with: go test -run TestEntityLayers -update-entity-layers ./internal/archtest)", err)
 	}
 	listedSet := map[string]bool{}
 	for i, entry := range listed {

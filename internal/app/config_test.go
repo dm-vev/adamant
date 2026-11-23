@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"bytes"
@@ -155,7 +155,7 @@ func TestMarshalConfigMergesParts(t *testing.T) {
 // a file that sets every key to a value other than its default, and checks
 // every setting the server and its listeners take from them.
 func TestConfigFileKeepsItsMeaning(t *testing.T) {
-	checkedIn, err := os.ReadFile("config.toml")
+	checkedIn, err := os.ReadFile(filepath.Join("..", "..", "config.toml"))
 	if err != nil {
 		t.Fatal(err)
 	}
