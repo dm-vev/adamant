@@ -18,6 +18,7 @@ func (s *Session) ViewNameTag(entity world.Entity, nameTag text.Text) {
 	if s.viewLayer == nil {
 		return
 	}
+	s.viewLayerActive.Store(true)
 	s.viewLayer.ViewNameTag(entity, bedrocktext.String(nameTag))
 }
 
@@ -34,6 +35,7 @@ func (s *Session) ViewAlwaysShowNameTag(entity world.Entity, alwaysShow bool) {
 	if s.viewLayer == nil {
 		return
 	}
+	s.viewLayerActive.Store(true)
 	s.viewLayer.ViewAlwaysShowNameTag(entity, alwaysShow)
 }
 
@@ -51,6 +53,7 @@ func (s *Session) ViewScoreTag(entity world.Entity, scoreTag text.Text) {
 	if s.viewLayer == nil {
 		return
 	}
+	s.viewLayerActive.Store(true)
 	s.viewLayer.ViewScoreTag(entity, bedrocktext.String(scoreTag))
 }
 
@@ -67,6 +70,7 @@ func (s *Session) ViewVisibility(entity world.Entity, level world.VisibilityLeve
 	if s.viewLayer == nil {
 		return
 	}
+	s.viewLayerActive.Store(true)
 	s.viewLayer.ViewVisibility(entity, level)
 	if !s.entityHidden(entity) && s.viewingEntity(entity.H()) {
 		s.ViewEntityArmour(entity)
@@ -86,10 +90,28 @@ func (s *Session) RemoveViewLayer(entity world.Entity) {
 
 // ViewLayerEntityChanged refreshes the entity metadata for this session if the entity is currently visible.
 func (s *Session) ViewLayerEntityChanged(e world.Entity) {
+	s.viewLayerActive.Store(true)
 	if s.entityHidden(e) || !s.viewingEntity(e.H()) {
 		return
 	}
 	s.ViewEntityState(e)
+}
+
+// hasViewLayerOverride reports whether this session has any ViewLayer override applied to e.
+func (s *Session) hasViewLayerOverride(e world.Entity) bool {
+	if s.viewLayer == nil || (s.viewLayerOwned && !s.viewLayerActive.Load()) {
+		return false
+	}
+	if _, ok := s.viewLayer.NameTag(e); ok {
+		return true
+	}
+	if _, ok := s.viewLayer.AlwaysShowNameTag(e); ok {
+		return true
+	}
+	if _, ok := s.viewLayer.ScoreTag(e); ok {
+		return true
+	}
+	return s.viewLayer.Visibility(e).EnforceVisibility()
 }
 
 // viewingEntity checks if this session currently has a runtime ID assigned to the entity handle.

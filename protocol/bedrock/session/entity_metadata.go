@@ -2,10 +2,12 @@ package session
 
 import (
 	"cmp"
+	"maps"
 	"math"
 	"reflect"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -25,7 +27,16 @@ var (
 	boxedInt32s [302]any // index 0 is -1, index 1 is 0, ..., index 301 is 300
 
 	metaFloat32Zero        any = float32(0)
+	metaFloat32Quarter     any = float32(0.25)
+	metaFloat32Five16      any = float32(0.3125)
+	metaFloat32Half        any = float32(0.5)
+	metaFloat32SixTenths   any = float32(0.6)
+	metaFloat32NineEight   any = float32(0.98)
 	metaFloat32One         any = float32(1)
+	metaFloat32OneHalf     any = float32(1.5)
+	metaFloat32OneEight    any = float32(1.8)
+	metaFloat32OneNine     any = float32(1.9)
+	metaFloat32Two         any = float32(2)
 	metaFloat32Min         any = float32(math.SmallestNonzeroFloat32)
 	metaInt32Max           any = int32(math.MaxInt32)
 	metaInt32Heartbeat     any = int32(376)
@@ -54,6 +65,10 @@ func init() {
 	for i := range boxedInt32s {
 		boxedInt32s[i] = int32(i - 1)
 	}
+	slots := make(map[uintptr]entityTypeSlot, 128)
+	entityTypeSlots.Store(&slots)
+	byVal := make(map[world.EntityType]*entityTypeMeta, 128)
+	entityTypeByVal.Store(&byVal)
 }
 
 func boxByte(b byte) any     { return boxedBytes[b] }
@@ -90,8 +105,26 @@ func boxFloat32(v float32) any {
 	switch math.Float32bits(v) {
 	case 0:
 		return metaFloat32Zero
-	case 0x3f800000:
+	case 0x3e800000: // 0.25
+		return metaFloat32Quarter
+	case 0x3ea00000: // 0.3125
+		return metaFloat32Five16
+	case 0x3f000000: // 0.5
+		return metaFloat32Half
+	case 0x3f19999a: // 0.6
+		return metaFloat32SixTenths
+	case 0x3f7ae148: // 0.98
+		return metaFloat32NineEight
+	case 0x3f800000: // 1.0
 		return metaFloat32One
+	case 0x3fc00000: // 1.5
+		return metaFloat32OneHalf
+	case 0x3fe66666: // 1.8
+		return metaFloat32OneEight
+	case 0x3ff33333: // 1.9
+		return metaFloat32OneNine
+	case 0x40000000: // 2.0
+		return metaFloat32Two
 	default:
 		return v
 	}
@@ -154,30 +187,99 @@ type entityTypeMeta struct {
 	soundEvent     any
 	fallMultiplier any
 
-	props []actorProperty
+	props        []actorProperty
+	defaultProps []mc.IntegerEntityProperty
+	mapHint      atomic.Int32
 }
 
-var entityTypeMetaCache sync.Map
+type entityTypeSlot struct {
+	comparable bool
+	singleton  *entityTypeMeta // non-nil when concrete type has size 0 (unique value)
+}
+
+var (
+	entityTypeMetaMu sync.Mutex
+	entityTypeSlots  atomic.Pointer[map[uintptr]entityTypeSlot]
+	entityTypeByVal  atomic.Pointer[map[world.EntityType]*entityTypeMeta]
+)
 
 func entityTypeMetaOf(t world.EntityType) *entityTypeMeta {
-	if t != nil && reflect.TypeOf(t).Comparable() {
-		if v, ok := entityTypeMetaCache.Load(t); ok {
-			return v.(*entityTypeMeta)
-		}
-		meta := buildEntityTypeMeta(t)
-		entityTypeMetaCache.Store(t, meta)
-		return meta
+	if t == nil {
+		return nil
 	}
-	return buildEntityTypeMeta(t)
+	tp := efaceType(t)
+	if slot, ok := (*entityTypeSlots.Load())[tp]; ok {
+		if slot.singleton != nil {
+			return slot.singleton
+		}
+		if slot.comparable {
+			if meta, ok := (*entityTypeByVal.Load())[t]; ok {
+				return meta
+			}
+		} else {
+			return buildEntityTypeMeta(t)
+		}
+	}
+	return entityTypeMetaSlow(t, tp)
+}
+
+func entityTypeMetaSlow(t world.EntityType, tp uintptr) *entityTypeMeta {
+	entityTypeMetaMu.Lock()
+	defer entityTypeMetaMu.Unlock()
+
+	slots := *entityTypeSlots.Load()
+	slot, hasSlot := slots[tp]
+	if hasSlot {
+		if slot.singleton != nil {
+			return slot.singleton
+		}
+		if !slot.comparable {
+			return buildEntityTypeMeta(t)
+		}
+		if meta, ok := (*entityTypeByVal.Load())[t]; ok {
+			return meta
+		}
+	}
+
+	meta := buildEntityTypeMeta(t)
+	if !hasSlot {
+		rt := reflect.TypeOf(t)
+		comp := rt.Comparable()
+		slot = entityTypeSlot{comparable: comp}
+		if comp && rt.Size() == 0 {
+			slot.singleton = meta
+		}
+		nextSlots := make(map[uintptr]entityTypeSlot, len(slots)+1)
+		maps.Copy(nextSlots, slots)
+		nextSlots[tp] = slot
+		entityTypeSlots.Store(&nextSlots)
+	}
+	if slot.comparable && slot.singleton == nil {
+		oldByVal := *entityTypeByVal.Load()
+		nextByVal := make(map[world.EntityType]*entityTypeMeta, len(oldByVal)+1)
+		maps.Copy(nextByVal, oldByVal)
+		nextByVal[t] = meta
+		entityTypeByVal.Store(&nextByVal)
+	}
+	return meta
 }
 
 func buildEntityTypeMeta(t world.EntityType) *entityTypeMeta {
 	id := networkID(t)
+	props := actorPropertyTypes[id]
+	var defaultProps []mc.IntegerEntityProperty
+	if len(props) > 0 {
+		defaultProps = make([]mc.IntegerEntityProperty, len(props))
+		for i, p := range props {
+			defaultProps[i] = mc.IntegerEntityProperty{Index: uint32(i), Value: p.def}
+		}
+	}
 	meta := &entityTypeMeta{
-		netID:    id,
-		isPlayer: id == "minecraft:player",
-		isFox:    id == "minecraft:fox",
-		props:    actorPropertyTypes[id],
+		netID:        id,
+		isPlayer:     id == "minecraft:player",
+		isFox:        id == "minecraft:fox",
+		props:        props,
+		defaultProps: defaultProps,
 	}
 	var f actorFlags
 	if flags, ok := bedrockActorFlags[id]; ok {
@@ -238,73 +340,53 @@ func buildEntityTypeMeta(t world.EntityType) *entityTypeMeta {
 // all properties to their default values and disabling all flags.
 func (s *Session) parseEntityMetadata(e world.Entity) mc.Metadata {
 	t := e.H().Type()
-	if t == nil || !reflect.TypeOf(t).Comparable() {
+	if t == nil {
 		return s.parseEntityMetadataSlow(e, t)
 	}
-	meta := entityTypeMetaOf(t)
-	m := make(mc.Metadata, 28)
+	return s.parseEntityMetadataWith(e, entityTypeMetaOf(t), metaCapsOf(e))
+}
+
+func (s *Session) parseEntityMetadataWith(e world.Entity, meta *entityTypeMeta, caps metaCaps) mc.Metadata {
+	if meta == nil {
+		return s.parseEntityMetadataSlow(e, e.H().Type())
+	}
+	hint := int(meta.mapHint.Load())
+	if hint == 0 {
+		hint = 28
+	}
+	m := make(mc.Metadata, hint)
 
 	m[mc.EntityDataKeyPlayerFlags] = boxedBytes[0]
 	m[mc.EntityDataKeyEffectColor] = boxedInt32s[1]
 	m[mc.EntityDataKeyEffectAmbience] = boxedBytes[0]
 	m[mc.EntityDataKeyColorIndex] = boxedBytes[0]
 
-	switch {
-	case meta.hasShape && !meta.dynamicShape:
-		if meta.hasBabyShape && actorIsBaby(e) {
-			m[mc.EntityDataKeyWidth] = meta.babyW
-			m[mc.EntityDataKeyHeight] = meta.babyH
-			m[mc.EntityDataKeyScale] = meta.babyS
-		} else {
-			m[mc.EntityDataKeyWidth] = meta.adultW
-			m[mc.EntityDataKeyHeight] = meta.adultH
-			m[mc.EntityDataKeyScale] = meta.adultS
-		}
-	case meta.dynamicShape:
-		if shape, ok := actorShape(e, meta.netID); ok {
-			m[mc.EntityDataKeyWidth] = boxFloat32(shape.width)
-			m[mc.EntityDataKeyHeight] = boxFloat32(shape.height)
-			m[mc.EntityDataKeyScale] = boxFloat32(shape.scale)
-		} else {
-			bb := t.BBox(e)
-			m[mc.EntityDataKeyWidth] = boxFloat32(float32(bb.Width()))
-			m[mc.EntityDataKeyHeight] = boxFloat32(float32(bb.Height()))
-		}
-	default:
-		bb := t.BBox(e)
-		m[mc.EntityDataKeyWidth] = boxFloat32(float32(bb.Width()))
-		m[mc.EntityDataKeyHeight] = boxFloat32(float32(bb.Height()))
+	var beh entity.Behaviour
+	var behCaps metaCaps
+	if caps.hi&capBehaviour != 0 {
+		beh = e.(behaviourHolder).Behaviour()
+		behCaps = metaCapsOf(beh)
 	}
 
-	if !meta.isPlayer {
-		if meta.isFox {
-			if sl, ok := e.(interface{ Sleeping() bool }); ok && sl.Sleeping() {
-				m[mc.EntityDataKeyAmbientSoundInterval] = metaSleepSoundInterval
-				m[mc.EntityDataKeyAmbientSoundIntervalRange] = metaSleepSoundSpread
-				m[mc.EntityDataKeyAmbientSoundEventName] = metaSleepSoundEvent
-			} else {
-				m[mc.EntityDataKeyAmbientSoundInterval] = meta.soundInterval
-				m[mc.EntityDataKeyAmbientSoundIntervalRange] = meta.soundSpread
-				m[mc.EntityDataKeyAmbientSoundEventName] = meta.soundEvent
-			}
-		} else {
-			m[mc.EntityDataKeyAmbientSoundInterval] = meta.soundInterval
-			m[mc.EntityDataKeyAmbientSoundIntervalRange] = meta.soundSpread
-			m[mc.EntityDataKeyAmbientSoundEventName] = meta.soundEvent
-		}
-		m[mc.EntityDataKeyFallDamageMultiplier] = meta.fallMultiplier
-	}
+	writeBaseShapeMetadata(e, meta, caps, beh, behCaps, m)
+	writeBaseAmbientMetadata(e, meta, caps, m)
 
-	var seat world.RiderSeat
-	if r, ok := e.(riderSeat); ok {
-		seat = r.RiderSeat()
+	if caps.hi&capRiderSeat != 0 {
+		writeSeatMetadata(m, e.(riderSeat).RiderSeat())
+	} else {
+		m[mc.EntityDataKeySeatLockPassengerRotation] = boxedBytes[0]
+		m[mc.EntityDataKeySeatLockPassengerRotationDegrees] = metaFloat32Zero
+		m[mc.EntityDataKeySeatRotationOffset] = boxedBytes[0]
+		m[mc.EntityDataKeySeatRotationOffsetDegrees] = metaFloat32Zero
 	}
-	writeSeatMetadata(m, seat)
 
 	flags := actorFlags{low: meta.baseFlags0, high: meta.baseFlags1}
-	flags = s.addSpecificMetadataFlags(e, m, flags)
-	if beh, ok := e.(interface{ Behaviour() entity.Behaviour }); ok {
-		flags = s.addSpecificMetadataFlags(beh.Behaviour(), m, flags)
+	flags = s.addSpecificMetadataFlags(e, m, flags, caps)
+	if beh != nil {
+		flags = s.addSpecificMetadataFlags(beh, m, flags, behCaps)
+	}
+	if caps.hi&capAppearance != 0 {
+		s.writeActorAppearance(e, m, &flags)
 	}
 	switch flags.low {
 	case meta.baseFlags0:
@@ -319,8 +401,81 @@ func (s *Session) parseEntityMetadata(e world.Entity) mc.Metadata {
 	} else {
 		m[mc.EntityDataKeyFlagsTwo] = boxInt64(flags.high)
 	}
-	s.writeActorAppearance(e, m)
+	if n := int32(len(m)); n > meta.mapHint.Load() {
+		meta.mapHint.Store(n)
+	}
 	return m
+}
+
+func writeBaseShapeMetadata(e world.Entity, meta *entityTypeMeta, caps metaCaps, beh entity.Behaviour, behCaps metaCaps, m mc.Metadata) {
+	switch {
+	case meta.hasShape && !meta.dynamicShape:
+		if meta.hasBabyShape && actorIsBabyWith(e, caps, beh, behCaps) {
+			m[mc.EntityDataKeyWidth] = meta.babyW
+			m[mc.EntityDataKeyHeight] = meta.babyH
+			m[mc.EntityDataKeyScale] = meta.babyS
+		} else {
+			m[mc.EntityDataKeyWidth] = meta.adultW
+			m[mc.EntityDataKeyHeight] = meta.adultH
+			m[mc.EntityDataKeyScale] = meta.adultS
+		}
+	case meta.dynamicShape:
+		writeDynamicShapeMetadata(e, meta, caps, beh, behCaps, m)
+	default:
+		bb := e.H().Type().BBox(e)
+		m[mc.EntityDataKeyWidth] = boxFloat32(float32(bb.Width()))
+		m[mc.EntityDataKeyHeight] = boxFloat32(float32(bb.Height()))
+	}
+}
+
+func writeDynamicShapeMetadata(e world.Entity, meta *entityTypeMeta, caps metaCaps, beh entity.Behaviour, behCaps metaCaps, m mc.Metadata) {
+	switch c := e.(type) {
+	case *entity.Camel:
+		if !c.Sitting() {
+			if meta.hasBabyShape && actorIsBabyWith(e, caps, beh, behCaps) {
+				m[mc.EntityDataKeyWidth], m[mc.EntityDataKeyHeight], m[mc.EntityDataKeyScale] = meta.babyW, meta.babyH, meta.babyS
+			} else {
+				m[mc.EntityDataKeyWidth], m[mc.EntityDataKeyHeight], m[mc.EntityDataKeyScale] = meta.adultW, meta.adultH, meta.adultS
+			}
+			return
+		}
+	case *entity.CamelHusk:
+		if !c.Sitting() {
+			m[mc.EntityDataKeyWidth], m[mc.EntityDataKeyHeight], m[mc.EntityDataKeyScale] = meta.adultW, meta.adultH, meta.adultS
+			return
+		}
+	case *entity.Salmon:
+		m[mc.EntityDataKeyWidth] = meta.adultW
+		m[mc.EntityDataKeyHeight] = meta.adultH
+		scale := [...]any{metaFloat32Half, metaFloat32One, metaFloat32OneHalf}[min(max(c.Variant(), 0), 2)]
+		m[mc.EntityDataKeyScale] = scale
+		return
+	}
+	if shape, ok := actorShape(e, meta.netID); ok {
+		m[mc.EntityDataKeyWidth] = boxFloat32(shape.width)
+		m[mc.EntityDataKeyHeight] = boxFloat32(shape.height)
+		m[mc.EntityDataKeyScale] = boxFloat32(shape.scale)
+		return
+	}
+	bb := e.H().Type().BBox(e)
+	m[mc.EntityDataKeyWidth] = boxFloat32(float32(bb.Width()))
+	m[mc.EntityDataKeyHeight] = boxFloat32(float32(bb.Height()))
+}
+
+func writeBaseAmbientMetadata(e world.Entity, meta *entityTypeMeta, caps metaCaps, m mc.Metadata) {
+	if meta.isPlayer {
+		return
+	}
+	if meta.isFox && caps.hi&capFoxSleeping != 0 && e.(foxSleeper).Sleeping() {
+		m[mc.EntityDataKeyAmbientSoundInterval] = metaSleepSoundInterval
+		m[mc.EntityDataKeyAmbientSoundIntervalRange] = metaSleepSoundSpread
+		m[mc.EntityDataKeyAmbientSoundEventName] = metaSleepSoundEvent
+	} else {
+		m[mc.EntityDataKeyAmbientSoundInterval] = meta.soundInterval
+		m[mc.EntityDataKeyAmbientSoundIntervalRange] = meta.soundSpread
+		m[mc.EntityDataKeyAmbientSoundEventName] = meta.soundEvent
+	}
+	m[mc.EntityDataKeyFallDamageMultiplier] = meta.fallMultiplier
 }
 
 func (s *Session) parseEntityMetadataSlow(e world.Entity, t world.EntityType) mc.Metadata {
@@ -351,21 +506,28 @@ func (s *Session) parseEntityMetadataSlow(e world.Entity, t world.EntityType) mc
 	}
 	writeSeatMetadata(m, seat)
 	s.addSpecificMetadata(e, m)
-	if beh, ok := e.(interface{ Behaviour() entity.Behaviour }); ok {
+	if beh, ok := e.(behaviourHolder); ok {
 		s.addSpecificMetadata(beh.Behaviour(), m)
 	}
-	s.writeActorAppearance(e, m)
+	f0, _ := m[mc.EntityDataKeyFlags].(int64)
+	f1, _ := m[mc.EntityDataKeyFlagsTwo].(int64)
+	f := actorFlags{low: f0, high: f1}
+	s.writeActorAppearance(e, m, &f)
+	if f.touchedLow {
+		m[mc.EntityDataKeyFlags] = boxInt64(f.low)
+	}
+	if f.touchedHigh {
+		m[mc.EntityDataKeyFlagsTwo] = boxInt64(f.high)
+	}
 	return m
 }
 
-// addSpecificMetadata writes the metadata of e that depends on what it is: the
-// writers of metadataWriters that apply to its dynamic type, in their order.
-// The first time it sees a type it runs all of them, which tells which apply,
-// and only those after.
+// addSpecificMetadata writes the metadata of e that depends on its dynamic type,
+// gated by the cached per-type capability bitmask.
 func (s *Session) addSpecificMetadata(e any, m mc.Metadata) {
 	f0, has0 := m[mc.EntityDataKeyFlags].(int64)
 	f1, has1 := m[mc.EntityDataKeyFlagsTwo].(int64)
-	f := s.addSpecificMetadataFlags(e, m, actorFlags{low: f0, high: f1})
+	f := s.addSpecificMetadataFlags(e, m, actorFlags{low: f0, high: f1}, metaCapsOf(e))
 	if f.touchedLow {
 		if !has0 {
 			_ = m[mc.EntityDataKeyFlags].(int64)
@@ -378,717 +540,6 @@ func (s *Session) addSpecificMetadata(e any, m mc.Metadata) {
 		}
 		m[mc.EntityDataKeyFlagsTwo] = boxInt64(f.high)
 	}
-}
-
-func (s *Session) addSpecificMetadataFlags(e any, m mc.Metadata, f actorFlags) actorFlags {
-	t := reflect.TypeOf(e)
-	if ws, ok := metadataWritersOf.Load(t); ok {
-		for _, w := range ws.([]metadataWriter) {
-			f, _ = w(s, e, m, f)
-		}
-		return f
-	}
-	var ws []metadataWriter
-	for _, w := range metadataWriters {
-		var matched bool
-		f, matched = w(s, e, m, f)
-		if matched {
-			ws = append(ws, w)
-		}
-	}
-	metadataWritersOf.Store(t, ws)
-	return f
-}
-
-// metadataWritersOf holds the writers of metadataWriters that apply to each
-// dynamic type addSpecificMetadata saw, by its reflect.Type. They depend on
-// the type alone, so all sessions share it. Sessions write metadata on the
-// goroutine of the world they view, which changes with the world of the
-// player, so the cache is a sync.Map: once a type is in, reading it takes no
-// lock.
-var metadataWritersOf sync.Map
-
-// A metadataWriter writes the metadata of e of one kind of entity, if e is of
-// that kind, and reports whether it is: whether the type assertions it makes
-// of e hold. That depends on the dynamic type of e alone, and a writer that
-// reports false writes nothing.
-type metadataWriter func(s *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool)
-
-// metadataWriters are the writers of the metadata of each kind of entity, in
-// the order addSpecificMetadata runs them: a later one may overwrite what an
-// earlier one wrote.
-var metadataWriters = [...]metadataWriter{
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		sheep, ok := e.(*entity.Sheep)
-		if ok {
-			m[mc.EntityDataKeyColorIndex] = boxByte(byte(sheep.WoolColor()))
-			if sheep.Sheared() {
-				f.set(mc.EntityDataFlagSheared)
-			}
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		shulker, ok := e.(*entity.Shulker)
-		if ok {
-			// BDS uses Variant for shell colour and separate attachment metadata.
-			m[mc.EntityDataKeyVariant] = boxInt32(int32(shulker.Color()))
-			m[mc.EntityDataKeyPeekID] = boxInt32(int32(shulker.Peek()))
-			m[mc.EntityDataKeyAttachFace] = boxByte(byte(shulker.AttachFace()))
-			m[mc.EntityDataKeyAttached] = boxedInt16s[1]
-			pos := cube.PosFromVec3(shulker.Position())
-			m[mc.EntityDataKeyAttachedPosition] = mc.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		parrot, ok := e.(*entity.Parrot)
-		if ok {
-			m[mc.EntityDataKeyVariant] = boxInt32(int32(parrot.Variant()))
-			if parrot.Tamed() {
-				f.set(mc.EntityDataFlagTamed)
-			}
-			if parrot.Party() {
-				f.set(mc.EntityDataFlagDancing)
-			}
-			if parrot.Sitting() {
-				f.set(mc.EntityDataFlagSitting)
-			}
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		sn, ok := e.(sneaker)
-		if ok && sn.Sneaking() {
-			f.set(mc.EntityDataFlagSneaking)
-			if b, ok := e.(blocker); ok {
-				if _, blocking := b.Blocking(); blocking {
-					f.set(mc.EntityDataFlagBlocking)
-				}
-			}
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		sp, ok := e.(sprinter)
-		if ok && sp.Sprinting() {
-			f.set(mc.EntityDataFlagSprinting)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		sw, ok := e.(swimmer)
-		if ok && sw.Swimming() {
-			f.set(mc.EntityDataFlagSwimming)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		cr, ok := e.(crawler)
-		if ok && cr.Crawling() {
-			f.set(mc.EntityDataFlagCrawling)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		gl, ok := e.(glider)
-		if ok && gl.Gliding() {
-			f.set(mc.EntityDataFlagGliding)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		bb, ok := e.(baby)
-		if ok && bb.Baby() {
-			f.set(mc.EntityDataFlagBaby)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		l, ok := e.(interface{ InLove() bool })
-		if ok && l.InLove() {
-			f.set(mc.EntityDataFlagInLove)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		b, ok := e.(breather)
-		if ok {
-			m[mc.EntityDataKeyAirSupply] = boxInt16(int16(b.AirSupply().Milliseconds() / 50))
-			m[mc.EntityDataKeyAirSupplyMax] = boxInt16(int16(b.MaxAirSupply().Milliseconds() / 50))
-			if b.Breathing() {
-				f.set(mc.EntityDataFlagBreathing)
-			}
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		i, ok := e.(invisible)
-		eff, bearer := e.(effectBearer)
-		if ok {
-			if i.Invisible() {
-				f.set(mc.EntityDataFlagInvisible)
-			}
-		} else if bearer {
-			for _, ef := range eff.Effects() {
-				if ef.Type() == effect.Invisibility {
-					f.set(mc.EntityDataFlagInvisible)
-					break
-				}
-			}
-		}
-		return f, ok || bearer
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		i, ok := e.(immobile)
-		if ok && i.Immobile() {
-			f.set(mc.EntityDataFlagNoAI)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		o, ok := e.(onFire)
-		if ok && o.OnFireDuration() > 0 {
-			f.set(mc.EntityDataFlagOnFire)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		fr, ok := e.(interface{ FreezingStrength() float32 })
-		if ok {
-			m[mc.EntityDataKeyFreezingEffectStrength] = boxFloat32(fr.FreezingStrength())
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		sh, ok := e.(interface{ Shaking() bool })
-		if ok && sh.Shaking() {
-			f.set(mc.EntityDataFlagShaking)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		r, ok := e.(interface{ RamAttacking() bool })
-		if ok && r.RamAttacking() {
-			f.set(mc.EntityDataFlagRamAttack)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		w, ok := e.(interface {
-			WardenPose() (emerging, digging, roaring, sniffing, sonicBoom bool)
-			HeartbeatInterval() int32
-		})
-		if ok {
-			emerging, digging, roaring, sniffing, sonicBoom := w.WardenPose()
-			if emerging {
-				f.set(mc.EntityDataFlagEmerging)
-			}
-			if digging {
-				f.set(mc.EntityDataFlagDigging)
-			}
-			if roaring {
-				f.set(mc.EntityDataFlagRoaring)
-			}
-			if sniffing {
-				f.set(mc.EntityDataFlagSniffing)
-			}
-			if sonicBoom {
-				f.set(mc.EntityDataFlagSonicBoom)
-			}
-			m[mc.EntityDataKeyHeartbeatIntervalTicks] = boxInt32(w.HeartbeatInterval())
-			// LevelSoundEvent heartbeat.
-			m[mc.EntityDataKeyHeartbeatSoundEvent] = metaInt32Heartbeat
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		sh, ok := e.(interface{ Shooting() bool })
-		if ok && sh.Shooting() {
-			// A breeze shooting faces its target to attack it from range.
-			f.set(mc.EntityDataFlagFacingTargetToRangeAttack)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		j, ok := e.(interface{ JumpGoalJumping() bool })
-		if ok && j.JumpGoalJumping() {
-			f.set(mc.EntityDataFlagJumpGoal)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		sn, ok := e.(interface{ SnifferState() string })
-		if ok {
-			if flag, ok := snifferStateFlags[sn.SnifferState()]; ok {
-				f.set(flag)
-			}
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		p, ok := e.(interface{ PlayingDead() bool })
-		if ok && p.PlayingDead() {
-			f.set(mc.EntityDataFlagPlayingDead)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		c, ok := e.(interface{ Croaking() bool })
-		if ok && c.Croaking() {
-			f.set(mc.EntityDataFlagCroaking)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		c, ok := e.(interface{ EatingMob() bool })
-		if ok && c.EatingMob() {
-			// Bedrock's EAT_MOB flag shows a frog's tongue.
-			f.set(mc.EntityDataFlagDigestMob)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		r, ok := e.(interface{ Resting() bool })
-		if ok && r.Resting() {
-			// Bats hang upside down while resting.
-			f.set(mc.EntityDataFlagResting)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		db, ok := e.(doorBreaker)
-		if ok && db.CanBreakDoors() {
-			f.set(mc.EntityDataFlagDoorBreaker)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		br, ok := e.(breakingObstruction)
-		if ok && br.BreakingObstruction() {
-			f.set(mc.EntityDataFlagBreakingObstruction)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		ar, ok := e.(armsRaised)
-		if ok && ar.ArmsRaised() {
-			f.set(mc.EntityDataFlagCharging)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		u, ok := e.(using)
-		if ok && u.UsingItem() {
-			f.set(mc.EntityDataFlagUsingItem)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		if bs, ok := e.(bedSleeper); ok {
-			return writeBedSleeperMetadataFlags(bs, m, f), true
-		}
-		sl, ok := e.(sleeper)
-		if ok {
-			if pos, ok := sl.Sleeping(); ok {
-				m[mc.EntityDataKeyBedPosition] = mc.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
-
-				// For some reason there is no such flag in gophertunnel.
-				m.SetFlag(mc.EntityDataKeyPlayerFlags, 1)
-			}
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		c, ok := e.(arrow)
-		if ok && c.Critical() {
-			f.set(mc.EntityDataFlagCritical)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		g, ok := e.(gameMode)
-		if ok {
-			if g.GameMode().HasCollision() {
-				f.set(mc.EntityDataFlagHasCollision)
-			}
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		o, ok := e.(orb)
-		if ok {
-			m[mc.EntityDataKeyValue] = boxInt32(int32(o.Experience()))
-		}
-		return f, ok
-	},
-	func(s *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		fw, ok := e.(firework)
-		o, isOwned := e.(owned)
-		if ok {
-			m[mc.EntityDataKeyDisplayFirework] = networkItemNBT(item.NewStack(fw.Firework(), 1))
-			if isOwned && fw.Attached() && o.Owner() != nil {
-				m[mc.EntityDataKeyCustomDisplay] = s.handleUniqueID(o.Owner())
-			}
-		} else if isOwned && o.Owner() != nil {
-			m[mc.EntityDataKeyOwner] = s.handleUniqueID(o.Owner())
-		}
-		return f, ok || isOwned
-	},
-	func(s *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		l, ok := e.(leashed)
-		if ok {
-			if id := l.HolderLeashID(); id != 0 {
-				if s.ent != nil && id == s.ent.UniqueID() {
-					id = int64(selfEntityRuntimeID)
-				}
-				m[mc.EntityDataKeyLeashHolder] = id
-			}
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		sc, ok := e.(scaled)
-		if ok {
-			m[mc.EntityDataKeyScale] = boxFloat32(float32(sc.Scale()))
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		t, ok := e.(tnt)
-		if ok {
-			m[mc.EntityDataKeyFuseTime] = boxInt32(int32(t.Fuse().Milliseconds() / 50))
-			f.set(mc.EntityDataFlagIgnited)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		i, ok := e.(igniteable)
-		if ok && i.Ignited() {
-			m[mc.EntityDataKeyFuseTime] = boxInt32(int32(i.FuseTicks()))
-			f.set(mc.EntityDataFlagIgnited)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		p, ok := e.(interface{ Powered() bool })
-		if ok && p.Powered() {
-			f.set(mc.EntityDataFlagPowered)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		c, ok := e.(interface{ WallClimbing() bool })
-		if ok && c.WallClimbing() {
-			f.set(mc.EntityDataFlagWallClimbing)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		// A blaze charging its fireballs burns, as Blaze.isOnFire shows it.
-		b, ok := e.(interface{ Burning() bool })
-		if ok && b.Burning() {
-			f.set(mc.EntityDataFlagOnFire)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		c, ok := e.(interface{ Charging() bool })
-		if ok && c.Charging() {
-			f.set(mc.EntityDataFlagCharging)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		c, ok := e.(interface{ CrossbowCharged() bool })
-		if ok && c.CrossbowCharged() {
-			f.set(mc.EntityDataFlagCharged)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		c, ok := e.(interface{ Celebrating() bool })
-		if ok && c.Celebrating() {
-			f.set(mc.EntityDataFlagCelebrating)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		c, ok := e.(interface{ CelebratingSpecial() bool })
-		if ok && c.CelebratingSpecial() {
-			f.set(mc.EntityDataFlagCelebratingSpecial)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		a, ok := e.(interface{ Admiring() bool })
-		if ok && a.Admiring() {
-			f.set(mc.EntityDataFlagAdmiring)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		c, ok := e.(interface {
-			Casting() bool
-			SpellColour() [3]float64
-		})
-		if ok && c.Casting() {
-			f.set(mc.EntityDataFlagCasting)
-			colour := c.SpellColour()
-			m[mc.EntityDataKeyDataSpellCastingColor] = int32(-1<<24 | int32(colour[0]*255)<<16 | int32(colour[1]*255)<<8 | int32(colour[2]*255))
-		}
-		return f, ok
-	},
-	func(s *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		g, ok := e.(interface{ BeamTargetHandle() *world.EntityHandle })
-		if ok {
-			if h := g.BeamTargetHandle(); h != nil {
-				m[mc.EntityDataKeyTarget] = s.handleUniqueID(h)
-			}
-		}
-		return f, ok
-	},
-	func(s *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		g, ok := e.(interface{ ShootTargetHandle() *world.EntityHandle })
-		if ok {
-			if h := g.ShootTargetHandle(); h != nil {
-				m[mc.EntityDataKeyTarget] = s.handleUniqueID(h)
-			} else {
-				m[mc.EntityDataKeyTarget] = metaInt64Zero
-			}
-		}
-		return f, ok
-	},
-	func(s *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		fr, ok := e.(interface{ TongueTargetHandle() *world.EntityHandle })
-		if ok {
-			// The target is cleared once the tongue is back, as Frog.eraseTongueTarget.
-			if h := fr.TongueTargetHandle(); h != nil {
-				m[mc.EntityDataKeyTarget] = s.handleUniqueID(h)
-			} else {
-				m[mc.EntityDataKeyTarget] = metaInt64Zero
-			}
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, _ mc.Metadata, f actorFlags) (actorFlags, bool) {
-		r, ok := e.(interface {
-			Stunned() bool
-			Roaring() bool
-		})
-		if ok {
-			if r.Stunned() {
-				f.set(mc.EntityDataFlagStunned)
-			}
-			if r.Roaring() {
-				f.set(mc.EntityDataFlagRoaring)
-			}
-		}
-		return f, ok
-	},
-	func(s *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		d, ok := e.(displayTile)
-		if ok {
-			var display int32
-			if b, ok := d.DisplayBlock(); ok {
-				display = int32(s.blockHash(b))
-			}
-			m[mc.EntityDataKeyDisplayBlockState] = boxInt32(display)
-			m[mc.EntityDataKeyDisplayOffset] = boxInt32(int32(d.DisplayOffset()))
-			m[mc.EntityDataKeyCustomDisplay] = boxBoolByte(d.CustomDisplay())
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		c, ok := e.(containerMeta)
-		if ok {
-			if typ, ok := actorContainerType(c.ContainerKind()); ok {
-				// The dedicated server sends the container type as a byte.
-				m[mc.EntityDataKeyContainerType] = boxByte(typ)
-				m[mc.EntityDataKeyContainerSize] = boxInt32(c.ContainerSize())
-				m[mc.EntityDataKeyContainerStrengthModifier] = boxInt32(c.ContainerStrengthModifier())
-			}
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		h, ok := e.(minecartDamage)
-		if ok {
-			m[mc.EntityDataKeyHurt] = boxInt32(int32(h.RollingAmplitude()))
-			m[mc.EntityDataKeyHurtDirection] = boxInt32(int32(h.RollingDirection()))
-			// BDS sends the damage of a vehicle as an int.
-			m[mc.EntityDataKeyStructuralIntegrity] = boxInt32(int32(h.Damage()))
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		r, ok := e.(rowTime)
-		if ok {
-			m[mc.EntityDataKeyRowTimeLeft] = boxFloat32(r.RowTimeLeft())
-			m[mc.EntityDataKeyRowTimeRight] = boxFloat32(r.RowTimeRight())
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		b, ok := e.(buoyantMeta)
-		if ok {
-			buoyant := b.Buoyant()
-			m[mc.EntityDataKeyIsBuoyant] = boxBoolByte(buoyant)
-			if buoyant {
-				m[mc.EntityDataKeyBuoyancyData] = metaBuoyancy
-				// The driver of a buoyant vehicle sits in its first seat.
-				m[mc.EntityDataKeyControllingSeatIndex] = boxedBytes[0]
-			}
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		text, ok := interactTextBoxed(e)
-		if text != nil {
-			m[mc.EntityDataKeyInteractText] = text
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		r, ok := e.(rideTarget)
-		if ok {
-			m[mc.EntityDataKeyCanRideTarget] = boxBoolByte(r.CanRideTarget())
-		}
-		return f, ok
-	},
-	func(s *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		w, ok := e.(witherMeta)
-		if ok {
-			// The heads of a wither turn to their targets, and it glows blue
-			// while it is summoned.
-			for i, h := range w.HeadTargets() {
-				var id int64
-				if h != nil {
-					id = int64(s.handleRuntimeID(h))
-				}
-				m[witherTargetKeys[i]] = boxInt64(id)
-			}
-			m[mc.EntityDataKeyInvulnerableTicks] = boxInt32(int32(w.InvulnerableTicks()))
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		ec, ok := e.(endCrystalMeta)
-		if ok {
-			if ec.ShowBase() {
-				f.set(mc.EntityDataFlagShowBottom)
-			}
-			if target, ok := ec.BeamTarget(); ok {
-				m[mc.EntityDataKeyBlockTarget] = mc.BlockPos{
-					int32(math.Floor(target[0])),
-					int32(math.Floor(target[1])),
-					int32(math.Floor(target[2])),
-				}
-			}
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		nameTag, alwaysShow, ok := nameTagState(e)
-		if ok {
-			f = writeNameTagMetadataFlags(m, f, nameTag, alwaysShow)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		sc, ok := e.(scoreTag)
-		if ok {
-			m[mc.EntityDataKeyScore] = boxString(sc.ScoreTag())
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		c, ok := e.(areaEffectCloud)
-		if ok {
-			m[mc.EntityDataKeyDataRadius] = boxFloat32(float32(c.Radius()))
-
-			// We purposely fill these in with invalid values to disable the client-sided shrinking of the cloud.
-			m[mc.EntityDataKeyDataDuration] = metaInt32Max
-			m[mc.EntityDataKeyDataChangeOnPickup] = metaFloat32Min
-			m[mc.EntityDataKeyDataChangeRate] = metaFloat32Min
-			if p, ok := e.(interface{ Particle() entity.CloudParticle }); ok {
-				if particle, ok := cloudParticleType(p.Particle()); ok {
-					m[mc.EntityDataKeyDataParticle] = boxInt32(particle)
-				}
-			}
-
-			colour, am := effect.ResultingColour(c.Effects())
-			m[mc.EntityDataKeyEffectColor] = boxInt32(int32FromRGBA(colour))
-			m[mc.EntityDataKeyEffectAmbience] = boxBoolByte(am)
-		}
-		return f, ok
-	},
-	func(s *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		l, ok := e.(living)
-		if ok && s.ent != nil && s.ent.UUID() == l.UUID() {
-			deathPos, deathDimension, died := l.DeathPosition()
-			if died {
-				dim, _ := world.DimensionID(deathDimension)
-				m[mc.EntityDataKeyPlayerLastDeathPosition] = vec64To32(deathPos)
-				m[mc.EntityDataKeyPlayerLastDeathDimension] = boxInt32(int32(dim))
-			}
-			m[mc.EntityDataKeyPlayerHasDied] = boxBoolByte(died)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		p, ok := e.(splash)
-		if ok {
-			tip := p.Potion().Uint8()
-			m[mc.EntityDataKeyAuxValueData] = boxInt16(int16(tip))
-			if tip > 4 {
-				m[mc.EntityDataKeyCustomDisplay] = boxByte(tip + 1)
-			}
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		eff, ok := e.(effectBearer)
-		if ok {
-			m[mc.EntityDataKeyVisibleMobEffects] = boxInt64(packVisibleEffects(eff.Effects()))
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		v, ok := e.(variable)
-		if ok {
-			m[mc.EntityDataKeyVariant] = boxInt32(v.Variant())
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		mv, ok := e.(markVariable)
-		if ok {
-			m[mc.EntityDataKeyMarkVariant] = boxInt32(mv.MarkVariant())
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		mount, ok := e.(interface{ MountState() entity.MountState })
-		if ok {
-			f = addMountMetadataFlags(mount.MountState(), m, f)
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		iv, ok := e.(hurtDuration)
-		if ok {
-			m[mc.EntityDataKeyHurt] = boxInt32(int32(iv.HurtDuration().Milliseconds() / 50))
-		}
-		return f, ok
-	},
-	func(_ *Session, e any, m mc.Metadata, f actorFlags) (actorFlags, bool) {
-		pi, ok := e.(armourStand)
-		if ok {
-			m[mc.EntityDataKeyPoseIndex] = boxInt32(int32(pi.PoseIndex()))
-		}
-		return f, ok
-	},
 }
 
 // The bits of the horse flags of the actor data of mounts.

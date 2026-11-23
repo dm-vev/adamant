@@ -1,6 +1,8 @@
 package session
 
 import (
+	"slices"
+
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
@@ -110,19 +112,46 @@ func (s *Session) sendActorProperties(w *world.World) {
 // entityProperties returns the values of all properties of the type of an
 // entity.
 func entityProperties(e world.Entity) mc.EntityProperties {
-	props := entityTypeMetaOf(e.H().Type()).props
-	if len(props) == 0 {
+	t := e.H().Type()
+	if t == nil {
 		return mc.EntityProperties{}
 	}
-	integers := make([]mc.IntegerEntityProperty, len(props))
-	for i, p := range props {
-		integers[i] = mc.IntegerEntityProperty{Index: uint32(i), Value: p.def}
+	meta := entityTypeMetaOf(t)
+	if len(meta.props) == 0 {
+		return mc.EntityProperties{}
 	}
-	fillActorProperties(e, props, integers)
-	if beh, ok := e.(interface{ Behaviour() entity.Behaviour }); ok {
-		fillActorProperties(beh.Behaviour(), props, integers)
+	return entityPropertiesWith(e, meta, metaCapsOf(e))
+}
+
+func entityPropertiesWith(e world.Entity, meta *entityTypeMeta, caps metaCaps) mc.EntityProperties {
+	if meta == nil || len(meta.props) == 0 {
+		return mc.EntityProperties{}
 	}
-	return mc.EntityProperties{IntegerProperties: integers}
+	props := meta.props
+	if len(props) > 8 {
+		out := make([]mc.IntegerEntityProperty, len(props))
+		copy(out, meta.defaultProps)
+		fillActorPropertiesWith(e, props, out, caps)
+		if caps.hi&capBehaviour != 0 {
+			beh := e.(behaviourHolder).Behaviour()
+			fillActorPropertiesWith(beh, props, out, metaCapsOf(beh))
+		}
+		return mc.EntityProperties{IntegerProperties: out}
+	}
+	var stackBuf [8]mc.IntegerEntityProperty
+	buf := stackBuf[:len(props)]
+	copy(buf, meta.defaultProps)
+	fillActorPropertiesWith(e, props, buf, caps)
+	if caps.hi&capBehaviour != 0 {
+		beh := e.(behaviourHolder).Behaviour()
+		fillActorPropertiesWith(beh, props, buf, metaCapsOf(beh))
+	}
+	if slices.Equal(buf, meta.defaultProps) {
+		return mc.EntityProperties{IntegerProperties: meta.defaultProps}
+	}
+	out := make([]mc.IntegerEntityProperty, len(props))
+	copy(out, buf)
+	return mc.EntityProperties{IntegerProperties: out}
 }
 
 type creakingState interface {
@@ -156,14 +185,17 @@ func setActorPropertyInt32(props []actorProperty, out []mc.IntegerEntityProperty
 	}
 }
 
-// fillActorProperties writes the property values that an entity or its
+// fillActorPropertiesWith writes the property values that an entity or its
 // behaviour reports directly into out without intermediate map allocation.
-func fillActorProperties(e any, props []actorProperty, out []mc.IntegerEntityProperty) {
-	if c, ok := e.(interface{ ClimateVariant() string }); ok {
-		setActorPropertyString(props, out, "minecraft:climate_variant", c.ClimateVariant())
+func fillActorPropertiesWith(e any, props []actorProperty, out []mc.IntegerEntityProperty, caps metaCaps) {
+	if caps.hi&maskPropCaps == 0 {
+		return
 	}
-	if sv, ok := e.(interface{ SoundVariant() string }); ok {
-		name := sv.SoundVariant()
+	if caps.hi&capClimateVariant != 0 {
+		setActorPropertyString(props, out, "minecraft:climate_variant", e.(climateVariantMeta).ClimateVariant())
+	}
+	if caps.hi&capSoundVariant != 0 {
+		name := e.(soundVariantMeta).SoundVariant()
 		switch name {
 		case "classic":
 			name = "default"
@@ -172,10 +204,13 @@ func fillActorProperties(e any, props []actorProperty, out []mc.IntegerEntityPro
 		}
 		setActorPropertyString(props, out, "minecraft:sound_variant", name)
 	}
-	if c, ok := e.(creakingState); ok {
-		state, swayTicks := c.CreakingState()
+	if caps.hi&capCreakingState != 0 {
+		state, swayTicks := e.(creakingState).CreakingState()
 		setActorPropertyInt32(props, out, "minecraft:creaking_state", state)
 		setActorPropertyInt32(props, out, "minecraft:creaking_swaying_ticks", swayTicks)
+	}
+	if caps.hi&capPropEntity == 0 {
+		return
 	}
 	switch e := e.(type) {
 	case *entity.Bee:

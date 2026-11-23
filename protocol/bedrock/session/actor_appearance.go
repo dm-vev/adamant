@@ -89,14 +89,38 @@ func sittingCamelHeight(shape bedrockShape) float32 {
 	return 0.945
 }
 
-func actorIsBaby(e world.Entity) bool {
-	if b, ok := e.(baby); ok {
-		return b.Baby()
+func actorIsBabyWith(e world.Entity, caps metaCaps, beh entity.Behaviour, behCaps metaCaps) bool {
+	if caps.lo&capBaby != 0 {
+		return e.(baby).Baby()
 	}
-	if beh, ok := e.(interface{ Behaviour() entity.Behaviour }); ok {
-		if b, ok := beh.Behaviour().(baby); ok {
-			return b.Baby()
-		}
+	if beh != nil && behCaps.lo&capBaby != 0 {
+		return beh.(baby).Baby()
+	}
+	return false
+}
+
+func actorIsBaby(e world.Entity) bool {
+	caps := metaCapsOf(e)
+	var beh entity.Behaviour
+	var behCaps metaCaps
+	if caps.hi&capBehaviour != 0 {
+		beh = e.(behaviourHolder).Behaviour()
+		behCaps = metaCapsOf(beh)
+	}
+	return actorIsBabyWith(e, caps, beh, behCaps)
+}
+
+func hasActorAppearance(e any) bool {
+	switch e.(type) {
+	case *entity.Pig, *entity.Cow, *entity.Chicken, *entity.Cat, *entity.PolarBear,
+		*entity.Turtle, *entity.Ocelot, *entity.Wolf, *entity.Rabbit, *entity.Fox,
+		*entity.Mooshroom, *entity.Panda, *entity.Axolotl, *entity.TropicalFish,
+		*entity.Salmon, *entity.Slime, *entity.MagmaCube, *entity.SulfurCube,
+		*entity.Goat, *entity.TraderLlama, *entity.Piglin, *entity.PiglinBrute,
+		*entity.WitherSkeleton, *entity.Stray, *entity.Husk, *entity.Bogged,
+		*entity.Parched, *entity.Pillager, *entity.Vindicator, *entity.Villager,
+		*entity.ZombieVillager, *entity.ZombifiedPiglin, *entity.Bee, *entity.Enderman:
+		return true
 	}
 	return false
 }
@@ -110,105 +134,125 @@ var bedrockVillagerTypes = map[string]int32{"plains": 0, "desert": 1, "jungle": 
 
 // writeActorAppearance writes the variants, colours and states Bedrock
 // clients draw vanilla mobs by, converted from the Java state Adamant keeps.
-func (s *Session) writeActorAppearance(e world.Entity, m mc.Metadata) {
+func (s *Session) writeActorAppearance(e world.Entity, m mc.Metadata, f *actorFlags) {
 	switch e := e.(type) {
-	case *entity.Pig, *entity.Cow, *entity.Chicken:
-		// The climate variant property colours these.
-		m[mc.EntityDataKeyVariant] = int32(0)
+	case *entity.Pig, *entity.Cow, *entity.Chicken, *entity.Salmon:
+		// Climate variant / scale colours or sizes these.
+		m[mc.EntityDataKeyVariant] = boxedInt32s[1]
 	case *entity.Cat:
-		m[mc.EntityDataKeyVariant] = e.BedrockVariant()
-		writeTameMetadata(m, e.Tamed(), e.Sitting(), e.CollarColor())
+		m[mc.EntityDataKeyVariant] = boxInt32(e.BedrockVariant())
+		writeTameMetadataFlags(m, f, e.Tamed(), e.Sitting(), e.CollarColor())
 		if e.Lying() {
-			setActorFlag(m, mc.EntityDataFlagLayingDown)
+			f.set(mc.EntityDataFlagLayingDown)
 		}
 		if e.Crouching() {
-			setActorFlag(m, mc.EntityDataFlagSneaking)
+			f.set(mc.EntityDataFlagSneaking)
 		}
 	case *entity.PolarBear:
 		if e.Standing() {
-			setActorFlag(m, mc.EntityDataFlagStanding)
+			f.set(mc.EntityDataFlagStanding)
 		}
 	case *entity.Turtle:
 		if e.HasEgg() {
-			setActorFlag(m, mc.EntityDataFlagPregnant)
+			f.set(mc.EntityDataFlagPregnant)
 		}
 		if e.LayingEgg() {
-			setActorFlag(m, mc.EntityDataFlagLayingEgg)
+			f.set(mc.EntityDataFlagLayingEgg)
 		}
 	case *entity.Ocelot:
 		if e.Trusting() {
-			setActorFlag(m, mc.EntityDataFlagTrusting)
+			f.set(mc.EntityDataFlagTrusting)
 		}
 		if e.Crouching() {
-			setActorFlag(m, mc.EntityDataFlagSneaking)
+			f.set(mc.EntityDataFlagSneaking)
 		}
 	case *entity.Wolf:
-		m[mc.EntityDataKeyVariant] = e.BedrockVariant()
-		writeTameMetadata(m, e.Tamed(), e.Sitting(), e.CollarColor())
+		m[mc.EntityDataKeyVariant] = boxInt32(e.BedrockVariant())
+		writeTameMetadataFlags(m, f, e.Tamed(), e.Sitting(), e.CollarColor())
 		if e.Angry() {
-			setActorFlag(m, mc.EntityDataFlagAngry)
+			f.set(mc.EntityDataFlagAngry)
 		}
 		if e.Interested() {
-			setActorFlag(m, mc.EntityDataFlagInterested)
+			f.set(mc.EntityDataFlagInterested)
 		}
 	case *entity.Rabbit:
 		// Bedrock has no killer bunny.
 		if v := e.Variant(); v <= 5 {
-			m[mc.EntityDataKeyVariant] = int32(v)
+			m[mc.EntityDataKeyVariant] = boxInt32(int32(v))
 		} else {
-			m[mc.EntityDataKeyVariant] = int32(0)
+			m[mc.EntityDataKeyVariant] = boxedInt32s[1]
 		}
 	case *entity.Fox:
-		m[mc.EntityDataKeyVariant] = int32(e.Variant())
+		m[mc.EntityDataKeyVariant] = boxInt32(int32(e.Variant()))
 		if e.Sitting() {
-			setActorFlag(m, mc.EntityDataFlagSitting)
+			f.set(mc.EntityDataFlagSitting)
 		}
 		if e.Sleeping() {
-			setActorFlag(m, mc.EntityDataFlagSleeping)
+			f.set(mc.EntityDataFlagSleeping)
 		}
 		if e.Crouching() {
-			setActorFlag(m, mc.EntityDataFlagStalking)
+			f.set(mc.EntityDataFlagStalking)
 		}
 		if e.Interested() {
-			setActorFlag(m, mc.EntityDataFlagInterested)
+			f.set(mc.EntityDataFlagInterested)
 		}
 	case *entity.Mooshroom:
-		m[mc.EntityDataKeyVariant] = int32(e.Variant())
-		m[mc.EntityDataKeyMarkVariant] = int32(-1)
+		m[mc.EntityDataKeyVariant] = boxInt32(int32(e.Variant()))
+		m[mc.EntityDataKeyMarkVariant] = boxedInt32s[0]
 	case *entity.Panda:
-		m[mc.EntityDataKeyVariant] = int32(e.Variant())
-		for flag, set := range map[uint8]bool{
-			mc.EntityDataFlagSitting: e.Sitting(), mc.EntityDataFlagRolling: e.Rolling(),
-			mc.EntityDataFlagLayingDown: e.LyingOnBack(), mc.EntityDataFlagSneezing: e.Sneezing(),
-			mc.EntityDataFlagEating: e.Eating(), mc.EntityDataFlagScared: e.Scared(),
-		} {
-			if set {
-				setActorFlag(m, flag)
-			}
-		}
+		writePandaAppearance(e, m, f)
 	case *entity.Axolotl:
-		m[mc.EntityDataKeyVariant], _, _, _ = e.BedrockVariant()
+		v, _, _, _ := e.BedrockVariant()
+		m[mc.EntityDataKeyVariant] = boxInt32(v)
 	case *entity.TropicalFish:
 		variant, mark, color, color2 := e.BedrockVariant()
-		m[mc.EntityDataKeyVariant], m[mc.EntityDataKeyMarkVariant] = variant, mark
-		m[mc.EntityDataKeyColorIndex], m[mc.EntityDataKeyColorTwoIndex] = color, color2
-	case *entity.Salmon:
-		// The scale sets the size of a salmon.
-		m[mc.EntityDataKeyVariant] = int32(0)
+		m[mc.EntityDataKeyVariant] = boxInt32(variant)
+		m[mc.EntityDataKeyMarkVariant] = boxInt32(mark)
+		m[mc.EntityDataKeyColorIndex] = boxByte(color)
+		m[mc.EntityDataKeyColorTwoIndex] = boxByte(color2)
+	default:
+		s.writeHostileAndVillagerAppearance(e, m, f)
+	}
+}
+
+func writePandaAppearance(e *entity.Panda, m mc.Metadata, f *actorFlags) {
+	m[mc.EntityDataKeyVariant] = boxInt32(int32(e.Variant()))
+	if e.Sitting() {
+		f.set(mc.EntityDataFlagSitting)
+	}
+	if e.Rolling() {
+		f.set(mc.EntityDataFlagRolling)
+	}
+	if e.LyingOnBack() {
+		f.set(mc.EntityDataFlagLayingDown)
+	}
+	if e.Sneezing() {
+		f.set(mc.EntityDataFlagSneezing)
+	}
+	if e.Eating() {
+		f.set(mc.EntityDataFlagEating)
+	}
+	if e.Scared() {
+		f.set(mc.EntityDataFlagScared)
+	}
+}
+
+func (s *Session) writeHostileAndVillagerAppearance(e world.Entity, m mc.Metadata, f *actorFlags) {
+	switch e := e.(type) {
 	case *entity.Slime:
-		m[mc.EntityDataKeyVariant] = int32(e.Size())
+		m[mc.EntityDataKeyVariant] = boxInt32(int32(e.Size()))
 	case *entity.MagmaCube:
-		m[mc.EntityDataKeyVariant] = int32(e.Size())
+		m[mc.EntityDataKeyVariant] = boxInt32(int32(e.Size()))
 	case *entity.SulfurCube:
-		m[mc.EntityDataKeyVariant] = int32(e.Size())
+		m[mc.EntityDataKeyVariant] = boxInt32(int32(e.Size()))
 	case *entity.Goat:
 		left, right := e.Horns()
-		m[mc.EntityDataKeyGoatHornCount] = int32(boolByte(left) + boolByte(right))
+		m[mc.EntityDataKeyGoatHornCount] = boxInt32(int32(boolByte(left) + boolByte(right)))
 		if e.Screaming() {
-			m[mc.EntityDataKeyVariant] = int32(1)
+			m[mc.EntityDataKeyVariant] = boxedInt32s[2]
 		}
 	case *entity.TraderLlama:
-		m[mc.EntityDataKeyMarkVariant] = int32(1)
+		m[mc.EntityDataKeyMarkVariant] = boxedInt32s[2]
 	case *entity.Piglin:
 		// Piglins with a crossbow are ranged units, the others melee units.
 		variant := int32(1)
@@ -217,70 +261,68 @@ func (s *Session) writeActorAppearance(e world.Entity, m mc.Metadata) {
 				variant = 0
 			}
 		}
-		m[mc.EntityDataKeyVariant] = variant
-	case *entity.PiglinBrute:
-		m[mc.EntityDataKeyVariant] = int32(1)
-	case *entity.WitherSkeleton:
-		m[mc.EntityDataKeyVariant] = int32(1)
+		m[mc.EntityDataKeyVariant] = boxInt32(variant)
+	case *entity.PiglinBrute, *entity.WitherSkeleton:
+		m[mc.EntityDataKeyVariant] = boxedInt32s[2]
 	case *entity.Stray, *entity.Husk:
-		m[mc.EntityDataKeyVariant] = int32(2)
+		m[mc.EntityDataKeyVariant] = boxedInt32s[3]
 	case *entity.Bogged:
-		m[mc.EntityDataKeyVariant] = int32(3)
+		m[mc.EntityDataKeyVariant] = boxedInt32s[4]
 	case *entity.Parched:
-		m[mc.EntityDataKeyVariant] = int32(4)
+		m[mc.EntityDataKeyVariant] = boxedInt32s[5]
 	case *entity.Pillager:
-		m[mc.EntityDataKeyVariant] = int32(boolByte(e.IsCaptain()))
+		m[mc.EntityDataKeyVariant] = boxInt32(int32(boolByte(e.IsCaptain())))
 	case *entity.Vindicator:
-		m[mc.EntityDataKeyVariant] = int32(boolByte(e.IsCaptain()))
+		m[mc.EntityDataKeyVariant] = boxInt32(int32(boolByte(e.IsCaptain())))
 		// Bedrock vindicators are angry while they have a target, and only
 		// then raise their axe.
 		if e.Aggressive() {
-			setActorFlag(m, mc.EntityDataFlagAngry)
+			f.set(mc.EntityDataFlagAngry)
 		}
 	case *entity.Villager:
 		writeVillagerMetadata(m, e.Profession(), e.Variant())
-		m[mc.EntityDataKeyTradeTier] = int32(max(e.MerchantLevel()-1, 0))
-		m[mc.EntityDataKeySkinID] = int32(e.H().UUID()[15] % 6)
+		m[mc.EntityDataKeyTradeTier] = boxInt32(int32(max(e.MerchantLevel()-1, 0)))
+		m[mc.EntityDataKeySkinID] = boxInt32(int32(e.H().UUID()[15] % 6))
 	case *entity.ZombieVillager:
 		profession, villagerType := e.VillagerData()
 		writeVillagerMetadata(m, profession, villagerType)
 	case *entity.ZombifiedPiglin:
 		if e.Angry() {
-			setActorFlag(m, mc.EntityDataFlagAngry)
+			f.set(mc.EntityDataFlagAngry)
 		}
 	case *entity.Bee:
 		if e.Angry() {
-			setActorFlag(m, mc.EntityDataFlagAngry)
+			f.set(mc.EntityDataFlagAngry)
 		}
 	case *entity.Enderman:
 		carried, ok := e.CarriedBlock()
 		if !ok {
 			carried = block.Air{}
 		}
-		m[mc.EntityDataKeyCarryBlockRuntimeID] = int32(s.blockHash(carried))
+		m[mc.EntityDataKeyCarryBlockRuntimeID] = boxInt32(int32(s.blockHash(carried)))
 		if e.Angry() {
-			setActorFlag(m, mc.EntityDataFlagAngry)
+			f.set(mc.EntityDataFlagAngry)
 		}
 	}
 }
 
-// writeTameMetadata writes the state of a cat or wolf that may be tamed. Only
+// writeTameMetadataFlags writes the state of a cat or wolf that may be tamed. Only
 // a tamed one shows its collar.
-func writeTameMetadata(m mc.Metadata, tamed, sitting bool, collar uint8) {
+func writeTameMetadataFlags(m mc.Metadata, f *actorFlags, tamed, sitting bool, collar uint8) {
 	if tamed {
-		setActorFlag(m, mc.EntityDataFlagTamed)
-		m[mc.EntityDataKeyColorIndex] = collar
+		f.set(mc.EntityDataFlagTamed)
+		m[mc.EntityDataKeyColorIndex] = boxByte(collar)
 	}
 	if sitting {
-		setActorFlag(m, mc.EntityDataFlagSitting)
+		f.set(mc.EntityDataFlagSitting)
 	}
 }
 
 // writeVillagerMetadata writes the profession and biome type of a villager or
 // zombie villager.
 func writeVillagerMetadata(m mc.Metadata, profession, villagerType string) {
-	m[mc.EntityDataKeyVariant] = bedrockProfessions[strings.TrimPrefix(profession, "minecraft:")]
-	m[mc.EntityDataKeyMarkVariant] = bedrockVillagerTypes[strings.TrimPrefix(villagerType, "minecraft:")]
+	m[mc.EntityDataKeyVariant] = boxInt32(bedrockProfessions[strings.TrimPrefix(profession, "minecraft:")])
+	m[mc.EntityDataKeyMarkVariant] = boxInt32(bedrockVillagerTypes[strings.TrimPrefix(villagerType, "minecraft:")])
 }
 
 var bedrockActorShapes = map[string]bedrockShapes{
