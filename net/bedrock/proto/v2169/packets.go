@@ -8251,11 +8251,13 @@ func (p *ItemStackResponse) Encode(w *wire.Writer) {
 func (p *ItemStackResponse) Decode(r *wire.Reader) {
 	p.Status = r.Uint8()
 	p.RequestID = r.Varint32()
-	if r.Bool() && r.Bool() {
-		v392 := int(r.Varuint32())
-		p.ContainerInfo = wire.Slice[StackResponseContainerInfo](r, v392)
-		for v391 := range p.ContainerInfo {
-			p.ContainerInfo[v391].Decode(r)
+	if r.Bool() {
+		if r.Bool() {
+			v392 := int(r.Varuint32())
+			p.ContainerInfo = wire.Slice[StackResponseContainerInfo](r, v392)
+			for v391 := range p.ContainerInfo {
+				p.ContainerInfo[v391].Decode(r)
+			}
 		}
 	}
 }
@@ -11632,8 +11634,10 @@ func (p *StackResponseSlotInfo) Decode(r *wire.Reader) {
 	p.Slot = r.Uint8()
 	p.HotbarSlot = r.Uint8()
 	p.Count = r.Uint8()
-	if r.Bool() && r.Bool() {
-		p.StackNetworkID = r.Varint32()
+	if r.Bool() {
+		if r.Bool() {
+			p.StackNetworkID = r.Varint32()
+		}
 	}
 	p.CustomName = r.String()
 	p.FilteredCustomName.Set = r.Bool()

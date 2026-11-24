@@ -382,8 +382,10 @@ func (x *ScoreboardEntry) Decode(r *wire.Reader) {
 	switch x.IdentityType {
 	case 0:
 		x.ObjectiveName = ""
-		if r.Bool() && r.Bool() {
-			x.ObjectiveName = r.String()
+		if r.Bool() {
+			if r.Bool() {
+				x.ObjectiveName = r.String()
+			}
 		}
 	case 1, 2:
 		x.ObjectiveName = r.String()

@@ -113,7 +113,10 @@ func TestBlockEntriesDefineBlocksOfData(t *testing.T) {
 func TestBlocksOfDataAreBlocksOfTheServer(t *testing.T) {
 	for _, p := range versions.All() {
 		vanillaBlocks := tablesOf(p, world.DefaultBlockRegistry).vanilla.Blocks()
-		if len(vanillaBlocks) == 0 {
+		// Data-driven vanilla block definitions (concrete/wool slabs & stairs,
+		// red_shrub, shelf_mushroom) were introduced in 1.26.50 (protocol 2193);
+		// 2168 and 2169 BDS send 0 entries.
+		if p.Number >= 2193 && len(vanillaBlocks) == 0 {
 			t.Fatalf("no vanilla blocks are defined to clients of %d", p.Number)
 		}
 		for name := range vanillaBlocks {

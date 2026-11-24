@@ -46,6 +46,15 @@ Measured on AMD Ryzen 7 8700F (`Go 1.27.3`, 20 TPS = `50 ms` tick budget):
 
 ## Quick start
 
+**Docker** (`linux/amd64` & `linux/arm64`):
+
+```shell
+docker run -d --name adamant \
+  -p 19132:19132/tcp -p 19132:19132/udp \
+  -v adamant-data:/data \
+  ghcr.io/dm-vev/adamant:latest
+```
+
 **Prebuilt binaries:** grab the latest archive for Linux, Windows, or macOS from [**Releases**](https://github.com/dm-vev/adamant/releases) and run `./adamant`.
 
 **Build from source** (requires **Go 1.27+**):

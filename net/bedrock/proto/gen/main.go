@@ -875,13 +875,19 @@ func (g *gen) body(nodes []*node, enc bool) error {
 				g.p("%s := %s", ok, cond)
 				g.p("w.Bool(%s)", ok)
 				g.p("if %s {", ok)
+				if err := g.body(n.body, enc); err != nil {
+					return err
+				}
+				g.p("}")
 			} else {
-				g.p("if r.Bool() && r.Bool() {")
+				g.p("if r.Bool() {")
+				g.p("if r.Bool() {")
+				if err := g.body(n.body, enc); err != nil {
+					return err
+				}
+				g.p("}")
+				g.p("}")
 			}
-			if err := g.body(n.body, enc); err != nil {
-				return err
-			}
-			g.p("}")
 		case "switch":
 			tag, err := g.cond(n.expr)
 			if err != nil {
