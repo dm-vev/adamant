@@ -1,6 +1,6 @@
 <div align="center">
 
-# Adamant
+<p align="center"><img src="docs/assets/social-preview.png" alt="Adamant — Minecraft: Bedrock Edition server in Go" width="100%"></p>
 
 **High-performance Minecraft: Bedrock Edition server in Go — drop-in BDS alternative with Java 26.3 parity and clean extensibility.**
 
