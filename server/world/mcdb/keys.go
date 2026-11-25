@@ -42,7 +42,10 @@ const (
 	// keyAdamantPostProcessing stores pending Java source markers separately
 	// from Bedrock-native chunk data.
 	keyAdamantPostProcessing = "adamant:post_processing"
-	keyEntityIdentifiers     = "digp"
+	// keyAdamantChunkComponents stores NBT-encoded persistent ECS components
+	// attached to a chunk column.
+	keyAdamantChunkComponents = "adamant:chunk_components"
+	keyEntityIdentifiers      = "digp"
 
 	keyEntity = "actorprefix"
 )

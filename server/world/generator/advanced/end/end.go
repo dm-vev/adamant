@@ -4,6 +4,7 @@ import (
 	"math"
 	"math/bits"
 	"sync"
+	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -42,7 +43,8 @@ type End struct {
 	spikes       [10]vanilla.EndSpike
 	endCityCache sync.Map
 
-	pool sync.Pool
+	pool  sync.Pool
+	hooks atomic.Pointer[Hooks]
 }
 
 type endStateKey struct{}
@@ -141,12 +143,20 @@ func (g *End) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk, context world.Ge
 	s := g.pool.Get().(*endScratch)
 	defer g.pool.Put(s)
 
+	hooks := g.hooks.Load()
 	chunkX, chunkZ := int(pos[0]), int(pos[1])
 	region := newEndFeatureRegion(g, chunkX, chunkZ, c, s)
+	if hooks != nil {
+		applyPreDecorationHooks(pos, c, hooks)
+	}
 	var result world.GenerationResult
 	g.populate(chunkX, chunkZ, region, &result)
 	region.publishTarget(chunkX, chunkZ, c)
 	region.resetForPool()
+	if hooks != nil && hooks.OnDecorate != nil {
+		rng := decorationHookRandom(g.seed, pos)
+		hooks.OnDecorate(pos, c, &rng)
+	}
 	return result
 }
 

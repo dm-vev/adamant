@@ -48,6 +48,30 @@ func (s *Session) SendRawPacket(pk proto.Packet) {
 	s.writePacket(pk)
 }
 
+// ProtocolNumber returns the negotiated Bedrock protocol number of s (e.g.
+// 2168, 2169, 2193, 2225), or 0 for nil/nop sessions.
+func (s *Session) ProtocolNumber() int32 {
+	if s == nil || s == nop {
+		return 0
+	}
+	if s.conf.Protocol != nil {
+		return s.conf.Protocol.Number
+	}
+	return s.primary().Number
+}
+
+// GameVersion returns the Bedrock game version string associated with s's
+// negotiated protocol (e.g. "1.26.60"), or "" for nil/nop sessions.
+func (s *Session) GameVersion() string {
+	if s == nil || s == nop {
+		return ""
+	}
+	if s.conf.Protocol != nil {
+		return s.conf.Protocol.Version
+	}
+	return s.primary().Version
+}
+
 func (s *Session) initInterceptors(ics []PacketInterceptor) {
 	if len(ics) == 0 {
 		return

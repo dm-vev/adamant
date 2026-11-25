@@ -33,6 +33,7 @@ func (w *World) columnWith(col *Column, pos ChunkPos, entities []chunk.Entity) *
 		ScheduledTicks: scheduled,
 		InhabitedTime:  col.InhabitedTime,
 		PostProcessing: col.postProcessing,
+		Components:     col.components.EncodeNBT(),
 	}
 	for pos, be := range col.BlockEntities {
 		data, ok := w.saveBlockEntityNBT(pos, be)
@@ -176,6 +177,9 @@ func (w *World) columnFrom(c *chunk.Column, pos ChunkPos, ready bool) *Column {
 	col := newColumn(c.Chunk)
 	col.InhabitedTime = c.InhabitedTime
 	col.postProcessing = c.PostProcessing
+	if len(c.Components) > 0 {
+		col.components.DecodeNBT(c.Components)
+	}
 	states := c.Chunk.MissingBlockStates()
 	if len(states) != 0 {
 		col.missingBlockStates = make(map[cube.Pos]pendingMissingBlockState, len(states))

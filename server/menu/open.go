@@ -89,6 +89,27 @@ func OpenEntity(e world.Entity, inv *inventory.Inventory, kind entity.ContainerK
 	return &Menu{kind: Entity, pos: standingPos(e), handle: e.H(), ekind: kind, inv: inv, viewer: v}
 }
 
+// OpenVirtual opens inv as a virtual container menu (chest, double chest, or
+// hopper) anchored at positions[0] without mutating blocks in the world.
+func OpenVirtual(positions []cube.Pos, inv *inventory.Inventory, kind VirtualKind, title string, v Viewer, onClose func(tx *world.Tx)) *Menu {
+	var pos cube.Pos
+	if len(positions) > 0 {
+		pos = positions[0]
+	}
+	cp := make([]cube.Pos, len(positions))
+	copy(cp, positions)
+	return &Menu{
+		kind:             Virtual,
+		pos:              pos,
+		vkind:            kind,
+		title:            title,
+		virtualPositions: cp,
+		onClose:          onClose,
+		inv:              inv,
+		viewer:           v,
+	}
+}
+
 // OpenMerchant opens the trades of merchant, the entity e, for the player of
 // the handle user. A TradingMerchant must agree to trade (StartTrading);
 // OpenMerchant reports false if it does not.
@@ -112,6 +133,12 @@ func standingPos(e world.Entity) cube.Pos {
 // or block.EnderChest.RemoveViewer, as the session did, whatever the menu
 // was opened as.
 func (m *Menu) Close(tx *world.Tx, user *world.EntityHandle) {
+	if m.kind == Virtual {
+		if m.onClose != nil {
+			m.onClose(tx)
+		}
+		return
+	}
 	if m.handle != nil {
 		ent, ok := m.handle.Entity(tx)
 		if !ok {

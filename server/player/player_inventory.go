@@ -341,6 +341,41 @@ func (p *Player) OpenEntityContainer(e world.Entity, inv *inventory.Inventory, k
 	p.c.OpenMenu(m, tx)
 }
 
+// OpenVirtualContainer opens inv as a virtual container GUI (chest, double
+// chest, or hopper) with a custom title for this player without modifying any
+// blocks in the world. Real blocks at the temporary virtual positions are
+// restored to the client when the menu closes.
+func (p *Player) OpenVirtualContainer(inv *inventory.Inventory, kind menu.VirtualKind, title string, onClose func(tx *world.Tx), tx *world.Tx) {
+	if !p.hasClient() || inv == nil || tx == nil || tx.Closed() {
+		return
+	}
+	p.closeMenu(tx, false)
+	positions := virtualMenuPositions(p.Position(), tx.Range(), kind)
+	m := menu.OpenVirtual(positions, inv, kind, title, p.c, onClose)
+	p.menu.Store(m)
+	p.menuWorld = tx.World()
+	p.c.OpenMenu(m, tx)
+}
+
+func virtualMenuPositions(playerPos mgl64.Vec3, r cube.Range, kind menu.VirtualKind) []cube.Pos {
+	base := cube.PosFromVec3(playerPos)
+	y := base[1] + 3
+	if y > r.Max() {
+		y = base[1] - 3
+	}
+	if y < r.Min() {
+		y = r.Min()
+	}
+	if y > r.Max() {
+		y = r.Max()
+	}
+	p0 := cube.Pos{base[0], y, base[2]}
+	if kind == menu.VirtualDoubleChest {
+		return []cube.Pos{p0, p0.Add(cube.Pos{1, 0, 0})}
+	}
+	return []cube.Pos{p0}
+}
+
 // OpenMerchant opens the trades of merchant, the entity e, and shows the
 // client of the player its offers. A menu the player had open closes first,
 // unless it is open for e already. It does nothing if the player has no
@@ -415,6 +450,14 @@ func (p *Player) closeMenu(tx *world.Tx, clientRequested bool) {
 		return
 	}
 	p.client().CloseMenu(m, clientRequested)
+	if m.Kind() == menu.Virtual && tx != nil && !tx.Closed() {
+		for _, pos := range m.VirtualPositions() {
+			p.client().ViewBlockUpdate(pos, tx.Block(pos), 0)
+			if liq, ok := tx.Liquid(pos); ok {
+				p.client().ViewBlockUpdate(pos, liq, 1)
+			}
+		}
+	}
 	m.Close(tx, p.H())
 }
 

@@ -402,8 +402,27 @@ func (db *DB) column(g getter, k dbKey) (*chunk.Column, error) {
 		}
 		col.InhabitedTime = binary.LittleEndian.Uint64(inhabitedTime)
 	}
+	col.Components, err = db.chunkComponents(g, k)
+	if err != nil && !errors.Is(err, leveldb.ErrNotFound) {
+		return nil, fmt.Errorf("read Adamant chunk components: %w", err)
+	}
 
 	return col, nil
+}
+
+func (db *DB) chunkComponents(g getter, k dbKey) (map[string]any, error) {
+	data, err := g.get(k.Sum([]byte(keyAdamantChunkComponents)...))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) == 0 {
+		return nil, nil
+	}
+	comps := make(map[string]any)
+	if err := nbt.UnmarshalEncoding(data, &comps, nbt.LittleEndian); err != nil {
+		return nil, err
+	}
+	return comps, nil
 }
 
 func (db *DB) postProcessing(g getter, k dbKey) ([][]uint16, error) {
@@ -746,6 +765,21 @@ func (db *DB) storeActors(s store, k dbKey, col *chunk.Column) {
 	inhabitedTime := make([]byte, 8)
 	binary.LittleEndian.PutUint64(inhabitedTime, col.InhabitedTime)
 	s.put(k.Sum([]byte(keyAdamantInhabitedTime)...), inhabitedTime)
+	db.storeChunkComponents(s, k, col.Components)
+}
+
+func (db *DB) storeChunkComponents(s store, k dbKey, components map[string]any) {
+	key := k.Sum([]byte(keyAdamantChunkComponents)...)
+	if len(components) == 0 {
+		s.delete(key)
+		return
+	}
+	b, err := nbt.MarshalEncoding(components, nbt.LittleEndian)
+	if err != nil {
+		db.conf.Log.Error("store chunk components: " + err.Error())
+		return
+	}
+	s.put(key, b)
 }
 
 func (db *DB) storeVersion(s store, k dbKey, ver uint8) {

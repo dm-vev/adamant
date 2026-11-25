@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
@@ -120,6 +121,8 @@ func (s *Session) OpenMenu(m *menu.Menu, tx *world.Tx) {
 			ContainerPosition:       mc.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
 			ContainerEntityUniqueID: s.handleUniqueID(m.Entity()),
 		})
+	case menu.Virtual:
+		s.openVirtualMenu(m, nextID, containerType)
 	default:
 		s.writePacket(&mc.ContainerOpenPacket{
 			WindowID:                nextID,
@@ -139,6 +142,66 @@ func (s *Session) OpenMenu(m *menu.Menu, tx *world.Tx) {
 	}
 }
 
+func (s *Session) openVirtualMenu(m *menu.Menu, windowID, containerType byte) {
+	positions := m.VirtualPositions()
+	if len(positions) == 0 {
+		positions = []cube.Pos{m.Pos()}
+	}
+	w := s.tables()
+	hashes := w.hashes()
+	var fakeBlock world.Block = block.Chest{Facing: cube.South}
+	actorID := "Chest"
+	if m.VirtualKind() == menu.VirtualHopper {
+		fakeBlock = block.Hopper{}
+		actorID = "Hopper"
+	}
+	rid := hashes.blockID(w.br, fakeBlock)
+	for _, p := range positions {
+		s.writePacket(&mc.UpdateBlockPacket{
+			Position:          blockPos(p),
+			NewBlockRuntimeID: rid,
+			Flags:             mc.BlockUpdateNetwork,
+			Layer:             0,
+		})
+	}
+	p0 := positions[0]
+	nbt0 := map[string]any{
+		"id": actorID,
+		"x":  int32(p0[0]),
+		"y":  int32(p0[1]),
+		"z":  int32(p0[2]),
+	}
+	if m.Title() != "" {
+		nbt0["CustomName"] = m.Title()
+	}
+	if m.VirtualKind() == menu.VirtualDoubleChest && len(positions) > 1 {
+		p1 := positions[1]
+		nbt0["pairx"] = int32(p1[0])
+		nbt0["pairz"] = int32(p1[2])
+		nbt0["pairlead"] = byte(1)
+		s.writePacket(&mc.BlockActorDataPacket{Position: blockPos(p0), NBTData: nbt0})
+		nbt1 := map[string]any{
+			"id":       actorID,
+			"x":        int32(p1[0]),
+			"y":        int32(p1[1]),
+			"z":        int32(p1[2]),
+			"pairx":    int32(p0[0]),
+			"pairz":    int32(p0[2]),
+			"pairlead": byte(0),
+		}
+		s.writePacket(&mc.BlockActorDataPacket{Position: blockPos(p1), NBTData: nbt1})
+	} else {
+		s.writePacket(&mc.BlockActorDataPacket{Position: blockPos(p0), NBTData: nbt0})
+	}
+	s.writePacket(&mc.ContainerOpenPacket{
+		WindowID:                windowID,
+		ContainerType:           containerType,
+		ContainerPosition:       blockPos(p0),
+		ContainerEntityUniqueID: -1,
+	})
+	s.sendInv(m.Inventory(), uint32(windowID))
+}
+
 // blockContainer reports whether menus of the kind passed are open for a
 // block.Container.
 func blockContainer(k menu.Kind) bool {
@@ -154,7 +217,7 @@ func blockContainer(k menu.Kind) bool {
 // the player, and noWindow while no menu, or one with no items of its own,
 // is open.
 func (s *Session) window() *inventory.Inventory {
-	if m := s.menu.Load(); m != nil && (blockContainer(m.Kind()) || m.Kind() == menu.EnderChest || m.Kind() == menu.Entity) {
+	if m := s.menu.Load(); m != nil && (blockContainer(m.Kind()) || m.Kind() == menu.EnderChest || m.Kind() == menu.Entity || m.Kind() == menu.Virtual) {
 		return m.Inventory()
 	}
 	return s.noWindow
@@ -210,6 +273,11 @@ func windowType(m *menu.Menu, tx *world.Tx) byte {
 		return t
 	case menu.Merchant:
 		return mc.ContainerTypeTrade
+	case menu.Virtual:
+		if m.VirtualKind() == menu.VirtualHopper {
+			return mc.ContainerTypeHopper
+		}
+		return mc.ContainerTypeContainer
 	}
 	// A chest, a barrel, an ender chest and any other block.
 	return mc.ContainerTypeContainer

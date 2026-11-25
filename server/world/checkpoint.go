@@ -239,6 +239,9 @@ func (w *World) captureData() []worldData {
 	}
 	add("loot random sequences", w.lootRandomSequenceNamespace(), w.encodeLootRandomSequences)
 	add("world border", w.borderNamespace(), w.encodeBorder)
+	if enc, ok := w.encodeECSComponents(); ok {
+		add("world ECS components", w.ecsComponentsNamespace(), func() ([]byte, error) { return enc, nil })
+	}
 
 	generation, err := encodeGenerationState(w.conf.Provider, w.conf.Generator, w.conf.Dim)
 	switch {

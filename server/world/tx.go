@@ -88,9 +88,12 @@ func (tx *Tx) ChunkComponents(pos ChunkPos) *ecs.Bag {
 		if c == nil {
 			return nil
 		}
+		c.touch()
 		return &c.components
 	}
-	return &tx.chunk(pos).components
+	c := tx.chunk(pos)
+	c.touch()
+	return &c.components
 }
 
 // Range returns the lower and upper bounds of the World that the Tx is

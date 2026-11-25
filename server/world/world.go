@@ -3,6 +3,7 @@ package world
 import (
 	"log/slog"
 	"math/rand/v2"
+	"sync/atomic"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -45,10 +46,11 @@ type World struct {
 	ra                   cube.Range
 	weather
 	// stats is what the world counts of itself, for metrics.
-	stats      *Stats
-	components ecs.Bag
-	events     *event.Bus
-	systems    tickSystemRegistry
+	stats                  *Stats
+	components             ecs.Bag
+	ecsComponentsPersisted atomic.Bool
+	events                 *event.Bus
+	systems                tickSystemRegistry
 }
 
 // New creates a new initialised world. The world may be used right away, but

@@ -93,6 +93,9 @@ type Config struct {
 	ShoulderRight          map[string]any
 	// JavaState retains source-only player data not represented by Bedrock.
 	JavaState map[string]any
+	// Components holds NBT-encoded persistent ECS components registered via
+	// ecs.WithCodec.
+	Components map[string]any
 	// Respawn data retains the player's Java respawn destination and transition angles.
 	RespawnDimension world.Dimension
 	RespawnPosition  cube.Pos
@@ -115,6 +118,9 @@ func (cfg Config) Apply(data *world.EntityData) {
 	initPortalTravel(pdata, playerUUID)
 	pdata.hunger.setState(conf.Food, conf.FoodTick, conf.Exhaustion, conf.Saturation)
 	pdata.experience.Add(conf.Experience)
+	if len(conf.Components) > 0 {
+		data.Components.DecodeNBT(conf.Components)
+	}
 	data.Data = pdata
 }
 

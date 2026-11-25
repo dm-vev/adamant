@@ -94,19 +94,22 @@ go run .
 
 Adamant isolates a data-oriented simulation core (`server/`) from wire adapters (`protocol/`, `net/`) and an external plugin SDK (`api/`, `api/bedrock/`), enforced in CI by architectural ratchets (`internal/archtest`):
 
-- **Zero-alloc ECS & EventBus (`server/ecs`, `server/event`):** dense typed component bags (`Key[T]` / `Bag` with optional NBT persistence) on entities, players, chunks, and worlds; prioritized `event.Bus` (`Cancellable`) on `Server`, `World`/`Tx`, and `Player`.
+- **Zero-alloc ECS & EventBus (`server/ecs`, `server/event`):** dense typed component bags (`Key[T]` / `Bag` with automatic NBT persistence on entities, players, chunks, and worlds); prioritized `event.Bus` (`Cancellable`) on `Server`, `World`/`Tx`, and `Player`.
 - **Parallel simulation (`server/world`, `server/entity`):** `World.AddSystem(TickPhase)` with panic containment, `SetBlockRID` / `FillRID` volume ops, 4×4 parallel world `Regions`, multi-core AI/fluid/collision `Prefetch`, and `sharedPathCache`.
-- **External SDK (`api`, `api/bedrock`):** `App` / `Plugin` lifecycle, player facets (`Movement`, `Combat`, `UI`, `Net`), custom blocks/entities/AI goals/menus/commands, Overworld hooks (`overworld.Hooks`), and Bedrock `PacketInterceptor` — without touching core packages.
+- **External SDK (`api`, `api/bedrock`):** `App` / `Plugin` lifecycle, declarative custom blocks/items/recipes/entities (`MobAI` + `Brain`, loot, equipment, custom NBT), virtual chest/double-chest/hopper GUIs & `PagedMenu`, `Menu`/`Modal`/`CustomForm`, UI helpers (scoreboards, boss bars, titles, dialogues, particles, sounds), typed & subcommand-group commands, Overworld/Nether/End worldgen hooks + custom biomes & structures, tick `Scheduler`, atomic JSON/TOML `Storage`, hierarchical RBAC `PermissionStore`, `Economy`, `Hologram`, dynamic worlds + `TransferPlayer`, and multi-protocol Bedrock packet interception & resource pack helpers.
 
 ```go
 app := api.New(srv).Use(api.FuncPlugin{
 	OnEnable: func(app *api.App) {
-		api.On(app.Events(), api.PriorityNormal, func(ev *player.PlayerJoinEvent) {
-			ev.Player.Message("Welcome to Adamant!")
+		api.OnServer(app, api.PriorityNormal, func(ev *player.JoinEvent) {
+			api.SendTitle(ev.Player, api.TitleSpec{Title: "Welcome", Subtitle: "Adamant"})
+		})
+		app.Scheduler().Every(app.World(), 200, func(tx *world.Tx) {
+			api.BroadcastWorldMessage(app, tx, "Server tick heartbeat")
 		})
 	},
 })
-defer app.Close()
+defer app.Disable()
 ```
 
 ## Documentation

@@ -81,18 +81,37 @@ const (
 	// Entity is the inventory of an entity, of the ContainerKind of the menu.
 	Entity
 	Merchant
+	// Virtual is a plugin-backed virtual container (chest, double chest, or
+	// hopper) shown to one player without modifying blocks in the world.
+	Virtual
+)
+
+// VirtualKind selects the container screen layout of a Virtual menu.
+type VirtualKind uint8
+
+const (
+	// VirtualChest opens a 27-slot single chest screen.
+	VirtualChest VirtualKind = iota + 1
+	// VirtualDoubleChest opens a 54-slot double chest screen.
+	VirtualDoubleChest
+	// VirtualHopper opens a 5-slot hopper screen.
+	VirtualHopper
 )
 
 // Menu is a menu a player has open. It is bound to one player, and to a block
 // or an entity, from Open to Close. A Menu is valid across transactions: it
 // holds positions and handles, never a *world.Tx.
 type Menu struct {
-	kind   Kind
-	pos    cube.Pos
-	handle *world.EntityHandle  // Entity and Merchant
-	ekind  entity.ContainerKind // Entity
-	inv    *inventory.Inventory // see Inventory
-	viewer Viewer
+	kind             Kind
+	pos              cube.Pos
+	handle           *world.EntityHandle  // Entity and Merchant
+	ekind            entity.ContainerKind // Entity
+	vkind            VirtualKind          // Virtual
+	title            string               // Virtual
+	virtualPositions []cube.Pos           // Virtual
+	onClose          func(tx *world.Tx)   // Virtual
+	inv              *inventory.Inventory // see Inventory
+	viewer           Viewer
 }
 
 // Kind returns what the menu is open for.
@@ -115,6 +134,22 @@ func (m *Menu) Entity() *world.EntityHandle {
 // ContainerKind returns the kind of container of an Entity menu.
 func (m *Menu) ContainerKind() entity.ContainerKind {
 	return m.ekind
+}
+
+// VirtualKind returns the container layout of a Virtual menu.
+func (m *Menu) VirtualKind() VirtualKind {
+	return m.vkind
+}
+
+// Title returns the custom display title of a Virtual menu.
+func (m *Menu) Title() string {
+	return m.title
+}
+
+// VirtualPositions returns the fake block positions sent to the client for a
+// Virtual menu (1 position for chest/hopper, 2 adjacent positions for double chest).
+func (m *Menu) VirtualPositions() []cube.Pos {
+	return m.virtualPositions
 }
 
 // Inventory returns the inventory the menu shows: that of the block container

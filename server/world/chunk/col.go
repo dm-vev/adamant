@@ -15,6 +15,9 @@ type Column struct {
 	// InhabitedTime is the number of ticks this chunk has been inhabited by a
 	// non-spectator player while within the world simulation area.
 	InhabitedTime uint64
+	// Components holds NBT-encoded persistent ECS components attached to this
+	// chunk (registered via ecs.WithCodec). It is Adamant-owned metadata.
+	Components map[string]any
 }
 
 type BlockEntity struct {

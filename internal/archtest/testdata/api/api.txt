@@ -152,6 +152,7 @@ protocol/bedrock/session	method	Session.Disconnect	func(message server/text.Text
 protocol/bedrock/session	method	Session.EnableCoordinates	func(enable bool)
 protocol/bedrock/session	method	Session.EnableInstantRespawn	func(enable bool)
 protocol/bedrock/session	method	Session.EndBatch	func()
+protocol/bedrock/session	method	Session.GameVersion	func() string
 protocol/bedrock/session	method	Session.HandlingInput	func() bool
 protocol/bedrock/session	method	Session.HideEntity	func(e server/world.Entity)
 protocol/bedrock/session	method	Session.HideHudElement	func(e server/player/hud.Element)
@@ -167,6 +168,7 @@ protocol/bedrock/session	method	Session.OpenMenu	func(m *server/menu.Menu, tx *s
 protocol/bedrock/session	method	Session.OpenSign	func(pos server/block/cube.Pos, frontSide bool)
 protocol/bedrock/session	method	Session.PlaySound	func(t server/world.Sound, pos github.com/go-gl/mathgl/mgl64.Vec3)
 protocol/bedrock/session	method	Session.Profile	func() server/client.Profile
+protocol/bedrock/session	method	Session.ProtocolNumber	func() int32
 protocol/bedrock/session	method	Session.RemoveAllDebugShapes	func()
 protocol/bedrock/session	method	Session.RemoveBossBar	func()
 protocol/bedrock/session	method	Session.RemoveBossBarID	func(id string)
@@ -13964,11 +13966,16 @@ server/menu	const	UISmithingTemplate	untyped int = 53
 server/menu	const	UIStonecutterInput	untyped int = 3
 server/menu	const	UITradeInputA	untyped int = 4
 server/menu	const	UITradeInputB	untyped int = 5
+server/menu	const	Virtual	server/menu.Kind = 22
+server/menu	const	VirtualChest	server/menu.VirtualKind = 1
+server/menu	const	VirtualDoubleChest	server/menu.VirtualKind = 2
+server/menu	const	VirtualHopper	server/menu.VirtualKind = 3
 server/menu	func	Begin	func(o server/menu.Opts) *server/menu.Tx
 server/menu	func	EnchantmentOptions	func(tx *server/world.Tx, seed int64, pos server/block/cube.Pos, input server/item.Stack) (options [3]server/menu.EnchantmentOption, ok bool)
 server/menu	func	OpenBlock	func(tx *server/world.Tx, pos server/block/cube.Pos, v server/menu.Viewer, ender *server/item/inventory.Inventory) *server/menu.Menu
 server/menu	func	OpenEntity	func(e server/world.Entity, inv *server/item/inventory.Inventory, kind server/entity.ContainerKind, v server/menu.Viewer) *server/menu.Menu
 server/menu	func	OpenMerchant	func(e server/world.Entity, merchant server/entity.Merchant, user *server/world.EntityHandle) (*server/menu.Menu, bool)
+server/menu	func	OpenVirtual	func(positions []server/block/cube.Pos, inv *server/item/inventory.Inventory, kind server/menu.VirtualKind, title string, v server/menu.Viewer, onClose func(tx *server/world.Tx)) *server/menu.Menu
 server/menu	method	AutoCraft.Finish	func() error
 server/menu	method	AutoCraft.InGrid	func(s server/menu.Slot) bool
 server/menu	method	AutoCraft.Pay	func(r server/menu.Ref, count int) error
@@ -13980,6 +13987,9 @@ server/menu	method	Menu.Inventory	func() *server/item/inventory.Inventory
 server/menu	method	Menu.Kind	func() server/menu.Kind
 server/menu	method	Menu.Merchant	func(tx *server/world.Tx) (server/world.Entity, server/entity.Merchant, error)
 server/menu	method	Menu.Pos	func() server/block/cube.Pos
+server/menu	method	Menu.Title	func() string
+server/menu	method	Menu.VirtualKind	func() server/menu.VirtualKind
+server/menu	method	Menu.VirtualPositions	func() []server/block/cube.Pos
 server/menu	method	MissingInputError.Error	func() string
 server/menu	method	MultiCraft.Consume	func(r server/menu.Ref, count int) error
 server/menu	method	MultiCraft.Finish	func(check func(result server/item.Stack) bool) error
@@ -14013,7 +14023,7 @@ server/menu	type	Change	struct{Ref server/menu.Ref; Before server/item.Stack; Af
 server/menu	type	EnchantmentOption	struct{Cost int; Enchantments []server/item.Enchantment}
 server/menu	type	Inventories	struct{Main *server/item/inventory.Inventory; OffHand *server/item/inventory.Inventory; EnderChest *server/item/inventory.Inventory; UI *server/item/inventory.Inventory; Armour *server/item/inventory.Armour}
 server/menu	type	Kind	uint8
-server/menu	type	Menu	struct{kind server/menu.Kind; pos server/block/cube.Pos; handle *server/world.EntityHandle; ekind server/entity.ContainerKind; inv *server/item/inventory.Inventory; viewer server/menu.Viewer}
+server/menu	type	Menu	struct{kind server/menu.Kind; pos server/block/cube.Pos; handle *server/world.EntityHandle; ekind server/entity.ContainerKind; vkind server/menu.VirtualKind; title string; virtualPositions []server/block/cube.Pos; onClose func(tx *server/world.Tx); inv *server/item/inventory.Inventory; viewer server/menu.Viewer}
 server/menu	type	MissingInputError	struct{Role server/menu.Role}
 server/menu	type	MultiCraft	struct{t *server/menu.Tx; recipe server/item/recipe.Multi; input []server/item.Stack; offset int; roles []server/menu.Role; times int; consumed map[int]int}
 server/menu	type	Name	uint32
@@ -14025,6 +14035,7 @@ server/menu	type	Role	uint8
 server/menu	type	Slot	struct{Inv *server/item/inventory.Inventory; Index int}
 server/menu	type	Tx	struct{o server/menu.Opts; changes []server/menu.Change; results []server/item.Stack; ended bool; multiCraft *server/menu.MultiCraft}
 server/menu	type	Viewer	interface{ViewCrafterSlotState(slot int, disabled bool); ViewEnchantmentOptions(options [3]server/menu.EnchantmentOption); ViewTrades(m *server/menu.Menu, merchant server/entity.Merchant, offers []server/entity.MerchantOffer); server/block.ContainerViewer}
+server/menu	type	VirtualKind	uint8
 server/menu	var	ErrSameSlot	error
 server/menu	var	ErrSlotRefusesItem	error
 server/monitor	func	DefaultConfig	func() server/monitor.UserConfig
@@ -14423,6 +14434,7 @@ server/player	method	Player.OpenBlockContainer	func(pos server/block/cube.Pos, t
 server/player	method	Player.OpenEntityContainer	func(e server/world.Entity, inv *server/item/inventory.Inventory, kind server/entity.ContainerKind, tx *server/world.Tx)
 server/player	method	Player.OpenMerchant	func(e server/world.Entity, merchant server/entity.Merchant, tx *server/world.Tx)
 server/player	method	Player.OpenSign	func(pos server/block/cube.Pos, frontSide bool)
+server/player	method	Player.OpenVirtualContainer	func(inv *server/item/inventory.Inventory, kind server/menu.VirtualKind, title string, onClose func(tx *server/world.Tx), tx *server/world.Tx)
 server/player	method	Player.PermissionLevel	func() server/cmd.Level
 server/player	method	Player.Permissions	func() server/client.Permissions
 server/player	method	Player.PickBlock	func(pos server/block/cube.Pos)
@@ -14610,7 +14622,7 @@ server/player	type	BlockPlaceEvent	struct{server/event.Cancellable; Player *serv
 server/player	type	ChatEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; Message string}
 server/player	type	CombatFacet	struct{p *server/player.Player}
 server/player	type	CommandEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; Command server/cmd.Command; Args []string}
-server/player	type	Config	struct{Client server/client.Client; Log *log/slog.Logger; Left func(tx *server/world.Tx, p *server/player.Player); QuitMessage server/player/chat.Translation; AntiCheat *server/player/anticheat.Config; AntiCheatExempt func(p *server/player.Player, c server/player/anticheat.Check) bool; Permissions func(p *server/player.Player) server/client.Permissions; Skin server/player/skin.Skin; XUID string; UUID github.com/google/uuid.UUID; DataUUID github.com/google/uuid.UUID; Name string; Locale golang.org/x/text/language.Tag; GameMode server/world.GameMode; Position github.com/go-gl/mathgl/mgl64.Vec3; Rotation server/block/cube.Rotation; Velocity github.com/go-gl/mathgl/mgl64.Vec3; Health float64; MaxHealth float64; FoodTick int; Food int; Exhaustion float64; Saturation float64; AirSupply int; MaxAirSupply int; TimeSinceRest int32; EnchantmentSeed int64; Experience int; HeldSlot int; Inventory *server/item/inventory.Inventory; OffHand *server/item/inventory.Inventory; Armour *server/item/inventory.Armour; EnderChestInventory *server/item/inventory.Inventory; FireTicks int64; FallDistance float64; Effects []server/entity/effect.Effect; UnlockedRecipes []string; RaidOmenPosition server/block/cube.Pos; HasRaidOmenPosition bool; ShoulderLeft map[string]any; ShoulderRight map[string]any; JavaState map[string]any; RespawnDimension server/world.Dimension; RespawnPosition server/block/cube.Pos; RespawnRotation server/block/cube.Rotation; HasRespawnPoint bool}
+server/player	type	Config	struct{Client server/client.Client; Log *log/slog.Logger; Left func(tx *server/world.Tx, p *server/player.Player); QuitMessage server/player/chat.Translation; AntiCheat *server/player/anticheat.Config; AntiCheatExempt func(p *server/player.Player, c server/player/anticheat.Check) bool; Permissions func(p *server/player.Player) server/client.Permissions; Skin server/player/skin.Skin; XUID string; UUID github.com/google/uuid.UUID; DataUUID github.com/google/uuid.UUID; Name string; Locale golang.org/x/text/language.Tag; GameMode server/world.GameMode; Position github.com/go-gl/mathgl/mgl64.Vec3; Rotation server/block/cube.Rotation; Velocity github.com/go-gl/mathgl/mgl64.Vec3; Health float64; MaxHealth float64; FoodTick int; Food int; Exhaustion float64; Saturation float64; AirSupply int; MaxAirSupply int; TimeSinceRest int32; EnchantmentSeed int64; Experience int; HeldSlot int; Inventory *server/item/inventory.Inventory; OffHand *server/item/inventory.Inventory; Armour *server/item/inventory.Armour; EnderChestInventory *server/item/inventory.Inventory; FireTicks int64; FallDistance float64; Effects []server/entity/effect.Effect; UnlockedRecipes []string; RaidOmenPosition server/block/cube.Pos; HasRaidOmenPosition bool; ShoulderLeft map[string]any; ShoulderRight map[string]any; JavaState map[string]any; Components map[string]any; RespawnDimension server/world.Dimension; RespawnPosition server/block/cube.Pos; RespawnRotation server/block/cube.Rotation; HasRespawnPoint bool}
 server/player	type	Context	struct{*server/world.Context; p *server/player.Player}
 server/player	type	DeathEvent	struct{Player *server/player.Player; Tx *server/world.Tx; Source server/world.DamageSource; KeepInventory bool}
 server/player	type	DropEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; Item server/item.Stack}
@@ -16379,7 +16391,7 @@ server/world	type	ViewLayerUpdater	interface{ViewLayerEntityChanged(entity serve
 server/world	type	Viewer	interface{HideEntity(e server/world.Entity); ViewBlockAction(pos server/block/cube.Pos, a server/world.BlockAction); ViewBlockUpdate(pos server/block/cube.Pos, b server/world.Block, layer int); ViewBlockUpdates(u *server/world.BlockUpdates); ViewBrewingUpdate(prevBrewTime time.Duration, brewTime time.Duration, prevFuelAmount int32, fuelAmount int32, prevFuelTotal int32, fuelTotal int32); ViewChunk(pos server/world.ChunkPos, dim server/world.Dimension, col *server/world.Column); ViewEmote(e server/world.Entity, emote github.com/google/uuid.UUID); ViewEntity(e server/world.Entity); ViewEntityAction(e server/world.Entity, a server/world.EntityAction); ViewEntityAnimation(e server/world.Entity, a server/world.EntityAnimation); ViewEntityArmour(e server/world.Entity); ViewEntityDisplacement(e server/world.Entity, pos github.com/go-gl/mathgl/mgl64.Vec3, rot server/block/cube.Rotation, onGround bool); ViewEntityGameMode(e server/world.Entity); ViewEntityItems(e server/world.Entity); ViewEntityMove(e server/world.Entity, m *server/world.EntityMove); ViewEntityMovement(e server/world.Entity, pos github.com/go-gl/mathgl/mgl64.Vec3, rot server/block/cube.Rotation, onGround bool); ViewEntityState(e server/world.Entity); ViewEntityTeleport(e server/world.Entity, pos github.com/go-gl/mathgl/mgl64.Vec3); ViewEntityVelocity(e server/world.Entity, vel github.com/go-gl/mathgl/mgl64.Vec3); ViewEntityWake(e server/world.Entity); ViewFurnaceUpdate(prevCookTime time.Duration, cookTime time.Duration, prevRemainingFuelTime time.Duration, remainingFuelTime time.Duration, prevMaxFuelTime time.Duration, maxFuelTime time.Duration); ViewParticle(pos github.com/go-gl/mathgl/mgl64.Vec3, p server/world.Particle); ViewSkin(e server/world.Entity); ViewSound(pos github.com/go-gl/mathgl/mgl64.Vec3, s server/world.Sound); ViewTime(t int); ViewTimeCycle(doDayLightCycle bool); ViewWeather(raining bool, thunder bool); ViewWorldSpawn(pos server/block/cube.Pos)}
 server/world	type	VisibilityLevel	struct{server/world.visibility}
 server/world	type	WardenSpawnTracker	struct{TicksSinceLastWarning int; WarningLevel int; CooldownTicks int}
-server/world	type	World	struct{server/world.chunkStore; server/world.entityIndex; server/world.tickQueues; server/world.scratch; server/world.txQueue; server/world.lifecycle; server/world.clock; server/world.rules; server/world.structureState; server/world.blockState; server/world.generation; server/world.lightQueue; server/world.randomness; server/world.poiState; server/world.raidState; server/world.endState; server/world.saveState; server/world.viewerState; server/world.faultState; server/world.wireCache; conf server/world.Config; log *log/slog.Logger; genLog *log/slog.Logger; saveLog *log/slog.Logger; ra server/block/cube.Range; server/world.weather; stats *server/world.Stats; components server/ecs.Bag; events *server/event.Bus; systems server/world.tickSystemRegistry}
+server/world	type	World	struct{server/world.chunkStore; server/world.entityIndex; server/world.tickQueues; server/world.scratch; server/world.txQueue; server/world.lifecycle; server/world.clock; server/world.rules; server/world.structureState; server/world.blockState; server/world.generation; server/world.lightQueue; server/world.randomness; server/world.poiState; server/world.raidState; server/world.endState; server/world.saveState; server/world.viewerState; server/world.faultState; server/world.wireCache; conf server/world.Config; log *log/slog.Logger; genLog *log/slog.Logger; saveLog *log/slog.Logger; ra server/block/cube.Range; server/world.weather; stats *server/world.Stats; components server/ecs.Bag; ecsComponentsPersisted sync/atomic.Bool; events *server/event.Bus; systems server/world.tickSystemRegistry}
 server/world	type	WorldDataMemory	struct{mu sync.Mutex; data map[string][]byte}
 server/world	type	WorldTickEvent	struct{Tx *server/world.Tx; Tick int64}
 server/world	var	DefaultBlockRegistry	*server/world.BasicBlockRegistry
@@ -17380,7 +17392,7 @@ server/world/chunk	type	BlockEntity	struct{Pos server/block/cube.Pos; Data map[s
 server/world/chunk	type	BlockPaletteEncoding	struct{Blocks server/world/chunk.BlockRegistry}
 server/world/chunk	type	BlockRegistry	interface{AirRuntimeID() uint32; BlockCount() int; FilteringBlock(rid uint32) uint8; LightBlock(rid uint32) uint8; LiquidBlock(rid uint32) bool; LiquidDisplacingBlock(rid uint32) bool; NBTBlock(rid uint32) bool; RandomTickBlock(rid uint32) bool; RuntimeIDToState(runtimeID uint32) (name string, properties map[string]any, found bool); StateToRuntimeID(name string, properties map[string]any) (runtimeID uint32, found bool)}
 server/world/chunk	type	Chunk	struct{r server/block/cube.Range; br server/world/chunk.BlockRegistry; air uint32; recalculateHeightMap bool; heightMap server/world/chunk.HeightMap; sub []*server/world/chunk.SubChunk; biomes []*server/world/chunk.PalettedStorage; missingBlockStates map[server/world/chunk.missingBlockStateKey][]string}
-server/world/chunk	type	Column	struct{Chunk *server/world/chunk.Chunk; Entities []server/world/chunk.Entity; BlockEntities []server/world/chunk.BlockEntity; ScheduledTicks []server/world/chunk.SavedScheduledTick; PostProcessing [][]uint16; InhabitedTime uint64}
+server/world/chunk	type	Column	struct{Chunk *server/world/chunk.Chunk; Entities []server/world/chunk.Entity; BlockEntities []server/world/chunk.BlockEntity; ScheduledTicks []server/world/chunk.SavedScheduledTick; PostProcessing [][]uint16; InhabitedTime uint64; Components map[string]any}
 server/world/chunk	type	Encoding	interface{decodePalette(buf *bytes.Buffer, blockSize server/world/chunk.paletteSize, e server/world/chunk.paletteEncoding) (*server/world/chunk.Palette, error); encodePalette(buf *bytes.Buffer, p *server/world/chunk.Palette, e server/world/chunk.paletteEncoding); network() byte}
 server/world/chunk	type	Entity	struct{ID int64; Data map[string]any}
 server/world/chunk	type	HeightMap	[]int16
@@ -17415,7 +17427,10 @@ server/world/generator/advanced/end	method	End.DefaultSpawn	func(server/world.Di
 server/world/generator/advanced/end	method	End.FindNearestMapFeature	func(tag string, origin server/block/cube.Pos, searchRadius int, isReferenced func(server/world.StructureLocation) bool) (location server/world.StructureLocation, found bool, err error)
 server/world/generator/advanced/end	method	End.FindStructureAt	func(tag string, position server/block/cube.Pos) (server/world.StructureLocation, bool, error)
 server/world/generator/advanced/end	method	End.GenerateChunk	func(pos server/world.ChunkPos, c *server/world/chunk.Chunk, context server/world.GenerationContext) server/world.GenerationResult
-server/world/generator/advanced/end	type	End	struct{seed int64; biomeZoomSeed int64; motionBlocking sync.Map; baseNoise *server/internal/vanilla.BlendedNoise; islandNoise *server/internal/vanilla.SimplexNoise; endStoneRID uint32; airRID uint32; biomeID uint32; bedrockRID uint32; obsidianRID uint32; ironBarsRIDs [16]uint32; fireRID uint32; endGatewayRID uint32; chorusMaxDistance int; spikes [10]server/internal/vanilla.EndSpike; endCityCache sync.Map; pool sync.Pool}
+server/world/generator/advanced/end	method	End.Hooks	func() server/world/generator/advanced/end.Hooks
+server/world/generator/advanced/end	method	End.SetHooks	func(h server/world/generator/advanced/end.Hooks)
+server/world/generator/advanced/end	type	End	struct{seed int64; biomeZoomSeed int64; motionBlocking sync.Map; baseNoise *server/internal/vanilla.BlendedNoise; islandNoise *server/internal/vanilla.SimplexNoise; endStoneRID uint32; airRID uint32; biomeID uint32; bedrockRID uint32; obsidianRID uint32; ironBarsRIDs [16]uint32; fireRID uint32; endGatewayRID uint32; chorusMaxDistance int; spikes [10]server/internal/vanilla.EndSpike; endCityCache sync.Map; pool sync.Pool; hooks sync/atomic.Pointer[server/world/generator/advanced/end.Hooks]}
+server/world/generator/advanced/end	type	Hooks	struct{OnBiome func(x int, y int, z int, defaultBiome uint8) uint8; OnBiomes func(pos server/world.ChunkPos, c *server/world/chunk.Chunk); OnTerrain func(pos server/world.ChunkPos, c *server/world/chunk.Chunk); OnDecorate func(pos server/world.ChunkPos, c *server/world/chunk.Chunk, rng *server/internal/vanilla.Random)}
 server/world/generator/advanced/nether	func	New	func(seed int64) *server/world/generator/advanced/nether.Nether
 server/world/generator/advanced/nether	func	NewNether	func(seed int64) *server/world/generator/advanced/nether.Nether
 server/world/generator/advanced/nether	method	Nether.BiomeAt	func(x int32, y int32, z int32) string
@@ -17423,13 +17438,16 @@ server/world/generator/advanced/nether	method	Nether.DefaultSpawn	func(server/wo
 server/world/generator/advanced/nether	method	Nether.FindNearestMapFeature	func(tag string, origin server/block/cube.Pos, searchRadius int, isReferenced func(server/world.StructureLocation) bool) (location server/world.StructureLocation, found bool, err error)
 server/world/generator/advanced/nether	method	Nether.FindStructureAt	func(tag string, position server/block/cube.Pos) (server/world.StructureLocation, bool, error)
 server/world/generator/advanced/nether	method	Nether.GenerateChunk	func(pos server/world.ChunkPos, c *server/world/chunk.Chunk, context server/world.GenerationContext) server/world.GenerationResult
+server/world/generator/advanced/nether	method	Nether.Hooks	func() server/world/generator/advanced/nether.Hooks
 server/world/generator/advanced/nether	method	Nether.LoadGenerationState	func(data []byte) error
 server/world/generator/advanced/nether	method	Nether.ReleaseGenerationCaches	func()
 server/world/generator/advanced/nether	method	Nether.SaveGenerationState	func() ([]byte, error)
+server/world/generator/advanced/nether	method	Nether.SetHooks	func(h server/world/generator/advanced/nether.Hooks)
 server/world/generator/advanced/nether	method	Nether.SetLog	func(log *log/slog.Logger)
 server/world/generator/advanced/nether	method	Nether.SpawnStructures	func(pos server/world.ChunkPos) []server/world.StructureArea
 server/world/generator/advanced/nether	method	Nether.TuneGeneration	func(tuning server/world.GenerationTuning)
-server/world/generator/advanced/nether	type	Nether	struct{seed int64; airRID uint32; netherrackRID uint32; bedrockRID uint32; lavaStillRID uint32; lavaFlowRID uint32; gravelRID uint32; soulSandRID uint32; soulSoilRID uint32; basaltRID uint32; blackstoneRID uint32; crimsonNyliumRID uint32; warpedNyliumRID uint32; netherWartBlockRID uint32; warpedWartBlockRID uint32; netherBricksRID uint32; netherBrickFenceRIDs [16]uint32; netherWartRID uint32; netherBrickStairsRID [4]uint32; spawnerRID uint32; chestRID uint32; biomeIDs [5]uint32; biomeZoomSeed int64; biomes *server/internal/vanilla.NetherBiomes; density *server/internal/vanilla.NetherDensity; material *server/internal/vanilla.NetherMaterialNoise; caves *server/world/generator/advanced/nether.netherCaves; features *server/world/generator/advanced/overworld.ModernFeatures; featureSource *server/world/generator/advanced/nether.netherFeatureSource; complexMu sync.Mutex; complexStarts map[server/world.ChunkPos]server/world/generator/advanced/nether.netherComplexResult; complexFlights map[server/world.ChunkPos]*server/world/generator/advanced/nether.netherComplexFlight; fortressStates server/world/generator/advanced/nether.fortressStateStore; fossils server/world/generator/advanced/nether.netherFossilCache; portals server/world/generator/advanced/nether.netherPortalCache; pool sync.Pool}
+server/world/generator/advanced/nether	type	Hooks	struct{OnBiome func(x int, y int, z int, defaultBiome uint8) uint8; OnBiomes func(pos server/world.ChunkPos, c *server/world/chunk.Chunk); OnTerrain func(pos server/world.ChunkPos, c *server/world/chunk.Chunk); OnDecorate func(pos server/world.ChunkPos, c *server/world/chunk.Chunk, rng *server/internal/vanilla.Random)}
+server/world/generator/advanced/nether	type	Nether	struct{seed int64; airRID uint32; netherrackRID uint32; bedrockRID uint32; lavaStillRID uint32; lavaFlowRID uint32; gravelRID uint32; soulSandRID uint32; soulSoilRID uint32; basaltRID uint32; blackstoneRID uint32; crimsonNyliumRID uint32; warpedNyliumRID uint32; netherWartBlockRID uint32; warpedWartBlockRID uint32; netherBricksRID uint32; netherBrickFenceRIDs [16]uint32; netherWartRID uint32; netherBrickStairsRID [4]uint32; spawnerRID uint32; chestRID uint32; biomeIDs [5]uint32; biomeZoomSeed int64; biomes *server/internal/vanilla.NetherBiomes; density *server/internal/vanilla.NetherDensity; material *server/internal/vanilla.NetherMaterialNoise; caves *server/world/generator/advanced/nether.netherCaves; features *server/world/generator/advanced/overworld.ModernFeatures; featureSource *server/world/generator/advanced/nether.netherFeatureSource; complexMu sync.Mutex; complexStarts map[server/world.ChunkPos]server/world/generator/advanced/nether.netherComplexResult; complexFlights map[server/world.ChunkPos]*server/world/generator/advanced/nether.netherComplexFlight; fortressStates server/world/generator/advanced/nether.fortressStateStore; fossils server/world/generator/advanced/nether.netherFossilCache; portals server/world/generator/advanced/nether.netherPortalCache; pool sync.Pool; hooks sync/atomic.Pointer[server/world/generator/advanced/nether.Hooks]}
 server/world/generator/advanced/overworld	func	NativeColumnTop	func(c *server/world/chunk.Chunk, x uint8, z uint8) int32
 server/world/generator/advanced/overworld	func	New	func(seed int64) *server/world/generator/advanced/overworld.Overworld
 server/world/generator/advanced/overworld	func	NewModernFeatures	func(seed int64, source server/world/generator/advanced/overworld.ModernFeatureSource) *server/world/generator/advanced/overworld.ModernFeatures

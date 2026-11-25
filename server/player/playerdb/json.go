@@ -6,6 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 	"time"
@@ -59,6 +60,7 @@ func fromJson(d jsonData, lookupWorld func(world.Dimension) *world.World, fallba
 		ShoulderLeft:        d.ShoulderLeft,
 		ShoulderRight:       d.ShoulderRight,
 		JavaState:           world.CloneNativeEntityNBT(d.JavaState),
+		Components:          decodeComponentsNBT(d.ComponentsNBT),
 		RespawnDimension:    respawnDimension,
 		RespawnPosition:     d.RespawnPosition,
 		RespawnRotation:     cube.Rotation{d.RespawnYaw, d.RespawnPitch},
@@ -139,6 +141,7 @@ func toJson(d player.Config, w *world.World) jsonData {
 		ShoulderLeft:        d.ShoulderLeft,
 		ShoulderRight:       d.ShoulderRight,
 		JavaState:           world.CloneNativeEntityNBT(d.JavaState),
+		ComponentsNBT:       encodeComponentsNBT(d.Components),
 		RespawnDimension:    int32(respawnDim),
 		RespawnPosition:     d.RespawnPosition,
 		RespawnYaw:          d.RespawnRotation.Yaw(),
@@ -173,6 +176,7 @@ type jsonData struct {
 	ShoulderLeft                     map[string]any
 	ShoulderRight                    map[string]any
 	JavaState                        map[string]any `json:"adamant:java,omitempty"`
+	ComponentsNBT                    []byte         `json:"adamant:components_nbt,omitempty"`
 	RespawnDimension                 int32
 	RespawnPosition                  cube.Pos
 	RespawnYaw, RespawnPitch         float64
@@ -201,4 +205,26 @@ type jsonEffect struct {
 	Ambient         bool
 	ParticlesHidden bool
 	Infinite        bool
+}
+
+func encodeComponentsNBT(m map[string]any) []byte {
+	if len(m) == 0 {
+		return nil
+	}
+	b, err := nbt.MarshalEncoding(m, nbt.LittleEndian)
+	if err != nil {
+		return nil
+	}
+	return b
+}
+
+func decodeComponentsNBT(b []byte) map[string]any {
+	if len(b) == 0 {
+		return nil
+	}
+	var m map[string]any
+	if err := nbt.UnmarshalEncoding(b, &m, nbt.LittleEndian); err != nil {
+		return nil
+	}
+	return m
 }

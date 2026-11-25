@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"math/bits"
 	"sync"
+	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -79,6 +80,7 @@ type Nether struct {
 	fossils        netherFossilCache
 	portals        netherPortalCache
 	pool           sync.Pool
+	hooks          atomic.Pointer[Hooks]
 }
 
 type netherScratch struct {
@@ -215,6 +217,11 @@ func (g *Nether) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk, context world
 	}
 	g.pool.Put(scratch)
 
+	hooks := g.hooks.Load()
+	if hooks != nil {
+		applyPreDecorationHooks(pos, c, hooks)
+	}
+
 	result := world.GenerationResult{}
 	g.featureSource.remember(pos, c)
 	decoration := g.features.Decorate(pos, c, context)
@@ -222,6 +229,10 @@ func (g *Nether) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk, context world
 	result.BlockEntities = append(result.BlockEntities, decoration.BlockEntities...)
 	result.ScheduledTicks = append(result.ScheduledTicks, decoration.ScheduledTicks...)
 	result.PostProcessing = decoration.PostProcessing
+	if hooks != nil && hooks.OnDecorate != nil {
+		rng := decorationHookRandom(g.seed, pos)
+		hooks.OnDecorate(pos, c, &rng)
+	}
 	// NoiseGeneratorSettings.nether does not disable mob generation.
 	result.SpawnOriginalMobs = true
 	return result

@@ -6,6 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/player/anticheat"
 )
 
@@ -41,7 +42,7 @@ type menuState struct {
 func (p *Player) checkMenuReach() {
 	m := p.Menu()
 	ac := p.anticheat()
-	if m == nil || !p.checks(ac, anticheat.Menu) {
+	if m == nil || m.Kind() == menu.Virtual || !p.checks(ac, anticheat.Menu) {
 		return
 	}
 	eyes := entity.EyePosition(p)

@@ -393,6 +393,7 @@ func (w *World) initSubsystems() {
 	w.loadLootRandomSequences()
 	w.loadVillagePOIs()
 	w.loadRaids()
+	w.loadECSComponents()
 }
 
 // joinSettings registers the world in its settings, which the caller holds

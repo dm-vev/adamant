@@ -115,6 +115,7 @@ type encodedColumn struct {
 	ticks          []chunk.SavedScheduledTick
 	postProcessing [][]uint16
 	inhabitedTime  uint64
+	components     []byte
 	size           int
 }
 
@@ -156,6 +157,14 @@ func encodeColumn(col *chunk.Column) (*encodedColumn, error) {
 		enc.blockEntities = append(enc.blockEntities, encodedBlockEntity{pos: be.Pos, data: b})
 		enc.size += len(b)
 	}
+	if len(col.Components) > 0 {
+		b, err := nbt.MarshalEncoding(col.Components, nbt.LittleEndian)
+		if err != nil {
+			return nil, fmt.Errorf("encode chunk ECS components: %w", err)
+		}
+		enc.components = b
+		enc.size += len(b)
+	}
 	return enc, nil
 }
 
@@ -187,6 +196,13 @@ func (enc *encodedColumn) decode(br BlockRegistry, r cube.Range) (*chunk.Column,
 			return nil, fmt.Errorf("decode block entity at %v: %w", be.pos, err)
 		}
 		col.BlockEntities = append(col.BlockEntities, b)
+	}
+	if len(enc.components) > 0 {
+		comps := make(map[string]any)
+		if err := nbt.UnmarshalEncoding(enc.components, &comps, nbt.LittleEndian); err != nil {
+			return nil, fmt.Errorf("decode chunk ECS components: %w", err)
+		}
+		col.Components = comps
 	}
 	return col, nil
 }
@@ -476,7 +492,7 @@ func (s *chunkSaver) write(p pendingColumn) (panicked bool, err error) {
 	}
 	if a := p.actors; a != nil {
 		merged := *col
-		merged.Entities, merged.BlockEntities, merged.ScheduledTicks, merged.InhabitedTime = a.Entities, a.BlockEntities, a.ScheduledTicks, a.InhabitedTime
+		merged.Entities, merged.BlockEntities, merged.ScheduledTicks, merged.InhabitedTime, merged.Components = a.Entities, a.BlockEntities, a.ScheduledTicks, a.InhabitedTime, a.Components
 		col = &merged
 	}
 	if p.commit == nil {

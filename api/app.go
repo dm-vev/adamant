@@ -2,6 +2,7 @@ package api
 
 import (
 	"iter"
+	"path/filepath"
 	"slices"
 	"sync"
 
@@ -38,11 +39,22 @@ func (p FuncPlugin) Disable(app *App) {
 }
 
 // App is the primary SDK facade wrapping a *server.Server and managing plugin
-// lifecycles, world access, event buses, and transactions.
+// lifecycles, world access, dynamic worlds, scheduler tasks, permissions,
+// economy, plugin storage, event buses, and transactions.
 type App struct {
-	srv     *server.Server
-	mu      sync.Mutex
-	plugins []pluginEntry
+	srv         *server.Server
+	mu          sync.Mutex
+	plugins     []pluginEntry
+	scheduler   *Scheduler
+	permissions *PermissionStore
+	economy     *Economy
+	dataDir     string
+	worlds      map[string]managedWorld
+}
+
+type managedWorld struct {
+	w     *world.World
+	owned bool
 }
 
 type pluginEntry struct {
@@ -52,7 +64,15 @@ type pluginEntry struct {
 
 // New creates an App facade around srv.
 func New(srv *server.Server) *App {
-	return &App{srv: srv}
+	a := &App{
+		srv:         srv,
+		scheduler:   NewScheduler(),
+		permissions: NewPermissionStore(srv),
+		economy:     NewEconomy("coins", 0),
+		dataDir:     "plugins",
+		worlds:      make(map[string]managedWorld),
+	}
+	return a
 }
 
 // Use registers and enables each non-nil plugin on the App in order and returns
@@ -79,7 +99,8 @@ func (a *App) Use(plugins ...Plugin) *App {
 	return a
 }
 
-// Disable disables all currently enabled plugins in reverse registration order.
+// Disable disables all currently enabled plugins in reverse registration order,
+// cancels scheduled tasks, and closes dynamically created plugin worlds.
 // Calling Disable multiple times is safe and idempotent.
 func (a *App) Disable() {
 	if a == nil {
@@ -93,10 +114,23 @@ func (a *App) Disable() {
 			toDisable = append(toDisable, a.plugins[i].plugin)
 		}
 	}
+	var ownedWorlds []*world.World
+	for name, entry := range a.worlds {
+		if entry.owned && entry.w != nil {
+			ownedWorlds = append(ownedWorlds, entry.w)
+		}
+		delete(a.worlds, name)
+	}
 	a.mu.Unlock()
 
 	for _, p := range toDisable {
 		p.Disable(a)
+	}
+	if a.scheduler != nil {
+		a.scheduler.CancelAll()
+	}
+	for _, w := range ownedWorlds {
+		_ = w.Close()
 	}
 }
 
@@ -112,6 +146,57 @@ func (a *App) Plugins() []Plugin {
 		out[i] = entry.plugin
 	}
 	return slices.Clip(out)
+}
+
+// Scheduler returns the App's tick scheduler (automatically cancelled on Disable).
+func (a *App) Scheduler() *Scheduler {
+	if a == nil {
+		return nil
+	}
+	return a.scheduler
+}
+
+// Permissions returns the App's hierarchical permission & RBAC store.
+func (a *App) Permissions() *PermissionStore {
+	if a == nil {
+		return nil
+	}
+	return a.permissions
+}
+
+// Economy returns the App's built-in concurrency-safe economy service.
+func (a *App) Economy() *Economy {
+	if a == nil {
+		return nil
+	}
+	return a.economy
+}
+
+// SetDataDir sets the base directory used by Storage (defaults to "plugins").
+func (a *App) SetDataDir(dir string) {
+	if a == nil || dir == "" {
+		return
+	}
+	a.mu.Lock()
+	a.dataDir = dir
+	a.mu.Unlock()
+}
+
+// Storage returns a scoped file/config Storage rooted at <dataDir>/<pluginName>.
+func (a *App) Storage(pluginName string) *Storage {
+	base := "plugins"
+	if a != nil {
+		a.mu.Lock()
+		if a.dataDir != "" {
+			base = a.dataDir
+		}
+		a.mu.Unlock()
+	}
+	clean := filepath.Base(pluginName)
+	if clean == "." || clean == ".." || clean == string(filepath.Separator) || clean == "" {
+		clean = "default"
+	}
+	return NewStorage(filepath.Join(base, clean))
 }
 
 // Server returns the underlying *server.Server.
