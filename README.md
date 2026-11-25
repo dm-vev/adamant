@@ -28,7 +28,7 @@
 | **Redstone, Crafting, Loot & Survival Parity** | ✅ | ✅ | ⚠️ Partial | ⚠️ Partial |
 | **Multi-Core Regions, Parallel AI & Crowd Batching** | ✅ | ⚠️ Limited | ❌ Single-tick bottlenecks | ⚠️ Single-world loop |
 | **Multi-Version Bedrock Protocol (`2168` – `2225`)** | ✅ Built-in | ❌ Single version | ⚠️ Via plugins | ❌ Single version |
-| **Typed Zero-Allocation Plugin SDK** | ✅ Go (`api/`) | ❌ Closed C++ | PHP / Java | Go (core-coupled) |
+| **Typed Zero-Allocation Plugin SDK** | ✅ Go (`sdk/*`) | ❌ Closed C++ | PHP / Java | Go (core-coupled) |
 | **Single Static Binary (`MIT`, Linux / Windows / macOS)** | ✅ | ❌ Proprietary | ❌ Runtime required | ✅ |
 
 ## Benchmarks
@@ -92,24 +92,26 @@ go run .
 
 ## Architecture & SDK
 
-Adamant isolates a data-oriented simulation core (`server/`) from wire adapters (`protocol/`, `net/`) and an external plugin SDK (`api/`, `api/bedrock/`), enforced in CI by architectural ratchets (`internal/archtest`):
+Adamant isolates a data-oriented simulation core (`server/`) from wire adapters (`protocol/`, `net/`) and a modular, package-per-domain plugin SDK (`sdk/*`), enforced in CI by architectural ratchets (`internal/archtest`):
 
 - **Zero-alloc ECS & EventBus (`server/ecs`, `server/event`):** dense typed component bags (`Key[T]` / `Bag` with automatic NBT persistence on entities, players, chunks, and worlds); prioritized `event.Bus` (`Cancellable`) on `Server`, `World`/`Tx`, and `Player`.
 - **Parallel simulation (`server/world`, `server/entity`):** `World.AddSystem(TickPhase)` with panic containment, `SetBlockRID` / `FillRID` volume ops, 4×4 parallel world `Regions`, multi-core AI/fluid/collision `Prefetch`, and `sharedPathCache`.
-- **External SDK (`api`, `api/bedrock`):** `App` / `Plugin` lifecycle, declarative custom blocks/items/recipes/entities (`MobAI` + `Brain`, loot, equipment, custom NBT), virtual chest/double-chest/hopper GUIs & `PagedMenu`, `Menu`/`Modal`/`CustomForm`, UI helpers (scoreboards, boss bars, titles, dialogues, particles, sounds), typed & subcommand-group commands, Overworld/Nether/End worldgen hooks + custom biomes & structures, tick `Scheduler`, atomic JSON/TOML `Storage`, hierarchical RBAC `PermissionStore`, `Economy`, `Hologram`, dynamic worlds + `TransferPlayer`, and multi-protocol Bedrock packet interception & resource pack helpers.
+- **Modular Plugin SDK (`sdk/*`):** 16 focused packages with zero god-package coupling and plugin-scoped `Context` auto-cleanup on disable:
+  - **Core:** `sdk/plugin` (lifecycle, scoped `Context`, typed service registry, atomic JSON/TOML storage), `sdk/event`, `sdk/ecs`, `sdk/schedule`, `sdk/cmd` (declarative, typed & subcommand groups), `sdk/perm` (standalone hierarchical RBAC)
+  - **Content:** `sdk/block`, `sdk/item`, `sdk/recipe`, `sdk/mob` (`MobAI` + `Brain`, equipment, drops, custom NBT)
+  - **UI & Worlds:** `sdk/menu` (virtual chest/double-chest/hopper & paginated GUIs), `sdk/form` (menu/modal/custom), `sdk/hud` (scoreboards, boss bars, titles, dialogues, audio/particles, holograms), `sdk/worldgen` (unified Overworld/Nether/End hooks, biomes, structures), `sdk/worlds` (dynamic worlds & transfers)
+  - **Protocol:** `sdk/bedrock` (multi-protocol packet interception, versioned raw packets, resource packs)
 
 ```go
-app := api.New(srv).Use(api.FuncPlugin{
-	OnEnable: func(app *api.App) {
-		api.OnServer(app, api.PriorityNormal, func(ev *player.JoinEvent) {
-			api.SendTitle(ev.Player, api.TitleSpec{Title: "Welcome", Subtitle: "Adamant"})
-		})
-		app.Scheduler().Every(app.World(), 200, func(tx *world.Tx) {
-			api.BroadcastWorldMessage(app, tx, "Server tick heartbeat")
-		})
-	},
-})
-defer app.Disable()
+app := plugin.New(srv).Use(plugin.Func("greeter", func(ctx *plugin.Context) {
+	event.OnServer(ctx, event.Normal, func(ev *player.JoinEvent) {
+		hud.NewTitle("Welcome").Subtitle("Adamant").Show(ev.Player)
+	})
+	schedule.Every(ctx, ctx.World(), 200, func(tx *world.Tx) {
+		hud.BroadcastWorld(ctx.App(), tx, "Server tick heartbeat")
+	})
+}, nil))
+defer app.Disable() // auto-unsubscribes events & cancels scheduled tasks
 ```
 
 ## Documentation
@@ -135,7 +137,7 @@ go test ./internal/archtest   # boundary, mutation, wait, API, entity-layer & fu
 | Path | Contents |
 |---|---|
 | `main.go`, `internal/app` | Entrypoint, `config.toml` loader, logging, metrics, and service lifecycle |
-| `api`, `api/bedrock` | External plugin SDK and Bedrock packet interception / raw packet helpers |
+| `sdk/*` | Modular plugin SDK (`plugin`, `event`, `ecs`, `schedule`, `cmd`, `perm`, `block`, `item`, `recipe`, `mob`, `menu`, `form`, `hud`, `worldgen`, `worlds`, `bedrock`) |
 | `server/ecs`, `server/event` | Zero-allocation component bags and prioritized typed event bus |
 | `server/world`, `server/entity` | Parallel world regions, LevelDB, Java 26.3 worldgen, `MobAI` & `Brain` |
 | `server/player`, `server/block`, `server/item`, `server/cmd` | Player facets & anti-cheat, block/item mechanics, Java 26.3 commands |
