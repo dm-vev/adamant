@@ -49,6 +49,7 @@ type javaCookingRecipe struct {
 
 var (
 	cookingOnce    sync.Once
+	cookingMu      sync.RWMutex
 	cookingByInput map[cookingKey]CookingRecipe
 	cookingByID    map[string]CookingRecipe
 	cookingFuel    map[cookingItemKey]int
@@ -102,15 +103,50 @@ func CookingRecipeFor(kind CookingKind, it world.Item) (CookingRecipe, bool) {
 		return CookingRecipe{}, false
 	}
 	cookingOnce.Do(loadCooking)
+	cookingMu.RLock()
 	r, ok := cookingByInput[cookingKey{kind: kind, item: cookingItem(it)}]
+	cookingMu.RUnlock()
 	return r, ok
 }
 
 // CookingRecipeByID returns the cooking recipe with the identifier passed.
 func CookingRecipeByID(id string) (CookingRecipe, bool) {
 	cookingOnce.Do(loadCooking)
+	cookingMu.RLock()
 	r, ok := cookingByID[id]
+	cookingMu.RUnlock()
 	return r, ok
+}
+
+// RegisterCookingRecipe registers or overrides a furnace, blast furnace,
+// smoker, or campfire cooking recipe for input.
+func RegisterCookingRecipe(kind CookingKind, input world.Item, recipe CookingRecipe) {
+	if input == nil {
+		return
+	}
+	cookingOnce.Do(loadCooking)
+	cookingMu.Lock()
+	cookingByInput[cookingKey{kind: kind, item: cookingItem(input)}] = recipe
+	if recipe.ID != "" {
+		cookingByID[recipe.ID] = recipe
+	}
+	cookingMu.Unlock()
+}
+
+// RegisterCookingFuel registers or overrides the furnace burn duration in ticks
+// for item it. Passing burnTicks <= 0 removes the fuel entry.
+func RegisterCookingFuel(it world.Item, burnTicks int) {
+	if it == nil {
+		return
+	}
+	cookingOnce.Do(loadCooking)
+	cookingMu.Lock()
+	if burnTicks <= 0 {
+		delete(cookingFuel, cookingItem(it))
+	} else {
+		cookingFuel[cookingItem(it)] = burnTicks
+	}
+	cookingMu.Unlock()
 }
 
 // CookingBurnTime returns the ticks the item burns for as furnace fuel, or 0
@@ -121,7 +157,9 @@ func CookingBurnTime(it world.Item, fast bool) int {
 		return 0
 	}
 	cookingOnce.Do(loadCooking)
+	cookingMu.RLock()
 	ticks := cookingFuel[cookingItem(it)]
+	cookingMu.RUnlock()
 	if fast {
 		return ticks / 2
 	}

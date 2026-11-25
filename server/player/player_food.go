@@ -122,8 +122,7 @@ func (p *Player) tickFood() {
 	if lose {
 		before := state.foodLevel
 		after := before - 1
-		ctx := NewEventContext(p.tx, p)
-		if p.Handler().HandleFoodLoss(ctx, before, &after); !ctx.Cancelled() {
+		if p.dispatchFoodLossEvent(before, &after) {
 			p.hunger.SetFood(after)
 			mutated = true
 		}

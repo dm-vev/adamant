@@ -1,11 +1,13 @@
 package item_test
 
 import (
+	"slices"
 	"testing"
 	"time"
 
 	sdkitem "github.com/df-mc/dragonfly/sdk/item"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -46,5 +48,24 @@ func TestCustomItemDefineCapabilitiesAndRegistry(t *testing.T) {
 	got, ok := sdkitem.ByName("sdk_test:blink_wand", 0)
 	if !ok || got == nil {
 		t.Fatal("ByName did not find registered custom item")
+	}
+
+	// Fluent StackBuilder test.
+	st := sdkitem.Stack(item.Sword{Tier: item.ToolTierDiamond}).
+		Name("Excalibur").
+		Lore("Forged in Go").
+		AddLore("Line 2").
+		Enchant(enchantment.Sharpness, 5).
+		Unbreakable().
+		Value("tier", "legendary").
+		Build()
+	if st.CustomName() != "Excalibur" || !slices.Equal(st.Lore(), []string{"Forged in Go", "Line 2"}) {
+		t.Fatalf("StackBuilder name/lore = (%q, %v)", st.CustomName(), st.Lore())
+	}
+	if _, ok := st.Enchantment(enchantment.Sharpness); !ok || !st.Unbreakable() {
+		t.Fatal("StackBuilder enchant/unbreakable missing")
+	}
+	if v, ok := st.Value("tier"); !ok || v != "legendary" {
+		t.Fatalf("StackBuilder Value = (%v, %v)", v, ok)
 	}
 }

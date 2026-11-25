@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/event"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -89,9 +90,20 @@ func (w weather) thundering() bool {
 	return w.w.set.Thundering
 }
 
+func (w weather) allowWeatherChange(raining, thundering bool, dur time.Duration) bool {
+	if w.w == nil || !event.HasListeners[WeatherChangeEvent](w.w.Events()) {
+		return true
+	}
+	ev := WeatherChangeEvent{World: w.w, Raining: raining, Thundering: thundering, Duration: dur}
+	return event.Emit(w.w.Events(), &ev)
+}
+
 // StartRaining makes it rain in the World. The time.Duration passed will
 // determine how long it will rain.
 func (w weather) StartRaining(dur time.Duration) {
+	if !w.allowWeatherChange(true, w.thundering(), dur) {
+		return
+	}
 	w.w.set.Lock()
 	defer w.w.set.Unlock()
 	w.setRaining(true, dur)
@@ -99,6 +111,9 @@ func (w weather) StartRaining(dur time.Duration) {
 
 // StopRaining makes it stop raining in the World.
 func (w weather) StopRaining() {
+	if !w.allowWeatherChange(false, false, 0) {
+		return
+	}
 	w.w.set.Lock()
 	defer w.w.set.Unlock()
 
@@ -116,6 +131,9 @@ func (w weather) StopRaining() {
 // if it wasn't already raining. In this case the rain will, like the thunder,
 // last for the time.Duration passed.
 func (w weather) StartThundering(dur time.Duration) {
+	if !w.allowWeatherChange(true, true, dur) {
+		return
+	}
 	w.w.set.Lock()
 	defer w.w.set.Unlock()
 
@@ -125,6 +143,9 @@ func (w weather) StartThundering(dur time.Duration) {
 
 // StopThundering makes it stop thundering in the current world.
 func (w weather) StopThundering() {
+	if !w.allowWeatherChange(w.raining(), false, 0) {
+		return
+	}
 	w.w.set.Lock()
 	defer w.w.set.Unlock()
 	if w.w.set.Thundering && w.w.set.Raining {

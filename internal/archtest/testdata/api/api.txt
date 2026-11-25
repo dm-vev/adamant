@@ -445,6 +445,7 @@ server	method	Server.PlayerIsOperator	func(id github.com/google/uuid.UUID) bool
 server	method	Server.PlayerLevel	func(id github.com/google/uuid.UUID) server/cmd.Level
 server	method	Server.PlayerNames	func() []string
 server	method	Server.PlayerPermissions	func(id github.com/google/uuid.UUID) server/client.Permissions
+server	method	Server.PlayerProvider	func() server/player.Provider
 server	method	Server.Players	func(tx *server/world.Tx) iter.Seq[*server/player.Player]
 server	method	Server.PlayersAt	func(key string) []string
 server	method	Server.QuerySave	func() server.SaveHold
@@ -12449,6 +12450,8 @@ server/item	func	PoisonStew	func() server/item.StewType
 server/item	func	ReadNBT	func(data map[string]any, registries ...server/world.BlockRegistry) server/item.Stack
 server/item	func	ReadTag	func(tag map[string]any, s server/item.Stack) server/item.Stack
 server/item	func	RegenerationStew	func() server/item.StewType
+server/item	func	RegisterCookingFuel	func(it server/world.Item, burnTicks int)
+server/item	func	RegisterCookingRecipe	func(kind server/item.CookingKind, input server/world.Item, recipe server/item.CookingRecipe)
 server/item	func	RegisterEnchantment	func(id int, enchantment server/item.EnchantmentType)
 server/item	func	RegisterJavaOnlyEnchantment	func(enchantment server/item.EnchantmentType)
 server/item	func	SaturationDandelionStew	func() server/item.StewType
@@ -14211,10 +14214,26 @@ server/player	method	Context.WithBlockInteraction	func(activate func())
 server/player	method	Context.World	func() *server/world.World
 server/player	method	DropEvent.Cancel	func()
 server/player	method	DropEvent.Cancelled	func() bool
+server/player	method	ExperienceGainEvent.Cancel	func()
+server/player	method	ExperienceGainEvent.Cancelled	func() bool
+server/player	method	FoodLossEvent.Cancel	func()
+server/player	method	FoodLossEvent.Cancelled	func() bool
+server/player	method	HealEvent.Cancel	func()
+server/player	method	HealEvent.Cancelled	func() bool
+server/player	method	HeldSlotChangeEvent.Cancel	func()
+server/player	method	HeldSlotChangeEvent.Cancelled	func() bool
 server/player	method	HurtEvent.Cancel	func()
 server/player	method	HurtEvent.Cancelled	func() bool
+server/player	method	ItemConsumeEvent.Cancel	func()
+server/player	method	ItemConsumeEvent.Cancelled	func() bool
+server/player	method	ItemPickupEvent.Cancel	func()
+server/player	method	ItemPickupEvent.Cancelled	func() bool
 server/player	method	ItemUseEvent.Cancel	func()
 server/player	method	ItemUseEvent.Cancelled	func() bool
+server/player	method	ItemUseOnBlockEvent.Cancel	func()
+server/player	method	ItemUseOnBlockEvent.Cancelled	func() bool
+server/player	method	ItemUseOnEntityEvent.Cancel	func()
+server/player	method	ItemUseOnEntityEvent.Cancelled	func() bool
 server/player	method	MoveEvent.Cancel	func()
 server/player	method	MoveEvent.Cancelled	func() bool
 server/player	method	MovementFacet.Fly	func(flying bool)
@@ -14590,6 +14609,12 @@ server/player	method	Player.WardenSpawnTracker	func() *server/world.WardenSpawnT
 server/player	method	Player.WardenSpectator	func() bool
 server/player	method	Player.WearingCreakingDisguise	func() bool
 server/player	method	Player.XUID	func() string
+server/player	method	PreLoginEvent.Cancel	func()
+server/player	method	PreLoginEvent.Cancelled	func() bool
+server/player	method	PunchAirEvent.Cancel	func()
+server/player	method	PunchAirEvent.Cancelled	func() bool
+server/player	method	SignEditEvent.Cancel	func()
+server/player	method	SignEditEvent.Cancelled	func() bool
 server/player	method	TeleportEvent.Cancel	func()
 server/player	method	TeleportEvent.Cancelled	func() bool
 server/player	method	ToggleSneakEvent.Cancel	func()
@@ -14626,9 +14651,17 @@ server/player	type	Config	struct{Client server/client.Client; Log *log/slog.Logg
 server/player	type	Context	struct{*server/world.Context; p *server/player.Player}
 server/player	type	DeathEvent	struct{Player *server/player.Player; Tx *server/world.Tx; Source server/world.DamageSource; KeepInventory bool}
 server/player	type	DropEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; Item server/item.Stack}
+server/player	type	ExperienceGainEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; Amount int}
+server/player	type	FoodLossEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; From int; To int}
 server/player	type	Handler	interface{HandleAttackEntity(ctx *server/player.Context, e server/world.Entity, force *float64, height *float64, critical *bool); HandleBlockBreak(ctx *server/player.Context, pos server/block/cube.Pos, drops *[]server/item.Stack, xp *int); HandleBlockPick(ctx *server/player.Context, pos server/block/cube.Pos, b server/world.Block); HandleBlockPlace(ctx *server/player.Context, pos server/block/cube.Pos, b server/world.Block); HandleChangeWorld(p *server/player.Player, before *server/world.World, after *server/world.World); HandleChat(ctx *server/player.Context, message *string); HandleCommandExecution(ctx *server/player.Context, command server/cmd.Command, args []string); HandleDeath(p *server/player.Player, src server/world.DamageSource, keepInv *bool); HandleDiagnostics(p *server/player.Player, d server/client.Diagnostics); HandleExperienceGain(ctx *server/player.Context, amount *int); HandleFireExtinguish(ctx *server/player.Context, pos server/block/cube.Pos); HandleFoodLoss(ctx *server/player.Context, from int, to *int); HandleHeal(ctx *server/player.Context, health *float64, src server/world.HealingSource); HandleHeldSlotChange(ctx *server/player.Context, from int, to int); HandleHurt(ctx *server/player.Context, damage *float64, immune bool, attackImmunity *time.Duration, src server/world.DamageSource); HandleItemConsume(ctx *server/player.Context, item server/item.Stack); HandleItemDamage(ctx *server/player.Context, i server/item.Stack, damage *int); HandleItemDrop(ctx *server/player.Context, s server/item.Stack); HandleItemPickup(ctx *server/player.Context, i *server/item.Stack); HandleItemRelease(ctx *server/player.Context, item server/item.Stack, dur time.Duration); HandleItemUse(ctx *server/player.Context); HandleItemUseOnBlock(ctx *server/player.Context, pos server/block/cube.Pos, face server/block/cube.Face, clickPos github.com/go-gl/mathgl/mgl64.Vec3); HandleItemUseOnEntity(ctx *server/player.Context, e server/world.Entity); HandleJump(p *server/player.Player); HandleLecternPageTurn(ctx *server/player.Context, pos server/block/cube.Pos, oldPage int, newPage *int); HandleMove(ctx *server/player.Context, newPos github.com/go-gl/mathgl/mgl64.Vec3, newRot server/block/cube.Rotation); HandlePunchAir(ctx *server/player.Context); HandleQuit(p *server/player.Player); HandleRespawn(p *server/player.Player, pos *github.com/go-gl/mathgl/mgl64.Vec3, w **server/world.World); HandleSetOnFire(ctx *server/player.Context, duration *time.Duration); HandleSignEdit(ctx *server/player.Context, pos server/block/cube.Pos, frontSide bool, oldText string, newText string); HandleSkinChange(ctx *server/player.Context, skin *server/player/skin.Skin); HandleSleep(ctx *server/player.Context, sendReminder *bool); HandleStartBreak(ctx *server/player.Context, pos server/block/cube.Pos); HandleTeleport(ctx *server/player.Context, pos github.com/go-gl/mathgl/mgl64.Vec3); HandleToggleSneak(ctx *server/player.Context, after bool); HandleToggleSprint(ctx *server/player.Context, after bool); HandleTransfer(ctx *server/player.Context, addr *net.UDPAddr); HandleViolation(ctx *server/player.Context, v *server/player/anticheat.Violation)}
+server/player	type	HealEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; Health float64; Source server/world.HealingSource}
+server/player	type	HeldSlotChangeEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; From int; To int}
 server/player	type	HurtEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; Damage float64; Immune bool; AttackImmunity time.Duration; Source server/world.DamageSource}
+server/player	type	ItemConsumeEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; Item server/item.Stack}
+server/player	type	ItemPickupEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; Item server/item.Stack}
 server/player	type	ItemUseEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; Item server/item.Stack}
+server/player	type	ItemUseOnBlockEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; Pos server/block/cube.Pos; Face server/block/cube.Face; ClickPos github.com/go-gl/mathgl/mgl64.Vec3; Item server/item.Stack}
+server/player	type	ItemUseOnEntityEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; Entity server/world.Entity; Item server/item.Stack}
 server/player	type	JoinEvent	struct{Player *server/player.Player; Tx *server/world.Tx}
 server/player	type	Lister	interface{Players(yield func(id github.com/google/uuid.UUID, name string, xuid string) bool) error}
 server/player	type	MoveEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; From github.com/go-gl/mathgl/mgl64.Vec3; To github.com/go-gl/mathgl/mgl64.Vec3; OldRot server/block/cube.Rotation; NewRot server/block/cube.Rotation}
@@ -14637,14 +14670,19 @@ server/player	type	NetFacet	struct{p *server/player.Player}
 server/player	type	NopHandler	struct{}
 server/player	type	NopProvider	struct{}
 server/player	type	Player	struct{tx *server/world.Tx; handle *server/world.EntityHandle; data *server/world.EntityData; *server/player.playerData}
+server/player	type	PreLoginEvent	struct{server/event.Cancellable; Name string; UUID github.com/google/uuid.UUID; XUID string; Addr net.Addr; Reason string}
 server/player	type	Provider	interface{Load(uuid github.com/google/uuid.UUID, world func(server/world.Dimension) *server/world.World) (server/player.Config, *server/world.World, error); Save(uuid github.com/google/uuid.UUID, data server/player.Config, w *server/world.World) error; io.Closer}
+server/player	type	PunchAirEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx}
 server/player	type	QuitEvent	struct{Player *server/player.Player; Tx *server/world.Tx}
 server/player	type	Ref	struct{h *server/world.EntityHandle}
+server/player	type	RespawnEvent	struct{Player *server/player.Player; Tx *server/world.Tx; Position github.com/go-gl/mathgl/mgl64.Vec3; World *server/world.World}
+server/player	type	SignEditEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; Pos server/block/cube.Pos; FrontSide bool; OldText string; NewText string}
 server/player	type	StarvationDamageSource	struct{}
 server/player	type	TeleportEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; From github.com/go-gl/mathgl/mgl64.Vec3; To github.com/go-gl/mathgl/mgl64.Vec3}
 server/player	type	ToggleSneakEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; Sneaking bool}
 server/player	type	ToggleSprintEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; Sprinting bool}
 server/player	type	UIFacet	struct{p *server/player.Player}
+server/player	type	WorldChangeEvent	struct{Player *server/player.Player; Tx *server/world.Tx; Before *server/world.World; After *server/world.World}
 server/player	var	Type	server/player.ptype
 server/player/anticheat	const	AirAcceleration	untyped float = 13/500
 server/player/anticheat	const	AirDrag	untyped float = 91/100
@@ -15681,6 +15719,8 @@ server/world	method	EntityAnimation.StopCondition	func() string
 server/world	method	EntityAnimation.WithController	func(controller string) server/world.EntityAnimation
 server/world	method	EntityAnimation.WithNextState	func(state string) server/world.EntityAnimation
 server/world	method	EntityAnimation.WithStopCondition	func(condition string) server/world.EntityAnimation
+server/world	method	EntityDamageEvent.Cancel	func()
+server/world	method	EntityDamageEvent.Cancelled	func() bool
 server/world	method	EntityExplosionSource.Position	func() github.com/go-gl/mathgl/mgl64.Vec3
 server/world	method	EntityExplosionSource.Size	func() float64
 server/world	method	EntityHandle.Close	func() error
@@ -15713,6 +15753,8 @@ server/world	method	EntityRegistry.Lookup	func(name string) (server/world.Entity
 server/world	method	EntityRegistry.Types	func() []server/world.EntityType
 server/world	method	EntityRegistryConfig.New	func(ent []server/world.EntityType) server/world.EntityRegistry
 server/world	method	EntitySpawnOpts.New	func(t server/world.EntityType, conf server/world.EntityConfig) *server/world.EntityHandle
+server/world	method	ExplosionEvent.Cancel	func()
+server/world	method	ExplosionEvent.Cancelled	func() bool
 server/world	method	FaultKind.String	func() string
 server/world	method	GenerationResult.HasScheduledTick	func(pos server/block/cube.Pos, kind server/world/chunk.ScheduledTickKind, typeName string) bool
 server/world	method	GenerationResult.MarkForPostProcessing	func(pos server/block/cube.Pos, r server/block/cube.Range)
@@ -15806,6 +15848,8 @@ server/world	method	PanicError.Error	func() string
 server/world	method	PanicError.Unwrap	func() error
 server/world	method	PositionTrackingDestroyAction.BlockAction	func()
 server/world	method	PositionTrackingUpdateAction.BlockAction	func()
+server/world	method	ProjectileHitEvent.Cancel	func()
+server/world	method	ProjectileHitEvent.Cancelled	func() bool
 server/world	method	Raid.Active	func() bool
 server/world	method	Raid.BetweenWaves	func() bool
 server/world	method	Raid.Center	func() server/block/cube.Pos
@@ -16039,6 +16083,8 @@ server/world	method	VisibilityLevel.EnforceVisibility	func() bool
 server/world	method	WardenSpawnTracker.EncodeNBT	func() map[string]any
 server/world	method	WardenSpawnTracker.SetWarningLevel	func(level int)
 server/world	method	WardenSpawnTracker.Tick	func()
+server/world	method	WeatherChangeEvent.Cancel	func()
+server/world	method	WeatherChangeEvent.Cancelled	func() bool
 server/world	method	World.AddBorderSize	func(amount float64, ticks int64)
 server/world	method	World.AddMapDecoration	func(id int64, decoration server/world.MapDecoration) error
 server/world	method	World.AddSystem	func(phase server/world.TickPhase, fn func(tx *server/world.Tx, tick int64)) func()
@@ -16225,8 +16271,10 @@ server/world	type	EntityAction	interface{EntityAction()}
 server/world	type	EntityAnimation	struct{name string; nextState string; controller string; stopCondition string}
 server/world	type	EntityBroadcastViewer	interface{ViewEntityActionShared(e server/world.Entity, a server/world.EntityAction, b *server/world.Broadcast); ViewEntityArmourShared(e server/world.Entity, b *server/world.Broadcast); ViewEntityItemsShared(e server/world.Entity, b *server/world.Broadcast); ViewEntityVelocityShared(e server/world.Entity, vel github.com/go-gl/mathgl/mgl64.Vec3, b *server/world.Broadcast); server/world.EntityStateSharedViewer}
 server/world	type	EntityConfig	interface{Apply(data *server/world.EntityData)}
+server/world	type	EntityDamageEvent	struct{server/event.Cancellable; Tx *server/world.Tx; Entity server/world.Entity; Damage float64; Source server/world.DamageSource}
 server/world	type	EntityDamageSource	interface{SourceEntity() server/world.Entity; server/world.DamageSource}
 server/world	type	EntityData	struct{Pos github.com/go-gl/mathgl/mgl64.Vec3; Vel github.com/go-gl/mathgl/mgl64.Vec3; Rot server/block/cube.Rotation; Name string; SpawnReason string; AlwaysShowNameTag bool; FireDuration time.Duration; Age time.Duration; Riding *server/world.EntityHandle; Seat server/world.RiderSeat; FrozenTicks int; InPowderSnow bool; WasInPowderSnow bool; OnGround bool; FallDistance float64; NativeNBT map[string]any; Moves server/world.MoveTracker; Components server/ecs.Bag; Data any}
+server/world	type	EntityDeathEvent	struct{Tx *server/world.Tx; Entity server/world.Entity; Source server/world.DamageSource}
 server/world	type	EntityDespawnEvent	struct{Tx *server/world.Tx; Entity server/world.Entity}
 server/world	type	EntityExplosionSource	struct{Entity server/world.Entity; ExplosionSize float64; origin github.com/go-gl/mathgl/mgl64.Vec3; hasOrigin bool}
 server/world	type	EntityHandle	struct{id github.com/google/uuid.UUID; t server/world.EntityType; typeID string; cond *sync.Cond; worldless *sync/atomic.Bool; weakTxActive bool; w *server/world.World; state *server/world.entityState; worldReady bool; worldVersion sync/atomic.Uint64; closed chan struct{}; worldChanged chan struct{}; closeOnce sync.Once; runtimeID sync/atomic.Uint64; controller sync/atomic.Pointer[server/world.Controller]; transfer sync/atomic.Pointer[server/world.Transfer]; data server/world.EntityData; spawnReason string; spawnSeed int64; spawnRandom *server/internal/vanilla.Random; spawnGroup *server/world.EntitySpawnGroup; javaRandom *server/internal/vanilla.Random; pendingVehicle github.com/google/uuid.UUID}
@@ -16241,6 +16289,7 @@ server/world	type	EntityStateSharedViewer	interface{ViewEntityStateShared(e serv
 server/world	type	EntityType	interface{BBox(e server/world.Entity) server/block/cube.BBox; DecodeNBT(m map[string]any, data *server/world.EntityData); EncodeEntity() string; EncodeNBT(data *server/world.EntityData) map[string]any; Open(tx *server/world.Tx, handle *server/world.EntityHandle, data *server/world.EntityData) server/world.Entity}
 server/world	type	EntityVibrationListener	interface{VibrationData() *server/world.VibrationData; VibrationListenerPosition() github.com/go-gl/mathgl/mgl64.Vec3; VibrationUser() server/world.VibrationUser; server/world.Entity}
 server/world	type	ExecFunc	func(tx *server/world.Tx)
+server/world	type	ExplosionEvent	struct{server/event.Cancellable; Tx *server/world.Tx; Source server/world.ExplosionSource; Entities []server/world.Entity; Blocks []server/block/cube.Pos; ItemDropChance float64; SpawnFire bool}
 server/world	type	ExplosionSource	interface{Position() github.com/go-gl/mathgl/mgl64.Vec3; Size() float64}
 server/world	type	FailingViewer	interface{ViewFailed(); server/world.Viewer}
 server/world	type	Fault	struct{Kind server/world.FaultKind; World *server/world.World; Type string; Pos server/block/cube.Pos; Entity *server/world.EntityHandle; Value any; Stack []byte; Count int; Quarantined bool}
@@ -16304,6 +16353,7 @@ server/world	type	Precipitation	uint8
 server/world	type	PrecipitationReceiver	interface{HandlePrecipitation(pos server/block/cube.Pos, tx *server/world.Tx, p server/world.Precipitation)}
 server/world	type	Prefetcher	interface{Prefetch(self server/world.Entity, v *server/world.ReadView)}
 server/world	type	ProjectileCollider	interface{ProjectileBBox(pos server/block/cube.Pos, src server/world.BlockSource, projectile server/world.Entity) []server/block/cube.BBox}
+server/world	type	ProjectileHitEvent	struct{server/event.Cancellable; Tx *server/world.Tx; Projectile server/world.Entity; Owner server/world.Entity; Pos github.com/go-gl/mathgl/mgl64.Vec3; BlockPos server/block/cube.Pos; HasBlock bool; HitEntity server/world.Entity}
 server/world	type	Provider	interface{LoadColumn(pos server/world.ChunkPos, dim server/world.Dimension) (*server/world/chunk.Column, error); LoadPlayerSpawnPosition(uuid github.com/google/uuid.UUID) (pos server/block/cube.Pos, exists bool, err error); SavePlayerSpawnPosition(uuid github.com/google/uuid.UUID, pos server/block/cube.Pos) error; SaveSettings(*server/world.Settings); Settings() *server/world.Settings; StoreColumn(pos server/world.ChunkPos, dim server/world.Dimension, col *server/world/chunk.Column) error; io.Closer}
 server/world	type	Raid	struct{id int64; center server/block/cube.Pos; status server/world.RaidStatus; active bool; started bool; ticksActive int64; omenLevel int; groupsSpawned int; groupCount int; cooldown int; postRaidTicks int; celebrationTicks int; spawnFailures int; totalHealth float64; members map[github.com/google/uuid.UUID]struct{}; heroes map[github.com/google/uuid.UUID]struct{}; leaders map[int]github.com/google/uuid.UUID}
 server/world	type	RaidStatus	uint8
@@ -16391,6 +16441,7 @@ server/world	type	ViewLayerUpdater	interface{ViewLayerEntityChanged(entity serve
 server/world	type	Viewer	interface{HideEntity(e server/world.Entity); ViewBlockAction(pos server/block/cube.Pos, a server/world.BlockAction); ViewBlockUpdate(pos server/block/cube.Pos, b server/world.Block, layer int); ViewBlockUpdates(u *server/world.BlockUpdates); ViewBrewingUpdate(prevBrewTime time.Duration, brewTime time.Duration, prevFuelAmount int32, fuelAmount int32, prevFuelTotal int32, fuelTotal int32); ViewChunk(pos server/world.ChunkPos, dim server/world.Dimension, col *server/world.Column); ViewEmote(e server/world.Entity, emote github.com/google/uuid.UUID); ViewEntity(e server/world.Entity); ViewEntityAction(e server/world.Entity, a server/world.EntityAction); ViewEntityAnimation(e server/world.Entity, a server/world.EntityAnimation); ViewEntityArmour(e server/world.Entity); ViewEntityDisplacement(e server/world.Entity, pos github.com/go-gl/mathgl/mgl64.Vec3, rot server/block/cube.Rotation, onGround bool); ViewEntityGameMode(e server/world.Entity); ViewEntityItems(e server/world.Entity); ViewEntityMove(e server/world.Entity, m *server/world.EntityMove); ViewEntityMovement(e server/world.Entity, pos github.com/go-gl/mathgl/mgl64.Vec3, rot server/block/cube.Rotation, onGround bool); ViewEntityState(e server/world.Entity); ViewEntityTeleport(e server/world.Entity, pos github.com/go-gl/mathgl/mgl64.Vec3); ViewEntityVelocity(e server/world.Entity, vel github.com/go-gl/mathgl/mgl64.Vec3); ViewEntityWake(e server/world.Entity); ViewFurnaceUpdate(prevCookTime time.Duration, cookTime time.Duration, prevRemainingFuelTime time.Duration, remainingFuelTime time.Duration, prevMaxFuelTime time.Duration, maxFuelTime time.Duration); ViewParticle(pos github.com/go-gl/mathgl/mgl64.Vec3, p server/world.Particle); ViewSkin(e server/world.Entity); ViewSound(pos github.com/go-gl/mathgl/mgl64.Vec3, s server/world.Sound); ViewTime(t int); ViewTimeCycle(doDayLightCycle bool); ViewWeather(raining bool, thunder bool); ViewWorldSpawn(pos server/block/cube.Pos)}
 server/world	type	VisibilityLevel	struct{server/world.visibility}
 server/world	type	WardenSpawnTracker	struct{TicksSinceLastWarning int; WarningLevel int; CooldownTicks int}
+server/world	type	WeatherChangeEvent	struct{server/event.Cancellable; World *server/world.World; Raining bool; Thundering bool; Duration time.Duration}
 server/world	type	World	struct{server/world.chunkStore; server/world.entityIndex; server/world.tickQueues; server/world.scratch; server/world.txQueue; server/world.lifecycle; server/world.clock; server/world.rules; server/world.structureState; server/world.blockState; server/world.generation; server/world.lightQueue; server/world.randomness; server/world.poiState; server/world.raidState; server/world.endState; server/world.saveState; server/world.viewerState; server/world.faultState; server/world.wireCache; conf server/world.Config; log *log/slog.Logger; genLog *log/slog.Logger; saveLog *log/slog.Logger; ra server/block/cube.Range; server/world.weather; stats *server/world.Stats; components server/ecs.Bag; ecsComponentsPersisted sync/atomic.Bool; events *server/event.Bus; systems server/world.tickSystemRegistry}
 server/world	type	WorldDataMemory	struct{mu sync.Mutex; data map[string][]byte}
 server/world	type	WorldTickEvent	struct{Tx *server/world.Tx; Tick int64}

@@ -201,9 +201,7 @@ func (p *Player) SetHeldSlot(to int) error {
 		return nil
 	}
 
-	ctx := NewEventContext(p.tx, p)
-	p.Handler().HandleHeldSlotChange(ctx, from, to)
-	if ctx.Cancelled() {
+	if !p.dispatchHeldSlotChangeEvent(from, to) {
 		// The slot change was cancelled, resend held slot.
 		p.client().SendHeldSlot(from, p, true)
 		return nil
@@ -254,8 +252,7 @@ func (p *Player) Collect(s item.Stack) (int, bool) {
 	if p.Dead() || !p.GameMode().AllowsInteraction() {
 		return 0, false
 	}
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleItemPickup(ctx, &s); ctx.Cancelled() {
+	if !p.dispatchItemPickupEvent(&s) {
 		return 0, false
 	}
 	var added int

@@ -48,4 +48,25 @@ func TestRecipeBuildersAndRegistration(t *testing.T) {
 		t.Fatalf("dynamic match = (%v, %v)", res, ok)
 	}
 	recipe.RegisterDynamic(dyn)
+
+	// Cooking (Smelting/Blasting/Smoking/Campfire), custom fuel, and Stonecutter.
+	recipe.RegisterCooking(
+		recipe.Smelting(item.Paper{}, item.NewStack(item.Coal{}, 2), recipe.CookingID("sdk:paper_to_coal"), recipe.CookingXP(0.5), recipe.CookingTime(120)),
+		recipe.Blasting(item.GlassBottle{}, item.NewStack(item.Diamond{}, 1)),
+		recipe.Smoking(item.Sugar{}, item.NewStack(item.Cookie{}, 2)),
+		recipe.Campfire(item.Stick{}, item.NewStack(item.Charcoal{}, 1)),
+	)
+	gotCook, ok := item.CookingRecipeFor(item.Smelting, item.Paper{})
+	if !ok || gotCook.Product.Count() != 2 || gotCook.CookingTime != 120 {
+		t.Fatalf("CookingRecipeFor(Smelting, Paper) = (%+v, %v)", gotCook, ok)
+	}
+	recipe.RegisterFuel(item.Paper{}, 400)
+	if burn := item.CookingBurnTime(item.Paper{}, false); burn != 400 {
+		t.Fatalf("CookingBurnTime(Paper) = %d, want 400", burn)
+	}
+	sc := recipe.Stonecutter(item.NewStack(item.Coal{}, 1), item.NewStack(item.Stick{}, 2))
+	if sc.Block() != "stonecutter" {
+		t.Fatalf("Stonecutter block = %q", sc.Block())
+	}
+	recipe.Register(sc)
 }

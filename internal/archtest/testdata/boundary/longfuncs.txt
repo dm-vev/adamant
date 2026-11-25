@@ -31,7 +31,7 @@ protocol/bedrock/session/command.go BuildAvailableCommands 137
 protocol/bedrock/session/self_hud.go debugShapeToProtocol 116
 protocol/bedrock/session/static.go newRecipeData 115
 protocol/bedrock/session/view_entity.go Session.ViewEntity 109
-server/block/explosion.go ExplosionConfig.Explode 139
+server/block/explosion.go ExplosionConfig.Explode 138
 server/block/smelter.go smelter.tickSmelting 117
 server/block/vine.go Vines.RandomTick 116
 server/checkpoint.go checkpointer.checkpoint 101

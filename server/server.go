@@ -223,6 +223,14 @@ func (srv *Server) Events() *event.Bus {
 	return &srv.events
 }
 
+// PlayerProvider returns the configured player.Provider storing player data.
+func (srv *Server) PlayerProvider() player.Provider {
+	if srv == nil {
+		return nil
+	}
+	return srv.conf.PlayerProvider
+}
+
 // emitJoin dispatches a player.JoinEvent to the server and world event buses if
 // any listeners are registered.
 func (srv *Server) emitJoin(tx *world.Tx, p *player.Player) {
@@ -656,11 +664,35 @@ func (srv *Server) wait() {
 	close(srv.incoming)
 }
 
+func (srv *Server) allowPreLogin(j client.Join, login client.Login) bool {
+	if !event.HasListeners[player.PreLoginEvent](&srv.events) {
+		return true
+	}
+	ev := player.PreLoginEvent{
+		Name: login.Identity.Name,
+		UUID: login.Identity.UUID,
+		XUID: login.Identity.XUID,
+		Addr: login.Addr,
+	}
+	if event.Emit(&srv.events, &ev) {
+		return true
+	}
+	reason := ev.Reason
+	if reason == "" {
+		reason = "Disconnected by server."
+	}
+	j.Reject(text.Literal(reason))
+	return false
+}
+
 // join answers the Join of a client: it holds the join to the reconnect
 // policy, loads the player, starts the game of the client and queues the
 // player for Accept.
 func (srv *Server) join(ctx context.Context, j client.Join) {
 	login := j.Login()
+	if !srv.allowPreLogin(j, login) {
+		return
+	}
 	if srv.IdentityKey() == identity.XUID {
 		// The Allower of the lists refuses such a login too: a listener
 		// that lets one in without it never lets a self-named XUID match an

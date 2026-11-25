@@ -191,7 +191,7 @@ func (p *Player) respawn(f func(p *Player)) {
 
 	p.restoreAfterDeath()
 
-	p.Handler().HandleRespawn(p, &pos, &w)
+	p.dispatchRespawnEvent(&pos, &w)
 
 	// respawn only runs with a client.
 	c := p.c

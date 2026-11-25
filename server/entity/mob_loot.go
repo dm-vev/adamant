@@ -3,6 +3,7 @@ package entity
 import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/event"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/scoreboard"
@@ -71,6 +72,10 @@ func dropAllDeathLoot(tx *world.Tx, e world.Entity, src world.DamageSource) {
 	}
 	DropWitherRose(tx, e.Position(), src)
 	onMobKilled(tx, e)
+	if tx != nil && event.HasListeners[world.EntityDeathEvent](tx.Events()) {
+		ev := world.EntityDeathEvent{Tx: tx, Entity: e, Source: src}
+		event.Emit(tx.Events(), &ev)
+	}
 }
 
 // killSupporter is a mob that rewards the player who killed the mob it fought,

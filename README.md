@@ -96,11 +96,11 @@ Adamant isolates a data-oriented simulation core (`server/`) from wire adapters 
 
 - **Zero-alloc ECS & EventBus (`server/ecs`, `server/event`):** dense typed component bags (`Key[T]` / `Bag` with automatic NBT persistence on entities, players, chunks, and worlds); prioritized `event.Bus` (`Cancellable`) on `Server`, `World`/`Tx`, and `Player`.
 - **Parallel simulation (`server/world`, `server/entity`):** `World.AddSystem(TickPhase)` with panic containment, `SetBlockRID` / `FillRID` volume ops, 4×4 parallel world `Regions`, multi-core AI/fluid/collision `Prefetch`, and `sharedPathCache`.
-- **Modular Plugin SDK (`sdk/*`):** 16 focused packages with zero god-package coupling and plugin-scoped `Context` auto-cleanup on disable:
-  - **Core:** `sdk/plugin` (lifecycle, scoped `Context`, typed service registry, atomic JSON/TOML storage), `sdk/event`, `sdk/ecs`, `sdk/schedule`, `sdk/cmd` (declarative, typed & subcommand groups), `sdk/perm` (standalone hierarchical RBAC)
-  - **Content:** `sdk/block`, `sdk/item`, `sdk/recipe`, `sdk/mob` (`MobAI` + `Brain`, equipment, drops, custom NBT)
-  - **UI & Worlds:** `sdk/menu` (virtual chest/double-chest/hopper & paginated GUIs), `sdk/form` (menu/modal/custom), `sdk/hud` (scoreboards, boss bars, titles, dialogues, audio/particles, holograms), `sdk/worldgen` (unified Overworld/Nether/End hooks, biomes, structures), `sdk/worlds` (dynamic worlds & transfers)
-  - **Protocol:** `sdk/bedrock` (multi-protocol packet interception, versioned raw packets, resource packs)
+- **Modular Plugin SDK (`sdk/*`):** 19 focused packages with zero god-package coupling and plugin-scoped `Context` auto-cleanup on disable:
+  - **Core:** `sdk/plugin` (lifecycle, dependency ordering, hot-reload, typed service registry, atomic JSON/TOML storage), `sdk/event` (full player/world/explosion/weather/projectile/mob events), `sdk/ecs`, `sdk/schedule` (tick systems + `Async`/`ThenWorld`), `sdk/cmd`, `sdk/perm`, `sdk/admin` (bans, ops, whitelist, offline player data)
+  - **Content:** `sdk/block`, `sdk/item` (custom items + fluent `Stack` builder), `sdk/recipe` (crafting, smithing, brewing, smelting/blasting/smoking/campfire, stonecutter, dynamic), `sdk/mob`, `sdk/npc` (skinned human NPCs with look-at & callbacks)
+  - **UI & Worlds:** `sdk/menu`, `sdk/form`, `sdk/hud` (scoreboards, boss bars, titles, dialogues, audio/particles, holograms, per-player visibility/vanish, HUD elements & input locks), `sdk/worldgen` (unified Overworld/Nether/End hooks, biomes, structures & `.mcstructure` I/O), `sdk/worlds` (dynamic worlds, force-load tickets, gamerules/weather/time, spatial regions & transfers)
+  - **Protocol & Testing:** `sdk/bedrock` (multi-protocol packet interception, Camera/Fog/Transfer/AnimateEntity, runtime `.mcpack` resource pack builder), `sdk/sdktest` (in-memory test harness)
 
 ```go
 app := plugin.New(srv).Use(plugin.Func("greeter", func(ctx *plugin.Context) {
@@ -137,7 +137,7 @@ go test ./internal/archtest   # boundary, mutation, wait, API, entity-layer & fu
 | Path | Contents |
 |---|---|
 | `main.go`, `internal/app` | Entrypoint, `config.toml` loader, logging, metrics, and service lifecycle |
-| `sdk/*` | Modular plugin SDK (`plugin`, `event`, `ecs`, `schedule`, `cmd`, `perm`, `block`, `item`, `recipe`, `mob`, `menu`, `form`, `hud`, `worldgen`, `worlds`, `bedrock`) |
+| `sdk/*` | Modular plugin SDK (`plugin`, `event`, `ecs`, `schedule`, `cmd`, `perm`, `admin`, `block`, `item`, `recipe`, `mob`, `npc`, `menu`, `form`, `hud`, `worldgen`, `worlds`, `bedrock`, `sdktest`) |
 | `server/ecs`, `server/event` | Zero-allocation component bags and prioritized typed event bus |
 | `server/world`, `server/entity` | Parallel world regions, LevelDB, Java 26.3 worldgen, `MobAI` & `Brain` |
 | `server/player`, `server/block`, `server/item`, `server/cmd` | Player facets & anti-cheat, block/item mechanics, Java 26.3 commands |

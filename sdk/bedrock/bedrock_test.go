@@ -2,6 +2,8 @@ package bedrock_test
 
 import (
 	"context"
+	"image"
+	"image/color"
 	"io"
 	"log/slog"
 	"net"
@@ -414,5 +416,59 @@ func TestPacketInterceptionScopedMultiProtocolAndVirtualMenu(t *testing.T) {
 	cfg := bedrock.WithPacks(bedrockadapter.Config{}, true, nil)
 	if !cfg.ResourcesRequired || len(cfg.Resources) != 0 {
 		t.Fatalf("WithPacks required=%v len=%d", cfg.ResourcesRequired, len(cfg.Resources))
+	}
+
+	// Verify Bedrock Camera, Fog, Transfer, AnimateEntity wire packets.
+	pos := mgl64.Vec3{10, 80, 10}
+	bedrock.CameraFadeSession(sess, 0.5, 1.0, 0.5, color.RGBA{R: 0, G: 0, B: 0, A: 255})
+	waitForPacket(t, conn, func(pk *mc.CameraInstructionPacket) bool { return pk.Fade.Set })
+
+	bedrock.CameraSetSession(sess, bedrock.CameraSetOpts{
+		Preset: 1,
+		Ease:   &bedrock.CameraEase{Type: bedrock.EaseInOutCubic, Duration: 1.5},
+		Pos:    &pos,
+	})
+	waitForPacket(t, conn, func(pk *mc.CameraInstructionPacket) bool { return pk.Set.Set && pk.Set.Val.Preset == 1 })
+
+	bedrock.CameraClearSession(sess)
+	waitForPacket(t, conn, func(pk *mc.CameraInstructionPacket) bool { return pk.Clear.Set && pk.Clear.Val })
+
+	bedrock.CameraShakeSession(sess, 0.5, 2.0, bedrock.ShakeRotational)
+	waitForPacket(t, conn, func(pk *mc.CameraShakePacket) bool { return pk.Intensity == 0.5 && pk.Action == 0 })
+
+	bedrock.SetSessionFog(sess, "minecraft:fog_crimson_forest")
+	waitForPacket(t, conn, func(pk *mc.PlayerFogPacket) bool {
+		return len(pk.Stack) == 1 && pk.Stack[0] == "minecraft:fog_crimson_forest"
+	})
+
+	bedrock.TransferSession(sess, "play.example.com", 19132, false)
+	waitForPacket(t, conn, func(pk *mc.TransferPacket) bool {
+		return pk.Address == "play.example.com" && pk.Port == 19132
+	})
+
+	bedrock.AnimateEntity(sess, bedrock.AnimateOpts{Animation: "animation.humanoid.wave"}, 1)
+	waitForPacket(t, conn, func(pk *mc.AnimateEntityPacket) bool {
+		return pk.Animation == "animation.humanoid.wave" && len(pk.EntityRuntimeIDs) == 1
+	})
+
+	// Verify runtime Resource Pack builder compiles an in-memory *resource.Pack.
+	img := image.NewRGBA(image.Rect(0, 0, 16, 16))
+	pack, err := bedrock.NewPackBuilder("AdamantPack", "Generated at runtime").
+		Version(1, 2, 3).
+		AddItemTexture("ruby_sword", img).
+		AddBlockTexture("glow_tile", img).
+		AddSound("custom.ding", "custom/ding.ogg", []byte("OggS")).
+		Build()
+	if err != nil {
+		t.Fatalf("PackBuilder.Build: %v", err)
+	}
+	if pack.Name() != "AdamantPack" || !pack.HasTextures() {
+		t.Fatalf("pack name=%q hasTextures=%v", pack.Name(), pack.HasTextures())
+	}
+	if _, err := pack.ReadFile("textures/items/ruby_sword.png"); err != nil {
+		t.Fatalf("missing item texture in built pack: %v", err)
+	}
+	if _, err := pack.ReadFile("sounds/sound_definitions.json"); err != nil {
+		t.Fatalf("missing sound_definitions.json in built pack: %v", err)
 	}
 }

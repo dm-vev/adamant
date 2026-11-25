@@ -129,16 +129,15 @@ func (p *Player) editSign(
 		return nil
 	}
 
-	ctx := NewEventContext(p.tx, p)
 	if frontText != front.Text {
-		if p.Handler().HandleSignEdit(ctx, pos, true, front.Text, frontText); ctx.Cancelled() {
+		if !p.dispatchSignEditEvent(pos, true, front.Text, frontText) {
 			p.resendNearbyBlock(pos)
 			return nil
 		}
 		front.Text = frontText
 		front.Owner = p.XUID()
 	} else {
-		if p.Handler().HandleSignEdit(ctx, pos, false, back.Text, backText); ctx.Cancelled() {
+		if !p.dispatchSignEditEvent(pos, false, back.Text, backText) {
 			p.resendNearbyBlock(pos)
 			return nil
 		}

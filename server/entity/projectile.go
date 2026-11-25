@@ -11,6 +11,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/cube/trace"
 	"github.com/df-mc/dragonfly/server/entity/effect"
+	"github.com/df-mc/dragonfly/server/event"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
@@ -213,6 +214,9 @@ func (lt *ProjectileBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if result == nil {
 		return m
 	}
+	if !lt.emitProjectileHitEvent(e, tx, result) {
+		return m
+	}
 
 	if entityResult, ok := result.(trace.EntityResult); ok {
 		if deflector, ok := entityResult.Entity().(interface {
@@ -274,6 +278,26 @@ func (lt *ProjectileBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		lt.close = true
 	}
 	return m
+}
+
+func (lt *ProjectileBehaviour) emitProjectileHitEvent(e *Ent, tx *world.Tx, res trace.Result) bool {
+	bus := tx.Events()
+	if !event.HasListeners[world.ProjectileHitEvent](bus) {
+		return true
+	}
+	ev := world.ProjectileHitEvent{
+		Tx:         tx,
+		Projectile: e,
+		Owner:      lt.owner(tx),
+		Pos:        res.Position(),
+	}
+	switch r := res.(type) {
+	case trace.BlockResult:
+		ev.BlockPos, ev.HasBlock = r.BlockPosition(), true
+	case trace.EntityResult:
+		ev.HitEntity = r.Entity()
+	}
+	return event.Emit(bus, &ev)
 }
 
 // tickAttached performs the attached logic for a projectile. It checks if the

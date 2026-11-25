@@ -6,6 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
+	"github.com/df-mc/dragonfly/server/event"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -62,6 +63,10 @@ func TriggerHurtEffects(tx *world.Tx, e world.Entity, effects []effect.Effect) {
 func onMobHurt(tx *world.Tx, e world.Entity) {
 	if holder, ok := e.(interface{ Effects() []effect.Effect }); ok {
 		TriggerHurtEffects(tx, e, holder.Effects())
+	}
+	if tx != nil && event.HasListeners[world.EntityDamageEvent](tx.Events()) {
+		ev := world.EntityDamageEvent{Tx: tx, Entity: e}
+		event.Emit(tx.Events(), &ev)
 	}
 }
 

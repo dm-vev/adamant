@@ -76,8 +76,7 @@ func (p *Player) Heal(health float64, source world.HealingSource) float64 {
 	if p.Dead() || health < 0 || !p.GameMode().AllowsTakingDamage() {
 		return 0
 	}
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleHeal(ctx, &health, source); ctx.Cancelled() {
+	if !p.dispatchHealEvent(&health, source) {
 		return 0
 	}
 	oldHealth := p.Health()
@@ -698,8 +697,7 @@ func (p *Player) PunchAir() {
 	if p.Dead() {
 		return
 	}
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandlePunchAir(ctx); ctx.Cancelled() {
+	if !p.dispatchPunchAirEvent() {
 		return
 	}
 	p.SwingArm()

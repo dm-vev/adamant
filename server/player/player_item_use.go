@@ -379,8 +379,7 @@ func (p *Player) tryConsumeItem(consumable item.Consumable, stack item.Stack) {
 	if p.useDuration() < consumable.ConsumeDuration() {
 		return
 	}
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleItemConsume(ctx, stack); ctx.Cancelled() {
+	if !p.dispatchItemConsumeEvent(stack) {
 		p.completeItemUse()
 		return
 	}
@@ -493,8 +492,7 @@ func (p *Player) UseItemOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec
 		p.resendNearbyBlocks(pos, face)
 		return
 	}
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleItemUseOnBlock(ctx, pos, face, clickPos); ctx.Cancelled() {
+	if !p.dispatchItemUseOnBlockEvent(pos, face, clickPos) {
 		p.resendNearbyBlocks(pos, face)
 		return
 	}
@@ -597,8 +595,7 @@ func (p *Player) UseItemOnEntity(e world.Entity) bool {
 	if !p.canReachEntity(ac, e, nil) || p.roleRefusesEntity(e) {
 		return false
 	}
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleItemUseOnEntity(ctx, e); ctx.Cancelled() {
+	if !p.dispatchItemUseOnEntityEvent(e) {
 		return false
 	}
 	i, left := p.HeldItems()

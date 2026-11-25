@@ -27,8 +27,7 @@ func (p *Player) ResetEnchantmentSeed() {
 
 // AddExperience adds experience to the player.
 func (p *Player) AddExperience(amount int) int {
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleExperienceGain(ctx, &amount); ctx.Cancelled() {
+	if !p.dispatchExperienceGainEvent(&amount) {
 		return 0
 	}
 	before := p.experience.Level()

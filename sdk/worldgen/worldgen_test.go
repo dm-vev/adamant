@@ -4,6 +4,7 @@ import (
 	"image/color"
 	"io"
 	"log/slog"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 
@@ -140,4 +141,19 @@ func TestUnifiedHooksBiomesAndStructures(t *testing.T) {
 			t.Fatalf("expected Gold at (6,64,4), got %T", tx.Block(cube.Pos{6, 64, 4}))
 		}
 	})
+
+	// Bedrock .mcstructure file export & import round-trip.
+	mcPath := filepath.Join(t.TempDir(), "pillar.mcstructure")
+	worldTmpl := tmpl.ToTemplate(world.DefaultBlockRegistry)
+	if err := worldgen.SaveMCStructureFile(mcPath, worldTmpl); err != nil {
+		t.Fatalf("SaveMCStructureFile: %v", err)
+	}
+	loadedTmpl, err := worldgen.LoadMCStructureFile(mcPath, world.DefaultBlockRegistry)
+	if err != nil {
+		t.Fatalf("LoadMCStructureFile: %v", err)
+	}
+	rebuilt := worldgen.FromTemplate("reloaded", loadedTmpl)
+	if rebuilt.Size() != tmpl.Size() || len(rebuilt.Blocks()) != 3 {
+		t.Fatalf("rebuilt structure size=%v blocks=%d", rebuilt.Size(), len(rebuilt.Blocks()))
+	}
 }

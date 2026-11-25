@@ -3,6 +3,7 @@ package block
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/cube/trace"
+	"github.com/df-mc/dragonfly/server/event"
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -120,6 +121,30 @@ func init() {
 	}
 }
 
+func emitExplosionEvent(tx *world.Tx, src world.ExplosionSource, entities *[]world.Entity, blocks *[]cube.Pos, dropChance *float64, spawnFire *bool) bool {
+	ctx := tx.Event()
+	if tx.World().Handler().HandleExplosion(ctx, src, entities, blocks, dropChance, spawnFire); ctx.Cancelled() {
+		return false
+	}
+	bus := tx.Events()
+	if !event.HasListeners[world.ExplosionEvent](bus) {
+		return true
+	}
+	ev := world.ExplosionEvent{
+		Tx:             tx,
+		Source:         src,
+		Entities:       *entities,
+		Blocks:         *blocks,
+		ItemDropChance: *dropChance,
+		SpawnFire:      *spawnFire,
+	}
+	if !event.Emit(bus, &ev) {
+		return false
+	}
+	*entities, *blocks, *dropChance, *spawnFire = ev.Entities, ev.Blocks, ev.ItemDropChance, ev.SpawnFire
+	return true
+}
+
 // Explode performs the explosion as specified by the configuration.
 func (c ExplosionConfig) Explode(tx *world.Tx, src world.ExplosionSource) {
 	if tx == nil || tx.Closed() {
@@ -185,10 +210,9 @@ func (c ExplosionConfig) Explode(tx *world.Tx, src world.ExplosionSource) {
 		affectedBlocks = explosionRayBlocks(tx, explosionPos, size, r, make([]cube.Pos, 0, estimatedBlocks), nil)
 	}
 
-	ctx := tx.Event()
 	spawnFire := c.SpawnFire && !c.NoBlockDamage
 	itemDropChance := c.ItemDropChance
-	if tx.World().Handler().HandleExplosion(ctx, src, &affectedEntities, &affectedBlocks, &itemDropChance, &spawnFire); ctx.Cancelled() {
+	if !emitExplosionEvent(tx, src, &affectedEntities, &affectedBlocks, &itemDropChance, &spawnFire) {
 		return
 	}
 	if c.NoBlockDamage {
