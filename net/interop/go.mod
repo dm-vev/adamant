@@ -6,7 +6,7 @@ toolchain go1.27.3
 
 require (
 	github.com/coreos/go-oidc/v3 v3.17.0
-	github.com/df-mc/dragonfly v0.0.0
+	github.com/dm-vev/adamant v0.0.0
 	github.com/df-mc/go-nethernet v1.0.24
 	github.com/df-mc/go-xsapi/v2 v2.0.3
 	github.com/df-mc/jsonc v1.0.5
@@ -54,4 +54,4 @@ require (
 
 replace github.com/dm-vev/adamant/net => ../
 
-replace github.com/df-mc/dragonfly => ../..
+replace github.com/dm-vev/adamant => ../..

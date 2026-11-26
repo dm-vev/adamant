@@ -1,6 +1,6 @@
 package player
 
-import "github.com/df-mc/dragonfly/server/entity"
+import "github.com/dm-vev/adamant/server/entity"
 
 // vanishEnderPearls ports ThrownEnderPearl.tick's ender_pearls_vanish_on_death
 // check: pearls thrown by a player that has died are discarded instead of

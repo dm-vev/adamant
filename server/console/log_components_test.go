@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/logging"
+	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/logging"
 )
 
 // TestComponentsGetTheirLoggers checks that the output of the console logs as

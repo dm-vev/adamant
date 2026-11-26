@@ -4,8 +4,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
-	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/world/chunk"
 )
 
 // blockLightCache holds the light properties of runtime IDs and Java states,

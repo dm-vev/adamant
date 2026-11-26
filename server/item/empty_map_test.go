@@ -3,10 +3,10 @@ package item_test
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/mcdb"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/mcdb"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

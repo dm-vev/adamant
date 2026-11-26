@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/menu"
-	"github.com/df-mc/dragonfly/server/player/anticheat"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/menu"
+	"github.com/dm-vev/adamant/server/player/anticheat"
 )
 
 // Java's interaction ranges, which Menu adds its buffer to: blocks, and

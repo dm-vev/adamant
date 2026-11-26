@@ -1,6 +1,6 @@
 package builtin
 
-import "github.com/df-mc/dragonfly/server/cmd"
+import "github.com/dm-vev/adamant/server/cmd"
 
 // registerDataCommands registers Java 26.3 execute, data, item, loot and scheduling commands.
 func registerDataCommands(srv serverAdapter) {

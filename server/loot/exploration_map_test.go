@@ -5,7 +5,7 @@ import (
 	"io/fs"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // TestEveryLootMapDecorationHasABedrockType walks the loot tables for the

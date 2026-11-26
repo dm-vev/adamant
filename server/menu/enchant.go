@@ -5,12 +5,12 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // EnchantmentOptions returns the options of the enchanting table at pos for

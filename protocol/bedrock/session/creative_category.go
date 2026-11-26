@@ -1,7 +1,7 @@
 package session
 
 import (
-	"github.com/df-mc/dragonfly/server/item/creative"
+	"github.com/dm-vev/adamant/server/item/creative"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 

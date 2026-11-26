@@ -1,8 +1,8 @@
 package item
 
 import (
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/sound"
 )
 
 // BottleOfEnchanting is a bottle that releases experience orbs when thrown.

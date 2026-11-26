@@ -1,8 +1,8 @@
 package playerdb
 
 import (
-	"github.com/df-mc/dragonfly/server/player"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/player"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/df-mc/goleveldb/leveldb/opt"
 	"github.com/google/uuid"

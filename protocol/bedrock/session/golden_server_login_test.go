@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock"
-	"github.com/df-mc/dragonfly/server"
+	"github.com/dm-vev/adamant/protocol/bedrock"
+	"github.com/dm-vev/adamant/server"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"

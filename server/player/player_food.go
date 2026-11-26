@@ -1,9 +1,9 @@
 package player
 
 import (
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/entity/effect"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Food returns the current food level of a player. The level returned is guaranteed to always be between 0

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // commandRecord holds what the last run test command was called with.

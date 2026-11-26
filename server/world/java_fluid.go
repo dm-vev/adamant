@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
 )
 
 type javaFluidKind uint8

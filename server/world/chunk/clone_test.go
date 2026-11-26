@@ -4,9 +4,9 @@ import (
 	"math/rand/v2"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/chunk"
 )
 
 // TestCloneBlocksCopiesBlocksWithoutLight checks that CloneBlocks copies the

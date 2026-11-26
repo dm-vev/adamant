@@ -1,6 +1,6 @@
 package world
 
-import "github.com/df-mc/dragonfly/server/block/cube"
+import "github.com/dm-vev/adamant/server/block/cube"
 
 // These classes inherit an updateShape implementation which invokes their
 // own canSurvive override. They therefore do not appear as shape owners.

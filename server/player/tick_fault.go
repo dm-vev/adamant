@@ -1,8 +1,8 @@
 package player
 
 import (
-	"github.com/df-mc/dragonfly/server/text"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/text"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // TickPanicked disconnects the player with an internal error, as D2 chose

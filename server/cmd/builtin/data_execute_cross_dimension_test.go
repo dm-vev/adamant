@@ -1,10 +1,10 @@
 package builtin
 
 import (
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/player"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/entity/effect"
+	"github.com/dm-vev/adamant/server/player"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 	"iter"

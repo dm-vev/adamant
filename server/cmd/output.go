@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/player/chat"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/player/chat"
+	"github.com/dm-vev/adamant/server/world"
 	"golang.org/x/text/language"
 )
 

@@ -16,8 +16,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/config"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/config"
 	"github.com/dm-vev/adamant/net/metrics"
 )
 

@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/item/creative"
-	"github.com/df-mc/dragonfly/server/item/recipe"
+	"github.com/dm-vev/adamant/server/item/creative"
+	"github.com/dm-vev/adamant/server/item/recipe"
 )
 
 // TestNewRegistersVanillaContentOnce checks that a second server in the same

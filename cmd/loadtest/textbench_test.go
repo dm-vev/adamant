@@ -5,9 +5,9 @@ import (
 	"slices"
 	"testing"
 
-	bedrocktext "github.com/df-mc/dragonfly/protocol/bedrock/text"
-	"github.com/df-mc/dragonfly/server/player/chat"
-	"github.com/df-mc/dragonfly/server/text"
+	bedrocktext "github.com/dm-vev/adamant/protocol/bedrock/text"
+	"github.com/dm-vev/adamant/server/player/chat"
+	"github.com/dm-vev/adamant/server/text"
 	nettext "github.com/dm-vev/adamant/net/bedrock/text"
 	"golang.org/x/text/language"
 )

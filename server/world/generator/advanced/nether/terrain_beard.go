@@ -1,8 +1,8 @@
 package nether
 
 import (
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 )
 
 // Only nether_fossil enables terrain adaptation in the pinned Nether registry.

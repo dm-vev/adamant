@@ -5,9 +5,9 @@ package recipe
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/item"
-	core "github.com/df-mc/dragonfly/server/item/recipe"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/item"
+	core "github.com/dm-vev/adamant/server/item/recipe"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Type aliases for core recipe interfaces.

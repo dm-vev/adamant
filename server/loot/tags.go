@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/item"
+	"github.com/dm-vev/adamant/server/item"
 )
 
 type itemTag struct {

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // statusTestAdapter is a server with no players.

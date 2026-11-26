@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/logging"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/logging"
 )
 
 // TestComponentsGetTheirLoggers checks that the listener of the adapter logs

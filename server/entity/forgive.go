@@ -1,8 +1,8 @@
 package entity
 
 import (
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // forgiver is a neutral mob that can drop its persistent anger at a player.

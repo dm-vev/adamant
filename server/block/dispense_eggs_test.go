@@ -3,9 +3,9 @@ package block_test
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/item"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/item"
 )
 
 // TestDispenserThrowsEggsOfTheirClimate checks the behaviours of Items.EGG,

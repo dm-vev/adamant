@@ -3,9 +3,9 @@ package menu
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/item"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/entity/effect"
+	"github.com/dm-vev/adamant/server/item"
 )
 
 // PayBeacon sets the effects of the beacon of the menu, paid with the item

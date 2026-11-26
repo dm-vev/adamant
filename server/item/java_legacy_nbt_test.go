@@ -5,9 +5,9 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/enchantment"
-	"github.com/df-mc/dragonfly/server/item/potion"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/enchantment"
+	"github.com/dm-vev/adamant/server/item/potion"
 )
 
 // javaComponentID is an Identifier, which ItemStack.CODEC requires of the

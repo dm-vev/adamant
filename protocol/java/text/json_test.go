@@ -10,7 +10,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/df-mc/dragonfly/server/text"
+	"github.com/dm-vev/adamant/server/text"
 )
 
 func TestJSON(t *testing.T) {

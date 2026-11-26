@@ -3,7 +3,7 @@ package loot
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/item"
+	"github.com/dm-vev/adamant/server/item"
 )
 
 // lootItem is the item that the loot functions of an entry change, in the Java form it has until it is made:

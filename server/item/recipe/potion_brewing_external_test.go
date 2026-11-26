@@ -4,18 +4,18 @@ import (
 	"testing"
 	_ "unsafe"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/potion"
-	"github.com/df-mc/dragonfly/server/item/recipe"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/potion"
+	"github.com/dm-vev/adamant/server/item/recipe"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // registerVanilla is the vanilla recipe registration the server runs on
 // start. It registers the recipes once per process, however often it is
 // called.
 //
-//go:linkname registerVanilla github.com/df-mc/dragonfly/server/item/recipe.registerVanilla
+//go:linkname registerVanilla github.com/dm-vev/adamant/server/item/recipe.registerVanilla
 func registerVanilla()
 
 func TestAwkwardPotionBrewsTrialPotions(t *testing.T) {

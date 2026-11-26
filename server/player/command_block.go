@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // commandBlockReach is how far the feet of a player may be from the centre

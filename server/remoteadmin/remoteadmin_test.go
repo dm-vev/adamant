@@ -14,11 +14,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/audit"
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/cmd/builtin"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/audit"
+	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/cmd/builtin"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // The tokens of the tests, of the levels 4 and 2.

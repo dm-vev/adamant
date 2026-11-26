@@ -1,8 +1,8 @@
 package entity
 
 import (
-	"github.com/df-mc/dragonfly/server/item/inventory"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/item/inventory"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // visibilityPercent ports LivingEntity.getVisibilityPercent for an observer

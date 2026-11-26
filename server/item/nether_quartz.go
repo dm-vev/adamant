@@ -1,6 +1,6 @@
 package item
 
-import "github.com/df-mc/dragonfly/server/text"
+import "github.com/dm-vev/adamant/server/text"
 
 // NetherQuartz is a smooth, white mineral found in the Nether.
 type NetherQuartz struct{}

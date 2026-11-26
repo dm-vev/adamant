@@ -3,8 +3,8 @@ package menu
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/recipe"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/recipe"
 )
 
 // The UUIDs of the special recipes: Bedrock's multi recipes, which Java has

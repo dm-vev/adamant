@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/internal/httpauth"
+	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/internal/httpauth"
 )
 
 // MinTokenLength is the length a token has at least.

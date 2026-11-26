@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/identity"
-	"github.com/df-mc/dragonfly/server/player"
+	"github.com/dm-vev/adamant/server/identity"
+	"github.com/dm-vev/adamant/server/player"
 )
 
 // TestRenameUpdatesTheLists checks that, on a server keyed by XUID, the

@@ -1,7 +1,7 @@
 package block
 
 import (
-	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/server/world/sound"
 )
 
 // PackedIce is an opaque solid block variant of ice. Unlike regular ice, it does not melt near bright light sources.

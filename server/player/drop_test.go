@@ -3,10 +3,10 @@ package player
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/inventory"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/inventory"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // dropInventoryHandler records the drops an inventory sees and cancels them

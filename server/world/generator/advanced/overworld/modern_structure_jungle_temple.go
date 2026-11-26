@@ -3,8 +3,8 @@ package overworld
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 )
 
 func init() { registerModernStructureBuilder("jungle_temple", buildModernJungleTemple) }

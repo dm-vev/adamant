@@ -1,6 +1,6 @@
 package builtin
 
-import "github.com/df-mc/dragonfly/server/cmd"
+import "github.com/dm-vev/adamant/server/cmd"
 
 // registerScoreboardCommands registers scoreboard, team, bossbar and trigger commands.
 func registerScoreboardCommands(srv serverAdapter) {

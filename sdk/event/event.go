@@ -3,10 +3,10 @@
 package event
 
 import (
-	"github.com/df-mc/dragonfly/sdk/plugin"
-	core "github.com/df-mc/dragonfly/server/event"
-	"github.com/df-mc/dragonfly/server/player"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/sdk/plugin"
+	core "github.com/dm-vev/adamant/server/event"
+	"github.com/dm-vev/adamant/server/player"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Priority orders event listeners from earliest (Lowest) to latest (Monitor).

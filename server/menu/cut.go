@@ -3,8 +3,8 @@ package menu
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/item/recipe"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/item/recipe"
 )
 
 // Cut takes the result of a stonecutter recipe times times.

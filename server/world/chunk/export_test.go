@@ -1,6 +1,6 @@
 package chunk
 
-import "github.com/df-mc/dragonfly/server/block/cube"
+import "github.com/dm-vev/adamant/server/block/cube"
 
 // SpreadReference spreads light as Spread did before it skipped sheets of
 // edges by their shared light and read the light of the edges straight from

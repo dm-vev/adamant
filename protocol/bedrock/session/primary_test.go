@@ -3,8 +3,8 @@ package session
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
-	"github.com/df-mc/dragonfly/server/player/skin"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
+	"github.com/dm-vev/adamant/server/player/skin"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 

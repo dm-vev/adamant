@@ -1,13 +1,13 @@
 package entity
 
 import (
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/nbtconv"
-	"github.com/df-mc/dragonfly/server/item/potion"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/particle"
-	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/entity/effect"
+	"github.com/dm-vev/adamant/server/internal/nbtconv"
+	"github.com/dm-vev/adamant/server/item/potion"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/particle"
+	"github.com/dm-vev/adamant/server/world/sound"
 )
 
 // NewSplashPotion creates a splash potion. SplashPotion is an item that grants

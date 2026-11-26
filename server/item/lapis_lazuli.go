@@ -1,6 +1,6 @@
 package item
 
-import "github.com/df-mc/dragonfly/server/text"
+import "github.com/dm-vev/adamant/server/text"
 
 // LapisLazuli is a mineral used for enchanting and decoration.
 type LapisLazuli struct{}

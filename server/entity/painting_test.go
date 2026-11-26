@@ -3,9 +3,9 @@ package entity
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // wall builds a stone wall at z=0 spanning x in [x0,x1] and y in [y0,y1]; the

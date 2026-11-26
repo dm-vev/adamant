@@ -1,7 +1,7 @@
 package potion
 
 import (
-	"github.com/df-mc/dragonfly/server/entity/effect"
+	"github.com/dm-vev/adamant/server/entity/effect"
 	"time"
 )
 

@@ -1,6 +1,6 @@
 package builtin
 
-import "github.com/df-mc/dragonfly/server/cmd"
+import "github.com/dm-vev/adamant/server/cmd"
 
 // registerAdminCommands registers Java 26.3 operator, moderation and server lifecycle commands.
 func registerAdminCommands(srv serverAdapter) {

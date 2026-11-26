@@ -1,8 +1,8 @@
 package enchantment
 
 import (
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Respiration extends underwater breathing time by +15 seconds per enchantment

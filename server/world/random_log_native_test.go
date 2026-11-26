@@ -5,7 +5,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/df-mc/dragonfly/internal/testfixture"
+	"github.com/dm-vev/adamant/internal/testfixture"
 )
 
 func TestGaussianLogMatchesInspectedWindowsCRT(t *testing.T) {

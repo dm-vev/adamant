@@ -3,7 +3,7 @@ package entity
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 func TestCowNBTAndMilkAge(t *testing.T) {

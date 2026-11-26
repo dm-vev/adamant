@@ -3,7 +3,7 @@ package session
 import (
 	"maps"
 
-	"github.com/df-mc/dragonfly/server/item"
+	"github.com/dm-vev/adamant/server/item"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 

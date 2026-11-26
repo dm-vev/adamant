@@ -1,6 +1,6 @@
 package item
 
-import "github.com/df-mc/dragonfly/server/text"
+import "github.com/dm-vev/adamant/server/text"
 
 // ResinBrick is an item used to create resin bricks. It can also be used as a
 // smithing ingredient, giving orange details to pieces of armour.

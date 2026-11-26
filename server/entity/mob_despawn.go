@@ -3,7 +3,7 @@ package entity
 import (
 	"math"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // This file ports Mob.checkDespawn: when a mob far from players leaves the

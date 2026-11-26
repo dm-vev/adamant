@@ -6,8 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/df-mc/dragonfly/sdk/plugin"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/sdk/plugin"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Phase selects when a world tick system executes within an active tick.

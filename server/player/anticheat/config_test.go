@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/identity"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/identity"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/pelletier/go-toml"
 )
 

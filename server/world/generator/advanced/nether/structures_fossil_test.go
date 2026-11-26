@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 )
 
 func TestFossilPostProcessExpandsChunkClipAndRepeatsExactly(t *testing.T) {

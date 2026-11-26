@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
-	"github.com/df-mc/dragonfly/server/client"
+	"github.com/dm-vev/adamant/protocol/bedrock/netconn"
+	"github.com/dm-vev/adamant/server/client"
 )
 
 // NetStats returns the state of the connection of the session: its address,

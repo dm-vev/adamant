@@ -5,13 +5,13 @@ import (
 	"math"
 	_ "unsafe"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/client"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/inventory"
-	"github.com/df-mc/dragonfly/server/item/recipe"
-	"github.com/df-mc/dragonfly/server/menu"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/client"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/inventory"
+	"github.com/dm-vev/adamant/server/item/recipe"
+	"github.com/dm-vev/adamant/server/menu"
+	"github.com/dm-vev/adamant/server/world"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
@@ -372,5 +372,5 @@ func deleteDamage(st mc.ItemStack) mc.ItemStack {
 
 // noinspection ALL
 //
-//go:linkname item_id github.com/df-mc/dragonfly/server/item.id
+//go:linkname item_id github.com/dm-vev/adamant/server/item.id
 func item_id(s item.Stack) int32

@@ -3,9 +3,9 @@ package entity_test
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

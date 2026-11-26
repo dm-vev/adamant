@@ -1,11 +1,11 @@
 package menu_test
 
 import (
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/inventory"
-	"github.com/df-mc/dragonfly/server/menu"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/inventory"
+	"github.com/dm-vev/adamant/server/menu"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

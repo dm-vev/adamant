@@ -3,8 +3,8 @@ package builtin
 import (
 	"time"
 
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // netstatCommand shows the state of the connections of players: address,

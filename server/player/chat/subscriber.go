@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/text"
+	"github.com/dm-vev/adamant/server/text"
 	"github.com/google/uuid"
 )
 

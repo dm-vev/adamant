@@ -7,8 +7,8 @@ import (
 	"testing"
 	_ "unsafe"
 
-	"github.com/df-mc/dragonfly/server/item/recipe"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/item/recipe"
+	"github.com/dm-vev/adamant/server/world"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
@@ -16,7 +16,7 @@ import (
 // on start. It registers the recipes once per process, however often it
 // is called.
 //
-//go:linkname registerVanillaRecipes github.com/df-mc/dragonfly/server/item/recipe.registerVanilla
+//go:linkname registerVanillaRecipes github.com/dm-vev/adamant/server/item/recipe.registerVanilla
 func registerVanillaRecipes()
 
 // TestRecipeUnlockPacketsUnchanged holds the recipe unlocks the game keeps

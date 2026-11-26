@@ -10,10 +10,10 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/identity"
-	"github.com/df-mc/dragonfly/server/player"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/identity"
+	"github.com/dm-vev/adamant/server/player"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/google/uuid"
 )
 

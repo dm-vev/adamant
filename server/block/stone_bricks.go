@@ -1,7 +1,7 @@
 package block
 
 import (
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // StoneBricks are materials found in structures such as strongholds, igloo basements, jungle temples, ocean ruins

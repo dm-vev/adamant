@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/audit"
-	"github.com/df-mc/dragonfly/server/config"
+	"github.com/dm-vev/adamant/server/audit"
+	"github.com/dm-vev/adamant/server/config"
 )
 
 // banFields are what a ban holds beside the player or the address, as

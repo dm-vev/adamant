@@ -5,9 +5,9 @@ import (
 	"math/rand/v2"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/enchantment"
-	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/enchantment"
+	"github.com/dm-vev/adamant/server/world/sound"
 )
 
 // Experience returns the amount of experience the player has.

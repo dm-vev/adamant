@@ -3,8 +3,8 @@ package block
 import (
 	"math/rand/v2"
 
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Blackstone is a naturally generating block in the nether that can be used to craft stone tools, brewing stands and

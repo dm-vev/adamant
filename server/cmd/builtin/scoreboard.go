@@ -4,9 +4,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/scoreboard"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/scoreboard"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Objective subcommands follow Java syntax: scoreboard objectives add|remove|list.

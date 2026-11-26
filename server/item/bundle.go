@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/sound"
 )
 
 // Bundle is a container item with up to one item-equivalent of contents.

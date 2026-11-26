@@ -12,12 +12,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
-	"github.com/df-mc/dragonfly/server/item"
-	_ "github.com/df-mc/dragonfly/server/item/enchantment"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/item"
+	_ "github.com/dm-vev/adamant/server/item/enchantment"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

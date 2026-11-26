@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"strings"
 
-	core "github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/world"
+	core "github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Type aliases for common command types so plugins rarely need to import server/cmd directly.

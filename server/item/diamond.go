@@ -1,6 +1,6 @@
 package item
 
-import "github.com/df-mc/dragonfly/server/text"
+import "github.com/dm-vev/adamant/server/text"
 
 // Diamond is a rare mineral obtained from diamond ore or loot chests.
 type Diamond struct{}

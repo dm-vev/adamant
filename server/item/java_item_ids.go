@@ -3,8 +3,8 @@ package item
 import (
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/item/potion"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/item/potion"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // javaItemAliases maps Java item identifiers to the Bedrock item identifiers

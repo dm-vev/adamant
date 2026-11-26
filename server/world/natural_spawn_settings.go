@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
 )
 
 // NaturalSpawnEntry is one source-defined weighted spawn row from a biome.

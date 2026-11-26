@@ -2,7 +2,7 @@ package item
 
 import (
 
-	"github.com/df-mc/dragonfly/server/item/category"
+	"github.com/dm-vev/adamant/server/item/category"
 )
 
 // Spear is a kinetic weapon. It is held to build momentum and attacks every entity in its stab path.

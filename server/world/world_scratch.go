@@ -1,6 +1,6 @@
 package world
 
-import "github.com/df-mc/dragonfly/server/block/cube"
+import "github.com/dm-vev/adamant/server/block/cube"
 
 // scratch is the buffers the tick of the world reuses.
 type scratch struct {

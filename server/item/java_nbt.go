@@ -7,9 +7,9 @@ import (
 	"maps"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/item/potion"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/server/item/potion"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/sound"
 )
 
 // ErrJavaStackCount is the error StackFromStructureNBT wraps for a stack

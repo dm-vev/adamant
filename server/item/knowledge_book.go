@@ -7,8 +7,8 @@ import (
 	"image/png"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/item/category"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/item/category"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 //go:embed assets/knowledge_book.png

@@ -3,7 +3,7 @@ package server
 import (
 	"io"
 
-	"github.com/df-mc/dragonfly/server/client"
+	"github.com/dm-vev/adamant/server/client"
 )
 
 // Listener is a source of clients, of some protocol, that ask to join the

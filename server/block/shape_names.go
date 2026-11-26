@@ -1,8 +1,8 @@
 package block
 
 import (
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // shapeNames are the names the slab, double slab, stairs and wall of a material take, without the namespace,

@@ -4,7 +4,7 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/dm-vev/adamant/server/block/cube"
 )
 
 // Chunk is a segment in the world with a size of 16x16x256 blocks. A chunk contains multiple sub chunks

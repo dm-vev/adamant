@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/client/clienttest"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/client/clienttest"
 )
 
 // kicked reports, within a few seconds, whether the client of j was kicked.

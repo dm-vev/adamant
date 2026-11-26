@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
 )
 
 type placementFrame struct {

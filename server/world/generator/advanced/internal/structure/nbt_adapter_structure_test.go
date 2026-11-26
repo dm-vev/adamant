@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/net/nbt"
 )
 

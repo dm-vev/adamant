@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // TestRoleClassesOfBlocks checks IsSwitch and IsContainer over every block

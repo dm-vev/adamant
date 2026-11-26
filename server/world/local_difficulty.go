@@ -1,6 +1,6 @@
 package world
 
-import "github.com/df-mc/dragonfly/server/block/cube"
+import "github.com/dm-vev/adamant/server/block/cube"
 
 // LocalDifficulty is the difficulty of a specific position in a World. Effective
 // includes the effects of the Overworld clock, chunk inhabited time, and moon phase.

@@ -1,9 +1,9 @@
 package session
 
 import (
-	bedrocktext "github.com/df-mc/dragonfly/protocol/bedrock/text"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/text"
+	bedrocktext "github.com/dm-vev/adamant/protocol/bedrock/text"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/text"
 )
 
 // trimMaterialColour returns the colour of a trim material as TrimData sends

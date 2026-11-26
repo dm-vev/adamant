@@ -3,8 +3,8 @@ package item
 import (
 	"slices"
 
-	coreitem "github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/world"
+	coreitem "github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // StackBuilder constructs an item.Stack fluently with custom name, lore,

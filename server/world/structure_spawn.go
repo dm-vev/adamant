@@ -3,8 +3,8 @@ package world
 import (
 	"sync"
 
-	"github.com/df-mc/dragonfly/internal/faultcheck"
-	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/dm-vev/adamant/internal/faultcheck"
+	"github.com/dm-vev/adamant/server/block/cube"
 )
 
 // StructureArea is the area a generated structure start covers: the bounding

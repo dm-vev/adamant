@@ -1,6 +1,6 @@
 package block
 
-import "github.com/df-mc/dragonfly/server/block/cube"
+import "github.com/dm-vev/adamant/server/block/cube"
 
 // HangingAttachment describes a wall or ceiling hanging sign. Ceiling signs
 // retain their sixteen-step rotation independently of the chain attachment.

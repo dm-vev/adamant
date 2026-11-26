@@ -3,8 +3,8 @@ package player
 import (
 	"slices"
 
-	"github.com/df-mc/dragonfly/server/text"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/text"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

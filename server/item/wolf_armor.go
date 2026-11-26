@@ -3,7 +3,7 @@ package item
 import (
 	"image/color"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // WolfArmor is body armour that can be equipped on a tamed wolf.

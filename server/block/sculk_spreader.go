@@ -4,11 +4,11 @@ import (
 	"math"
 	"math/rand/v2"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/particle"
-	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/particle"
+	"github.com/dm-vev/adamant/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

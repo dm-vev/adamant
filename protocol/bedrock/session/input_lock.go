@@ -1,7 +1,7 @@
 package session
 
 import (
-	"github.com/df-mc/dragonfly/server/player/input"
+	"github.com/dm-vev/adamant/server/player/input"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 

@@ -4,13 +4,13 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/client/clienttest"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/menu"
-	"github.com/df-mc/dragonfly/server/player/anticheat"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/client/clienttest"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/menu"
+	"github.com/dm-vev/adamant/server/player/anticheat"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

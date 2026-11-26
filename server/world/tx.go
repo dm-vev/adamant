@@ -5,9 +5,9 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/ecs"
-	"github.com/df-mc/dragonfly/server/event"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/ecs"
+	"github.com/dm-vev/adamant/server/event"
 )
 
 // Tx is the owner transaction handle passed to world callbacks. It is the

@@ -3,8 +3,8 @@ package entity
 import (
 	"math"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // moveOperation is what a move control does with its wanted position, as

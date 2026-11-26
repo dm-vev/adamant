@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/google/uuid"
 )
 

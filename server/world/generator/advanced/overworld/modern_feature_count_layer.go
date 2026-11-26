@@ -1,9 +1,9 @@
 package overworld
 
 import (
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/chunk"
 )
 
 // featureColumn holds what a region knows of a column: the highest write to

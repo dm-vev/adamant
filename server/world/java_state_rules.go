@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
-	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/world/chunk"
 )
 
 // The Java block-state codec as data. propertyRules maps the properties of

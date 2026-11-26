@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/client"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/client"
 )
 
 // TestValidateBedrockName keeps the names of players to the rules

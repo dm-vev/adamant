@@ -6,7 +6,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/df-mc/dragonfly/server/client"
+	"github.com/dm-vev/adamant/server/client"
 )
 
 // ValidateName holds the name a player logged in with to the rules of the

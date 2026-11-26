@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/df-mc/dragonfly/server/client"
-	"github.com/df-mc/dragonfly/server/logging"
-	"github.com/df-mc/dragonfly/server/player/anticheat"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/client"
+	"github.com/dm-vev/adamant/server/logging"
+	"github.com/dm-vev/adamant/server/player/anticheat"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

@@ -1,8 +1,8 @@
 package builtin
 
 import (
-	model "github.com/df-mc/dragonfly/server/scoreboard"
-	"github.com/df-mc/dragonfly/server/world"
+	model "github.com/dm-vev/adamant/server/scoreboard"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // refreshScoreboard mirrors the model's sidebar onto every Bedrock viewer

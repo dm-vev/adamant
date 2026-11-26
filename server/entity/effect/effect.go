@@ -4,7 +4,7 @@ import (
 	"image/color"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // LastingType represents an effect type that can have a duration. An effect

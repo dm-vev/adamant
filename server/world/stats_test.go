@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // TestWorldCountsItsTicks checks that the Stats of a world count every

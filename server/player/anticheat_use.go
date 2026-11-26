@@ -3,8 +3,8 @@ package player
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/player/anticheat"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/player/anticheat"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // refuseFastUse judges a use of an item without a cooldown the client of

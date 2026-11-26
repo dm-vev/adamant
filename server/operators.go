@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/identity"
+	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/identity"
 )
 
 // operatorsList tracks operator names persisted as a JSON array.

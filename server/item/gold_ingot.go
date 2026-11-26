@@ -1,6 +1,6 @@
 package item
 
-import "github.com/df-mc/dragonfly/server/text"
+import "github.com/dm-vev/adamant/server/text"
 
 // GoldIngot is a metal ingot melted from raw gold or obtained from loot chests.
 type GoldIngot struct{}

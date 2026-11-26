@@ -1,11 +1,11 @@
 package playerdb
 
 import (
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/inventory"
-	"github.com/df-mc/dragonfly/server/player"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/inventory"
+	"github.com/dm-vev/adamant/server/player"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"

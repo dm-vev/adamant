@@ -3,8 +3,8 @@ package player
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/player/chat"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/player/chat"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

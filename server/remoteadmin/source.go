@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/audit"
-	"github.com/df-mc/dragonfly/server/cmd"
+	"github.com/dm-vev/adamant/server/audit"
+	"github.com/dm-vev/adamant/server/cmd"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

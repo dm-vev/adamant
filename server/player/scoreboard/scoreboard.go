@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/text"
+	"github.com/dm-vev/adamant/server/text"
 )
 
 // Scoreboard represents a scoreboard that may be sent to a player. The scoreboard is shown on the right side

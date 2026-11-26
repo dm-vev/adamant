@@ -3,8 +3,8 @@ package item
 import (
 	"time"
 
-	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/entity/effect"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // HoneyBottle is a food item obtained from full beehives or bee nests using a glass bottle. Consuming it

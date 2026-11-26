@@ -3,7 +3,7 @@ package server
 import (
 	"net"
 
-	"github.com/df-mc/dragonfly/server/client"
+	"github.com/dm-vev/adamant/server/client"
 )
 
 // Allower may be implemented to specifically allow or disallow players from

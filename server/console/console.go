@@ -13,11 +13,11 @@ import (
 
 	prompt "github.com/c-bata/go-prompt"
 
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/audit"
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/logging"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/audit"
+	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/logging"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 	"golang.org/x/term"
 )

@@ -3,8 +3,8 @@ package item_test
 import (
 	"testing"
 
-	_ "github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/item"
+	_ "github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/item"
 )
 
 // TestCookingDataResolves checks every item the Java cooking recipes and

@@ -9,11 +9,11 @@ import (
 	"slices"
 	"sort"
 
-	_ "github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/item"
-	_ "github.com/df-mc/dragonfly/server/item/enchantment"
-	"github.com/df-mc/dragonfly/server/world"
+	_ "github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/item"
+	_ "github.com/dm-vev/adamant/server/item/enchantment"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
@@ -64,7 +64,7 @@ func run(out io.Writer) error {
 	missingByName := make(map[string][]missingState)
 	for _, b := range blocks {
 		typ := reflect.TypeOf(b)
-		if typ.PkgPath() != "github.com/df-mc/dragonfly/server/world" || typ.Name() != "unknownBlock" {
+		if typ.PkgPath() != "github.com/dm-vev/adamant/server/world" || typ.Name() != "unknownBlock" {
 			continue
 		}
 		name, properties := b.EncodeBlock()

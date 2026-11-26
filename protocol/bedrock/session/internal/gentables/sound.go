@@ -13,8 +13,8 @@ var soundKind = kindSpec{
 	variable: "soundRows",
 	key:      "Sound",
 	fields:   []string{"Sound", "Level", "Data", "Event", "Entity", "NoEntity", "Hash", "ExtraField", "Extra", "Play", "Volume", "Pitch"},
-	pkg:      "github.com/df-mc/dragonfly/server/world/sound",
-	worldPkg: "github.com/df-mc/dragonfly/server/world",
+	pkg:      "github.com/dm-vev/adamant/server/world/sound",
+	worldPkg: "github.com/dm-vev/adamant/server/world",
 	iface:    "Sound",
 	out:      "sound_switch_gen.go",
 	testOut:  "sound_types_gen_test.go",
@@ -22,7 +22,7 @@ var soundKind = kindSpec{
 	generate: generateSounds,
 	generateTypes: func(names []string) []byte {
 		return typesFile("soundTypes", "for the tests that compare the packets of every sound.", "sound",
-			"github.com/df-mc/dragonfly/server/world/sound", "Sound", names)
+			"github.com/dm-vev/adamant/server/world/sound", "Sound", names)
 	},
 }
 
@@ -33,8 +33,8 @@ func generateSounds(rows []row) []byte {
 	b.WriteString(`package session
 
 import (
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/sound"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/go-gl/mathgl/mgl64"

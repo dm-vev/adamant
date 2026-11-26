@@ -1,6 +1,6 @@
 package overworld
 
-import "github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
+import "github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 
 // Only tests use these helpers of modern_feature_template_fluids.go, so they live with the tests.
 

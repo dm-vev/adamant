@@ -10,7 +10,7 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 
-	"github.com/df-mc/dragonfly/internal/faultcheck"
+	"github.com/dm-vev/adamant/internal/faultcheck"
 )
 
 // unhandledInterval is how often a session logs a packet it has no handler

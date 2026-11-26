@@ -22,8 +22,8 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/df-mc/dragonfly/internal/faultcheck"
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
+	"github.com/dm-vev/adamant/internal/faultcheck"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"

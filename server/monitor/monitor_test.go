@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // newServer returns a listening server of the overworld alone, closed with

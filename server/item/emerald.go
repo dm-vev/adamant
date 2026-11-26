@@ -1,6 +1,6 @@
 package item
 
-import "github.com/df-mc/dragonfly/server/text"
+import "github.com/dm-vev/adamant/server/text"
 
 // Emerald is a rare mineral obtained from emerald ore or from villagers.
 type Emerald struct{}

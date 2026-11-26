@@ -3,9 +3,9 @@ package builtin
 import (
 	"strings"
 
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // tempBanCmd bans a player for a time, such as 90m, 12h, 7d or 1w2d, at

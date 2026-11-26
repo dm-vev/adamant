@@ -1,10 +1,10 @@
 package entity
 
 import (
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/nbtconv"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/internal/nbtconv"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // NewFallingBlock creates a new FallingBlock entity.

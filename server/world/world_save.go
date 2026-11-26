@@ -8,9 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/event"
-	"github.com/df-mc/dragonfly/server/internal/parallel"
-	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/dm-vev/adamant/server/event"
+	"github.com/dm-vev/adamant/server/internal/parallel"
+	"github.com/dm-vev/adamant/server/world/chunk"
 )
 
 // saveState is what the world keeps for saving its columns and handing

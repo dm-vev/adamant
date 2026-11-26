@@ -7,10 +7,10 @@ import (
 	"sync"
 	"unicode/utf8"
 
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/client"
-	"github.com/df-mc/dragonfly/server/config"
-	"github.com/df-mc/dragonfly/server/logging"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/client"
+	"github.com/dm-vev/adamant/server/config"
+	"github.com/dm-vev/adamant/server/logging"
 	"github.com/dm-vev/adamant/net/java"
 )
 

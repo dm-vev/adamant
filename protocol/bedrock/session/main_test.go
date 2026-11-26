@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/internal/faultcheck"
-	"github.com/df-mc/dragonfly/internal/testfixture"
+	"github.com/dm-vev/adamant/internal/faultcheck"
+	"github.com/dm-vev/adamant/internal/testfixture"
 )
 
 // TestMain fails the tests when code they run recovers a panic that none of

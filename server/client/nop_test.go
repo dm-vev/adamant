@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/client"
-	"github.com/df-mc/dragonfly/server/player/hud"
-	"github.com/df-mc/dragonfly/server/player/input"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/client"
+	"github.com/dm-vev/adamant/server/player/hud"
+	"github.com/dm-vev/adamant/server/player/input"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Nop answers as a client that is not there: zero values, but for the time

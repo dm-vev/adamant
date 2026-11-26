@@ -6,7 +6,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/cmd"
+	"github.com/dm-vev/adamant/server/cmd"
 )
 
 type dataCommand struct {

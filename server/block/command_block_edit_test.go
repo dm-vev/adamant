@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/dm-vev/adamant/server/block/cube"
 )
 
 func TestCommandBlockEdited(t *testing.T) {

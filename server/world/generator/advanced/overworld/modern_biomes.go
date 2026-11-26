@@ -1,8 +1,8 @@
 package overworld
 
 import (
-	"github.com/df-mc/dragonfly/server/world/biome"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/world/biome"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
 )
 
 // Java climate indices map to the registered Bedrock biome IDs, not Java IDs.

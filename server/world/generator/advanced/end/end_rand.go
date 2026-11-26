@@ -1,6 +1,6 @@
 package end
 
-import "github.com/df-mc/dragonfly/server/internal/vanilla"
+import "github.com/dm-vev/adamant/server/internal/vanilla"
 
 // endRand wraps either Java's world-generation random stream for End helpers.
 type endRand struct {

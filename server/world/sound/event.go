@@ -1,6 +1,6 @@
 package sound
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 // Event is the sound of an event, which a client plays as made by an entity
 // of a type, or by a block, from which it picks the variant of the sound: a

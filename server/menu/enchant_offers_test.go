@@ -4,10 +4,10 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/enchantment"
-	"github.com/df-mc/dragonfly/server/menu"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/enchantment"
+	"github.com/dm-vev/adamant/server/menu"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // TestEnchantingTableOffers checks the enchantments an enchanting table may

@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/item"
-	_ "github.com/df-mc/dragonfly/server/item/enchantment"
+	"github.com/dm-vev/adamant/server/item"
+	_ "github.com/dm-vev/adamant/server/item/enchantment"
 	"github.com/dm-vev/adamant/net/nbt"
 )
 

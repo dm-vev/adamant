@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/player"
+	"github.com/dm-vev/adamant/server/player"
 )
 
 // TestServerStatus checks the Status and the PlayerNames of a server with

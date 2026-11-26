@@ -3,7 +3,7 @@ package enchantment_test
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/item"
+	"github.com/dm-vev/adamant/server/item"
 )
 
 // The treasure enchantments of Java 26.3

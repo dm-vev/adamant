@@ -1,6 +1,6 @@
 package world
 
-import "github.com/df-mc/dragonfly/server/block/cube"
+import "github.com/dm-vev/adamant/server/block/cube"
 
 // Redstone returns a transaction-scoped handle for redstone engine operations.
 func (tx *Tx) Redstone() RedstoneTransaction {

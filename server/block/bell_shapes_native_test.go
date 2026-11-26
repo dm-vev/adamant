@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/df-mc/dragonfly/internal/testfixture"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/internal/testfixture"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 func TestBellShapesMatchExecutedClient(t *testing.T) {

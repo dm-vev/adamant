@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/world/mcdb/leveldat"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/world/mcdb/leveldat"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 

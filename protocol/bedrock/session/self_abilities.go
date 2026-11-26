@@ -5,9 +5,9 @@ import (
 	"math"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/client"
-	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/client"
+	"github.com/dm-vev/adamant/server/entity/effect"
+	"github.com/dm-vev/adamant/server/world"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 

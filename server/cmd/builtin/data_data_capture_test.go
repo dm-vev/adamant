@@ -6,8 +6,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // dataCaptureLines are the lines /data is captured with: get, merge and remove

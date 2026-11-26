@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"maps"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
-	"github.com/df-mc/dragonfly/server/internal/parallel"
-	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/internal/parallel"
+	"github.com/dm-vev/adamant/server/world/chunk"
 )
 
 // columnTo converts a Column to a chunk.Column so that it can be written to

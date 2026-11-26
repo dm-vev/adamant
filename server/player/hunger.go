@@ -3,7 +3,7 @@ package player
 import (
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/dm-vev/adamant/server/entity"
 )
 
 // hungerManager holds the food level, saturation, exhaustion and timer of a

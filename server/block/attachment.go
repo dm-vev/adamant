@@ -1,6 +1,6 @@
 package block
 
-import "github.com/df-mc/dragonfly/server/block/cube"
+import "github.com/dm-vev/adamant/server/block/cube"
 
 // Attachment describes the attachment of a block to another block. It is either of the type WallAttachment, which can
 // only have 90 degree facing values, or StandingAttachment, which has more freedom using a cube.Orientation.

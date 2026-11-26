@@ -6,9 +6,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // mapProvider is a provider that keeps map data in memory.

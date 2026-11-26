@@ -4,7 +4,7 @@ import (
 	"image/color"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // BadOmen is applied by ominous bottles and transforms into RaidOmen when its

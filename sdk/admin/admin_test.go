@@ -7,11 +7,11 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/df-mc/dragonfly/sdk/admin"
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/player"
-	"github.com/df-mc/dragonfly/server/player/playerdb"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/sdk/admin"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/player"
+	"github.com/dm-vev/adamant/server/player/playerdb"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )

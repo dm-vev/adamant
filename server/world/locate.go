@@ -5,7 +5,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/dm-vev/adamant/server/block/cube"
 )
 
 // JavaBiomeAtProvider exposes the generator's Java biome source without loading or generating chunks.

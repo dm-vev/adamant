@@ -3,12 +3,12 @@ package app
 import (
 	"context"
 
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/cmd/builtin"
-	"github.com/df-mc/dragonfly/server/console"
-	"github.com/df-mc/dragonfly/server/logging"
-	"github.com/df-mc/dragonfly/server/monitor"
-	"github.com/df-mc/dragonfly/server/player/chat"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/cmd/builtin"
+	"github.com/dm-vev/adamant/server/console"
+	"github.com/dm-vev/adamant/server/logging"
+	"github.com/dm-vev/adamant/server/monitor"
+	"github.com/dm-vev/adamant/server/player/chat"
 	"github.com/dm-vev/adamant/net/metrics"
 )
 

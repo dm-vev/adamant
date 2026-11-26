@@ -6,8 +6,8 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/client"
-	"github.com/df-mc/dragonfly/server/text"
+	"github.com/dm-vev/adamant/server/client"
+	"github.com/dm-vev/adamant/server/text"
 )
 
 // Join is a client.Join of a test. Login returns L. Start records the Game

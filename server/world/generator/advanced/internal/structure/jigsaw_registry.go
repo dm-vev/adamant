@@ -6,7 +6,7 @@ import (
 	"io/fs"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
 )
 
 // A graph owns its decoded pool and template cache. Weighted choices reference

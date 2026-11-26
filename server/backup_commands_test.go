@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/cmd/builtin"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/cmd/builtin"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

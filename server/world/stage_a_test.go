@@ -5,13 +5,13 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/df-mc/dragonfly/internal/faultcheck"
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/ecs"
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/event"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/internal/faultcheck"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/ecs"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/event"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

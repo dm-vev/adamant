@@ -3,7 +3,7 @@ package structure
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // TestConvertStructureBlockValues checks the world-format values that Java

@@ -3,7 +3,7 @@ package block
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/dm-vev/adamant/server/block/cube"
 )
 
 // The expectations below are what BDS 1.26.52.3 saves for blocks placed with

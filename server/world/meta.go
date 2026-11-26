@@ -1,6 +1,6 @@
 package world
 
-import "github.com/df-mc/dragonfly/server/ecs"
+import "github.com/dm-vev/adamant/server/ecs"
 
 // ActorMetaPatch holds explicit network metadata overrides for an entity.
 // Nil pointer fields, zero flag masks, and empty property maps leave the

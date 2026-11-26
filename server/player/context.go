@@ -1,7 +1,7 @@
 package player
 
 import (
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Context is the context passed to player event callbacks. It embeds the

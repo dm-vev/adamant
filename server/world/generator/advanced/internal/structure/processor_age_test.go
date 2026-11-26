@@ -7,8 +7,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
 )
 
 func TestBlockAgeProcessorMatchesReference(t *testing.T) {

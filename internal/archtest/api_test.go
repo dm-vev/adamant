@@ -63,6 +63,9 @@ func apiPackage(p string) string {
 	if p == rootModule {
 		return "."
 	}
+	if under(p, netModule) {
+		return p
+	}
 	return strings.TrimPrefix(p, rootModule+"/")
 }
 
@@ -79,7 +82,7 @@ func apiSnapshots() (api, impl []string, err error) {
 	var concretes, ifaces []*types.TypeName
 	seen := map[string]bool{}
 	for _, p := range m.pkgs {
-		if p.Types == nil || !under(p.PkgPath, rootModule) || seen[p.PkgPath] {
+		if p.Types == nil || !under(p.PkgPath, rootModule) || under(p.PkgPath, netModule) || seen[p.PkgPath] {
 			continue
 		}
 		seen[p.PkgPath] = true

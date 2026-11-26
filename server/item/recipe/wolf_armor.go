@@ -3,7 +3,7 @@ package recipe
 import (
 	"image/color"
 
-	"github.com/df-mc/dragonfly/server/item"
+	"github.com/dm-vev/adamant/server/item"
 )
 
 type wolfArmorDyeRecipe struct{}

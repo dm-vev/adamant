@@ -1,7 +1,7 @@
 package overworld
 
 import (
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
 )
 
 var biomeTemperatureNoise = func() *vanilla.SimplexNoise {

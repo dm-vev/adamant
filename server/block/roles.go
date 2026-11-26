@@ -1,6 +1,6 @@
 package block
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 // IsSwitch reports whether b is a door, a trapdoor, a fence gate, a button or
 // a lever: the blocks the doors-and-switches ability of Bedrock's roles

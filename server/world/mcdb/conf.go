@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/logging"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/mcdb/leveldat"
+	"github.com/dm-vev/adamant/server/logging"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/mcdb/leveldat"
 	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/df-mc/goleveldb/leveldb/filter"
 	"github.com/df-mc/goleveldb/leveldb/opt"

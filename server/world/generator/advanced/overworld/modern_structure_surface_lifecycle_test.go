@@ -4,13 +4,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/loot"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
-	"github.com/df-mc/dragonfly/server/world/mcdb"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/loot"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/chunk"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
+	"github.com/dm-vev/adamant/server/world/mcdb"
 )
 
 func surfaceLifecycleState(t *testing.T, g *scatteredLifecycleGenerator, start modernStructureStart) []structure.StructurePieceState {

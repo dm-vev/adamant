@@ -4,15 +4,15 @@ import (
 	"testing"
 	_ "unsafe"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/potion"
-	"github.com/df-mc/dragonfly/server/player"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/entity/effect"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/potion"
+	"github.com/dm-vev/adamant/server/player"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -360,7 +360,7 @@ func TestTraderLlamasSpitAtTheirTradersAttacker(t *testing.T) {
 	}
 }
 
-//go:linkname spawnWanderingTrader github.com/df-mc/dragonfly/server/entity.spawnWanderingTrader
+//go:linkname spawnWanderingTrader github.com/dm-vev/adamant/server/entity.spawnWanderingTrader
 func spawnWanderingTrader(tx *world.Tx, random *vanilla.Random) bool
 
 func TestWanderingTradersSpawnAtTheVillageBellWithLlamas(t *testing.T) {

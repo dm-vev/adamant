@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/logging"
+	"github.com/dm-vev/adamant/server/logging"
 	"github.com/dm-vev/adamant/net/metrics"
 )
 

@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced"
+	_ "github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/chunk"
+	"github.com/dm-vev/adamant/server/world/generator/advanced"
 )
 
 // BenchmarkCheckpointCommit measures the time to store and commit batches of

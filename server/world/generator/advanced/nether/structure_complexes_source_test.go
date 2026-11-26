@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 )
 
 type complexSourcePiece struct {

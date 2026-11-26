@@ -8,8 +8,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/player/chat"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/player/chat"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Runnable represents a Command that may be run by a Command source. The Command must be a struct type and

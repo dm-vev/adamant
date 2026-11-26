@@ -1,6 +1,6 @@
 package dialogue
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 // Submittable is a structure which may be submitted by sending it as a dialogue
 // using dialogue.New(). The struct will have its Submit method called with the

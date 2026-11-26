@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/df-mc/dragonfly/server/item"
+	"github.com/dm-vev/adamant/server/item"
 )
 
 // projectTemplateMobNBT supplies the native fields consumed by the concrete

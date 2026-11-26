@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Enchantment is an enchantment that can be applied to a Stack. It holds an EnchantmentType and level that influences

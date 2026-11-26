@@ -14,11 +14,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/logging"
-	"github.com/df-mc/dragonfly/server/monitor"
-	"github.com/df-mc/dragonfly/server/remoteadmin"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/logging"
+	"github.com/dm-vev/adamant/server/monitor"
+	"github.com/dm-vev/adamant/server/remoteadmin"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // TestServerRestartFreesServices starts and closes the server twice in one

@@ -1,8 +1,8 @@
 package player
 
 import (
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/enchantment"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/enchantment"
 )
 
 func java26MobDamageBonus(stack item.Stack, target string) float64 {

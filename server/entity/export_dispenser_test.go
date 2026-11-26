@@ -1,6 +1,6 @@
 package entity
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 // PiglinArmourDropChances returns the drop chance of the head, chest, legs and
 // feet of a piglin.

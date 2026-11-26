@@ -3,8 +3,8 @@ package entity
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
-	"github.com/df-mc/dragonfly/server/item"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/item"
 )
 
 // TestVillagerEquipmentGetsOnlyPrimaryEnchantments checks that a traded item

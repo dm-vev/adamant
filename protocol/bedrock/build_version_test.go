@@ -4,10 +4,10 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
-	"github.com/df-mc/dragonfly/protocol/bedrock/session"
-	"github.com/df-mc/dragonfly/server/version"
-	"github.com/df-mc/dragonfly/server/world/mcdb/leveldat"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
+	"github.com/dm-vev/adamant/protocol/bedrock/session"
+	"github.com/dm-vev/adamant/server/version"
+	"github.com/dm-vev/adamant/server/world/mcdb/leveldat"
 )
 
 // TestBuildVersionIsNewestPrimary checks that the release the server calls

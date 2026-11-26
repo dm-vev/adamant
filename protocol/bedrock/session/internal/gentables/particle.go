@@ -13,8 +13,8 @@ var particleKind = kindSpec{
 	variable: "particleRows",
 	key:      "Particle",
 	fields:   []string{"Particle", "Level", "Legacy", "Bool", "Hash", "RGBA", "ARGB", "Field"},
-	pkg:      "github.com/df-mc/dragonfly/server/world/particle",
-	worldPkg: "github.com/df-mc/dragonfly/server/world",
+	pkg:      "github.com/dm-vev/adamant/server/world/particle",
+	worldPkg: "github.com/dm-vev/adamant/server/world",
 	iface:    "Particle",
 	out:      "particle_switch_gen.go",
 	testOut:  "particle_types_gen_test.go",
@@ -22,7 +22,7 @@ var particleKind = kindSpec{
 	generate: generateParticles,
 	generateTypes: func(names []string) []byte {
 		return typesFile("particleTypes", "for the tests that compare the packets of every particle.", "particle",
-			"github.com/df-mc/dragonfly/server/world/particle", "Particle", names)
+			"github.com/dm-vev/adamant/server/world/particle", "Particle", names)
 	},
 }
 
@@ -34,8 +34,8 @@ func generateParticles(rows []row) []byte {
 	b.WriteString(`package session
 
 import (
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/particle"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/particle"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/go-gl/mathgl/mgl64"

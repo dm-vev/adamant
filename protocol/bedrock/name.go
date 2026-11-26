@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/client"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/client"
 )
 
 // NameCheck is how strictly the listener holds the names players log in

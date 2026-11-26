@@ -1,9 +1,9 @@
 package block
 
 import (
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/loot"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/loot"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // sulfurCubeSwallowable reports whether a sulfur cube swallows the item: it is

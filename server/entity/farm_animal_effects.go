@@ -1,7 +1,7 @@
 package entity
 
 import (
-	"github.com/df-mc/dragonfly/server/entity/effect"
+	"github.com/dm-vev/adamant/server/entity/effect"
 )
 
 // AddEffect adds an effect to the pig.

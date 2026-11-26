@@ -3,8 +3,8 @@ package mcdb
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/scoreboard"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/scoreboard"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 func TestWorldScoreboardPersistsAcrossMCDBReopen(t *testing.T) {

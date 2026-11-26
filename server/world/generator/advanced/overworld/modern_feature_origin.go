@@ -7,11 +7,11 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/df-mc/dragonfly/internal/faultcheck"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
+	"github.com/dm-vev/adamant/internal/faultcheck"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/chunk"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 )
 
 // originRecordCacheSize bounds the origin records kept for the chunks around

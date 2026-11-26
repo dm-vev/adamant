@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
-	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/world/chunk"
 )
 
 // CanonicalStateBlock applies source palette properties to a native actor while

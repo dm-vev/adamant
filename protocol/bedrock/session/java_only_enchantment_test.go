@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/enchantment"
-	"github.com/df-mc/dragonfly/server/menu"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/enchantment"
+	"github.com/dm-vev/adamant/server/menu"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/nbt"
 )

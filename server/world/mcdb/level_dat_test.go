@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/mcdb/leveldat"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/mcdb/leveldat"
 )
 
 // createWorld creates a world in dir with a seed and settings that differ

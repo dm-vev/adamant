@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // ExecuteLine executes a command line on behalf of the Source passed. The commandLine

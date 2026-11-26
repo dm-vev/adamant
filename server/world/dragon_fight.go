@@ -1,6 +1,6 @@
 package world
 
-import "github.com/df-mc/dragonfly/server/block/cube"
+import "github.com/dm-vev/adamant/server/block/cube"
 
 // endState is the dragon fight of the world and the arena that keeps it loaded.
 type endState struct {

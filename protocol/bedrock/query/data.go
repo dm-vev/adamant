@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/version"
+	"github.com/dm-vev/adamant/server/version"
 )
 
 // Data summarises the information returned by the query responder. The

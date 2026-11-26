@@ -4,9 +4,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/query"
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/protocol/bedrock/query"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // queryData assembles the Data structure consumed by the query package from

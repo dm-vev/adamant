@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/item"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/item"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 

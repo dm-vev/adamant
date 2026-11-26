@@ -15,8 +15,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/internal/testfixture"
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/bedrockdata"
+	"github.com/dm-vev/adamant/internal/testfixture"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/bedrockdata"
 	"github.com/dm-vev/adamant/net/nbt"
 )
 

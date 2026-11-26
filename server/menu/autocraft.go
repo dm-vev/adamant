@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/recipe"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/recipe"
 )
 
 // AutoCraft is a recipe-book craft in progress. Its inputs are paid from

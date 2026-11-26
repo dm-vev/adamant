@@ -3,7 +3,7 @@ package entity_test
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/dm-vev/adamant/server/entity"
 )
 
 func TestBoatTypeEncodeEntity(t *testing.T) {

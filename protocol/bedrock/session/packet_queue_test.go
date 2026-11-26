@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/text"
+	"github.com/dm-vev/adamant/server/text"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/bedrock/wire"

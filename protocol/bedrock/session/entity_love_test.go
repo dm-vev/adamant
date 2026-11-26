@@ -3,8 +3,8 @@ package session
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/go-gl/mathgl/mgl64"

@@ -4,12 +4,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/loot"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/entity/effect"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/loot"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 func generate(t *testing.T, table string, seed int64, ctx loot.Context) []item.Stack {

@@ -3,7 +3,7 @@ package session
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/server/world/sound"
 )
 
 // TestInstrumentValues holds every note block instrument, and the zero

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/player/chat"
+	"github.com/dm-vev/adamant/server/player/chat"
 	nettext "github.com/dm-vev/adamant/net/bedrock/text"
 	"golang.org/x/text/language"
 )

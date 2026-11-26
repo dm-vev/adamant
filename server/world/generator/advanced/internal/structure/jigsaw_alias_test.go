@@ -1,8 +1,8 @@
 package structure
 
 import (
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
 	"reflect"
 	"strings"
 	"testing"

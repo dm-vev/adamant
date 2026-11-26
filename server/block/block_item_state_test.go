@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // TestBlockItemsAreRegisteredStates checks every block registered as an item

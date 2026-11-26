@@ -3,8 +3,8 @@ package session
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/player/chat"
-	"github.com/df-mc/dragonfly/server/text"
+	"github.com/dm-vev/adamant/server/player/chat"
+	"github.com/dm-vev/adamant/server/text"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"golang.org/x/text/language"
 )

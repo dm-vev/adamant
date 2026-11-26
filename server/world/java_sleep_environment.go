@@ -1,6 +1,6 @@
 package world
 
-import "github.com/df-mc/dragonfly/server/block/cube"
+import "github.com/dm-vev/adamant/server/block/cube"
 
 // IsDarkOutside evaluates Java 26.3's Overworld SKY_LIGHT_LEVEL timeline and
 // Level.isDarkOutside predicate. Fixed-time dimensions are never dark outside.

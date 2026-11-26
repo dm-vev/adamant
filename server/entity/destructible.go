@@ -1,6 +1,6 @@
 package entity
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 // Destructible represents an entity that may be destroyed by attacks or other damage sources.
 type Destructible interface {

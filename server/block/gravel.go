@@ -3,9 +3,9 @@ package block
 import (
 	"math/rand/v2"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Gravel is a block affected by gravity. It has a 10% chance of dropping flint instead of itself on break.

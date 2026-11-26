@@ -1,6 +1,6 @@
 package playerdb
 
-import "github.com/df-mc/dragonfly/server/entity/effect"
+import "github.com/dm-vev/adamant/server/entity/effect"
 
 func effectsToData(effects []effect.Effect) []jsonEffect {
 	data := make([]jsonEffect, len(effects))

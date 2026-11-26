@@ -3,7 +3,7 @@ package form
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Modal represents a modal form. These forms have a body with text and two buttons at the end, typically one

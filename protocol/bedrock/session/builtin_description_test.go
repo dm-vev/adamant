@@ -5,11 +5,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/session"
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/cmd/builtin"
-	"github.com/df-mc/dragonfly/server/text"
+	"github.com/dm-vev/adamant/protocol/bedrock/session"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/cmd/builtin"
+	"github.com/dm-vev/adamant/server/text"
 	"golang.org/x/text/language"
 )
 

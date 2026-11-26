@@ -1,7 +1,7 @@
 package leveldat
 
 import (
-	"github.com/df-mc/dragonfly/server/version"
+	"github.com/dm-vev/adamant/server/version"
 )
 
 // Version is the current version stored in level.dat files.

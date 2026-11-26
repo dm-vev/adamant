@@ -1,6 +1,6 @@
 package item
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 // UseOnEntity ports NameTagItem.interactLivingEntity: a named name tag names
 // a living entity other than a player, which then stays in the world.

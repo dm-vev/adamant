@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
 )
 
 // ProcessorSpec is one exact entry from a Java data/minecraft/worldgen/processor_list resource.

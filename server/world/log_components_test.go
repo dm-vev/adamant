@@ -7,7 +7,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/logging"
+	"github.com/dm-vev/adamant/server/logging"
 )
 
 // TestComponentsGetTheirLoggers checks that a world logs as the world

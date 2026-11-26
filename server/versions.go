@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/version"
+	"github.com/dm-vev/adamant/server/version"
 )
 
 // gameVersioner is implemented by a Listener that knows which versions of

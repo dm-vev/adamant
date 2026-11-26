@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/session"
-	"github.com/df-mc/dragonfly/server"
+	"github.com/dm-vev/adamant/protocol/bedrock/session"
+	"github.com/dm-vev/adamant/server"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 )
 

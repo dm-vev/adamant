@@ -6,8 +6,8 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/client"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/client"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/google/uuid"
 )
 

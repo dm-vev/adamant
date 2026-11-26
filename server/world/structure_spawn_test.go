@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/internal/faultcheck"
-	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/dm-vev/adamant/internal/faultcheck"
+	"github.com/dm-vev/adamant/server/block/cube"
 )
 
 type mockSpawnStructureGenerator struct {

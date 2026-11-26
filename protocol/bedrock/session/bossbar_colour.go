@@ -1,6 +1,6 @@
 package session
 
-import "github.com/df-mc/dragonfly/server/player/bossbar"
+import "github.com/dm-vev/adamant/server/player/bossbar"
 
 // bedrockBossBarColour returns the colour BossEvent sends for the colour of a
 // boss bar. Bedrock numbers them pink 0, blue 1, red 2, green 3, yellow 4,

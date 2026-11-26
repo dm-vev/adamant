@@ -1,6 +1,6 @@
 package entity
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 // spawnMobFromNBT applies species-specific source data before first insertion,
 // to a mob of a type of reg.

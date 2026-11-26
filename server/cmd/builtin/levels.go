@@ -1,6 +1,6 @@
 package builtin
 
-import "github.com/df-mc/dragonfly/server/cmd"
+import "github.com/dm-vev/adamant/server/cmd"
 
 // gameMaster, admin and owner are embedded in the runnables of the
 // built-in commands to declare the level they need, as Java 26.3's

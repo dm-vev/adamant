@@ -1,9 +1,9 @@
 package session
 
 import (
-	bedrocktext "github.com/df-mc/dragonfly/protocol/bedrock/text"
-	"github.com/df-mc/dragonfly/server/text"
-	"github.com/df-mc/dragonfly/server/world"
+	bedrocktext "github.com/dm-vev/adamant/protocol/bedrock/text"
+	"github.com/dm-vev/adamant/server/text"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // ViewLayer returns the session's ViewLayer. The layer may be used to override how entities are viewed

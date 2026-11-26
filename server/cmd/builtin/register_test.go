@@ -3,7 +3,7 @@ package builtin
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/cmd"
+	"github.com/dm-vev/adamant/server/cmd"
 	"github.com/google/uuid"
 )
 

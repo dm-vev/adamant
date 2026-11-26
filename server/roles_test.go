@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/client"
-	"github.com/df-mc/dragonfly/server/cmd"
+	"github.com/dm-vev/adamant/server/client"
+	"github.com/dm-vev/adamant/server/cmd"
 	"github.com/google/uuid"
 )
 

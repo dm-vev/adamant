@@ -3,7 +3,7 @@ package block
 import (
 	"reflect"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // HasDispenseBehaviour reports whether a dispenser has a behaviour of its own

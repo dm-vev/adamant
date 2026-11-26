@@ -7,8 +7,8 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/entity/effect"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // EffectManager manages the effects of an entity. The effect manager will only store effects that last for

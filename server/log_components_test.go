@@ -7,11 +7,11 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/client/clienttest"
-	"github.com/df-mc/dragonfly/server/logging"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/mcdb"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/client/clienttest"
+	"github.com/dm-vev/adamant/server/logging"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/mcdb"
 )
 
 // TestComponentsGetTheirLoggers makes a server whose logger writes JSON and

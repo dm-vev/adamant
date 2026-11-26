@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Ref is a stable reference to a player that outlives callbacks. The *Player

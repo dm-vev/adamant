@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 func convertJigsaw(data map[string]any) (map[string]any, error) {

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
 )
 
 // Fixtures execute Java 26.3 EnchantRandomlyFunction.run with real registries.

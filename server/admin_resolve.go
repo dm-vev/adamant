@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/identity"
+	"github.com/dm-vev/adamant/server/identity"
 )
 
 // List names one of the lists of the server an admin changes.

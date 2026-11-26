@@ -8,10 +8,10 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/identity"
-	"github.com/df-mc/dragonfly/server/logging"
-	"github.com/df-mc/dragonfly/server/text"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/identity"
+	"github.com/dm-vev/adamant/server/logging"
+	"github.com/dm-vev/adamant/server/text"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Rule holds the keys every check has, as config.toml writes them. A table

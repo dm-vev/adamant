@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/internal/faultcheck"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/player/bossbar"
-	"github.com/df-mc/dragonfly/server/player/chat"
+	"github.com/dm-vev/adamant/internal/faultcheck"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/player/bossbar"
+	"github.com/dm-vev/adamant/server/player/chat"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )

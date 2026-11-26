@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/config"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/config"
 )
 
 // DefaultAddress is the address the API listens on by default: of this

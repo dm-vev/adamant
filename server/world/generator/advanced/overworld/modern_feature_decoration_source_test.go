@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/chunk"
 )
 
 // These source chunks execute NoiseBasedChunkGenerator.buildTerrain followed

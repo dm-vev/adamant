@@ -3,7 +3,7 @@ package overworld
 import (
  "encoding/json"
  "testing"
- "github.com/df-mc/dragonfly/server/internal/vanilla"
+ "github.com/dm-vev/adamant/server/internal/vanilla"
 )
 
 // Sequences and following nextLong values were produced by the pinned Java 26.3

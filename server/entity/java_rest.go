@@ -1,6 +1,6 @@
 package entity
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 // IsPreventingPlayerRest follows Java Monster's predicate, including its sole
 // ZombifiedPiglin override. Enemy/spawn category is not equivalent to Monster:

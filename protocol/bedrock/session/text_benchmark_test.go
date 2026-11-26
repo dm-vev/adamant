@@ -3,8 +3,8 @@ package session
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/player/scoreboard"
-	"github.com/df-mc/dragonfly/server/text"
+	"github.com/dm-vev/adamant/server/player/scoreboard"
+	"github.com/dm-vev/adamant/server/text"
 )
 
 // BenchmarkSessionSendTip measures what a tip costs the session beyond its

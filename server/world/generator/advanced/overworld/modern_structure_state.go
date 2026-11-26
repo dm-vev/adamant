@@ -5,7 +5,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 	"github.com/dm-vev/adamant/net/nbt"
 )
 

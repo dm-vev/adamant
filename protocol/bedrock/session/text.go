@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	bedrocktext "github.com/df-mc/dragonfly/protocol/bedrock/text"
-	"github.com/df-mc/dragonfly/server/player/bossbar"
-	"github.com/df-mc/dragonfly/server/player/scoreboard"
-	"github.com/df-mc/dragonfly/server/text"
+	bedrocktext "github.com/dm-vev/adamant/protocol/bedrock/text"
+	"github.com/dm-vev/adamant/server/player/bossbar"
+	"github.com/dm-vev/adamant/server/player/scoreboard"
+	"github.com/dm-vev/adamant/server/text"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 

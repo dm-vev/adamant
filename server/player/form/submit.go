@@ -1,6 +1,6 @@
 package form
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 // Submittable is a structure which may be submitted by sending it as a form using form.New(). When filled out
 // and submitted, the struct will have its Submit method called and its fields will have the values that the

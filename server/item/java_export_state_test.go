@@ -3,8 +3,8 @@ package item_test
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/enchantment"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/enchantment"
 )
 
 func importedJavaSword(t *testing.T) item.Stack {

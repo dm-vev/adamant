@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // CookingKind is a kind of Java cooking recipe: the recipes furnaces, blast

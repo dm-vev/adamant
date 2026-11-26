@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/event"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/inventory"
-	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/event"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/inventory"
+	"github.com/dm-vev/adamant/server/world/sound"
 )
 
 // Move moves count items from one slot to another: all or part of a stack

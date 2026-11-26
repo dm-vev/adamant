@@ -10,11 +10,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/session"
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/dm-vev/adamant/protocol/bedrock/session"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/chunk"
 	"github.com/dm-vev/adamant/net/nbt"
 )
 

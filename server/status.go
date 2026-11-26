@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Status is what the server shows of itself in the server lists of clients,

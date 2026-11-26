@@ -3,8 +3,8 @@ package menu
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/item"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/item"
 )
 
 // Enchant takes option 0, 1 or 2 of the enchanting table of the menu: it

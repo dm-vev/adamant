@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
-	"github.com/df-mc/dragonfly/server/logging"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
+	"github.com/dm-vev/adamant/server/logging"
 )
 
 // TestComponentsGetTheirLoggers checks that the line that tells the

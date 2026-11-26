@@ -1,6 +1,6 @@
 package block
 
-import "github.com/df-mc/dragonfly/server/item"
+import "github.com/dm-vev/adamant/server/item"
 
 // BannerPatternType represents a type of banner pattern, used to customise banners.
 type BannerPatternType struct {

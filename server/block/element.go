@@ -2,7 +2,7 @@ package block
 
 import (
 	"fmt"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Element is a chemistry element block.

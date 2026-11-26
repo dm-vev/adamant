@@ -1,6 +1,6 @@
 package item
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 // WarpedFungusOnAStick is an item that can be used to control saddled striders.
 type WarpedFungusOnAStick struct{}

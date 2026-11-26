@@ -1,9 +1,9 @@
 package advanced
 
 import (
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/end"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/nether"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/overworld"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/end"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/nether"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/overworld"
 )
 
 // NewEnd returns the Java 26.3-based End generator.

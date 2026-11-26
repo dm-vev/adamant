@@ -3,8 +3,8 @@ package player
 import (
 	"time"
 
-	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/player/anticheat"
+	"github.com/dm-vev/adamant/server/entity/effect"
+	"github.com/dm-vev/adamant/server/player/anticheat"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

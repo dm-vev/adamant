@@ -1,6 +1,6 @@
 package overworld
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 // Only tests use these helpers of modern_feature_overlay.go, so they live with the tests.
 

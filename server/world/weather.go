@@ -4,8 +4,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/event"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/event"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

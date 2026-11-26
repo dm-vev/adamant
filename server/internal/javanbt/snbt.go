@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
 )
 
 // ParseCompoundArgument parses one compound at a UTF-8 byte offset. Like Java's

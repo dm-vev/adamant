@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
 )
 
 // Positions and material sequences were captured from Java 26.3 DiskFeature.

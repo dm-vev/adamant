@@ -1,7 +1,7 @@
 package block
 
 import (
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // InfestedStoneBricks is a block that hides a silverfish. It looks identical to stone bricks.

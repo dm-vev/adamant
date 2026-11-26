@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/player/anticheat"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/player/anticheat"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

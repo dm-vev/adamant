@@ -8,7 +8,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/identity"
+	"github.com/dm-vev/adamant/server/identity"
 	"github.com/google/uuid"
 )
 

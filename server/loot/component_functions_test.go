@@ -3,9 +3,9 @@ package loot
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/potion"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/potion"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // TestPoolFunctionsApplyToTheirItems checks a pool's functions decorate the

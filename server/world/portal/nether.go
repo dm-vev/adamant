@@ -6,9 +6,9 @@ import (
 	"math/rand"
 	"slices"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/block/model"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/block/model"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Nether contains information about a nether portal structure.

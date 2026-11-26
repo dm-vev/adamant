@@ -5,12 +5,12 @@ import (
 	"log/slog"
 	"testing"
 
-	sdkblock "github.com/df-mc/dragonfly/sdk/block"
-	coreblock "github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/world"
+	sdkblock "github.com/dm-vev/adamant/sdk/block"
+	coreblock "github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 func TestCustomBlockDefineRegisterAndWorldOps(t *testing.T) {

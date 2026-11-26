@@ -1,6 +1,6 @@
 package item
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 // NautilusArmorMaterial identifies the material used by Nautilus armour.
 type NautilusArmorMaterial uint8

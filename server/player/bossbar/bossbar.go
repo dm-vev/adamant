@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/text"
+	"github.com/dm-vev/adamant/server/text"
 )
 
 // BossBar represents a boss bar that may be sent to a player. It is shown as a purple bar with text above

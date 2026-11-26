@@ -1,10 +1,10 @@
 package hud
 
 import (
-	"github.com/df-mc/dragonfly/server/player"
-	phud "github.com/df-mc/dragonfly/server/player/hud"
-	pinput "github.com/df-mc/dragonfly/server/player/input"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/player"
+	phud "github.com/dm-vev/adamant/server/player/hud"
+	pinput "github.com/dm-vev/adamant/server/player/input"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

@@ -3,8 +3,8 @@ package world_test
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world"
-	_ "github.com/df-mc/dragonfly/server/world/biome"
+	"github.com/dm-vev/adamant/server/world"
+	_ "github.com/dm-vev/adamant/server/world/biome"
 )
 
 // initBiomes holds the biomes registered as the packages initialise, before

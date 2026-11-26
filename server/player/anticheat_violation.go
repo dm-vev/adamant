@@ -3,10 +3,10 @@ package player
 import (
 	"time"
 
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/identity"
-	"github.com/df-mc/dragonfly/server/logging"
-	"github.com/df-mc/dragonfly/server/player/anticheat"
+	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/identity"
+	"github.com/dm-vev/adamant/server/logging"
+	"github.com/dm-vev/adamant/server/player/anticheat"
 )
 
 // violationLog is what the anti-cheat logs of a check of a player: the

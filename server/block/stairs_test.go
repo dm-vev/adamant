@@ -6,11 +6,11 @@ import (
 	"math"
 	"testing"
 
-	"github.com/df-mc/dragonfly/internal/testfixture"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/block/cube/trace"
-	"github.com/df-mc/dragonfly/server/block/model"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/internal/testfixture"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/block/cube/trace"
+	"github.com/dm-vev/adamant/server/block/model"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

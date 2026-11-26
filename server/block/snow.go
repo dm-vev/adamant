@@ -1,6 +1,6 @@
 package block
 
-import "github.com/df-mc/dragonfly/server/item"
+import "github.com/dm-vev/adamant/server/item"
 
 // Snow is a full-sized block of snow.
 type Snow struct {

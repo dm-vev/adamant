@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/event"
-	"github.com/df-mc/dragonfly/server/player"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/event"
+	"github.com/dm-vev/adamant/server/player"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 func TestServerEventsJoinAndQuit(t *testing.T) {

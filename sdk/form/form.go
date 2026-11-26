@@ -10,9 +10,9 @@ import (
 	"slices"
 	"unicode/utf8"
 
-	"github.com/df-mc/dragonfly/server/player"
-	pform "github.com/df-mc/dragonfly/server/player/form"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/player"
+	pform "github.com/dm-vev/adamant/server/player/form"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 type menuButton struct {

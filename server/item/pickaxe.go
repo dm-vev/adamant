@@ -1,7 +1,7 @@
 package item
 
 import (
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Pickaxe is a tool generally used for mining stone-like blocks and ores at a higher speed and to obtain

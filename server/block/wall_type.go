@@ -1,6 +1,6 @@
 package block
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 // WallBlocks returns a list of all possible blocks for a wall.
 func WallBlocks() []world.Block {

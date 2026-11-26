@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/df-mc/dragonfly/sdk/plugin"
-	"github.com/df-mc/dragonfly/server/scoreboard"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/sdk/plugin"
+	"github.com/dm-vev/adamant/server/scoreboard"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // ForceChunk keeps the chunk at pos loaded and ticking inside tx and returns an

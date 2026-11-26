@@ -1,7 +1,7 @@
 package world
 
 import (
-	"github.com/df-mc/dragonfly/server/player/chat"
+	"github.com/dm-vev/adamant/server/player/chat"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

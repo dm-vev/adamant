@@ -4,11 +4,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/client"
-	"github.com/df-mc/dragonfly/server/ecs"
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/event"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/client"
+	"github.com/dm-vev/adamant/server/ecs"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/event"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

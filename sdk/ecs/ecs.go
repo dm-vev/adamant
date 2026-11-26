@@ -5,9 +5,9 @@ package ecs
 import (
 	"fmt"
 
-	core "github.com/df-mc/dragonfly/server/ecs"
-	"github.com/df-mc/dragonfly/server/player"
-	"github.com/df-mc/dragonfly/server/world"
+	core "github.com/dm-vev/adamant/server/ecs"
+	"github.com/dm-vev/adamant/server/player"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Key is a typed handle for a component slot in an ECS Bag.

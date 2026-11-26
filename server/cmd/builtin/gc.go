@@ -3,8 +3,8 @@ package builtin
 import (
 	"runtime"
 
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 type gcCommand struct{ owner }

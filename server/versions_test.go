@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/version"
+	"github.com/dm-vev/adamant/server/version"
 )
 
 // versionListener is a Listener that tells the versions of its clients.

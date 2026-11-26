@@ -11,8 +11,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/audit"
-	"github.com/df-mc/dragonfly/server/world/mcdb"
+	"github.com/dm-vev/adamant/server/audit"
+	"github.com/dm-vev/adamant/server/world/mcdb"
 )
 
 // Backups returns the backups in the backup folder, newest first: the

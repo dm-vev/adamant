@@ -3,7 +3,7 @@ package cmd
 import (
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Deferrer is implemented by a Source that waits for the output a command

@@ -1,9 +1,9 @@
 package world
 
 import (
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/parallel"
-	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/internal/parallel"
+	"github.com/dm-vev/adamant/server/world/chunk"
 )
 
 // lightQueue is the light yet to be updated and spread, and the bound of the

@@ -8,10 +8,10 @@ import (
 	"slices"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	coreitem "github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/category"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block/cube"
+	coreitem "github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/category"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

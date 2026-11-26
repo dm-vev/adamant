@@ -3,7 +3,7 @@ package world
 import (
 	"encoding/binary"
 
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
 )
 
 // RegionRandom returns Entity.random, independently of the world's Level.random.

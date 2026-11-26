@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/ecs"
+	"github.com/dm-vev/adamant/server/ecs"
 )
 
 type testStats struct {

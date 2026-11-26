@@ -3,7 +3,7 @@ package overworld
 import (
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // posIndex maps the positions of a region to indices. It pages them by

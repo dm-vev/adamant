@@ -3,9 +3,9 @@ package session_test
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/session"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/protocol/bedrock/session"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/sound"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/go-gl/mathgl/mgl64"
 )

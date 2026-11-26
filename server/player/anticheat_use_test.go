@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/client/clienttest"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/player/anticheat"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/client/clienttest"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/player/anticheat"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // throwSnowballs has the client of p throw n snowballs, one every interval,

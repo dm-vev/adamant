@@ -3,8 +3,8 @@
 package session_test
 
 import (
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/particle"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/particle"
 )
 
 // particleTypes holds the zero value of every type of the package particle

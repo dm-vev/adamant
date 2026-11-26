@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/audit"
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/identity"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/audit"
+	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/identity"
 )
 
 // targetAdapter is a server that resolves the players an admin names as

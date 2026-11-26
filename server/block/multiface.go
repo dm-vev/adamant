@@ -5,8 +5,8 @@ import (
 	"math/rand/v2"
 	"slices"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // MultiFace is the set of block faces a multi-face block (glow lichen, sculk

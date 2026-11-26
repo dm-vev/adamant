@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
-	"github.com/df-mc/dragonfly/server/config"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
+	"github.com/dm-vev/adamant/server/config"
 	"github.com/dm-vev/adamant/net/bedrock/proto/codec"
 )
 

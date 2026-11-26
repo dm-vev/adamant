@@ -3,10 +3,10 @@ package entity
 import (
 	"time"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/block/cube/trace"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/block/cube/trace"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // NewSmallFireball creates a small fireball projectile owned by owner.

@@ -3,8 +3,8 @@ package item
 import (
 	"time"
 
-	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/entity/effect"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // OminousBottle applies Bad Omen when consumed. Amplifier is the Java

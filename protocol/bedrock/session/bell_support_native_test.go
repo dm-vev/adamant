@@ -8,10 +8,10 @@ import (
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"testing"
 
-	"github.com/df-mc/dragonfly/internal/testfixture"
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/internal/testfixture"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 type bellSupportNativeBlock struct {

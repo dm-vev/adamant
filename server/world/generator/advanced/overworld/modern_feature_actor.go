@@ -1,10 +1,10 @@
 package overworld
 
 import (
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/chunk"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 )
 
 func (r *featureRegion) setProjectionWithFlags(pos featurePos, state world.NativeState, flags int) bool {

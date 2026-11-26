@@ -1,6 +1,6 @@
 package block
 
-import "github.com/df-mc/dragonfly/server/block/cube"
+import "github.com/dm-vev/adamant/server/block/cube"
 
 // torchCircuit is the native capacitor's cache/evaluate state. It deliberately
 // takes source lists, not just an on/off attachment input: feedback identity,

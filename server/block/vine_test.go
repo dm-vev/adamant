@@ -3,7 +3,7 @@ package block
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 func TestVineStatesDecodeToVines(t *testing.T) {

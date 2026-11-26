@@ -1,7 +1,7 @@
 package iteminternal
 
 import (
-	"github.com/df-mc/dragonfly/server/item/category"
+	"github.com/dm-vev/adamant/server/item/category"
 	"maps"
 )
 

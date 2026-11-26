@@ -1,6 +1,6 @@
 package block
 
-import "github.com/df-mc/dragonfly/server/item"
+import "github.com/dm-vev/adamant/server/item"
 
 // HeavyCore is a decorative block.
 type HeavyCore struct {

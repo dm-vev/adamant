@@ -3,7 +3,7 @@ package world
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
 )
 
 // TestResolvedJavaStatesAreReused resolves every Java state again once the

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // TestTickStateOfAStuckOwner checks the TickState of a world whose owner is

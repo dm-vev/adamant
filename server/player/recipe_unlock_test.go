@@ -6,16 +6,16 @@ import (
 	"testing"
 	_ "unsafe"
 
-	"github.com/df-mc/dragonfly/server/client/clienttest"
-	"github.com/df-mc/dragonfly/server/item/recipe"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/client/clienttest"
+	"github.com/dm-vev/adamant/server/item/recipe"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // registerVanillaRecipes is the vanilla recipe registration a server runs
 // on start. It registers the recipes once per process, however often it
 // is called.
 //
-//go:linkname registerVanillaRecipes github.com/df-mc/dragonfly/server/item/recipe.registerVanilla
+//go:linkname registerVanillaRecipes github.com/dm-vev/adamant/server/item/recipe.registerVanilla
 func registerVanillaRecipes()
 
 // TestUnlockRecipesKeepsKnownIDs checks that a player keeps the recipe

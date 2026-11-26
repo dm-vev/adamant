@@ -1,8 +1,8 @@
 package app
 
 import (
-	"github.com/df-mc/dragonfly/server/logging"
-	"github.com/df-mc/dragonfly/server/remoteadmin"
+	"github.com/dm-vev/adamant/server/logging"
+	"github.com/dm-vev/adamant/server/remoteadmin"
 )
 
 // remoteAdminService returns the remote admin API as [RemoteAdmin] says,

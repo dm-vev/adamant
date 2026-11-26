@@ -1,9 +1,9 @@
 package overworld
 
 import (
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 )
 
 // journalStructureWorld lets source piece reads observe their own deferred writes.

@@ -1,6 +1,6 @@
 package block
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 // ColoredTorch is an alias for ColouredTorch.
 type ColoredTorch = ColouredTorch

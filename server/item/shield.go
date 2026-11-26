@@ -3,8 +3,8 @@ package item
 import (
 	"time"
 
-	"github.com/df-mc/dragonfly/server/item/category"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/item/category"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Shield is a defensive item that can block incoming attacks when used.

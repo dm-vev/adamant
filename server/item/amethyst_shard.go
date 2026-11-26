@@ -1,6 +1,6 @@
 package item
 
-import "github.com/df-mc/dragonfly/server/text"
+import "github.com/dm-vev/adamant/server/text"
 
 // AmethystShard is a crystalline mineral obtained from mining a fully grown amethyst cluster.
 type AmethystShard struct{}

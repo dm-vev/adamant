@@ -3,7 +3,7 @@ package server
 import (
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/audit"
+	"github.com/dm-vev/adamant/server/audit"
 )
 
 // ActorKind is the kind of what does an admin action of the server.

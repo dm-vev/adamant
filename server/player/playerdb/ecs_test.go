@@ -3,9 +3,9 @@ package playerdb
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/ecs"
-	"github.com/df-mc/dragonfly/server/player"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/ecs"
+	"github.com/dm-vev/adamant/server/player"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/google/uuid"
 )
 

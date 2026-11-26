@@ -4,10 +4,10 @@ import (
 	"math"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/player/scoreboard"
-	model "github.com/df-mc/dragonfly/server/scoreboard"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/player/scoreboard"
+	model "github.com/dm-vev/adamant/server/scoreboard"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // tickScoreboard updates the player's stat-driven objective scores and

@@ -4,9 +4,9 @@ import (
 	"embed"
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/internal/i18n"
-	"github.com/df-mc/dragonfly/server/player/chat"
+	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/internal/i18n"
+	"github.com/dm-vev/adamant/server/player/chat"
 	"golang.org/x/text/language"
 )
 

@@ -3,7 +3,7 @@ package session
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/client"
+	"github.com/dm-vev/adamant/server/client"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 )
 

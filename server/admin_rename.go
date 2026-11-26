@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/identity"
+	"github.com/dm-vev/adamant/server/identity"
 )
 
 // followRename gives the entries the lists hold of the account of the key

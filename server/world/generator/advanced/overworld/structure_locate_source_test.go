@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/dm-vev/adamant/server/block/cube"
 )
 
 // TestStructureLocateMatchesJava checks the structures the locate command of

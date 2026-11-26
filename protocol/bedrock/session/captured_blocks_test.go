@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/internal/testfixture"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/internal/testfixture"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 var updateCapturedBlocks = flag.Bool("update-captured-blocks", false, "rewrite the block states of the network block hashes BDS was captured sending")

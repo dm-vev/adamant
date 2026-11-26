@@ -1,6 +1,6 @@
 package item
 
-import "github.com/df-mc/dragonfly/server/text"
+import "github.com/dm-vev/adamant/server/text"
 
 // CopperIngot is a metal ingot melted from copper ore.
 type CopperIngot struct{}

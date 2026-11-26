@@ -11,9 +11,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/ecs"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/ecs"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )

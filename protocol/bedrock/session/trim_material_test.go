@@ -3,8 +3,8 @@ package session
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/item"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/item"
 	nbtext "github.com/dm-vev/adamant/net/bedrock/text"
 )
 

@@ -3,7 +3,7 @@ package menu
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/item/creative"
+	"github.com/dm-vev/adamant/server/item/creative"
 )
 
 // CreateCreative crafts a full stack of the creative item of index i of

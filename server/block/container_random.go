@@ -1,6 +1,6 @@
 package block
 
-import "github.com/df-mc/dragonfly/server/item/inventory"
+import "github.com/dm-vev/adamant/server/item/inventory"
 
 // randomContainerSlot follows the native dispenser/dropper reservoir walk.
 // Every occupied slot consumes one bounded draw, including the first slot

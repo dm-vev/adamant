@@ -44,7 +44,7 @@ package javatext
 import (
 	"unicode/utf8"
 
-	"github.com/df-mc/dragonfly/server/text"
+	"github.com/dm-vev/adamant/server/text"
 )
 
 // names are the names of the colours both editions have.

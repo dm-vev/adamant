@@ -1,6 +1,6 @@
 package overworld
 
-import vanilla "github.com/df-mc/dragonfly/server/internal/vanilla"
+import vanilla "github.com/dm-vev/adamant/server/internal/vanilla"
 
 func placeModernSingleBlockPillar(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	direction := int32(1)

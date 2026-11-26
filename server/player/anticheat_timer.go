@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/client"
-	"github.com/df-mc/dragonfly/server/player/anticheat"
+	"github.com/dm-vev/adamant/server/client"
+	"github.com/dm-vev/adamant/server/player/anticheat"
 )
 
 // timerState is what Timer keeps of the moves of a client: its clock and

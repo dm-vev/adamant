@@ -3,8 +3,8 @@ package session
 import (
 	"math/rand/v2"
 
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/menu"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/menu"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 

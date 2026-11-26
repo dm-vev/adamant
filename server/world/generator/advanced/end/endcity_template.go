@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 )
 
 type endCityTemplate struct {

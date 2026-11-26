@@ -3,9 +3,9 @@ package menu
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/event"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/dm-vev/adamant/server/event"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/inventory"
 )
 
 // Trade makes offer index of the merchant of the menu times times, paid with

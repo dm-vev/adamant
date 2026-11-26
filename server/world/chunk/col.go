@@ -1,7 +1,7 @@
 package chunk
 
 import (
-	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/dm-vev/adamant/server/block/cube"
 )
 
 type Column struct {

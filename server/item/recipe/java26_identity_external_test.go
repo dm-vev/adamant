@@ -4,10 +4,10 @@ import (
 	"reflect"
 	"testing"
 
-	_ "github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/recipe"
-	"github.com/df-mc/dragonfly/server/world"
+	_ "github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/recipe"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 func TestJavaRecipeIDsMatchShapedAndSmithingTrimRecipes(t *testing.T) {

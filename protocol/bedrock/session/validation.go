@@ -3,7 +3,7 @@ package session
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/dm-vev/adamant/server/block/cube"
 )
 
 // parseBlockFace validates client-supplied faces to avoid panics in block logic.

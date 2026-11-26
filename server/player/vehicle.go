@@ -1,8 +1,8 @@
 package player
 
 import (
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // ridden returns the entity the player rides, if any, and whether it rides

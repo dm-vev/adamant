@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/df-mc/dragonfly/server/scoreboard"
+	"github.com/dm-vev/adamant/server/scoreboard"
 	"github.com/df-mc/goleveldb/leveldb"
 )
 

@@ -3,8 +3,8 @@ package recipe_test
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/sdk/recipe"
-	"github.com/df-mc/dragonfly/server/item"
+	"github.com/dm-vev/adamant/sdk/recipe"
+	"github.com/dm-vev/adamant/server/item"
 )
 
 func TestRecipeBuildersAndRegistration(t *testing.T) {

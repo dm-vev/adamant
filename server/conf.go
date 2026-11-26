@@ -14,23 +14,23 @@ import (
 
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/client"
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/config"
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/identity"
-	"github.com/df-mc/dragonfly/server/logging"
+	"github.com/dm-vev/adamant/server/client"
+	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/config"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/identity"
+	"github.com/dm-vev/adamant/server/logging"
 	// The packages of the functions New calls through go:linkname must be
 	// linked in, whether or not a listener imports them.
-	_ "github.com/df-mc/dragonfly/server/item/creative"
-	_ "github.com/df-mc/dragonfly/server/item/recipe"
-	"github.com/df-mc/dragonfly/server/player"
-	"github.com/df-mc/dragonfly/server/player/anticheat"
-	"github.com/df-mc/dragonfly/server/player/chat"
-	"github.com/df-mc/dragonfly/server/player/playerdb"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced"
-	"github.com/df-mc/dragonfly/server/world/mcdb"
+	_ "github.com/dm-vev/adamant/server/item/creative"
+	_ "github.com/dm-vev/adamant/server/item/recipe"
+	"github.com/dm-vev/adamant/server/player"
+	"github.com/dm-vev/adamant/server/player/anticheat"
+	"github.com/dm-vev/adamant/server/player/chat"
+	"github.com/dm-vev/adamant/server/player/playerdb"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/generator/advanced"
+	"github.com/dm-vev/adamant/server/world/mcdb"
 )
 
 // Config contains options for starting a Minecraft server.
@@ -1332,12 +1332,12 @@ func DefaultConfig() UserConfig {
 
 // noinspection ALL
 //
-//go:linkname creative_registerCreativeItems github.com/df-mc/dragonfly/server/item/creative.registerCreativeItems
+//go:linkname creative_registerCreativeItems github.com/dm-vev/adamant/server/item/creative.registerCreativeItems
 func creative_registerCreativeItems()
 
 // noinspection ALL
 //
-//go:linkname recipe_registerVanilla github.com/df-mc/dragonfly/server/item/recipe.registerVanilla
+//go:linkname recipe_registerVanilla github.com/dm-vev/adamant/server/item/recipe.registerVanilla
 func recipe_registerVanilla()
 
 // createListeners creates the listeners of the Config and adds them to the

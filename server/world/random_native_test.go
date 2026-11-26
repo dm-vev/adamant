@@ -5,7 +5,7 @@ import (
 	"math/rand/v2"
 	"testing"
 
-	"github.com/df-mc/dragonfly/internal/testfixture"
+	"github.com/dm-vev/adamant/internal/testfixture"
 )
 
 func TestLevelRandomWordsMatchExecutedClient(t *testing.T) {

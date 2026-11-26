@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/df-mc/dragonfly/server/internal/sliceutil"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/internal/sliceutil"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 	"slices"
 )

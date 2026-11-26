@@ -9,14 +9,14 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock"
-	"github.com/df-mc/dragonfly/protocol/java"
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/config"
-	"github.com/df-mc/dragonfly/server/identity"
-	"github.com/df-mc/dragonfly/server/logging"
-	"github.com/df-mc/dragonfly/server/monitor"
-	"github.com/df-mc/dragonfly/server/remoteadmin"
+	"github.com/dm-vev/adamant/protocol/bedrock"
+	"github.com/dm-vev/adamant/protocol/java"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/config"
+	"github.com/dm-vev/adamant/server/identity"
+	"github.com/dm-vev/adamant/server/logging"
+	"github.com/dm-vev/adamant/server/monitor"
+	"github.com/dm-vev/adamant/server/remoteadmin"
 	"github.com/pelletier/go-toml"
 )
 

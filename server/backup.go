@@ -15,11 +15,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/audit"
-	"github.com/df-mc/dragonfly/server/logging"
-	"github.com/df-mc/dragonfly/server/player"
-	"github.com/df-mc/dragonfly/server/version"
-	"github.com/df-mc/dragonfly/server/world/mcdb"
+	"github.com/dm-vev/adamant/server/audit"
+	"github.com/dm-vev/adamant/server/logging"
+	"github.com/dm-vev/adamant/server/player"
+	"github.com/dm-vev/adamant/server/version"
+	"github.com/dm-vev/adamant/server/world/mcdb"
 )
 
 // BackupFormat is how a backup is written.

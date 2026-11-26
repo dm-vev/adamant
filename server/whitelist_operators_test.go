@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/client"
+	"github.com/dm-vev/adamant/server/client"
 )
 
 func TestWhitelistOperatorsBypass(t *testing.T) {

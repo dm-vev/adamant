@@ -3,7 +3,7 @@ package block
 import (
 	"time"
 
-	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/dm-vev/adamant/server/internal/nbtconv"
 )
 
 // smelterActorNBT writes a furnace, blast furnace or smoker actor as BDS

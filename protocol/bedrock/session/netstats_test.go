@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
-	"github.com/df-mc/dragonfly/server/cmd"
+	"github.com/dm-vev/adamant/protocol/bedrock/netconn"
+	"github.com/dm-vev/adamant/server/cmd"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/sctp"
 )

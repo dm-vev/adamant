@@ -3,7 +3,7 @@ package server
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/client"
+	"github.com/dm-vev/adamant/server/client"
 )
 
 // TestValidateName holds names to the rule of the game, whichever edition

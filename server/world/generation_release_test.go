@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/world/chunk"
 )
 
 // releasingGenerator is a generator that blocks the chunk at block while it

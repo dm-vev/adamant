@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/dm-vev/adamant/server/block/cube"
 )
 
 // MapDecorationTypeFromJava returns the Bedrock map decoration type of a Java

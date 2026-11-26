@@ -6,7 +6,7 @@ import (
 	"math/rand/v2"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/player/skin"
+	"github.com/dm-vev/adamant/server/player/skin"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/bedrock/wire"

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/world/mcdb"
+	"github.com/dm-vev/adamant/server/world/mcdb"
 )
 
 // TestSaveHold checks HoldSave, QuerySave and ResumeSave, BDS's save hold,

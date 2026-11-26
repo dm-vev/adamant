@@ -1,7 +1,7 @@
 package nether
 
 import (
-	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/dm-vev/adamant/server/world/chunk"
 )
 
 // Material noise conditions are column-constant. Sample only when a rule needs

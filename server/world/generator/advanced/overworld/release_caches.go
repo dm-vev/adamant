@@ -3,7 +3,7 @@ package overworld
 import (
 	"container/list"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // ReleaseGenerationCaches drops what the generator keeps for the chunks

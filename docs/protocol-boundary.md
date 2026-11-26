@@ -4,7 +4,7 @@ This document records the plan for separating Adamant's game logic and server fr
 
 ## Goal
 
-Game logic and the server must not depend on any network protocol or transport. Transports (RakNet, NetherNet, …) and protocols (Bedrock Edition today, Java Edition later) become pluggable: a protocol adapter is written against the game's own types, and the game never learns which adapter a player is connected through. Two rules hold in every phase: Bedrock clients receive byte-identical output, and the module path stays `github.com/df-mc/dragonfly`.
+Game logic and the server must not depend on any network protocol or transport. Transports (RakNet, NetherNet, …) and protocols (Bedrock Edition today, Java Edition later) become pluggable: a protocol adapter is written against the game's own types, and the game never learns which adapter a player is connected through. Two rules hold in every phase: Bedrock clients receive byte-identical output, and the module path stays `github.com/dm-vev/adamant`.
 
 ## Layers and directories
 
@@ -19,7 +19,7 @@ Game logic and the server must not depend on any network protocol or transport. 
 | --- | --- | --- |
 | R1: the game knows no protocol | `server/` | anything below `github.com/dm-vev/adamant/net` except `net/nbt` and `net/metrics`; `protocol/` and anything below it |
 | R2: adapters stay apart | `protocol/<a>/` | `protocol/<b>` for any b other than a (the adapter's own subtree is fine) |
-| R3: protocol libraries know no game | `net/` | `github.com/df-mc/dragonfly` and anything below it |
+| R3: protocol libraries know no game | `net/` | `github.com/dm-vev/adamant` and anything below it (except `net/` itself) |
 
 `internal/archtest/boundary_test.go` enforces them. `TestImportBoundary` walks the root module and the `net` module, skipping `.git`, every `testdata` directory and every other module (`net/interop/`, `scripts/redstone_client/`). It parses the imports of every `.go` file, test files included, without type checking, and matches paths by whole segments. A violation is the pair `<file> <import path>`. `TestBoundaryRules` tests the rule function on its own.
 
@@ -56,7 +56,7 @@ The game may import `net/nbt` (and the packages below it). It reads and writes N
 
 - **Adapters live in `protocol/`**, one directory per protocol, inside the main module.
 - **Text is structured in the game.** The game models text as structured text (`server/text`) and each adapter renders it: the Bedrock adapter to § formatting codes, the Java Edition adapter to text components. Strings that already carry § codes are read with their Bedrock meanings.
-- **The module path stays `github.com/df-mc/dragonfly`.**
+- **The module path stays `github.com/dm-vev/adamant`.**
 - **Players are keyed by Xbox account with sign-in, and by name without.** The owner's decision of 2026-11-04 replaced the one recorded here, that the key of the whitelist and of operators stays the name until Java Edition logins exist. `[Server] IdentityKey` chooses the mode; the whitelist, the operators, the bans and the data of players follow it. See [`docs/identity.md`](identity.md).
 - **Identities carry platform IDs, such as the XUID, as optional attributes.** The neutral identity, `client.Identity{Name, UUID, XUID, Authenticated}`, which replaced `login.Identity`, holds such IDs beside the name, and says whether Xbox Live vouched for them; the mode of the server says which it keys players by, so a later Java Edition login can add its own.
 - **Bedrock output stays byte-identical**, guarded by golden packet snapshots in `protocol/bedrock/session/testdata` (`server/session/testdata` until phase 3 moved the session), which are checked in every phase.

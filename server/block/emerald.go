@@ -1,8 +1,8 @@
 package block
 
 import (
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/world/sound"
 )
 
 // Emerald is a precious mineral block crafted using 9 emeralds.

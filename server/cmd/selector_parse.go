@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/internal/javanbt"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/internal/javanbt"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

@@ -4,9 +4,9 @@ import (
 	"sync"
 	"testing"
 
-	_ "github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/chunk"
+	_ "github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/chunk"
 )
 
 // TestLoadColumnsConcurrently checks that columns are read back right from

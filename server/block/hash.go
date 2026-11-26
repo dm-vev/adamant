@@ -2,7 +2,7 @@
 
 package block
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 const (
 	hashAir = iota

@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 )
 
 func TestMansionGraphsMatchReference(t *testing.T) {

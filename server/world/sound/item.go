@@ -1,6 +1,6 @@
 package sound
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 // ItemBreak is a sound played when an item in the inventory is broken, such as when a tool reaches 0
 // durability and breaks.

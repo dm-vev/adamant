@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"math/rand/v2"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/world/sound"
 )
 
 // Repair takes the result of the anvil of the menu: the input repaired with

@@ -3,8 +3,8 @@ package chunk
 import (
 	"encoding/binary"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
 )
 
 // insertBlockLightNodes iterates over the chunk and looks for blocks that have a light level of at least 1.

@@ -1,6 +1,6 @@
 package world
 
-import "github.com/df-mc/dragonfly/server/block/cube"
+import "github.com/dm-vev/adamant/server/block/cube"
 
 // blockDestroyer breaks a block as Level.destroyBlock does. The block
 // package registers it.

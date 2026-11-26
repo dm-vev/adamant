@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	sdkitem "github.com/df-mc/dragonfly/sdk/item"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/enchantment"
-	"github.com/df-mc/dragonfly/server/world"
+	sdkitem "github.com/dm-vev/adamant/sdk/item"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/enchantment"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 func TestCustomItemDefineCapabilitiesAndRegistry(t *testing.T) {

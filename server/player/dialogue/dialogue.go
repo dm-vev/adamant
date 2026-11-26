@@ -3,7 +3,7 @@ package dialogue
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 	"reflect"
 	"strings"
 )

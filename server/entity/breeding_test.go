@@ -6,12 +6,12 @@ import (
 	"testing"
 	_ "unsafe"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/player"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/player"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
@@ -239,7 +239,7 @@ func TestSniffersLayAnEggInsteadOfABaby(t *testing.T) {
 // on start. It registers the recipes once per process, however often it
 // is called.
 //
-//go:linkname registerVanillaRecipes github.com/df-mc/dragonfly/server/item/recipe.registerVanilla
+//go:linkname registerVanillaRecipes github.com/dm-vev/adamant/server/item/recipe.registerVanilla
 func registerVanillaRecipes()
 
 func TestLambFleeceMixesParentDyes(t *testing.T) {

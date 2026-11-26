@@ -6,8 +6,8 @@ import (
 	"image"
 	"math"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
-	"github.com/df-mc/dragonfly/server/player/skin"
+	"github.com/dm-vev/adamant/protocol/bedrock/netconn"
+	"github.com/dm-vev/adamant/server/player/skin"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/google/uuid"

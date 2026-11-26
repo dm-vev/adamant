@@ -3,7 +3,7 @@ package world
 import (
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/dm-vev/adamant/server/block/cube"
 )
 
 // poiState is the points of interest of the world.

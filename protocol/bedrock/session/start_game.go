@@ -4,10 +4,10 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/bedrockdata"
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/blockinternal"
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/iteminternal"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/bedrockdata"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/blockinternal"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/iteminternal"
+	"github.com/dm-vev/adamant/server/world"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 

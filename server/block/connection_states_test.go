@@ -3,8 +3,8 @@ package block
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // connectionStatesFloor lays a floor of stone below y 64 from -4 to 8 on

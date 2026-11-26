@@ -3,7 +3,7 @@ package mcdb
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 func TestJavaOnlyGameRulePersistsAcrossMCDBReopen(t *testing.T) {

@@ -3,8 +3,8 @@ package menu
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/event"
-	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/dm-vev/adamant/server/event"
+	"github.com/dm-vev/adamant/server/item/inventory"
 )
 
 // Drop drops count items of a slot in front of the player, as Player.Drop

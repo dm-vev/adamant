@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/sdk/plugin"
-	"github.com/df-mc/dragonfly/sdk/sdktest"
-	"github.com/df-mc/dragonfly/sdk/worlds"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/player"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/sdk/plugin"
+	"github.com/dm-vev/adamant/sdk/sdktest"
+	"github.com/dm-vev/adamant/sdk/worlds"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/player"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

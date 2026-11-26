@@ -3,7 +3,7 @@ package session
 import (
 	"strings"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/bedrockdata"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/bedrockdata"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 

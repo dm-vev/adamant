@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/internal/faultcheck"
+	"github.com/dm-vev/adamant/internal/faultcheck"
 )
 
 // printedLines is how many lines of the stack RunCheckingPanics prints for a

@@ -3,7 +3,7 @@ package overworld
 import (
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // worldgenHeights holds the WORLDGEN heightmaps of the base terrain of a

@@ -1,6 +1,6 @@
 package session
 
-import "github.com/df-mc/dragonfly/server/client"
+import "github.com/dm-vev/adamant/server/client"
 
 // Controllable is the player a Session drives: client.Controllable, named
 // here so that the handlers of the session keep their signatures.

@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/version"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/version"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // defaultCrashReports is the directory crash reports are written to by

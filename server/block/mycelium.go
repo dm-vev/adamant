@@ -1,6 +1,6 @@
 package block
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 // Mycelium is a dirt-type block that naturally blankets the surface of mushroom islands.
 type Mycelium struct {

@@ -4,7 +4,7 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/dm-vev/adamant/server/block/cube"
 )
 
 // RedstoneUpdateCause describes the world event that caused a redstone update to be evaluated.

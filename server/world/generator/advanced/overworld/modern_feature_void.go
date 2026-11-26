@@ -1,6 +1,6 @@
 package overworld
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 func placeModernVoidStartPlatform(region *featureRegion, origin featurePos) bool {
 	chunkX, chunkZ := origin.x>>4, origin.z>>4

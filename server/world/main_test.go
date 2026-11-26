@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/df-mc/dragonfly/internal/testfixture"
+	"github.com/dm-vev/adamant/internal/testfixture"
 )
 
 // TestMain makes every wait for a world owner from a world owner end the

@@ -3,9 +3,9 @@ package leveldat
 import (
 	"math"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/version"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/version"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // Data holds a collection of data that specify a range of Settings of the

@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/df-mc/dragonfly/sdk/plugin"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/sdk/plugin"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // AsyncTask represents an off-thread background computation (e.g. database or

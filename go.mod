@@ -1,4 +1,4 @@
-module github.com/df-mc/dragonfly
+module github.com/dm-vev/adamant
 
 go 1.27.0
 

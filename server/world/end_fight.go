@@ -5,7 +5,7 @@ import (
 	"iter"
 	"slices"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/dm-vev/adamant/server/block/cube"
 )
 
 // DragonFightController owns the End arena lifecycle in addition to the callbacks

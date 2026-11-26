@@ -4,7 +4,7 @@ import (
 	"math/rand/v2"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
 )
 
 // randomness is the random sources of the world.

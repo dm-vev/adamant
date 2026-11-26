@@ -1,7 +1,7 @@
 package builtin
 
 import (
-	"github.com/df-mc/dragonfly/server/cmd"
+	"github.com/dm-vev/adamant/server/cmd"
 )
 
 // commandObserver is a server that records the commands run, as the audit

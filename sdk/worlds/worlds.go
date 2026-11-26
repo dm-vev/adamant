@@ -10,11 +10,11 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/df-mc/dragonfly/sdk/plugin"
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/player"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/mcdb"
+	"github.com/dm-vev/adamant/sdk/plugin"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/player"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/mcdb"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

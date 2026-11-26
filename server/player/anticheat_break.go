@@ -5,8 +5,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/player/anticheat"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/player/anticheat"
 )
 
 // breakState is what BreakTime keeps of the block the player breaks.

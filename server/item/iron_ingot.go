@@ -1,6 +1,6 @@
 package item
 
-import "github.com/df-mc/dragonfly/server/text"
+import "github.com/dm-vev/adamant/server/text"
 
 // IronIngot is a metal ingot melted from raw iron or obtained from loot chests.
 type IronIngot struct{}

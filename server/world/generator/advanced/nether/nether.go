@@ -6,15 +6,15 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
-	"github.com/df-mc/dragonfly/server/world"
-	dfbiome "github.com/df-mc/dragonfly/server/world/biome"
-	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
-	overworldFeatures "github.com/df-mc/dragonfly/server/world/generator/advanced/overworld"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/world"
+	dfbiome "github.com/dm-vev/adamant/server/world/biome"
+	"github.com/dm-vev/adamant/server/world/chunk"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
+	overworldFeatures "github.com/dm-vev/adamant/server/world/generator/advanced/overworld"
 )
 
 const netherSeaLevel = 32

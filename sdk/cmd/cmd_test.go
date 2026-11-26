@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	sdkcmd "github.com/df-mc/dragonfly/sdk/cmd"
-	corecmd "github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/world"
+	sdkcmd "github.com/dm-vev/adamant/sdk/cmd"
+	corecmd "github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

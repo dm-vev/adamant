@@ -1,7 +1,7 @@
 package item
 
 import (
-	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/server/world/sound"
 )
 
 // MusicDisc is an item that can be played in jukeboxes.

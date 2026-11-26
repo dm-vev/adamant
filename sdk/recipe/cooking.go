@@ -1,9 +1,9 @@
 package recipe
 
 import (
-	"github.com/df-mc/dragonfly/server/item"
-	core "github.com/df-mc/dragonfly/server/item/recipe"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/item"
+	core "github.com/dm-vev/adamant/server/item/recipe"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // CookingKind selects which cooking station processes a CookingEntry.

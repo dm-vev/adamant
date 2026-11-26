@@ -261,7 +261,7 @@ func typesFile(variable, purpose, pkgName, importPath, iface string, names []str
 	var b bytes.Buffer
 	b.WriteString(header)
 	b.WriteString("package session_test\n\nimport (\n")
-	b.WriteString("\t\"github.com/df-mc/dragonfly/server/world\"\n")
+	b.WriteString("\t\"github.com/dm-vev/adamant/server/world\"\n")
 	fmt.Fprintf(&b, "\t%q\n)\n\n", importPath)
 	fmt.Fprintf(&b, "// %s holds the zero value of every type of the package %s\n// that implements world.%s, %s\nvar %s = []world.%s{\n", variable, pkgName, iface, purpose, variable, iface)
 	for _, n := range names {

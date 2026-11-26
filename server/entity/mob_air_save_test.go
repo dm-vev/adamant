@@ -3,7 +3,7 @@ package entity
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // TestMobAirIsSaved checks the air a mob has left is saved as Air and read

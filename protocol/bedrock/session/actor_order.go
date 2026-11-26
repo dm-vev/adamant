@@ -4,7 +4,7 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // bdsActorIdentifiers is the order in which BDS 1.26.52.3 lists the types of

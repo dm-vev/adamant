@@ -3,7 +3,7 @@ package item
 import (
 	"time"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 const suspiciousStewDurationNBT = "java26_stew_effect_duration"

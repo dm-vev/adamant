@@ -11,9 +11,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/client"
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/identity"
+	"github.com/dm-vev/adamant/server/client"
+	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/identity"
 )
 
 // entry is a player on one of the server's lists: the whitelist, the

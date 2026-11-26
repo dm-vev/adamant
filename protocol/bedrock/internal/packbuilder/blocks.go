@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	_ "unsafe" // Imported for compiler directives.
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // buildBlocks builds all the block-related files for the resource pack. This includes textures, geometries, language

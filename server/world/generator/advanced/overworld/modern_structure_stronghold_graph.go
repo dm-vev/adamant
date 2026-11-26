@@ -3,8 +3,8 @@ package overworld
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 )
 
 type strongholdDoor struct {

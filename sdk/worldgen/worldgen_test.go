@@ -8,15 +8,15 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/df-mc/dragonfly/sdk/worldgen"
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/end"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/nether"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/overworld"
+	"github.com/dm-vev/adamant/sdk/worldgen"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/chunk"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/end"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/nether"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/overworld"
 )
 
 func TestUnifiedHooksBiomesAndStructures(t *testing.T) {

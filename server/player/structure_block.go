@@ -3,8 +3,8 @@ package player
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/block/cube"
 )
 
 // EditStructureBlock applies edit to the structure block at pos, as the

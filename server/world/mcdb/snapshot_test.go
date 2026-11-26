@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/world/mcdb/leveldat"
+	"github.com/dm-vev/adamant/server/world/mcdb/leveldat"
 	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/df-mc/goleveldb/leveldb/journal"
 	"github.com/df-mc/goleveldb/leveldb/opt"

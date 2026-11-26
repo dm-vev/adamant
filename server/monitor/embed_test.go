@@ -14,10 +14,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/monitor"
-	"github.com/df-mc/dragonfly/server/remoteadmin"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/monitor"
+	"github.com/dm-vev/adamant/server/remoteadmin"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // TestEmbedderRestartsServices does what a program that embeds the server

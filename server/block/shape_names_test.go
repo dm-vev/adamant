@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // updateShapeNames rewrites the golden file of TestShapeNamesMatch to the names slabs, stairs and walls take now.

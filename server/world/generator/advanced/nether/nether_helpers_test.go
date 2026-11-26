@@ -1,6 +1,6 @@
 package nether
 
-import "github.com/df-mc/dragonfly/server/internal/vanilla"
+import "github.com/dm-vev/adamant/server/internal/vanilla"
 
 // Only tests use these helpers of nether.go, so they live with the tests.
 

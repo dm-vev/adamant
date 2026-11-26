@@ -4,14 +4,14 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/player"
-	"github.com/df-mc/dragonfly/server/world"
-	endgen "github.com/df-mc/dragonfly/server/world/generator/advanced/end"
-	"github.com/df-mc/dragonfly/server/world/mcdb"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/player"
+	"github.com/dm-vev/adamant/server/world"
+	endgen "github.com/dm-vev/adamant/server/world/generator/advanced/end"
+	"github.com/dm-vev/adamant/server/world/mcdb"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

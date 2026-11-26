@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/df-mc/dragonfly/internal/faultcheck"
-	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/dm-vev/adamant/internal/faultcheck"
+	"github.com/dm-vev/adamant/server/world/chunk"
 )
 
 // concurrentLoader is a Provider whose LoadColumn may be called from several

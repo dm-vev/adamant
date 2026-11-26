@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.com/df-mc/dragonfly/internal/app"
+	"github.com/dm-vev/adamant/internal/app"
 )
 
 func main() {

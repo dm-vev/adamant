@@ -4,10 +4,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/world"
-	_ "github.com/df-mc/dragonfly/server/world/biome"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/world"
+	_ "github.com/dm-vev/adamant/server/world/biome"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

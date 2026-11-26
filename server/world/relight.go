@@ -3,9 +3,9 @@ package world
 import (
 	"math"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/parallel"
-	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/internal/parallel"
+	"github.com/dm-vev/adamant/server/world/chunk"
 )
 
 // cellLightAt returns the light properties of the blocks of the column c at

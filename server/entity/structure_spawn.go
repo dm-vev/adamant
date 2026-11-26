@@ -3,10 +3,10 @@ package entity
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/loot"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/loot"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // PrepareStructureMobSpawn applies the mansion and monument Mob.finalizeSpawn

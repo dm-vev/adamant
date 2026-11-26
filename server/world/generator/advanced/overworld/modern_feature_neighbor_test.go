@@ -3,7 +3,7 @@ package overworld
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
 )
 
 func TestRandomNeighborSpreadCountsHolderSetMembers(t *testing.T) {

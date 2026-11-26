@@ -3,7 +3,7 @@ package world
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
 )
 
 // BenchmarkResolveState resolves Java states as structure templates and

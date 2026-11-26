@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"net"
 
-	bedrocktext "github.com/df-mc/dragonfly/protocol/bedrock/text"
-	"github.com/df-mc/dragonfly/server/player/dialogue"
-	"github.com/df-mc/dragonfly/server/player/form"
-	"github.com/df-mc/dragonfly/server/text"
-	"github.com/df-mc/dragonfly/server/world"
+	bedrocktext "github.com/dm-vev/adamant/protocol/bedrock/text"
+	"github.com/dm-vev/adamant/server/player/dialogue"
+	"github.com/dm-vev/adamant/server/player/form"
+	"github.com/dm-vev/adamant/server/text"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )

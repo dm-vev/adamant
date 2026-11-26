@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/config"
+	"github.com/dm-vev/adamant/server/config"
 	"github.com/pelletier/go-toml"
 )
 

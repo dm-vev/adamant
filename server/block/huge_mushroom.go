@@ -1,6 +1,6 @@
 package block
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 // MushroomBlockKind represents the kind of huge mushroom block.
 type MushroomBlockKind struct {

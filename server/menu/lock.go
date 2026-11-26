@@ -3,8 +3,8 @@ package menu
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/enchantment"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/enchantment"
 )
 
 // playerSlot reports whether s is a slot of the inventories of the player

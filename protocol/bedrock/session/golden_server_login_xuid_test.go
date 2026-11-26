@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock"
-	"github.com/df-mc/dragonfly/server"
+	"github.com/dm-vev/adamant/protocol/bedrock"
+	"github.com/dm-vev/adamant/server"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/proxy"
 )

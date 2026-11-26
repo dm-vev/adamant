@@ -3,7 +3,7 @@ package session
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/player/input"
+	"github.com/dm-vev/adamant/server/player/input"
 )
 
 // TestBedrockLocks holds every input lock to the bit of

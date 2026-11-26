@@ -9,8 +9,8 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/nethernet"
 
-	"github.com/df-mc/dragonfly/internal/faultcheck"
-	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
+	"github.com/dm-vev/adamant/internal/faultcheck"
+	"github.com/dm-vev/adamant/protocol/bedrock/netconn"
 )
 
 // maxQueuedPackets bounds retained packets for a connection whose writes

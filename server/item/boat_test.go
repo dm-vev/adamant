@@ -3,7 +3,7 @@ package item_test
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/item"
+	"github.com/dm-vev/adamant/server/item"
 )
 
 func TestBoatEncodeItemByVariant(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"math"
 	"slices"
 
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
 	"github.com/df-mc/worldupgrader/blockupgrader"
 	"github.com/dm-vev/adamant/net/nbt"
 )

@@ -1,6 +1,6 @@
 package item
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 // Bone is an item primarily obtained as a drop from skeletons and their variants.
 type Bone struct{}
 

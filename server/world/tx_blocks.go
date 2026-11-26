@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/event"
-	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/event"
+	"github.com/dm-vev/adamant/server/world/chunk"
 )
 
 // block reads a block from the position passed. If a chunk is not yet loaded

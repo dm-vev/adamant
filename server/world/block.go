@@ -5,8 +5,8 @@ import (
 	"maps"
 	"math/rand/v2"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/block/customblock"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/block/customblock"
 )
 
 // Block is a block that may be placed or found in a world. In addition, the block may also be added to an

@@ -3,7 +3,7 @@ package world
 import (
 	"slices"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/dm-vev/adamant/server/block/cube"
 )
 
 // RedstoneCircuitComponent owns a stateful Bedrock circuit component. Its

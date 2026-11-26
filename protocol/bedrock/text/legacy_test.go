@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/text"
+	"github.com/dm-vev/adamant/server/text"
 	nettext "github.com/dm-vev/adamant/net/bedrock/text"
 )
 

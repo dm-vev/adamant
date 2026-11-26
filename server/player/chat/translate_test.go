@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/text"
+	"github.com/dm-vev/adamant/server/text"
 	"golang.org/x/text/language"
 )
 

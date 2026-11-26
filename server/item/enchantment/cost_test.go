@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/item"
+	"github.com/dm-vev/adamant/server/item"
 )
 
 // javaCosts holds, for each enchantment of Java 26.3

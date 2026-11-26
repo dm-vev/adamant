@@ -5,7 +5,7 @@ go 1.27.0
 toolchain go1.27.3
 
 require (
-	github.com/df-mc/dragonfly v0.0.0
+	github.com/dm-vev/adamant v0.0.0
 	github.com/dm-vev/adamant/net v0.0.0
 	github.com/go-gl/mathgl v1.2.0
 	github.com/google/uuid v1.6.0
@@ -68,4 +68,4 @@ replace github.com/dm-vev/adamant/net => ../../
 
 replace github.com/dm-vev/adamant/net/interop => ../
 
-replace github.com/df-mc/dragonfly => ../../..
+replace github.com/dm-vev/adamant => ../../..

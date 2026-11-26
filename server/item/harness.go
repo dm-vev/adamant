@@ -1,6 +1,6 @@
 package item
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 // Harness is an equippable, dyed harness item for compatible rideable mobs.
 type Harness struct {

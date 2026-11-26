@@ -1,6 +1,6 @@
 package builtin
 
-import "github.com/df-mc/dragonfly/server/cmd"
+import "github.com/dm-vev/adamant/server/cmd"
 
 // registerPlayerCommands registers Java 26.3 player and entity state commands.
 func registerPlayerCommands(srv serverAdapter) {

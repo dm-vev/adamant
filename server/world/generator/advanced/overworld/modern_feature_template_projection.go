@@ -1,7 +1,7 @@
 package overworld
 
 import (
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 )
 
 func applyTemplateProjectionBlocks(region *featureRegion, blocks []structure.Block, flags int) {

@@ -4,7 +4,7 @@ import (
 	"net/netip"
 	"testing"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/query"
+	"github.com/dm-vev/adamant/protocol/bedrock/query"
 	"github.com/dm-vev/adamant/net/nethernet"
 	gtquery "github.com/sandertv/gophertunnel/query"
 )

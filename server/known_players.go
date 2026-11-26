@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/identity"
-	"github.com/df-mc/dragonfly/server/logging"
+	"github.com/dm-vev/adamant/server/identity"
+	"github.com/dm-vev/adamant/server/logging"
 	"github.com/google/uuid"
 )
 

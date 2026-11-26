@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/player/title"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/player/title"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 func registerPlayerTextCommands(srv serverAdapter) {

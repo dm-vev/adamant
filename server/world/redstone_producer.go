@@ -1,6 +1,6 @@
 package world
 
-import "github.com/df-mc/dragonfly/server/block/cube"
+import "github.com/dm-vev/adamant/server/block/cube"
 
 // RedstoneCircuitProducer has a scene-graph strength independent of its block
 // permutation. Setup initializes a pending component; actor callbacks update

@@ -5,8 +5,8 @@ import (
 	"math"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 )
 
 // Registry holder strings name providers, not blocks. Literal states use the

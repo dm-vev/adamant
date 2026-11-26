@@ -1,6 +1,6 @@
 package item
 
-import "github.com/df-mc/dragonfly/server/text"
+import "github.com/dm-vev/adamant/server/text"
 
 // NetheriteIngot is a rare mineral crafted with 4 pieces of netherite scrap and 4 gold ingots.
 type NetheriteIngot struct{}

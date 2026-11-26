@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/text"
+	"github.com/dm-vev/adamant/server/text"
 )
 
 // Title represents a title that may be sent to the player. The title will show up as large text in the middle

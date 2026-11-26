@@ -5,9 +5,9 @@ import (
 	"math"
 	"math/rand/v2"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/item"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/item"
 )
 
 // Grind takes the result of the grindstone of the menu: one input, or two

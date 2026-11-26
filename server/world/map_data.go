@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/dm-vev/adamant/server/block/cube"
 )
 
 // MapData is semantic map state shared by the renderer and a world provider.

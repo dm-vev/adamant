@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/entity/effect"
+	"github.com/dm-vev/adamant/server/entity/effect"
 )
 
 // StewType represents a type of suspicious stew.

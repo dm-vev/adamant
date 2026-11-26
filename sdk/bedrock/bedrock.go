@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"slices"
 
-	bedrockadapter "github.com/df-mc/dragonfly/protocol/bedrock"
-	"github.com/df-mc/dragonfly/protocol/bedrock/session"
-	"github.com/df-mc/dragonfly/sdk/plugin"
-	"github.com/df-mc/dragonfly/server/player"
+	bedrockadapter "github.com/dm-vev/adamant/protocol/bedrock"
+	"github.com/dm-vev/adamant/protocol/bedrock/session"
+	"github.com/dm-vev/adamant/sdk/plugin"
+	"github.com/dm-vev/adamant/server/player"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/resource"
 )

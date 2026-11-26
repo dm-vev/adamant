@@ -6,7 +6,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/dm-vev/adamant/server/entity"
 )
 
 // bdsActorOrder is the capture of testdata/bedrock_1_26_52_actor_order.json:

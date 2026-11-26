@@ -19,9 +19,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/remoteadmin"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server"
+	"github.com/dm-vev/adamant/server/remoteadmin"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // remoteTestServer returns a running server of no saved data whose lists

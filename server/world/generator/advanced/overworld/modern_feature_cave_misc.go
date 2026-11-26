@@ -4,9 +4,9 @@ import (
 	"math"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 func placeModernIceFamily(region *featureRegion, typeName string, config map[string]any, origin featurePos, random *vanilla.Random) (bool, bool) {

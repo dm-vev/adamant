@@ -92,7 +92,7 @@ jobs:
             packages: ./...
     env:
       # The packages the heavy entries above test. Keep in sync with them.
-      HEAVY: '^github.com/df-mc/dragonfly/server/(entity|block)$|^github.com/df-mc/dragonfly/server/world/generator/advanced/overworld(/|$)'
+      HEAVY: '^github.com/dm-vev/adamant/server/(entity|block)$|^github.com/dm-vev/adamant/server/world/generator/advanced/overworld(/|$)'
       PACKAGES: ${{ matrix.packages }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -138,7 +138,7 @@ jobs:
       - name: go test -race
         run: |
           if [ "$PACKAGES" = world ]; then
-            set -- $(go list ./server/world/... | grep -v -E '^github.com/df-mc/dragonfly/server/world/generator(/|$)')
+            set -- $(go list ./server/world/... | grep -v -E '^github.com/dm-vev/adamant/server/world/generator(/|$)')
           else
             set -- $PACKAGES
           fi

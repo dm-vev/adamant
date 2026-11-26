@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/player/anticheat"
+	"github.com/dm-vev/adamant/server/player/anticheat"
 )
 
 // timerTrace walks the stone lane with moves arriving every interval: a

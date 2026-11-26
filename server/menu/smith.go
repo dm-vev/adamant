@@ -3,9 +3,9 @@ package menu
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/recipe"
+	"github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/item"
+	"github.com/dm-vev/adamant/server/item/recipe"
 )
 
 // Smith takes the result of a smithing transform or trim recipe at the

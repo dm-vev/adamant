@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/player/scoreboard"
+	"github.com/dm-vev/adamant/server/player/scoreboard"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 

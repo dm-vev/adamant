@@ -1,8 +1,8 @@
 package overworld
 
 import (
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 )
 // modernMonumentChild describes a Java child piece before its bounding box is
 // moved by the MonumentBuilding's getWorldPos(9, 0, 22) offset.

@@ -1,6 +1,6 @@
 package session
 
-import "github.com/df-mc/dragonfly/server/world/sound"
+import "github.com/dm-vev/adamant/server/world/sound"
 
 // bedrockInstrument returns the ID of Bedrock's note block instrument that
 // BlockEvent and the note LevelSoundEvent send for an instrument. The

@@ -1,6 +1,6 @@
 package world
 
-import "github.com/df-mc/dragonfly/server/block/cube"
+import "github.com/dm-vev/adamant/server/block/cube"
 
 func javaFluidShape(c *javaShapeContext, owner string, state uint32, face cube.Face, neighbor uint32) (uint32, bool) {
 	pos := c.pos

@@ -2,7 +2,7 @@ package gamedata
 
 import (
 	"fmt"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
 	"math"
 	"sort"
 	"strings"

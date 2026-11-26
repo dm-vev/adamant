@@ -10,7 +10,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/dm-vev/adamant/server/world/chunk"
 	"github.com/dm-vev/adamant/net/nbt"
 )
 

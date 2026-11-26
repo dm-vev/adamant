@@ -3,7 +3,7 @@ package loot
 import (
 	"math"
 
-	"github.com/df-mc/dragonfly/server/item"
+	"github.com/dm-vev/adamant/server/item"
 )
 
 // lootSetDamage ports SetItemDamageFunction: value is the fraction of

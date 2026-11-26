@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
+	"github.com/dm-vev/adamant/protocol/bedrock/netconn"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/nbt"

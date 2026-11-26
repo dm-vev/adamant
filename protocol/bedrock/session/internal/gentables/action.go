@@ -12,8 +12,8 @@ var actionKind = kindSpec{
 	variable: "entityActionRows",
 	key:      "Action",
 	fields:   []string{"Action", "Event", "Alt", "When", "Data", "Ticks", "Animate", "Count", "Default"},
-	pkg:      "github.com/df-mc/dragonfly/server/entity",
-	worldPkg: "github.com/df-mc/dragonfly/server/world",
+	pkg:      "github.com/dm-vev/adamant/server/entity",
+	worldPkg: "github.com/dm-vev/adamant/server/world",
 	iface:    "EntityAction",
 	out:      "entity_action_switch_gen.go",
 	testOut:  "entity_action_types_gen_test.go",
@@ -21,7 +21,7 @@ var actionKind = kindSpec{
 	generate: generateActions,
 	generateTypes: func(names []string) []byte {
 		return typesFile("entityActionTypes", "for the tests that compare the packets of every action.", "entity",
-			"github.com/df-mc/dragonfly/server/entity", "EntityAction", names)
+			"github.com/dm-vev/adamant/server/entity", "EntityAction", names)
 	},
 }
 
@@ -32,8 +32,8 @@ func generateActions(rows []row) []byte {
 	b.WriteString(`package session
 
 import (
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )

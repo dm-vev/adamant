@@ -25,7 +25,7 @@ const (
 	// boundaryAllowlist is the path of the allowlist, relative to this package.
 	boundaryAllowlist = "testdata/boundary/allowlist.txt"
 
-	rootModule = "github.com/df-mc/dragonfly"
+	rootModule = "github.com/dm-vev/adamant"
 	netModule  = "github.com/dm-vev/adamant/net"
 )
 
@@ -83,7 +83,7 @@ func violation(file, importPath string) (rule string, bad bool) {
 			return "R2", true
 		}
 	case under(file, "net"):
-		if under(importPath, rootModule) {
+		if under(importPath, rootModule) && !under(importPath, netModule) {
 			return "R3", true
 		}
 	}

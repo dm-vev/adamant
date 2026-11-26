@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/df-mc/dragonfly/sdk/perm"
+	"github.com/dm-vev/adamant/sdk/perm"
 	"github.com/google/uuid"
 )
 

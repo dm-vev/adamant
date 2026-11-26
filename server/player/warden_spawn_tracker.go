@@ -1,6 +1,6 @@
 package player
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 // WardenSpawnTracker returns the source-compatible Java warning tracker owned
 // by this player. It is saved as Java-only player state, not native actor NBT.

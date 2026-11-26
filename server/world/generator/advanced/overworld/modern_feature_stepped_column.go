@@ -1,6 +1,6 @@
 package overworld
 
-import vanilla "github.com/df-mc/dragonfly/server/internal/vanilla"
+import vanilla "github.com/dm-vev/adamant/server/internal/vanilla"
 
 type steppedColumnCluster struct {
 	region                      *featureRegion

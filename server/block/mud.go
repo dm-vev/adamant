@@ -1,6 +1,6 @@
 package block
 
-import "github.com/df-mc/dragonfly/server/world"
+import "github.com/dm-vev/adamant/server/world"
 
 // Mud is a decorative block obtained by using a water bottle on a dirt block.
 type Mud struct {

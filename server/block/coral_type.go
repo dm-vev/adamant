@@ -1,7 +1,7 @@
 package block
 
 import (
-	"github.com/df-mc/dragonfly/server/item"
+	"github.com/dm-vev/adamant/server/item"
 )
 
 // CoralType represents a type of coral of a block. CoralType, coral fans, and coral blocks carry one of these types.

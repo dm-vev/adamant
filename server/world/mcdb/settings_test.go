@@ -6,8 +6,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/mcdb/leveldat"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/mcdb/leveldat"
 )
 
 func TestFallDamageSettingPersists(t *testing.T) {

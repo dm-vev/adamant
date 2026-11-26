@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/identity"
-	"github.com/df-mc/dragonfly/server/player"
+	"github.com/dm-vev/adamant/server/identity"
+	"github.com/dm-vev/adamant/server/player"
 	"github.com/google/uuid"
 )
 

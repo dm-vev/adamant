@@ -3,7 +3,7 @@ package inventory
 import (
 	"errors"
 	"fmt"
-	"github.com/df-mc/dragonfly/server/item"
+	"github.com/dm-vev/adamant/server/item"
 	"math"
 	"reflect"
 	"slices"

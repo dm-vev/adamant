@@ -1,6 +1,6 @@
 package session
 
-import "github.com/df-mc/dragonfly/server/item"
+import "github.com/dm-vev/adamant/server/item"
 
 // StackNetworkID returns the stack network ID the session sends clients of a
 // stack, for the tests of other packages that name stacks in item stack

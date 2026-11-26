@@ -7,12 +7,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
-	bedrocktext "github.com/df-mc/dragonfly/protocol/bedrock/text"
-	"github.com/df-mc/dragonfly/server/client"
-	"github.com/df-mc/dragonfly/server/logging"
-	"github.com/df-mc/dragonfly/server/text"
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
+	bedrocktext "github.com/dm-vev/adamant/protocol/bedrock/text"
+	"github.com/dm-vev/adamant/server/client"
+	"github.com/dm-vev/adamant/server/logging"
+	"github.com/dm-vev/adamant/server/text"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/google/uuid"
 	"golang.org/x/text/language"
 )

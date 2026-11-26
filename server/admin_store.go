@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/identity"
+	"github.com/dm-vev/adamant/server/identity"
 )
 
 type banEntry struct {
