@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/df-mc/goleveldb/leveldb"
+	"github.com/dm-vev/adamant/server/block/cube"
 )
 
 // gameRule describes a Java 26.3 GameRules entry: its type, default and the

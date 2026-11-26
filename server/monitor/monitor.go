@@ -16,9 +16,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dm-vev/adamant/net/metrics"
 	"github.com/dm-vev/adamant/server"
 	"github.com/dm-vev/adamant/server/config"
-	"github.com/dm-vev/adamant/net/metrics"
 )
 
 // UserConfig is the [Monitoring] table of config.toml: what the process

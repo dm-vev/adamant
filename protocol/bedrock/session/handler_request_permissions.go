@@ -1,10 +1,10 @@
 package session
 
 import (
-	"github.com/dm-vev/adamant/server/client"
-	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/server/client"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/google/uuid"
 )
 

@@ -3,10 +3,10 @@ package netconn
 import (
 	"sync"
 
-	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 )
 
 // sharedPacket holds one encoded wire packet for a class of wire: raw bytes

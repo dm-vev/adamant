@@ -5,9 +5,9 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/dm-vev/adamant/server/item"
 	"github.com/dm-vev/adamant/server/item/enchantment"
-	"github.com/dm-vev/adamant/net/nbt"
 )
 
 // roundTrip encodes the item NBT of a stack to the bytes of a world save

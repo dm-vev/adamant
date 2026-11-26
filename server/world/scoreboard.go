@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/dm-vev/adamant/server/scoreboard"
 	"github.com/df-mc/goleveldb/leveldb"
+	"github.com/dm-vev/adamant/server/scoreboard"
 )
 
 const scoreboardNamespace = "scoreboard"

@@ -3,8 +3,8 @@ package overworld
 import (
 	"fmt"
 	"github.com/dm-vev/adamant/server/block/cube"
-	"github.com/dm-vev/adamant/server/internal/vanilla"
 	"github.com/dm-vev/adamant/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 )

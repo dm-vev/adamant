@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/internal/gamedata"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/chunk"
-	"github.com/dm-vev/adamant/net/nbt"
 )
 
 func TestJavaStateMetadataDiskRoundTripAndCompaction(t *testing.T) {

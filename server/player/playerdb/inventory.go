@@ -3,9 +3,9 @@ package playerdb
 import (
 	"bytes"
 
+	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/dm-vev/adamant/server/item"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/net/nbt"
 )
 
 // InventoryData is a struct that contains all data of the player inventories.

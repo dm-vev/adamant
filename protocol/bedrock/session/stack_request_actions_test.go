@@ -11,14 +11,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/protocol/bedrock/session"
 	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/item"
 	"github.com/dm-vev/adamant/server/item/recipe"
 	"github.com/dm-vev/adamant/server/menu"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/google/uuid"
 )
 

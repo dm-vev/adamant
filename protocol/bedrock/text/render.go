@@ -20,8 +20,8 @@
 package bedrocktext
 
 import (
-	"github.com/dm-vev/adamant/server/text"
 	nettext "github.com/dm-vev/adamant/net/bedrock/text"
+	"github.com/dm-vev/adamant/server/text"
 )
 
 // decorations are the decorations Bedrock Edition shows.

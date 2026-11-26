@@ -6,13 +6,13 @@ import (
 	"strings"
 	"testing"
 
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/item"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/chunk"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // TestTablesOf2193 checks the tables of the clients of 2193, now that the

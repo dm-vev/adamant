@@ -1,11 +1,11 @@
 package session_test
 
 import (
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/server/entity"
 	"github.com/dm-vev/adamant/server/item"
 	"github.com/dm-vev/adamant/server/player"
 	"github.com/dm-vev/adamant/server/world"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"

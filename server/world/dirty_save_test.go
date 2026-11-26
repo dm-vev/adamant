@@ -6,12 +6,12 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/item"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/chunk"
-	"github.com/df-mc/goleveldb/leveldb"
 )
 
 // countingStore keeps the columns of the worlds of a test in memory and

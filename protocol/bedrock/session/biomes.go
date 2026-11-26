@@ -3,9 +3,9 @@ package session
 import (
 	"strings"
 
-	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // biomeDefinitions returns the definitions of the biomes registered, in the

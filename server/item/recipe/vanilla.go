@@ -4,9 +4,9 @@ import (
 	_ "embed"
 	"sync"
 
+	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/dm-vev/adamant/server/item"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/google/uuid"
 )
 

@@ -3,8 +3,8 @@ package session
 import (
 	"maps"
 
-	"github.com/dm-vev/adamant/server/item"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/server/item"
 )
 
 // sendRecipes sends the current crafting recipes to the session.

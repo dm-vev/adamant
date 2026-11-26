@@ -6,11 +6,11 @@ import (
 	"slices"
 	"strings"
 
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	nettext "github.com/dm-vev/adamant/net/bedrock/text"
 	bedrocktext "github.com/dm-vev/adamant/protocol/bedrock/text"
 	"github.com/dm-vev/adamant/server/client"
 	"github.com/dm-vev/adamant/server/cmd"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
-	nettext "github.com/dm-vev/adamant/net/bedrock/text"
 	"github.com/go-gl/mathgl/mgl64"
 	"golang.org/x/text/language"
 )

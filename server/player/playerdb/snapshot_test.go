@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/dm-vev/adamant/server/entity/effect"
 	"github.com/dm-vev/adamant/server/item"
 	"github.com/dm-vev/adamant/server/player"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

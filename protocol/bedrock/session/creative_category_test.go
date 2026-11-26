@@ -3,8 +3,8 @@ package session
 import (
 	"testing"
 
-	"github.com/dm-vev/adamant/server/item/creative"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/server/item/creative"
 )
 
 // TestCreativeCategoryValues holds the category CreativeContent sends for

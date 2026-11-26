@@ -13,13 +13,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/chunk"
 	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 	"github.com/dm-vev/adamant/server/world/mcdb"
-	"github.com/dm-vev/adamant/net/nbt"
 )
 
 type fortressStateSourcePiece struct {

@@ -5,11 +5,11 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/internal/vanilla"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/df-mc/goleveldb/leveldb"
 )
 
 // wanderingTraderData is Java's WanderingTraderData saved data.

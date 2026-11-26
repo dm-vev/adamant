@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dm-vev/adamant/server/internal/vanilla"
 	"github.com/dm-vev/adamant/server/internal/nbtconv"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
 	"github.com/dm-vev/adamant/server/item"
 	"github.com/dm-vev/adamant/server/loot"
 	"github.com/dm-vev/adamant/server/world"

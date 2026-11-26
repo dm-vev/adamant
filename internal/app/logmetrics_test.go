@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dm-vev/adamant/server/logging"
 	"github.com/dm-vev/adamant/net/metrics"
+	"github.com/dm-vev/adamant/server/logging"
 )
 
 // TestLogLinesDroppedAreCounted checks that the lines the rate limit of a

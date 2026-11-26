@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dm-vev/adamant/protocol/bedrock"
-	"github.com/dm-vev/adamant/server"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/proxy"
+	"github.com/dm-vev/adamant/protocol/bedrock"
+	"github.com/dm-vev/adamant/server"
 )
 
 // TestGoldenServerLoginXUID records the logins a server.Server keyed by

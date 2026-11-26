@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dm-vev/adamant/net/bedrock/text"
 	"github.com/dm-vev/adamant/server/cmd"
 	"github.com/dm-vev/adamant/server/entity"
 	"github.com/dm-vev/adamant/server/player"
@@ -15,7 +16,6 @@ import (
 	"github.com/dm-vev/adamant/server/player/scoreboard"
 	"github.com/dm-vev/adamant/server/player/title"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/text"
 	"github.com/go-gl/mathgl/mgl64"
 	"golang.org/x/text/language"
 )

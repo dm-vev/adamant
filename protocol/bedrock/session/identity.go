@@ -1,8 +1,8 @@
 package session
 
 import (
-	"github.com/dm-vev/adamant/server/client"
 	"github.com/dm-vev/adamant/net/bedrock/login"
+	"github.com/dm-vev/adamant/server/client"
 	"github.com/google/uuid"
 )
 

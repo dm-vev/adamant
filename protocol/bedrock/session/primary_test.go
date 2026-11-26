@@ -3,9 +3,9 @@ package session
 import (
 	"testing"
 
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/server/player/skin"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // TestPrimaryGatesFeatures checks the features of 2225 are off with a primary

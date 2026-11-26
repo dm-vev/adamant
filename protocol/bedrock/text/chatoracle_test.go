@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dm-vev/adamant/server/player/chat"
 	nettext "github.com/dm-vev/adamant/net/bedrock/text"
+	"github.com/dm-vev/adamant/server/player/chat"
 	"golang.org/x/text/language"
 )
 

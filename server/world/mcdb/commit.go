@@ -10,14 +10,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dm-vev/adamant/server/block/cube"
-	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/server/world/chunk"
-	"github.com/dm-vev/adamant/server/world/mcdb/leveldat"
 	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/df-mc/goleveldb/leveldb/opt"
 	"github.com/df-mc/goleveldb/leveldb/util"
 	"github.com/dm-vev/adamant/net/nbt"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/chunk"
+	"github.com/dm-vev/adamant/server/world/mcdb/leveldat"
 	"github.com/google/uuid"
 )
 

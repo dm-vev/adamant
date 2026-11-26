@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dm-vev/adamant/net/metrics"
 	"github.com/dm-vev/adamant/server/audit"
 	"github.com/dm-vev/adamant/server/client"
 	"github.com/dm-vev/adamant/server/cmd"
@@ -29,7 +30,6 @@ import (
 	"github.com/dm-vev/adamant/server/player/chat"
 	"github.com/dm-vev/adamant/server/text"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/net/metrics"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )

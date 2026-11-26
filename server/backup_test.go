@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/goleveldb/leveldb/opt"
 	"github.com/dm-vev/adamant/server/audit"
 	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/block/cube"
@@ -26,7 +27,6 @@ import (
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/chunk"
 	"github.com/dm-vev/adamant/server/world/mcdb"
-	"github.com/df-mc/goleveldb/leveldb/opt"
 )
 
 // backupConfig returns the Config of a server saving its world, players and

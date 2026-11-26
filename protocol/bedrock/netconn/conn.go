@@ -23,7 +23,6 @@ import (
 	"unsafe"
 
 	"github.com/dm-vev/adamant/internal/faultcheck"
-	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
@@ -31,6 +30,7 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/sctp"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 	"github.com/google/uuid"
 )
 

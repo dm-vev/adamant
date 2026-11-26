@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/item"
@@ -17,7 +18,6 @@ import (
 	"github.com/dm-vev/adamant/server/item/recipe"
 	"github.com/dm-vev/adamant/server/menu"
 	"github.com/dm-vev/adamant/server/world"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )

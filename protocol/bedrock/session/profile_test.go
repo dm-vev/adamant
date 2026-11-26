@@ -3,8 +3,8 @@ package session
 import (
 	"testing"
 
-	"github.com/dm-vev/adamant/server/client"
 	"github.com/dm-vev/adamant/net/bedrock/login"
+	"github.com/dm-vev/adamant/server/client"
 )
 
 // profileConn is a connection whose client data is set by the test.

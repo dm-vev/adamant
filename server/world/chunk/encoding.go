@@ -8,9 +8,9 @@ import (
 	"math"
 	"slices"
 
-	"github.com/dm-vev/adamant/server/internal/gamedata"
 	"github.com/df-mc/worldupgrader/blockupgrader"
 	"github.com/dm-vev/adamant/net/nbt"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
 )
 
 const (

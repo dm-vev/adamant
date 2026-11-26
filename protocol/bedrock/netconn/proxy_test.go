@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/net/bedrock"
 	ourclient "github.com/dm-vev/adamant/net/bedrock/client"
 	ourlogin "github.com/dm-vev/adamant/net/bedrock/login"
@@ -18,6 +17,7 @@ import (
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/proxy"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 	"github.com/google/uuid"
 )
 

@@ -9,12 +9,12 @@ import (
 	"path/filepath"
 	"slices"
 
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/resource"
 	bedrockadapter "github.com/dm-vev/adamant/protocol/bedrock"
 	"github.com/dm-vev/adamant/protocol/bedrock/session"
 	"github.com/dm-vev/adamant/sdk/plugin"
 	"github.com/dm-vev/adamant/server/player"
-	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/resource"
 )
 
 // Interceptor inspects, rewrites, or drops packets flowing through a Bedrock

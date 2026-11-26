@@ -1,7 +1,6 @@
 package block
 
 import (
-
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/block/model"
 	"github.com/dm-vev/adamant/server/internal/nbtconv"

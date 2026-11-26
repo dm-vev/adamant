@@ -3,8 +3,8 @@ package app
 import (
 	"sync"
 
-	"github.com/dm-vev/adamant/server/logging"
 	"github.com/dm-vev/adamant/net/metrics"
+	"github.com/dm-vev/adamant/server/logging"
 )
 
 // logDrops counts the log lines the rate limit of the logs dropped, by

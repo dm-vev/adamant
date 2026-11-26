@@ -1,8 +1,8 @@
 package session
 
 import (
-	"github.com/dm-vev/adamant/server/client"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/server/client"
 )
 
 // The players of the clients a session lists are those of the Roster of

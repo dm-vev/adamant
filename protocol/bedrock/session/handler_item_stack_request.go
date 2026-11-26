@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/entity/effect"
 	"github.com/dm-vev/adamant/server/item"
@@ -14,8 +16,6 @@ import (
 	"github.com/dm-vev/adamant/server/item/recipe"
 	"github.com/dm-vev/adamant/server/menu"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // ItemStackRequestHandler handles the ItemStackRequest packet. It handles the actions done within the

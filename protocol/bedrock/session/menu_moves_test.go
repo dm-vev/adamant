@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/entity"
@@ -17,8 +19,6 @@ import (
 	"github.com/dm-vev/adamant/server/item/inventory"
 	"github.com/dm-vev/adamant/server/player"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // movesScenario sends the requests that move, swap, drop, destroy and

@@ -10,9 +10,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dm-vev/adamant/net/metrics"
 	"github.com/dm-vev/adamant/server/version"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/net/metrics"
 )
 
 // checkpointReasons are the reasons a checkpoint is saved for, as its

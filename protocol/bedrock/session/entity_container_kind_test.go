@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/dm-vev/adamant/server/entity"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/server/entity"
 )
 
 // TestEntityContainerTypes holds every entity.ContainerKind to the container

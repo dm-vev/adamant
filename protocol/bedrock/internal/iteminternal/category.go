@@ -1,8 +1,8 @@
 package iteminternal
 
 import (
-	"github.com/dm-vev/adamant/server/item/category"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/server/item/category"
 )
 
 // creativeCategory returns the creative category the item components of a

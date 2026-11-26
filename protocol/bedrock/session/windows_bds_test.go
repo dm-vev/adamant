@@ -10,11 +10,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/server/entity"
 	"github.com/dm-vev/adamant/server/player"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // bdsWindows is the capture of testdata/bedrock_1_26_52_windows.json and

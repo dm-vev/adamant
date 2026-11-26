@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/protocol/bedrock/session"
 	"github.com/dm-vev/adamant/server"
-	"github.com/dm-vev/adamant/net/bedrock/proto"
 )
 
 type noopInterceptor struct{}

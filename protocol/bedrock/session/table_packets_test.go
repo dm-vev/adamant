@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/nbt"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 )
 
 // tableProtocols are the protocols the packets of a sound or a particle are

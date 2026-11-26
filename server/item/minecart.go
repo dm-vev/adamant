@@ -1,7 +1,6 @@
 package item
 
 import (
-
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"

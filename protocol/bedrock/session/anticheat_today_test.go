@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/dm-vev/adamant/server/client"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/server/client"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

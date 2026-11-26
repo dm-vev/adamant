@@ -5,15 +5,15 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/codec"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/chunk"
-	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/codec"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
-	"github.com/dm-vev/adamant/net/bedrock/wire"
 )
 
 // otherProtocol is a protocol the adapter does not speak, which tests give

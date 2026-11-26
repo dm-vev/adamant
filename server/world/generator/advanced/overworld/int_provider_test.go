@@ -1,9 +1,9 @@
 package overworld
 
 import (
- "encoding/json"
- "testing"
- "github.com/dm-vev/adamant/server/internal/vanilla"
+	"encoding/json"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
+	"testing"
 )
 
 // Sequences and following nextLong values were produced by the pinned Java 26.3

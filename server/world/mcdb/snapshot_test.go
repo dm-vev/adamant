@@ -19,12 +19,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dm-vev/adamant/server/world/mcdb/leveldat"
 	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/df-mc/goleveldb/leveldb/journal"
 	"github.com/df-mc/goleveldb/leveldb/opt"
 	"github.com/df-mc/goleveldb/leveldb/util"
 	"github.com/dm-vev/adamant/net/nbt"
+	"github.com/dm-vev/adamant/server/world/mcdb/leveldat"
 	"github.com/google/uuid"
 )
 

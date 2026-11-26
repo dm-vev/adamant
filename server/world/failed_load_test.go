@@ -9,11 +9,11 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/chunk"
-	"github.com/df-mc/goleveldb/leveldb"
 )
 
 // columnStore holds columns in memory for the failingLoadProviders of the

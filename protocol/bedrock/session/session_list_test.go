@@ -10,14 +10,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dm-vev/adamant/net/bedrock/login"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/protocol/bedrock/netconn"
 	"github.com/dm-vev/adamant/server/client"
 	"github.com/dm-vev/adamant/server/entity"
 	"github.com/dm-vev/adamant/server/player/skin"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/login"
-	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )

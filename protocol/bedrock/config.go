@@ -11,13 +11,13 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/dm-vev/adamant/net/bedrock"
+	"github.com/dm-vev/adamant/net/bedrock/resource"
 	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/protocol/bedrock/query"
 	"github.com/dm-vev/adamant/protocol/bedrock/session"
 	"github.com/dm-vev/adamant/server/config"
 	"github.com/dm-vev/adamant/server/logging"
-	"github.com/dm-vev/adamant/net/bedrock"
-	"github.com/dm-vev/adamant/net/bedrock/resource"
 )
 
 // UserConfig is the part of config.toml the adapter owns: the [Network],

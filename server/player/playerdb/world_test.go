@@ -5,13 +5,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/dm-vev/adamant/server/item"
 	"github.com/dm-vev/adamant/server/item/inventory"
 	"github.com/dm-vev/adamant/server/player"
 	"github.com/dm-vev/adamant/server/player/playerdb"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/mcdb"
-	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/google/uuid"
 )
 

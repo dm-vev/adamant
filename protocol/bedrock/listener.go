@@ -23,6 +23,12 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dm-vev/adamant/net/acme"
+	"github.com/dm-vev/adamant/net/bedrock"
+	"github.com/dm-vev/adamant/net/bedrock/login"
+	"github.com/dm-vev/adamant/net/nethernet"
+	"github.com/dm-vev/adamant/net/nethernet/lan"
+	"github.com/dm-vev/adamant/net/proxy"
 	"github.com/dm-vev/adamant/protocol/bedrock/internal/packbuilder"
 	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/protocol/bedrock/netconn"
@@ -30,12 +36,6 @@ import (
 	"github.com/dm-vev/adamant/protocol/bedrock/session"
 	"github.com/dm-vev/adamant/server"
 	"github.com/dm-vev/adamant/server/logging"
-	"github.com/dm-vev/adamant/net/acme"
-	"github.com/dm-vev/adamant/net/bedrock"
-	"github.com/dm-vev/adamant/net/bedrock/login"
-	"github.com/dm-vev/adamant/net/nethernet"
-	"github.com/dm-vev/adamant/net/nethernet/lan"
-	"github.com/dm-vev/adamant/net/proxy"
 )
 
 // Listener returns the NetherNet listener of the adapter: a server.Listener

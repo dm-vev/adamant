@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/entity"
@@ -13,7 +14,6 @@ import (
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/particle"
 	"github.com/dm-vev/adamant/server/world/sound"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )

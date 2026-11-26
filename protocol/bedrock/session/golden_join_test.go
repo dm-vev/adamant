@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/protocol/bedrock/session"
 	"github.com/dm-vev/adamant/server"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto"
 )
 
 // goldenListener is a session.ConnListener that hands the server one

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"slices"
 
-	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/df-mc/goleveldb/leveldb"
+	"github.com/dm-vev/adamant/server/block/cube"
 )
 
 const forcedChunksNamespacePrefix = "forced-chunks:"

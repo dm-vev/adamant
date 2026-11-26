@@ -17,13 +17,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dm-vev/adamant/protocol/bedrock/netconn"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/turn"
 	"github.com/dm-vev/adamant/net/xbox/auth"
 	"github.com/dm-vev/adamant/net/xbox/mpsd"
 	"github.com/dm-vev/adamant/net/xbox/signaling"
 	"github.com/dm-vev/adamant/net/xbox/social"
+	"github.com/dm-vev/adamant/protocol/bedrock/netconn"
 )
 
 // xboxUpdateInterval paces the updates of the session friends see.

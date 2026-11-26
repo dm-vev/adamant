@@ -3,8 +3,8 @@ package world
 import (
 	"testing"
 
-	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/net/nbt"
+	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )

@@ -5,8 +5,8 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 	"github.com/dm-vev/adamant/net/nbt"
+	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 )
 
 // Source graphs remain immutable and may be evicted independently of their

@@ -4,9 +4,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"sort"
 	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/dm-vev/adamant/server/block/cube"
+	"sort"
 )
 
 // StructureLocation identifies a generated Java structure start and its

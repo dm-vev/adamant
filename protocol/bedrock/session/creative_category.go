@@ -1,8 +1,8 @@
 package session
 
 import (
-	"github.com/dm-vev/adamant/server/item/creative"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/server/item/creative"
 )
 
 // bedrockCreativeCategory returns the creative category CreativeContent sends

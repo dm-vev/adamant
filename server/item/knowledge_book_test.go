@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/net/nbt"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 func TestKnowledgeBookNativePersistenceRetainsJavaIdentity(t *testing.T) {

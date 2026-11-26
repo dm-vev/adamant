@@ -1,9 +1,9 @@
 package session
 
 import (
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/server/menu"
 	"github.com/dm-vev/adamant/server/world"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // slotName returns the name of the slot of a container of item stack

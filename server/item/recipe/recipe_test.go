@@ -3,8 +3,8 @@ package recipe
 import (
 	"testing"
 
-	"github.com/dm-vev/adamant/server/item"
 	"github.com/dm-vev/adamant/net/nbt"
+	"github.com/dm-vev/adamant/server/item"
 	"github.com/google/uuid"
 )
 

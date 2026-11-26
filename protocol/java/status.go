@@ -7,11 +7,11 @@ import (
 	"sync"
 	"unicode/utf8"
 
+	"github.com/dm-vev/adamant/net/java"
 	"github.com/dm-vev/adamant/server"
 	"github.com/dm-vev/adamant/server/client"
 	"github.com/dm-vev/adamant/server/config"
 	"github.com/dm-vev/adamant/server/logging"
-	"github.com/dm-vev/adamant/net/java"
 )
 
 // UserConfig is the part of config.toml the adapter owns: the [Java] table.

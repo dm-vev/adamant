@@ -9,12 +9,12 @@ import (
 	"slices"
 	"sort"
 
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	_ "github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/entity"
 	"github.com/dm-vev/adamant/server/item"
 	_ "github.com/dm-vev/adamant/server/item/enchantment"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 type audit struct {

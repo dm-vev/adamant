@@ -3,8 +3,8 @@ package session
 import (
 	"strings"
 
-	"github.com/dm-vev/adamant/protocol/bedrock/internal/bedrockdata"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/bedrockdata"
 )
 
 // knowsEnumOption reports whether the clients of the tables know an option

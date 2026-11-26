@@ -4,11 +4,11 @@ import (
 	"reflect"
 	"testing"
 
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/dm-vev/adamant/server/item"
 	"github.com/dm-vev/adamant/server/item/enchantment"
 	"github.com/dm-vev/adamant/server/menu"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
-	"github.com/dm-vev/adamant/net/nbt"
 )
 
 // sentEnchantmentIDs returns the IDs of the ench list of item NBT, and fails

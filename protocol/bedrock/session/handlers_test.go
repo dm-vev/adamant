@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dm-vev/adamant/protocol/bedrock/netconn"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
+	"github.com/dm-vev/adamant/protocol/bedrock/netconn"
 )
 
 // TestHandledPacketsDecode decodes a packet of each ID a session handles as

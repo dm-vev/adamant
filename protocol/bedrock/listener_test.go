@@ -28,10 +28,6 @@ import (
 	"time"
 
 	"github.com/dm-vev/adamant/internal/testfixture"
-	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
-	"github.com/dm-vev/adamant/protocol/bedrock/netconn"
-	"github.com/dm-vev/adamant/protocol/bedrock/session"
-	"github.com/dm-vev/adamant/server"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/client"
 	"github.com/dm-vev/adamant/net/bedrock/login"
@@ -41,6 +37,10 @@ import (
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/nethernet/lan"
 	"github.com/dm-vev/adamant/net/proxy"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
+	"github.com/dm-vev/adamant/protocol/bedrock/netconn"
+	"github.com/dm-vev/adamant/protocol/bedrock/session"
+	"github.com/dm-vev/adamant/server"
 )
 
 func TestServerIdentityConcurrentCreationPreservesIdentity(t *testing.T) {

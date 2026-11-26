@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/dm-vev/adamant/internal/faultcheck"
-	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 )
 
 // TestSharedIsEncodedOncePerClass writes a Shared of a packet of the same

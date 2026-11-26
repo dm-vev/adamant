@@ -2,11 +2,11 @@ package overworld
 
 import (
 	"fmt"
-	"strings"
 	"github.com/dm-vev/adamant/server/block/cube"
-	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
+	"strings"
 )
 
 func init() { registerModernStructureBuilder("buried_treasure", buildModernBuriedTreasure) }

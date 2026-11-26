@@ -7,12 +7,12 @@ import (
 	"slices"
 	"testing"
 
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/protocol/bedrock/session"
 	"github.com/dm-vev/adamant/server"
 	"github.com/dm-vev/adamant/server/cmd"
 	"github.com/dm-vev/adamant/server/cmd/builtin"
 	"github.com/dm-vev/adamant/server/world"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 func TestRegistryArgumentsMatchBDSMetadata(t *testing.T) {

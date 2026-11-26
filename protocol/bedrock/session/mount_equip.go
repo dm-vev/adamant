@@ -3,8 +3,8 @@ package session
 import (
 	"sync"
 
-	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/net/nbt"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // mountEquipItem names an item of a slot of a mount's inventory screen; an

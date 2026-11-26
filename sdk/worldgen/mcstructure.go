@@ -8,9 +8,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/net/nbt"
 )
 
 // LoadMCStructure decodes a Bedrock .mcstructure NBT stream into a

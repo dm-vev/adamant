@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/entity"
@@ -16,7 +17,6 @@ import (
 	"github.com/dm-vev/adamant/server/world/generator"
 	"github.com/dm-vev/adamant/server/world/generator/advanced"
 	"github.com/dm-vev/adamant/server/world/mcdb"
-	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

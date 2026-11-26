@@ -6,10 +6,10 @@ import (
 	"math/rand/v2"
 	"testing"
 
-	"github.com/dm-vev/adamant/server/player/skin"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
+	"github.com/dm-vev/adamant/server/player/skin"
 )
 
 // encodable checks a skin as it goes to clients: each texture holds the

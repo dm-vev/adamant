@@ -1,10 +1,10 @@
 package playerdb
 
 import (
-	"github.com/dm-vev/adamant/server/player"
-	"github.com/dm-vev/adamant/server/world"
 	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/df-mc/goleveldb/leveldb/opt"
+	"github.com/dm-vev/adamant/server/player"
+	"github.com/dm-vev/adamant/server/world"
 	"github.com/google/uuid"
 	"os"
 )

@@ -5,13 +5,13 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	bedrocktext "github.com/dm-vev/adamant/protocol/bedrock/text"
 	"github.com/dm-vev/adamant/server/client"
 	"github.com/dm-vev/adamant/server/cmd"
 	"github.com/dm-vev/adamant/server/player/chat"
 	"github.com/dm-vev/adamant/server/text"
-	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"golang.org/x/text/language"
 )
 

@@ -4,11 +4,11 @@ import (
 	"encoding/binary"
 	"testing"
 
+	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/item"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/chunk"
-	"github.com/dm-vev/adamant/net/bedrock/wire"
 )
 
 // Network block IDs BDS 1.26.52 sends for these states with block network ID

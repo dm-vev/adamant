@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dm-vev/adamant/protocol/bedrock/netconn"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/dm-vev/adamant/net/nethernet"
+	"github.com/dm-vev/adamant/protocol/bedrock/netconn"
 )
 
 // fakeServer serves one client what BDS sends a client of protocol 2193:

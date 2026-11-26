@@ -5,10 +5,10 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/dm-vev/adamant/server/block/cube"
-	"github.com/dm-vev/adamant/server/world/chunk"
 	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/dm-vev/adamant/net/nbt"
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/world/chunk"
 )
 
 const migrationTestBlockName = "test:state_migration_connection"

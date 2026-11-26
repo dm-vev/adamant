@@ -8,11 +8,11 @@ import (
 	"sync"
 	"sync/atomic"
 
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/protocol/bedrock/internal/bedrockdata"
 	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/chunk"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // wireTables are the tables a session encodes the content of the game

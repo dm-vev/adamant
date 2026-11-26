@@ -6,9 +6,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/dm-vev/adamant/server/event"
 	"github.com/dm-vev/adamant/server/world/chunk"
-	"github.com/df-mc/goleveldb/leveldb"
 )
 
 // chunkStore is the chunks currently loaded, the last one read, and what waits

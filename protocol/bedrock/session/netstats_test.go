@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dm-vev/adamant/protocol/bedrock/netconn"
-	"github.com/dm-vev/adamant/server/cmd"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/sctp"
+	"github.com/dm-vev/adamant/protocol/bedrock/netconn"
+	"github.com/dm-vev/adamant/server/cmd"
 )
 
 // oldNetstatTransport is the part of the netstat command that described the

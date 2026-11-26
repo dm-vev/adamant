@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"net"
 
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	bedrocktext "github.com/dm-vev/adamant/protocol/bedrock/text"
 	"github.com/dm-vev/adamant/server/player/dialogue"
 	"github.com/dm-vev/adamant/server/player/form"
 	"github.com/dm-vev/adamant/server/text"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // Disconnect disconnects the client and ultimately closes the session. The message passed is shown to the

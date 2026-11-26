@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/df-mc/goleveldb/leveldb"
+	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
 )
 

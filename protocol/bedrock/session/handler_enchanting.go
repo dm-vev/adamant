@@ -3,9 +3,9 @@ package session
 import (
 	"math/rand/v2"
 
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/server/item"
 	"github.com/dm-vev/adamant/server/menu"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // handleEnchant handles the enchantment of an item using the CraftRecipe stack request action.

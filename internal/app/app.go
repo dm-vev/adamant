@@ -3,13 +3,13 @@ package app
 import (
 	"context"
 
+	"github.com/dm-vev/adamant/net/metrics"
 	"github.com/dm-vev/adamant/server"
 	"github.com/dm-vev/adamant/server/cmd/builtin"
 	"github.com/dm-vev/adamant/server/console"
 	"github.com/dm-vev/adamant/server/logging"
 	"github.com/dm-vev/adamant/server/monitor"
 	"github.com/dm-vev/adamant/server/player/chat"
-	"github.com/dm-vev/adamant/net/metrics"
 )
 
 // Run reads config.toml from the working directory, starts the server with its

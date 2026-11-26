@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dm-vev/adamant/net/bedrock/proto/codec"
 	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/server/config"
-	"github.com/dm-vev/adamant/net/bedrock/proto/codec"
 )
 
 // TestParseProtocols checks the protocols and the primary the keys of

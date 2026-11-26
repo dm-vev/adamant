@@ -5,12 +5,12 @@ import (
 	"encoding/binary"
 	"testing"
 
+	"github.com/df-mc/goleveldb/leveldb"
+	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/internal/gamedata"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/chunk"
-	"github.com/df-mc/goleveldb/leveldb"
-	"github.com/dm-vev/adamant/net/nbt"
 )
 
 // oldWorldProvider holds the columns of a world saved before 1.26.60, as

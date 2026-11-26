@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/dm-vev/adamant/server/client/clienttest"
 	"github.com/dm-vev/adamant/server/identity"
 	"github.com/dm-vev/adamant/server/item"
@@ -17,7 +18,6 @@ import (
 	"github.com/dm-vev/adamant/server/player/playerdb"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/mcdb"
-	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/google/uuid"
 )
 

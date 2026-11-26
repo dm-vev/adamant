@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/protocol/bedrock/session"
 	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/item"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/sound"
-	"github.com/dm-vev/adamant/net/bedrock/proto"
 )
 
 var updateSounds = flag.Bool("update-sounds", false, "rewrite testdata/sounds.golden, the packets of every sound")

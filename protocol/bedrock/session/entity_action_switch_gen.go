@@ -3,10 +3,10 @@
 package session
 
 import (
-	"github.com/dm-vev/adamant/server/entity"
-	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/server/entity"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // literalEntityActionPacket returns the packet of an action of entity_action_table.go

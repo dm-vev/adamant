@@ -11,9 +11,9 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/dm-vev/adamant/net/java"
 	"github.com/dm-vev/adamant/server"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/net/java"
 )
 
 // TestListenerShowsToJava lists the server for a client of Java Edition

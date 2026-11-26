@@ -1,8 +1,8 @@
 package session
 
 import (
-	"github.com/dm-vev/adamant/server/cmd"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/server/cmd"
 )
 
 // paramOptionFlags pairs each option of a command parameter with the flag

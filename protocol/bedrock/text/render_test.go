@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dm-vev/adamant/server/text"
 	nettext "github.com/dm-vev/adamant/net/bedrock/text"
+	"github.com/dm-vev/adamant/server/text"
 )
 
 // colourfCases are the cases of the tests of Colourf in net/bedrock/text,

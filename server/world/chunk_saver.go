@@ -5,9 +5,9 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/world/chunk"
-	"github.com/dm-vev/adamant/net/nbt"
 )
 
 // chunkSaver writes saved columns through the provider on its own goroutine,

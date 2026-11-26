@@ -10,8 +10,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/dm-vev/adamant/server/world/chunk"
 	"github.com/dm-vev/adamant/net/nbt"
+	"github.com/dm-vev/adamant/server/world/chunk"
 )
 
 var (

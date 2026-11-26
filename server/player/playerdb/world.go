@@ -3,9 +3,9 @@ package playerdb
 import (
 	"errors"
 
+	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/dm-vev/adamant/server/player"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/google/uuid"
 )
 

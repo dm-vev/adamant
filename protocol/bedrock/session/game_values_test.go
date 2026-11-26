@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"testing"
 
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/cmd"
 	"github.com/dm-vev/adamant/server/entity"
 	"github.com/dm-vev/adamant/server/world/mcdb/leveldat"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // gameValue pairs a value the game owns with the protocol's value it must stay

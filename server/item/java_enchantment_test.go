@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/dm-vev/adamant/server/item"
 	_ "github.com/dm-vev/adamant/server/item/enchantment"
-	"github.com/dm-vev/adamant/net/nbt"
 )
 
 // Java source-only enchantments must survive native inventory NBT without

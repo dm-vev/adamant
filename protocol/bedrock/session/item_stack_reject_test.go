@@ -4,9 +4,9 @@ import (
 	"slices"
 	"testing"
 
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/item"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // staleApples names inventory slot 0 by a stack ID it does not hold, which

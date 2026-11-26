@@ -9,8 +9,8 @@ import (
 	"net/netip"
 	"testing"
 
-	"github.com/dm-vev/adamant/server/logging"
 	"github.com/dm-vev/adamant/net/bedrock/login"
+	"github.com/dm-vev/adamant/server/logging"
 )
 
 // refusedConn is a Conn whose login holds no valid UUID.

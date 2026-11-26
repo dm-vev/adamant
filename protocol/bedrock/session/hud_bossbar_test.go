@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/server/player/bossbar"
 	"github.com/dm-vev/adamant/server/player/hud"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // TestHudElementValuesMatchProtocol holds every HUD element of hud.All, and

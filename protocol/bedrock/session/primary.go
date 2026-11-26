@@ -1,8 +1,8 @@
 package session
 
 import (
-	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 )
 
 // The primary protocol, [Network] PrimaryProtocol, is the protocol the

@@ -4,10 +4,10 @@ import (
 	"encoding/base64"
 	"testing"
 
+	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/chunk"
-	"github.com/dm-vev/adamant/net/nbt"
 )
 
 // Captured from BDS 1.26.52.3, pending-tick key fdffffff0000000033.

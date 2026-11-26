@@ -4,9 +4,9 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"github.com/df-mc/goleveldb/leveldb/iterator"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/chunk"
-	"github.com/df-mc/goleveldb/leveldb/iterator"
 )
 
 // ColumnIterator iterates over a DB's position/column pairs in key order.

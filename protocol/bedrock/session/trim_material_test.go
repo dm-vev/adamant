@@ -3,9 +3,9 @@ package session
 import (
 	"testing"
 
+	nbtext "github.com/dm-vev/adamant/net/bedrock/text"
 	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/item"
-	nbtext "github.com/dm-vev/adamant/net/bedrock/text"
 )
 
 // TestTrimMaterialColoursMatchProtocol checks that TrimData names the colour

@@ -1,8 +1,8 @@
 package session
 
 import (
-	"github.com/dm-vev/adamant/server/player/input"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/server/player/input"
 )
 
 // bedrockLock returns the bit of UpdateClientInputLocks that locks the input

@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dm-vev/adamant/net/metrics"
 	"github.com/dm-vev/adamant/server"
 	"github.com/dm-vev/adamant/server/client"
 	"github.com/dm-vev/adamant/server/client/clienttest"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/net/metrics"
 	"github.com/google/uuid"
 	"golang.org/x/text/language"
 )

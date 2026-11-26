@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/dm-vev/adamant/internal/faultcheck"
+	"github.com/dm-vev/adamant/net/metrics"
 	"github.com/dm-vev/adamant/server/player"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/net/metrics"
 )
 
 // TestServerMetrics checks the metrics of a server with a player online:

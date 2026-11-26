@@ -13,10 +13,10 @@ import (
 	// The following four imports are essential for this package: They make sure this package is loaded after
 	// all these imports. This ensures that all blocks and items are registered before the creative items are
 	// registered in the init function in this package.
+	"github.com/dm-vev/adamant/net/nbt"
 	_ "github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/item"
 	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/net/nbt"
 )
 
 // Item represents a registered item in the creative inventory. It holds a stack of the item and a group that

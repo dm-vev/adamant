@@ -9,12 +9,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/dm-vev/adamant/server/logging"
-	"github.com/dm-vev/adamant/server/world"
-	"github.com/dm-vev/adamant/server/world/mcdb/leveldat"
 	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/df-mc/goleveldb/leveldb/filter"
 	"github.com/df-mc/goleveldb/leveldb/opt"
+	"github.com/dm-vev/adamant/server/logging"
+	"github.com/dm-vev/adamant/server/world"
+	"github.com/dm-vev/adamant/server/world/mcdb/leveldat"
 )
 
 // Config holds the optional parameters of a DB.

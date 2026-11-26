@@ -1,8 +1,8 @@
 package session
 
 import (
-	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/server/world"
 )
 
 // packetHandler represents a type that is able to handle a specific type of incoming packets from the client.

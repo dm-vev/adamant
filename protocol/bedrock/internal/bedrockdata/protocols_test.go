@@ -16,8 +16,8 @@ import (
 	"testing"
 
 	"github.com/dm-vev/adamant/internal/testfixture"
-	"github.com/dm-vev/adamant/protocol/bedrock/internal/bedrockdata"
 	"github.com/dm-vev/adamant/net/nbt"
+	"github.com/dm-vev/adamant/protocol/bedrock/internal/bedrockdata"
 )
 
 // The oracles of testdata/vNNNN are what BDS of each protocol sends, taken

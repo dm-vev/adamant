@@ -9,6 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dm-vev/adamant/net/bedrock/client"
+	"github.com/dm-vev/adamant/net/bedrock/login"
+	"github.com/dm-vev/adamant/net/bedrock/proto/codec"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/protocol/bedrock/session"
 	"github.com/dm-vev/adamant/server"
@@ -18,10 +22,6 @@ import (
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/biome"
 	"github.com/dm-vev/adamant/server/world/generator"
-	"github.com/dm-vev/adamant/net/bedrock/client"
-	"github.com/dm-vev/adamant/net/bedrock/login"
-	"github.com/dm-vev/adamant/net/bedrock/proto/codec"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/go-gl/mathgl/mgl32"
 )
 

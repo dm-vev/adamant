@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/dm-vev/adamant/server/text"
 	nettext "github.com/dm-vev/adamant/net/bedrock/text"
+	"github.com/dm-vev/adamant/server/text"
 )
 
 // Message and Inline write a text that holds no translation as String does,

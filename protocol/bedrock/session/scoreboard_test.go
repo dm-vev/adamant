@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dm-vev/adamant/server/player/scoreboard"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/server/player/scoreboard"
 )
 
 // oldScoreboard is scoreboard.Scoreboard as it was, holding strings: the

@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	bedrocktext "github.com/dm-vev/adamant/protocol/bedrock/text"
 	"github.com/dm-vev/adamant/server/player/bossbar"
 	"github.com/dm-vev/adamant/server/player/scoreboard"
 	"github.com/dm-vev/adamant/server/text"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // SendMessage shows t in the chat. A text that holds a translation is sent
