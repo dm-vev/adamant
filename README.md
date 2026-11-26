@@ -96,7 +96,7 @@ Adamant isolates a data-oriented simulation core (`server/`) from wire adapters 
 
 - **Zero-alloc ECS & EventBus (`server/ecs`, `server/event`):** dense typed component bags (`Key[T]` / `Bag` with automatic NBT persistence on entities, players, chunks, and worlds); prioritized `event.Bus` (`Cancellable`) on `Server`, `World`/`Tx`, and `Player`.
 - **Parallel simulation (`server/world`, `server/entity`):** `World.AddSystem(TickPhase)` with panic containment, `SetBlockRID` / `FillRID` volume ops, 4×4 parallel world `Regions`, multi-core AI/fluid/collision `Prefetch`, and `sharedPathCache`.
-- **Modular Plugin SDK (`sdk/*`):** 19 focused packages with zero god-package coupling and plugin-scoped `Context` auto-cleanup on disable:
+- **Modular Plugin SDK (`sdk/*`):** 19 focused packages ([SDK guide](docs/sdk.md)) with zero god-package coupling and plugin-scoped `Context` auto-cleanup on disable (`examples/hub`, `examples/minigame`):
   - **Core:** `sdk/plugin` (lifecycle, dependency ordering, hot-reload, typed service registry, atomic JSON/TOML storage), `sdk/event` (full player/world/explosion/weather/projectile/mob events), `sdk/ecs`, `sdk/schedule` (tick systems + `Async`/`ThenWorld`), `sdk/cmd`, `sdk/perm`, `sdk/admin` (bans, ops, whitelist, offline player data)
   - **Content:** `sdk/block`, `sdk/item` (custom items + fluent `Stack` builder), `sdk/recipe` (crafting, smithing, brewing, smelting/blasting/smoking/campfire, stonecutter, dynamic), `sdk/mob`, `sdk/npc` (skinned human NPCs with look-at & callbacks)
   - **UI & Worlds:** `sdk/menu`, `sdk/form`, `sdk/hud` (scoreboards, boss bars, titles, dialogues, audio/particles, holograms, per-player visibility/vanish, HUD elements & input locks), `sdk/worldgen` (unified Overworld/Nether/End hooks, biomes, structures & `.mcstructure` I/O), `sdk/worlds` (dynamic worlds, force-load tickets, gamerules/weather/time, spatial regions & transfers)
@@ -118,6 +118,7 @@ defer app.Disable() // auto-unsubscribes events & cancels scheduled tasks
 
 Runtime settings are documented in [`config.toml`](config.toml). Deep-dive guides live in [`docs/`](docs):
 
+- [`docs/sdk.md`](docs/sdk.md) — modular plugin SDK (`sdk/*`) architecture, lifecycle, async bridges, UI, worldgen, Bedrock Camera/Fog/Packs, and testing
 - [`docs/protocols.md`](docs/protocols.md) — Bedrock multiprotocol (`2168`–`2225`), version selection, and wire translation
 - [`docs/anticheat.md`](docs/anticheat.md) — movement, combat, interaction, and timer checks (`[AntiCheat]`)
 - [`docs/admin.md`](docs/admin.md) — RBAC permissions, bans, online backups, audit log, and HTTPS Remote Admin API
@@ -138,6 +139,7 @@ go test ./internal/archtest   # boundary, mutation, wait, API, entity-layer & fu
 |---|---|
 | `main.go`, `internal/app` | Entrypoint, `config.toml` loader, logging, metrics, and service lifecycle |
 | `sdk/*` | Modular plugin SDK (`plugin`, `event`, `ecs`, `schedule`, `cmd`, `perm`, `admin`, `block`, `item`, `recipe`, `mob`, `npc`, `menu`, `form`, `hud`, `worldgen`, `worlds`, `bedrock`, `sdktest`) |
+| `examples/` | Runnable SDK example servers with `-race` tests (`examples/hub`, `examples/minigame`) |
 | `server/ecs`, `server/event` | Zero-allocation component bags and prioritized typed event bus |
 | `server/world`, `server/entity` | Parallel world regions, LevelDB, Java 26.3 worldgen, `MobAI` & `Brain` |
 | `server/player`, `server/block`, `server/item`, `server/cmd` | Player facets & anti-cheat, block/item mechanics, Java 26.3 commands |
