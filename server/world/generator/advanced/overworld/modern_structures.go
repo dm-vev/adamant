@@ -312,6 +312,7 @@ func (s *modernStructures) concentricRingChunks(placement map[string]any) [][2]i
 	}
 	return out
 }
+
 type preferredBiomeSet struct {
 	byIndex [256]bool
 	byName  map[string]bool

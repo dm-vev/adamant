@@ -1,6 +1,7 @@
 package item
 
 import "github.com/dm-vev/adamant/server/world"
+
 // Bone is an item primarily obtained as a drop from skeletons and their variants.
 type Bone struct{}
 
@@ -8,6 +9,7 @@ type Bone struct{}
 func (Bone) EncodeItem() (name string, meta int16) {
 	return "minecraft:bone", 0
 }
+
 // UseOnEntity feeds or tames a wolf through its wolf interaction interface.
 func (Bone) UseOnEntity(target world.Entity, tx *world.Tx, user User, ctx *UseContext) bool {
 	wolf, ok := target.(interface {

@@ -73,7 +73,7 @@ func EncodeSubChunk(c *Chunk, e Encoding, ind int) []byte {
 			pe = blockPaletteMigrationEncoding{
 				BlockPaletteEncoding: BlockPaletteEncoding{Blocks: c.br},
 				migration:            &paletteStateMigration{entries: storage.missingStateEntries, cache: diskCodecCacheFor(c.br)},
-				stateIDs:              storage.stateIDs,
+				stateIDs:             storage.stateIDs,
 			}
 		}
 		encodePalettedStorage(buf, storage, nil, e, pe)

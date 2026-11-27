@@ -21,7 +21,6 @@ const legacyMapNextCanonicalIDKey = "adamant:map_next_java_id"
 const legacyMapCanonicalKeyPrefix = "adamant:map_java_"
 const legacyMapNativeCanonicalKeyPrefix = "adamant:map_native_java_"
 
-
 // LoadMap decodes a Bedrock map record. Its signed long mapId is shared by the
 // map record, map item component, and MapInfo packets.
 func (db *DB) LoadMap(id int64) (world.MapData, error) {
@@ -153,6 +152,7 @@ func (db *DB) AllocateMapID() (int64, error) {
 	}
 	return candidate, nil
 }
+
 // JavaMapID returns the stable Java map ID for a native Bedrock map ID,
 // allocating the next non-negative Java ID when no mapping exists.
 func (db *DB) CanonicalMapID(nativeID int64) (int32, error) {
@@ -413,13 +413,21 @@ func mapDataFromNBT(root map[string]any, id int64) (world.MapData, error) {
 				return world.MapData{}, fmt.Errorf("invalid native decoration data compound: got %T", d["data"])
 			}
 			rot, ok := details["rot"].(int32)
-			if !ok { return world.MapData{}, fmt.Errorf("invalid native decoration rot tag: got %T", details["rot"]) }
+			if !ok {
+				return world.MapData{}, fmt.Errorf("invalid native decoration rot tag: got %T", details["rot"])
+			}
 			typ, ok := details["type"].(int32)
-			if !ok { return world.MapData{}, fmt.Errorf("invalid native decoration type tag: got %T", details["type"]) }
+			if !ok {
+				return world.MapData{}, fmt.Errorf("invalid native decoration type tag: got %T", details["type"])
+			}
 			dx, ok := details["x"].(int32)
-			if !ok { return world.MapData{}, fmt.Errorf("invalid native decoration x tag: got %T", details["x"]) }
+			if !ok {
+				return world.MapData{}, fmt.Errorf("invalid native decoration x tag: got %T", details["x"])
+			}
 			dy, ok := details["y"].(int32)
-			if !ok { return world.MapData{}, fmt.Errorf("invalid native decoration y tag: got %T", details["y"]) }
+			if !ok {
+				return world.MapData{}, fmt.Errorf("invalid native decoration y tag: got %T", details["y"])
+			}
 			if rot < 0 || rot > 255 || typ < 0 || typ > 255 {
 				return world.MapData{}, fmt.Errorf("native decoration type/rotation outside byte range: %d/%d", typ, rot)
 			}
@@ -431,13 +439,21 @@ func mapDataFromNBT(root map[string]any, id int64) (world.MapData, error) {
 				return world.MapData{}, fmt.Errorf("invalid native decoration key compound: got %T", d["key"])
 			}
 			blockX, ok := key["blockX"].(int32)
-			if !ok { return world.MapData{}, fmt.Errorf("invalid native decoration blockX tag: got %T", key["blockX"]) }
+			if !ok {
+				return world.MapData{}, fmt.Errorf("invalid native decoration blockX tag: got %T", key["blockX"])
+			}
 			blockY, ok := key["blockY"].(int32)
-			if !ok { return world.MapData{}, fmt.Errorf("invalid native decoration blockY tag: got %T", key["blockY"]) }
+			if !ok {
+				return world.MapData{}, fmt.Errorf("invalid native decoration blockY tag: got %T", key["blockY"])
+			}
 			blockZ, ok := key["blockZ"].(int32)
-			if !ok { return world.MapData{}, fmt.Errorf("invalid native decoration blockZ tag: got %T", key["blockZ"]) }
+			if !ok {
+				return world.MapData{}, fmt.Errorf("invalid native decoration blockZ tag: got %T", key["blockZ"])
+			}
 			keyType, ok := key["type"].(int32)
-			if !ok { return world.MapData{}, fmt.Errorf("invalid native decoration key type tag: got %T", key["type"]) }
+			if !ok {
+				return world.MapData{}, fmt.Errorf("invalid native decoration key type tag: got %T", key["type"])
+			}
 			data.Decorations = append(data.Decorations, world.MapDecoration{
 				Type: byte(typ), Rotation: byte(rot), X: int8(dx), Z: int8(dy),
 				BlockX: blockX, BlockY: blockY, BlockZ: blockZ, KeyType: keyType,
@@ -517,5 +533,9 @@ func mapDataToNBT(root map[string]any, data world.MapData) error {
 	return nil
 }
 
-
-func mapByte(v bool) byte { if v { return 1 }; return 0 }
+func mapByte(v bool) byte {
+	if v {
+		return 1
+	}
+	return 0
+}

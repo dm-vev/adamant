@@ -18,6 +18,7 @@ const (
 type Egg struct {
 	Variant EggVariant
 }
+
 // MaxCount returns the egg stack limit.
 func (Egg) MaxCount() int { return 16 }
 

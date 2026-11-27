@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	hashSuspiciousSand    = NextHash()
-	hashSuspiciousGravel  = NextHash()
+	hashSuspiciousSand   = NextHash()
+	hashSuspiciousGravel = NextHash()
 )
 
 // SuspiciousSand is an archaeological block that yields its buried item after ten brush strokes.
@@ -25,15 +25,15 @@ type SuspiciousSand struct {
 	snare
 	Dusted uint8
 	// Hanging preserves the native palette flag; it is not a Java block property.
-	Hanging bool
-	LootTable string
-	LootTableSeed int64
-	Item item.Stack
-	HitDirection cube.Face
-	HasHitDirection bool
-	brushCount uint8
+	Hanging                bool
+	LootTable              string
+	LootTableSeed          int64
+	Item                   item.Stack
+	HitDirection           cube.Face
+	HasHitDirection        bool
+	brushCount             uint8
 	brushCountResetsAtTick int64
-	coolDownEndsAtTick int64
+	coolDownEndsAtTick     int64
 }
 
 // SuspiciousGravel is an archaeological block that yields its buried item after ten brush strokes.
@@ -43,15 +43,15 @@ type SuspiciousGravel struct {
 	snare
 	Dusted uint8
 	// Hanging preserves the native palette flag; it is not a Java block property.
-	Hanging bool
-	LootTable string
-	LootTableSeed int64
-	Item item.Stack
-	HitDirection cube.Face
-	HasHitDirection bool
-	brushCount uint8
+	Hanging                bool
+	LootTable              string
+	LootTableSeed          int64
+	Item                   item.Stack
+	HitDirection           cube.Face
+	HasHitDirection        bool
+	brushCount             uint8
 	brushCountResetsAtTick int64
-	coolDownEndsAtTick int64
+	coolDownEndsAtTick     int64
 }
 
 // NewSuspiciousSand creates suspicious sand configured with a Java archaeology loot table.
@@ -64,7 +64,7 @@ func NewSuspiciousGravel(table string, seed int64) SuspiciousGravel {
 	return SuspiciousGravel{LootTable: table, LootTableSeed: seed}
 }
 
-func (s SuspiciousSand) EncodeItem() (string, int16) { return "minecraft:suspicious_sand", 0 }
+func (s SuspiciousSand) EncodeItem() (string, int16)   { return "minecraft:suspicious_sand", 0 }
 func (s SuspiciousGravel) EncodeItem() (string, int16) { return "minecraft:suspicious_gravel", 0 }
 func (s SuspiciousSand) EncodeBlock() (string, map[string]any) {
 	return "minecraft:suspicious_sand", map[string]any{"brushed_progress": int32(min(s.Dusted, 3)), "hanging": boolByte(s.Hanging)}
@@ -72,9 +72,13 @@ func (s SuspiciousSand) EncodeBlock() (string, map[string]any) {
 func (s SuspiciousGravel) EncodeBlock() (string, map[string]any) {
 	return "minecraft:suspicious_gravel", map[string]any{"brushed_progress": int32(min(s.Dusted, 3)), "hanging": boolByte(s.Hanging)}
 }
-func (s SuspiciousSand) Hash() (uint64, uint64) { return hashSuspiciousSand, uint64(min(s.Dusted, 3)) | uint64(boolByte(s.Hanging))<<2 }
-func (s SuspiciousGravel) Hash() (uint64, uint64) { return hashSuspiciousGravel, uint64(min(s.Dusted, 3)) | uint64(boolByte(s.Hanging))<<2 }
-func (SuspiciousSand) BrushSound() string { return "item.brush.brushing.sand" }
+func (s SuspiciousSand) Hash() (uint64, uint64) {
+	return hashSuspiciousSand, uint64(min(s.Dusted, 3)) | uint64(boolByte(s.Hanging))<<2
+}
+func (s SuspiciousGravel) Hash() (uint64, uint64) {
+	return hashSuspiciousGravel, uint64(min(s.Dusted, 3)) | uint64(boolByte(s.Hanging))<<2
+}
+func (SuspiciousSand) BrushSound() string   { return "item.brush.brushing.sand" }
 func (SuspiciousGravel) BrushSound() string { return "item.brush.brushing.gravel" }
 func (SuspiciousSand) BreakInfo() BreakInfo {
 	return newBreakInfo(0.25, alwaysHarvestable, shovelEffective, oneOf(Sand{}))
@@ -82,9 +86,9 @@ func (SuspiciousSand) BreakInfo() BreakInfo {
 func (SuspiciousGravel) BreakInfo() BreakInfo {
 	return newBreakInfo(0.25, alwaysHarvestable, shovelEffective, oneOf(Gravel{}))
 }
-func (s SuspiciousSand) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) { s.fall(s, pos, tx) }
-func (s SuspiciousGravel) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) { s.fall(s, pos, tx) }
-func (s SuspiciousSand) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) { s.tick(pos, tx) }
+func (s SuspiciousSand) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx)        { s.fall(s, pos, tx) }
+func (s SuspiciousGravel) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx)      { s.fall(s, pos, tx) }
+func (s SuspiciousSand) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand)   { s.tick(pos, tx) }
 func (s SuspiciousGravel) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) { s.tick(pos, tx) }
 
 func (s SuspiciousSand) EncodeNBT() map[string]any {
@@ -147,16 +151,22 @@ func decodeBrushableNBT(data map[string]any) (string, int64, item.Stack, cube.Fa
 	return table, seed, stack, direction, hasDirection, uint8(min(max(count, 0), 255))
 }
 
-
 func legacyDirection(id int32) (cube.Face, bool) {
 	switch id {
-	case 0: return cube.FaceDown, true
-	case 1: return cube.FaceUp, true
-	case 2: return cube.FaceNorth, true
-	case 3: return cube.FaceSouth, true
-	case 4: return cube.FaceWest, true
-	case 5: return cube.FaceEast, true
-	default: return cube.FaceUp, false
+	case 0:
+		return cube.FaceDown, true
+	case 1:
+		return cube.FaceUp, true
+	case 2:
+		return cube.FaceNorth, true
+	case 3:
+		return cube.FaceSouth, true
+	case 4:
+		return cube.FaceWest, true
+	case 5:
+		return cube.FaceEast, true
+	default:
+		return cube.FaceUp, false
 	}
 }
 
@@ -179,15 +189,15 @@ func (s SuspiciousGravel) BrushAt(pos cube.Pos, face cube.Face, tx *world.Tx, us
 
 // brushState is the small mutable view shared by the two concrete source blocks.
 type brushState struct {
-	Dusted uint8
-	LootTable string
-	LootTableSeed int64
-	Item item.Stack
-	HitDirection cube.Face
-	HasHitDirection bool
-	BrushCount uint8
+	Dusted                 uint8
+	LootTable              string
+	LootTableSeed          int64
+	Item                   item.Stack
+	HitDirection           cube.Face
+	HasHitDirection        bool
+	BrushCount             uint8
 	BrushCountResetsAtTick int64
-	CooldownUntilTick int64
+	CooldownUntilTick      int64
 }
 
 func applySandBrushState(original SuspiciousSand, state *brushState) world.Block {
@@ -269,8 +279,6 @@ func brushSuspicious(pos cube.Pos, face cube.Face, tx *world.Tx, user item.User,
 	return false, nil
 }
 
-
-
 func brushCompletionState(count uint8) uint8 {
 	if count == 0 {
 		return 0
@@ -334,4 +342,3 @@ func allSuspiciousBlocks() []world.Block {
 	}
 	return blocks
 }
-

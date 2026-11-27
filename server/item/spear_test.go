@@ -9,11 +9,11 @@ import (
 
 func TestSpearMaterialStats(t *testing.T) {
 	tests := []struct {
-		tier             item.ToolTier
-		name             string
+		tier               item.ToolTier
+		name               string
 		damage, multiplier float64
-		delay, durability int
-		attackDuration   float64
+		delay, durability  int
+		attackDuration     float64
 	}{
 		{item.ToolTierWood, "wooden_spear", 1, 0.7, 15, 59, 0.65},
 		{item.ToolTierStone, "stone_spear", 2, 0.82, 14, 131, 0.75},

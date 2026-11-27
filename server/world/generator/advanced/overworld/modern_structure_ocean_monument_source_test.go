@@ -421,4 +421,3 @@ func monumentChildBounds(piece *modernOceanMonumentPiece, child modernMonumentCh
 	}
 	return [6]int32{minX, minY, minZ, maxX, maxY, maxZ}
 }
-

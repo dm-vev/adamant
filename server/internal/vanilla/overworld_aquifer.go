@@ -96,16 +96,17 @@ func (a *OverworldAquifer) Substance(x, y, z int32, density float64) (AquiferMat
 				xd, yd, zd := center.x-x, center.y-y, center.z-z
 				distance := xd*xd + yd*yd + zd*zd
 				if distance <= d3 {
-					if distance <= d0 {
+					switch {
+					case distance <= d0:
 						d3, d2, d1, d0 = d2, d1, d0, distance
 						c3, c2, c1, c0 = c2, c1, c0, index
-					} else if distance <= d1 {
+					case distance <= d1:
 						d3, d2, d1 = d2, d1, distance
 						c3, c2, c1 = c2, c1, index
-					} else if distance <= d2 {
+					case distance <= d2:
 						d3, d2 = d2, distance
 						c3, c2 = c2, index
-					} else {
+					default:
 						d3, c3 = distance, index
 					}
 				}

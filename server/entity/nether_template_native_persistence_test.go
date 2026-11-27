@@ -171,7 +171,7 @@ func TestNetherTemplateActorsRetainSourceStateAcrossMCDB(t *testing.T) {
 	if piglin.Health() != float64(nbtconv.Float32(piglinNBT, "Health")) || piglin.p().baby != nbtconv.Bool(piglinNBT, "IsBaby") {
 		t.Fatalf("Piglin health/baby changed on MCDB reopen: %g/%t", piglin.Health(), piglin.p().baby)
 	}
-	piglinSaved := readNativeMobExtraState(piglinType{}.EncodeNBT(piglin.Ent.data))
+	piglinSaved := readNativeMobExtraState(piglinType{}.EncodeNBT(piglin.data))
 	brain, _ := piglinSaved["Brain"].(map[string]any)
 	memories, _ := brain["memories"].(map[string]any)
 	if _, ok := memories["minecraft:hunted_recently"]; !ok {

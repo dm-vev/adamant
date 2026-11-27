@@ -36,9 +36,9 @@ func TestServerOnlyEnchantmentNBT(t *testing.T) {
 		return map[string]any{"id": "minecraft:sweeping_edge", "lvl": int16(level)}
 	}
 	for _, c := range []struct {
-		name               string
-		stack              item.Stack
-		ench, adamant      any
+		name                    string
+		stack                   item.Stack
+		ench, adamant           any
 		hasEnch, hasCanonicalID bool
 	}{
 		{

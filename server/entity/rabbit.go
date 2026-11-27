@@ -13,7 +13,9 @@ import (
 )
 
 // NewRabbit creates a common brown rabbit.
-func NewRabbit(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(entityRabbitType, rabbitConfig{}) }
+func NewRabbit(o world.EntitySpawnOpts) *world.EntityHandle {
+	return o.New(entityRabbitType, rabbitConfig{})
+}
 
 // RabbitType is the registered Java rabbit type.
 var entityRabbitType rabbitType

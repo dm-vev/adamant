@@ -14,19 +14,35 @@ func TestKnowledgeBookNativePersistenceRetainsIdentity(t *testing.T) {
 		"id": "minecraft:knowledge_book", "count": int32(1),
 		"components": map[string]any{"minecraft:recipes": []any{recipes[0], recipes[1]}},
 	})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	registered, _ := world.ItemByName(stack.Item().EncodeItem())
-	if _, ok := registered.(KnowledgeBook); !ok { t.Fatalf("knowledge book was not registered as a distinct item: %#v", registered) }
+	if _, ok := registered.(KnowledgeBook); !ok {
+		t.Fatalf("knowledge book was not registered as a distinct item: %#v", registered)
+	}
 	native := WriteNBT(stack)
-	if native["Name"] != "adamant:knowledge_book" { t.Fatalf("native item identifier: %v", native["Name"]) }
+	if native["Name"] != "adamant:knowledge_book" {
+		t.Fatalf("native item identifier: %v", native["Name"])
+	}
 	encoded, err := nbt.Marshal(native)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	var decoded map[string]any
-	if err := nbt.Unmarshal(encoded, &decoded); err != nil { t.Fatal(err) }
+	if err := nbt.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatal(err)
+	}
 	restored := ReadNBT(decoded)
 	book, ok := restored.Item().(KnowledgeBook)
-	if !ok || !slices.Equal(book.Recipes, recipes) { t.Fatalf("restored item: %#v", restored.Item()) }
+	if !ok || !slices.Equal(book.Recipes, recipes) {
+		t.Fatalf("restored item: %#v", restored.Item())
+	}
 	source, err := StackToStructureNBT(restored)
-	if err != nil { t.Fatal(err) }
-	if source["id"] != "minecraft:knowledge_book" { t.Fatalf("Java item identifier: %v", source["id"]) }
+	if err != nil {
+		t.Fatal(err)
+	}
+	if source["id"] != "minecraft:knowledge_book" {
+		t.Fatalf("Java item identifier: %v", source["id"])
+	}
 }

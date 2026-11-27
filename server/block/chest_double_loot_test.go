@@ -49,14 +49,14 @@ func (chestDropEntityConfig) Apply(*world.EntityData) {}
 func (chestDropEntityType) Open(_ *world.Tx, handle *world.EntityHandle, data *world.EntityData) world.Entity {
 	return chestDropEntity{handle: handle, data: data}
 }
-func (chestDropEntityType) EncodeEntity() string                 { return "test:chest_drop" }
-func (chestDropEntityType) BBox(world.Entity) cube.BBox          { return cube.BBox{} }
+func (chestDropEntityType) EncodeEntity() string                        { return "test:chest_drop" }
+func (chestDropEntityType) BBox(world.Entity) cube.BBox                 { return cube.BBox{} }
 func (chestDropEntityType) DecodeNBT(map[string]any, *world.EntityData) {}
-func (chestDropEntityType) EncodeNBT(*world.EntityData) map[string]any { return nil }
-func (e chestDropEntity) H() *world.EntityHandle                 { return e.handle }
-func (e chestDropEntity) Position() mgl64.Vec3                   { return e.data.Pos }
-func (e chestDropEntity) Rotation() cube.Rotation                { return e.data.Rot }
-func (chestDropEntity) Close() error                             { return nil }
+func (chestDropEntityType) EncodeNBT(*world.EntityData) map[string]any  { return nil }
+func (e chestDropEntity) H() *world.EntityHandle                        { return e.handle }
+func (e chestDropEntity) Position() mgl64.Vec3                          { return e.data.Pos }
+func (e chestDropEntity) Rotation() cube.Rotation                       { return e.data.Rot }
+func (chestDropEntity) Close() error                                    { return nil }
 
 func countHalfItems(inv *inventory.Inventory, start, end int) int {
 	n := 0

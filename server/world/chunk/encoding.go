@@ -242,20 +242,20 @@ type missingStateEntry struct {
 }
 
 type paletteStateMigration struct {
-	index        uint16
-	entries      map[uint16]missingStateEntry
-	stateIDs map[uint16]uint32
-	decodeCanonical   bool
-	dec          *nbt.Decoder
-	enc          *nbt.Encoder
-	scratchProps map[string]any
-	cache        *diskCodecCache
+	index           uint16
+	entries         map[uint16]missingStateEntry
+	stateIDs        map[uint16]uint32
+	decodeCanonical bool
+	dec             *nbt.Decoder
+	enc             *nbt.Encoder
+	scratchProps    map[string]any
+	cache           *diskCodecCache
 }
 
 type blockPaletteMigrationEncoding struct {
 	BlockPaletteEncoding
 	migration *paletteStateMigration
-	stateIDs   map[uint16]uint32
+	stateIDs  map[uint16]uint32
 }
 
 func (bpe BlockPaletteEncoding) encode(buf *bytes.Buffer, v uint32) {

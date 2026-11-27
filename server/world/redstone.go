@@ -573,7 +573,8 @@ func (e *redstoneEngine) compileRegion(tx *Tx, pos cube.Pos, seen map[cube.Pos]s
 	if _, ok := seen[pos]; ok || pos.OutOfBounds(tx.Range()) {
 		return
 	}
-	queue := append(e.scratchQueue[:0], pos)
+	queue := e.scratchQueue[:0]
+	queue = append(queue, pos)
 	var connBuf [32]cube.Pos
 	for head := 0; head < len(queue); head++ {
 		p := queue[head]
@@ -1076,14 +1077,15 @@ func (e *redstoneEngine) powerFrom(pos cube.Pos, tx *Tx, face cube.Face) int {
 					break
 				}
 			}
-			if found >= 0 {
+			switch {
+			case found >= 0:
 				if seenList[found].loss <= s.loss {
 					continue
 				}
 				seenList[found].loss = s.loss
-			} else if len(seenList) < len(seenBuf) {
+			case len(seenList) < len(seenBuf):
 				seenList = append(seenList, seenEntry{pos: s.pos, loss: s.loss})
-			} else {
+			default:
 				seenMap = make(map[cube.Pos]int, 64)
 				for _, entry := range seenList {
 					seenMap[entry.pos] = entry.loss

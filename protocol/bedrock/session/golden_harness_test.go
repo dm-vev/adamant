@@ -300,7 +300,7 @@ func (p *goldenProvider) AllocateMapID() (int64, error) {
 }
 
 func (*goldenProvider) CanonicalMapID(nativeID int64) (int32, error) { return int32(nativeID), nil }
-func (*goldenProvider) NativeMapID(javaID int32) (int64, error) { return int64(javaID), nil }
+func (*goldenProvider) NativeMapID(javaID int32) (int64, error)      { return int64(javaID), nil }
 
 // goldenRules sets the game rules of a world of the scenarios: players
 // spawn right at the spawn, not at random around it.

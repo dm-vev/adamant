@@ -290,9 +290,11 @@ type witherState struct {
 }
 type wither struct{ *Ent }
 
-func NewWither(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(entityWitherType, witherConfig{}) }
-func (w *wither) state() *witherState                       { return w.Behaviour().(*witherState) }
-func (w *wither) Tick(tx *world.Tx, n int64)                { w.state().effects.Tick(w, tx); w.Ent.Tick(tx, n) }
+func NewWither(o world.EntitySpawnOpts) *world.EntityHandle {
+	return o.New(entityWitherType, witherConfig{})
+}
+func (w *wither) state() *witherState        { return w.Behaviour().(*witherState) }
+func (w *wither) Tick(tx *world.Tx, n int64) { w.state().effects.Tick(w, tx); w.Ent.Tick(tx, n) }
 func (w *wither) updateBossBar() {
 	s := w.state()
 	progress := w.Health() / w.MaxHealth()

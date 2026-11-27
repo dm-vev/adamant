@@ -180,8 +180,12 @@ func (h POITransaction) Nearest(pos cube.Pos, kind POIKind, radius int, predicat
 }
 
 func posLess(a, b cube.Pos) bool {
-	if a[0] != b[0] { return a[0] < b[0] }
-	if a[1] != b[1] { return a[1] < b[1] }
+	if a[0] != b[0] {
+		return a[0] < b[0]
+	}
+	if a[1] != b[1] {
+		return a[1] < b[1]
+	}
 	return a[2] < b[2]
 }
 
@@ -270,7 +274,6 @@ func isVillagePOI(p POI) bool {
 	return p.HasOwner && (p.Kind == Home || p.Kind == Meeting || p.Kind == Workstation)
 }
 
-
 // VillageSections returns section origins containing occupied village POIs
 // within the requested section radius, ordered by block position.
 func (h POITransaction) VillageSections(pos cube.Pos, radius int) []cube.Pos {
@@ -299,7 +302,12 @@ func (h POITransaction) VillageSections(pos cube.Pos, radius int) []cube.Pos {
 	return out
 }
 
-func absInt(v int) int { if v < 0 { return -v }; return v }
+func absInt(v int) int {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
 
 // poiClass is the POI a block state is, if any.
 type poiClass struct {
@@ -343,7 +351,6 @@ func normalizePOIOwners(p *POI) {
 		p.Owner = p.Owners[0]
 	}
 }
-
 
 // indexPOIChunk indexes the POIs of a column that became ready, keeping the
 // owners of POIs that remain.

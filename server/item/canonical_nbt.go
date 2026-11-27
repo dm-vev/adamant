@@ -216,14 +216,15 @@ func StackToStructureNBT(stack Stack) (map[string]any, error) {
 		components["minecraft:ominous_bottle_amplifier"] = int32(bottle.Amplifier)
 	}
 	if isMap {
-		if mapItem.HasCanonicalID {
+		switch {
+		case mapItem.HasCanonicalID:
 			if mapItem.CanonicalID < 0 {
-				return nil, fmt.Errorf("Java map id %d is negative", mapItem.CanonicalID)
+				return nil, fmt.Errorf("canonical map id %d is negative", mapItem.CanonicalID)
 			}
 			components["minecraft:map_id"] = mapItem.CanonicalID
-		} else if mapItem.HasNativeID || mapItem.NativeID != 0 {
-			return nil, fmt.Errorf("native map id %d has no Java map ID mapping", mapItem.NativeID)
-		} else {
+		case mapItem.HasNativeID || mapItem.NativeID != 0:
+			return nil, fmt.Errorf("native map id %d has no canonical map ID mapping", mapItem.NativeID)
+		default:
 			delete(components, "minecraft:map_id")
 		}
 	}

@@ -197,10 +197,10 @@ type KineticWeapon interface {
 type KineticWeaponInfo struct {
 	ContactCooldownTicks int
 	DelayTicks           int
-	Dismount              KineticWeaponCondition
-	Knockback             KineticWeaponCondition
-	Damage                KineticWeaponCondition
-	ForwardMovement       float64
+	Dismount             KineticWeaponCondition
+	Knockback            KineticWeaponCondition
+	Damage               KineticWeaponCondition
+	ForwardMovement      float64
 	DamageMultiplier     float64
 	AttackDuration       float64
 }
@@ -260,7 +260,6 @@ type Carrier interface {
 type BeaconPayment interface {
 	PayableForBeacon() bool
 }
-
 
 // nopReleasable represents a releasable item that does nothing.
 type nopReleasable struct{}

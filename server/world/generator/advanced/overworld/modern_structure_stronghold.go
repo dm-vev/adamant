@@ -21,7 +21,7 @@ type strongholdPiece struct {
 	journal                                *journalStructureWorld
 }
 
-func(p strongholdPiece)Bounds()structure.Box{return p.box}
+func (p strongholdPiece) Bounds() structure.Box { return p.box }
 func (p strongholdPiece) Place(clip structure.Bounds, env structure.ProcessorEnvironment) (structure.Placement, error) {
 	if env.Random == nil {
 		return structure.Placement{}, fmt.Errorf("stronghold placement requires shared random")
@@ -461,8 +461,17 @@ func strongholdFixedBox(p strongholdPiece, clip structure.Bounds, out *structure
 	}
 }
 
-func strongholdLocal(b structure.Box,dir string,x,y,z int32)[3]int32{
-	switch dir{case "north":return [3]int32{b.Min[0]+x,b.Min[1]+y,b.Max[2]-z};case "south":return [3]int32{b.Min[0]+x,b.Min[1]+y,b.Min[2]+z};case "west":return [3]int32{b.Max[0]-z,b.Min[1]+y,b.Min[2]+x};default:return [3]int32{b.Min[0]+z,b.Min[1]+y,b.Min[2]+x}}
+func strongholdLocal(b structure.Box, dir string, x, y, z int32) [3]int32 {
+	switch dir {
+	case "north":
+		return [3]int32{b.Min[0] + x, b.Min[1] + y, b.Max[2] - z}
+	case "south":
+		return [3]int32{b.Min[0] + x, b.Min[1] + y, b.Min[2] + z}
+	case "west":
+		return [3]int32{b.Max[0] - z, b.Min[1] + y, b.Min[2] + x}
+	default:
+		return [3]int32{b.Min[0] + z, b.Min[1] + y, b.Min[2] + x}
+	}
 }
 func strongholdOpening(p strongholdPiece, clip structure.Bounds, out *structure.Placement, x0, y0, z0, x1, y1, z1 int32) {
 	for y := y0; y <= y1; y++ {
@@ -571,8 +580,29 @@ func strongholdPutBars(p strongholdPiece, clip structure.Bounds, out *structure.
 func strongholdPutFenceLocal(p strongholdPiece, clip structure.Bounds, out *structure.Placement, x, y, z int32, north, south, east, west bool) {
 	strongholdPutLocal(p, clip, out, x, y, z, "oak_fence", map[string]any{"north": north, "south": south, "east": east, "west": west, "waterlogged": false})
 }
-func strongholdSelectedBox(p strongholdPiece,clip structure.Bounds,out *structure.Placement,random *vanilla.Random,x0,y0,z0,x1,y1,z1 int32){
-	for y:=y0;y<=y1;y++{for x:=x0;x<=x1;x++{for z:=z0;z<=z1;z++{edge:=x==x0||x==x1||y==y0||y==y1||z==z0||z==z1;if !edge{strongholdPutLocal(p,clip,out,x,y,z,"cave_air",nil);continue};roll:=random.NextFloat();name:="stone_bricks";if roll<0.2{name="cracked_stone_bricks"}else if roll<0.5{name="mossy_stone_bricks"}else if roll<0.55{name="infested_stone_bricks"};strongholdPutLocal(p,clip,out,x,y,z,name,nil)}}}
+func strongholdSelectedBox(p strongholdPiece, clip structure.Bounds, out *structure.Placement, random *vanilla.Random, x0, y0, z0, x1, y1, z1 int32) {
+	for y := y0; y <= y1; y++ {
+		for x := x0; x <= x1; x++ {
+			for z := z0; z <= z1; z++ {
+				edge := x == x0 || x == x1 || y == y0 || y == y1 || z == z0 || z == z1
+				if !edge {
+					strongholdPutLocal(p, clip, out, x, y, z, "cave_air", nil)
+					continue
+				}
+				roll := random.NextFloat()
+				name := "stone_bricks"
+				switch {
+				case roll < 0.2:
+					name = "cracked_stone_bricks"
+				case roll < 0.5:
+					name = "mossy_stone_bricks"
+				case roll < 0.55:
+					name = "infested_stone_bricks"
+				}
+				strongholdPutLocal(p, clip, out, x, y, z, name, nil)
+			}
+		}
+	}
 }
 func strongholdDoorPlacement(p strongholdPiece, clip structure.Bounds, out *structure.Placement) {
 	footX := int32(1)

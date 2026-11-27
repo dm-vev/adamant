@@ -63,7 +63,7 @@ func fromJson(d jsonData, lookupWorld func(world.Dimension) *world.World, fallba
 		HasRaidOmenPosition: d.HasRaidOmenPosition,
 		ShoulderLeft:        d.ShoulderLeft,
 		ShoulderRight:       d.ShoulderRight,
-		ExtraState:           world.CloneNativeEntityNBT(extraState),
+		ExtraState:          world.CloneNativeEntityNBT(extraState),
 		Components:          decodeComponentsNBT(d.ComponentsNBT),
 		RespawnDimension:    respawnDimension,
 		RespawnPosition:     d.RespawnPosition,

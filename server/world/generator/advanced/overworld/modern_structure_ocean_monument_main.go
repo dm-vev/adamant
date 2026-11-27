@@ -45,7 +45,7 @@ func (p modernOceanMonumentPiece) modernMonumentMainBlocks(clip structure.Bounds
 					if !exists {
 						name, _ = env.BaseBlock(pos[0], pos[1], pos[2]).EncodeBlock()
 					}
-     if monumentIsWater(name) || name == "minecraft:ice" || name == "minecraft:packed_ice" || name == "minecraft:blue_ice" {
+					if monumentIsWater(name) || name == "minecraft:ice" || name == "minecraft:packed_ice" || name == "minecraft:blue_ice" {
 						continue
 					}
 					if pos[1] >= 63 {
@@ -279,10 +279,18 @@ func (p modernOceanMonumentPiece) modernMonumentMainBlocks(clip structure.Bounds
 			put(x, 9, 45, "minecraft:prismarine_bricks")
 			put(x, 9, 52, "minecraft:prismarine_bricks")
 			if x == 12 || x == 18 || x == 24 || x == 33 || x == 39 || x == 45 {
-				for _, z := range []int32{47, 50} { put(x, 9, z, "minecraft:prismarine_bricks") }
-				for _, z := range []int32{45, 46, 51, 52} { put(x, 10, z, "minecraft:prismarine_bricks") }
-				for _, z := range []int32{47, 50} { put(x, 11, z, "minecraft:prismarine_bricks") }
-				for _, z := range []int32{48, 49} { put(x, 12, z, "minecraft:prismarine_bricks") }
+				for _, z := range []int32{47, 50} {
+					put(x, 9, z, "minecraft:prismarine_bricks")
+				}
+				for _, z := range []int32{45, 46, 51, 52} {
+					put(x, 10, z, "minecraft:prismarine_bricks")
+				}
+				for _, z := range []int32{47, 50} {
+					put(x, 11, z, "minecraft:prismarine_bricks")
+				}
+				for _, z := range []int32{48, 49} {
+					put(x, 12, z, "minecraft:prismarine_bricks")
+				}
 			}
 		}
 		for i := range int32(3) {
@@ -351,7 +359,7 @@ func (p modernOceanMonumentPiece) modernMonumentMainBlocks(clip structure.Bounds
 						if !exists {
 							name, _ = env.BaseBlock(pos[0], pos[1], pos[2]).EncodeBlock()
 						}
-      if name != "minecraft:air" && !monumentIsWater(name) && name != "minecraft:lava" && name != "minecraft:glow_lichen" && name != "minecraft:seagrass" && name != "minecraft:tall_seagrass" {
+						if name != "minecraft:air" && !monumentIsWater(name) && name != "minecraft:lava" && name != "minecraft:glow_lichen" && name != "minecraft:seagrass" && name != "minecraft:tall_seagrass" {
 							break
 						}
 						put(x, y, z, "minecraft:prismarine_bricks")

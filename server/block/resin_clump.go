@@ -20,7 +20,7 @@ type ResinClump struct {
 // resinClumpSpreader places resin clump faces for players.
 var resinClumpSpreader = multifaceSpreader[ResinClump]{block: ResinClump{}, types: defaultMultifaceSpreadOrder}
 
-func (r ResinClump) multiFaces() MultiFace                 { return r.Faces }
+func (r ResinClump) multiFaces() MultiFace                  { return r.Faces }
 func (r ResinClump) withMultiFaces(f MultiFace) world.Block { r.Faces = f; return r }
 
 // SideClosed allows water to flow through the clump's empty collision shape.

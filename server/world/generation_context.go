@@ -20,9 +20,9 @@ func (w *World) generationContext() GenerationContext {
 	w.set.Unlock()
 	now := time.Now()
 	return GenerationContext{
-		Difficulty: LocalDifficulty{Base: base, Effective: calculateEffectiveDifficulty(base, clockTime, 0, moonBrightness(clockTime))},
-		Halloween:  now.Month() == time.October && now.Day() == 31,
-		GameTime:   gameTime,
+		Difficulty:     LocalDifficulty{Base: base, Effective: calculateEffectiveDifficulty(base, clockTime, 0, moonBrightness(clockTime))},
+		Halloween:      now.Month() == time.October && now.Day() == 31,
+		GameTime:       gameTime,
 		MoonBrightness: moonBrightness(clockTime),
 	}
 }

@@ -139,6 +139,7 @@ func (srv *Server) OperatorEntries() ([]string, error) {
 	}
 	return srv.entryStrings(srv.operators.view), nil
 }
+
 // BanPlayer bans the player of the name passed, or "xuid:<XUID>", as
 // ResolvePlayer resolves it, for the reason passed, for ever, recording no
 // time or source, as the server always banned. A player online of the ban
@@ -233,6 +234,7 @@ func (srv *Server) PardonPlayer(name string) (bool, error) {
 	}
 	return srv.bans.remove(k)
 }
+
 // BanIP bans the address passed alone, an IPv6 address too, for the reason
 // passed, for ever, recording no time or source, as the server always
 // banned. The players

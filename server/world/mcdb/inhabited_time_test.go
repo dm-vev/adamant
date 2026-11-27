@@ -15,7 +15,7 @@ func TestInhabitedTimePersistsAcrossProviderRestart(t *testing.T) {
 	}
 	pos := world.ChunkPos{12, -7}
 	col := &chunk.Column{
-		Chunk:        chunk.New(world.DefaultBlockRegistry, world.Overworld.Range()),
+		Chunk:         chunk.New(world.DefaultBlockRegistry, world.Overworld.Range()),
 		InhabitedTime: 3_600_001,
 	}
 	if err := db.StoreColumn(pos, world.Overworld, col); err != nil {

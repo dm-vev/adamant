@@ -13,9 +13,9 @@ import (
 // structure-placement locate position. Position is not necessarily the start
 // chunk centre: structure placements may define a locate offset.
 type StructureLocation struct {
-	ID        string
+	ID         string
 	StartChunk ChunkPos
-	Position  cube.Pos
+	Position   cube.Pos
 }
 
 // StructureReference identifies a structure start already returned to a
@@ -26,7 +26,6 @@ type StructureReference struct {
 	StructureID string
 	StartChunk  ChunkPos
 }
-
 
 // StructureLocator is implemented by Java world generators. isReferenced is
 // called for each candidate start so a locate request can skip starts already

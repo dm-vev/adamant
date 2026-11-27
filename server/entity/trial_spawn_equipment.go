@@ -16,25 +16,43 @@ import (
 // decodes it, as TrialSpawner.spawnMob equips the mob.
 func applyTrialEquipment(opts world.EntitySpawnOpts, native map[string]any, id string) error {
 	spawnData := opts.SpawnData
-	if spawnData == nil { return nil }
+	if spawnData == nil {
+		return nil
+	}
 	equipment, _ := spawnData["equipment"].(map[string]any)
-	if equipment == nil { return nil }
+	if equipment == nil {
+		return nil
+	}
 	table, _ := equipment["loot_table"].(string)
-	if table == "" { return nil }
+	if table == "" {
+		return nil
+	}
 	seed := opts.SpawnSeed
-	if seed == 0 { seed = 1 }
+	if seed == 0 {
+		seed = 1
+	}
 	random := vanilla.NewLegacyRandom(seed)
 	stacks, err := loot.Generate(table, seed, loot.Context{Random: &random, Origin: opts.Position, Entity: id})
-	if err != nil { return fmt.Errorf("generate trial equipment from %q: %w", table, err) }
+	if err != nil {
+		return fmt.Errorf("generate trial equipment from %q: %w", table, err)
+	}
 	gear := readNativeMobEquipment(native)
-	if gear.Armor == nil { gear.Armor = make([]nativeMobItem, 4) }
+	if gear.Armor == nil {
+		gear.Armor = make([]nativeMobItem, 4)
+	}
 	used := map[int]bool{}
 	for _, stack := range stacks {
-		if stack.Empty() { continue }
+		if stack.Empty() {
+			continue
+		}
 		slot := trialEquipmentSlot(stack.Item())
-		if used[slot] { continue }
+		if used[slot] {
+			continue
+		}
 		entry, err := nativeMobEquipmentItem(stack)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		used[slot] = true
 		switch {
 		case slot >= 0 && slot < 4:
@@ -45,7 +63,9 @@ func applyTrialEquipment(opts world.EntitySpawnOpts, native map[string]any, id s
 			gear.Offhand = []nativeMobItem{entry}
 		}
 	}
-	for key, value := range encodeNativeMobEquipment(gear) { native[key] = value }
+	for key, value := range encodeNativeMobEquipment(gear) {
+		native[key] = value
+	}
 	return nil
 }
 
@@ -86,6 +106,8 @@ func trialEquipmentSlot(it world.Item) int {
 func nativeMobEquipmentItem(stack item.Stack) (nativeMobItem, error) {
 	raw := item.WriteNBT(stack)
 	name, ok := raw["Name"].(string)
-	if !ok || name == "" { return nativeMobItem{}, fmt.Errorf("trial equipment item has no native Bedrock name") }
+	if !ok || name == "" {
+		return nativeMobItem{}, fmt.Errorf("trial equipment item has no native Bedrock name")
+	}
 	return nativeMobItem{Name: name, Count: nativeNBTByte(raw["Count"]), Damage: int32(nbtconv.Int32(raw, "Damage")), WasPickedUp: 0, Raw: raw}, nil
 }

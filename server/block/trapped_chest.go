@@ -41,7 +41,7 @@ func (TrappedChest) canPairChest(other world.Block) bool   { _, ok := other.(Tra
 
 // WithJavaChestState preserves contents across pairing updates.
 func (c TrappedChest) WithChestState(previous world.Block, pos cube.Pos, kind string) world.Block {
-	c.Chest = c.Chest.withChestState(previous, pos, kind)
+	c.Chest = c.withChestState(previous, pos, kind)
 	return c
 }
 

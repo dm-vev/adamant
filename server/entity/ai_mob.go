@@ -86,7 +86,7 @@ type MobAI struct {
 	capsSelf    world.Entity
 	capsLiving  Living
 	capsEffect  mobEffectHolder
-	canonicalID      string
+	canonicalID string
 	despawnDist float64
 
 	tickCount    int

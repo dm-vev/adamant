@@ -25,11 +25,17 @@ func finalizeJigsawTemplateEntities(placement *Placement, env ProcessorEnvironme
 			kept = append(kept, spawn)
 			continue
 		case "minecraft:piglin_brute", "minecraft:hoglin", "minecraft:zombie_villager":
-			if env.GenerationContext.Difficulty.Base == world.DifficultyPeaceful { continue }
+			if env.GenerationContext.Difficulty.Base == world.DifficultyPeaceful {
+				continue
+			}
 		}
-		if env.BiomeAt == nil { return fmt.Errorf("template Mob %s has no live biome source", id) }
+		if env.BiomeAt == nil {
+			return fmt.Errorf("template Mob %s has no live biome source", id)
+		}
 		pos := [3]int32{int32(math.Floor(spawn.Pos[0])), int32(math.Floor(spawn.Pos[1])), int32(math.Floor(spawn.Pos[2]))}
-		if id == "minecraft:piglin_brute" && env.SourceDimension == "" { return fmt.Errorf("Brute template has no dimension for HOME") }
+		if id == "minecraft:piglin_brute" && env.SourceDimension == "" {
+			return fmt.Errorf("brute template has no dimension for HOME")
+		}
 		blackCats := false
 		if id == "minecraft:cat" && env.CatsSpawnAsBlackAt != nil {
 			blackCats = env.CatsSpawnAsBlackAt(pos[0], pos[1], pos[2])
@@ -40,8 +46,12 @@ func finalizeJigsawTemplateEntities(placement *Placement, env ProcessorEnvironme
 			Generation: env.GenerationContext, Biome: env.BiomeAt(pos[0], pos[1], pos[2]), Dimension: env.SourceDimension,
 			Position: pos, CatsSpawnAsBlack: blackCats,
 		})
-		if err != nil { return err }
-		if !keep { continue }
+		if err != nil {
+			return err
+		}
+		if !keep {
+			continue
+		}
 		spawn.SpawnReason, spawn.SpawnFinalized, spawn.EntityRandom = "structure", true, &own
 		if vehicle != nil {
 			spawn = Entity{ID: uuid.New(), Pos: spawn.Pos, BlockPos: spawn.BlockPos, NBT: vehicle, Seed: spawn.Seed,

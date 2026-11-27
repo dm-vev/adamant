@@ -28,9 +28,9 @@ func (p *staticPacket) Unwrap() proto.Packet { return p.Packet }
 // once.
 type recipeData struct {
 	// count is the number of recipes registered when it was made.
-	count   int
-	packet  *staticPacket
-	recipes map[uint32]recipe.Recipe
+	count    int
+	packet   *staticPacket
+	recipes  map[uint32]recipe.Recipe
 	stateIDs map[string][]string
 }
 

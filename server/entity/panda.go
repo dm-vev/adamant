@@ -46,8 +46,10 @@ type pandaState struct {
 // pandaShownState are the flags of a panda viewers were last shown.
 type pandaShownState struct{ sitting, rolling, lying, sneezing, eating, scared bool }
 
-func NewPanda(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(entityPandaType, pandaConfig{}) }
-func (pandaType) EncodeEntity() string                     { return "minecraft:panda" }
+func NewPanda(o world.EntitySpawnOpts) *world.EntityHandle {
+	return o.New(entityPandaType, pandaConfig{})
+}
+func (pandaType) EncodeEntity() string { return "minecraft:panda" }
 func (pandaType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
 		pandaConfig{}.Apply(d)

@@ -89,7 +89,9 @@ func (g permittedTestGenerator) GenerateChunk(pos ChunkPos, c *chunk.Chunk, ctx 
 	return stoneTestGenerator{}.GenerateChunk(pos, c, ctx)
 }
 
-func (permittedTestGenerator) DefaultSpawn(d Dimension) cube.Pos { return stoneTestGenerator{}.DefaultSpawn(d) }
+func (permittedTestGenerator) DefaultSpawn(d Dimension) cube.Pos {
+	return stoneTestGenerator{}.DefaultSpawn(d)
+}
 
 // TestLightSpreadsWaitFarFromTickingColumns generates chunks further from a
 // loader than its simulation distance and checks the light around those far

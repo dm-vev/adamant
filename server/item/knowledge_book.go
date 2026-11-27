@@ -33,8 +33,8 @@ func (KnowledgeBook) MaxCount() int { return 1 }
 // EncodeItem uses the custom-item registry because BDS has no knowledge book.
 func (KnowledgeBook) EncodeItem() (name string, meta int16) { return "adamant:knowledge_book", 0 }
 
-func (KnowledgeBook) Name() string { return "Knowledge Book" }
-func (KnowledgeBook) Texture() image.Image { return knowledgeBookTexture() }
+func (KnowledgeBook) Name() string                { return "Knowledge Book" }
+func (KnowledgeBook) Texture() image.Image        { return knowledgeBookTexture() }
 func (KnowledgeBook) Category() category.Category { return category.Items() }
 
 func (k KnowledgeBook) EncodeNBT() map[string]any {

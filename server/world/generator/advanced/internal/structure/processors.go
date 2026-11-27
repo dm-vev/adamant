@@ -52,4 +52,3 @@ func LoadProcessorList(name string) ([]ProcessorSpec, error) {
 	actual, _ := processorListCache.LoadOrStore(name, out)
 	return actual.([]ProcessorSpec), nil
 }
-

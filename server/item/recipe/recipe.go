@@ -64,7 +64,7 @@ func NewUserDataShapeless(input []Item, output item.Stack, block string) UserDat
 // Multi enables a recipe whose behaviour is hardcoded in the vanilla client and identified by UUID.
 type Multi struct {
 	recipe
-	id      uuid.UUID
+	id       uuid.UUID
 	stateIDs []string
 }
 

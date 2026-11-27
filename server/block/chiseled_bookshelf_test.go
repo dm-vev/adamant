@@ -13,11 +13,11 @@ import (
 type chiseledBookshelfUser struct {
 	pistonTestUser
 	held item.Stack
-	inv *inventory.Inventory
+	inv  *inventory.Inventory
 }
 
 func (u *chiseledBookshelfUser) HeldItems() (item.Stack, item.Stack) { return u.held, item.Stack{} }
-func (u *chiseledBookshelfUser) Inventory() *inventory.Inventory { return u.inv }
+func (u *chiseledBookshelfUser) Inventory() *inventory.Inventory     { return u.inv }
 
 func TestChiseledBookshelfSlotsAndActorRoundTrip(t *testing.T) {
 	t.Parallel()

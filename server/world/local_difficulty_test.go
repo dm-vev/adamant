@@ -5,12 +5,12 @@ import "testing"
 func TestEffectiveDifficultyBoundaries(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
-		name string
-		base Difficulty
-		time int64
+		name  string
+		base  Difficulty
+		time  int64
 		local uint64
-		moon float32
-		want float32
+		moon  float32
+		want  float32
 	}{
 		{"peaceful ignores modifiers", DifficultyPeaceful, 10_000_000, 10_000_000, 1, 0},
 		{"global offset start", DifficultyNormal, 72_000, 0, 1, 1.5},

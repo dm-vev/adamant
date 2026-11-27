@@ -122,14 +122,16 @@ type witchBehaviour struct {
 }
 type witch struct{ *Ent }
 
-func NewWitch(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(entityWitchType, witchConfig{}) }
-func (*witch) SpeciesType() world.EntityType               { return entityWitchType }
-func (w *witch) behaviour() *witchBehaviour                { return w.Behaviour().(*witchBehaviour) }
-func (w *witch) Tick(tx *world.Tx, n int64)                { w.behaviour().effects.Tick(w, tx); w.Ent.Tick(tx, n) }
-func (w *witch) RaidID() int64                             { return w.behaviour().raidID }
-func (w *witch) RaidWave() int                             { return w.behaviour().raidWave }
-func (w *witch) IsRaidLeader() bool                        { return w.behaviour().raidLeader }
-func (w *witch) CloseIn(tx *world.Tx) error                { tx.Raids().RaiderDied(w); return w.Ent.CloseIn(tx) }
+func NewWitch(o world.EntitySpawnOpts) *world.EntityHandle {
+	return o.New(entityWitchType, witchConfig{})
+}
+func (*witch) SpeciesType() world.EntityType { return entityWitchType }
+func (w *witch) behaviour() *witchBehaviour  { return w.Behaviour().(*witchBehaviour) }
+func (w *witch) Tick(tx *world.Tx, n int64)  { w.behaviour().effects.Tick(w, tx); w.Ent.Tick(tx, n) }
+func (w *witch) RaidID() int64               { return w.behaviour().raidID }
+func (w *witch) RaidWave() int               { return w.behaviour().raidWave }
+func (w *witch) IsRaidLeader() bool          { return w.behaviour().raidLeader }
+func (w *witch) CloseIn(tx *world.Tx) error  { tx.Raids().RaiderDied(w); return w.Ent.CloseIn(tx) }
 func (b *witchBehaviour) joinRaid(e *Ent, tx *world.Tx) {
 	raid := tx.Raids().ForRaider(e)
 	if raid != nil {

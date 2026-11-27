@@ -274,9 +274,9 @@ func TestPositionTrackingFailedLoadBlocksAllocationUntilRecovery(t *testing.T) {
 	stored := cube.Pos{3, 70, 3}
 	provider := &trackingTestProvider{
 		NopProvider: NopProvider{WorldData: &WorldDataMemory{}},
-		data:      PositionTrackingData{Next: 3, Entries: []PositionTrackingEntry{{Handle: 3, Position: stored, Active: true}}},
-		loadErr:   errors.New("temporary read failure"),
-		failLoads: 2,
+		data:        PositionTrackingData{Next: 3, Entries: []PositionTrackingEntry{{Handle: 3, Position: stored, Active: true}}},
+		loadErr:     errors.New("temporary read failure"),
+		failLoads:   2,
 	}
 	w := Config{Provider: provider, Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
@@ -299,9 +299,9 @@ func TestPositionTrackingFailedLoadPreservesLoadedHandleUntilRecovery(t *testing
 	pos := cube.Pos{7, 70, 7}
 	provider := &trackingTestProvider{
 		NopProvider: NopProvider{WorldData: &WorldDataMemory{}},
-		data:      PositionTrackingData{Next: 7, Entries: []PositionTrackingEntry{{Handle: 7, Position: pos, Active: true}}},
-		loadErr:   errors.New("temporary read failure"),
-		failLoads: 2,
+		data:        PositionTrackingData{Next: 7, Entries: []PositionTrackingEntry{{Handle: 7, Position: pos, Active: true}}},
+		loadErr:     errors.New("temporary read failure"),
+		failLoads:   2,
 	}
 	w := Config{Provider: provider, Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })

@@ -448,10 +448,10 @@ func (r *nbtReader) readPaletteStates(tagType byte, pi int) ([]world.BlockState,
 
 func (r *nbtReader) readPaletteState(pi, idx int) (world.BlockState, error) {
 	var (
-		nameCap, nameLow, nameID       string
-		hasCap, hasLow, hasID          bool
-		propsCap, propsLow             map[string]any
-		hasPropsCap, hasPropsLow       bool
+		nameCap, nameLow, nameID string
+		hasCap, hasLow, hasID    bool
+		propsCap, propsLow       map[string]any
+		hasPropsCap, hasPropsLow bool
 	)
 	for {
 		t, err := r.readByte()

@@ -122,12 +122,18 @@ func TestDropperDispensesAfterShortRedstonePulse(t *testing.T) {
 		tx.SetBlock(pos, d, nil)
 		tx.SetBlock(pos.Side(d.Facing), NewBarrel(), nil)
 		powered, changed := d.RedstonePowerUpdate(pos, tx, 15)
-		if changed { tx.SetBlock(pos, powered, nil) }
+		if changed {
+			tx.SetBlock(pos, powered, nil)
+		}
 		d.RedstonePowerPostUpdate(pos, tx, d, powered, 0, 15)
 		unpowered, changed := powered.(Dropper).RedstonePowerUpdate(pos, tx, 0)
-		if changed { tx.SetBlock(pos, unpowered, nil) }
+		if changed {
+			tx.SetBlock(pos, unpowered, nil)
+		}
 	})
-	for range 6 { w.AdvanceTick() }
+	for range 6 {
+		w.AdvanceTick()
+	}
 	<-w.Exec(func(tx *world.Tx) {
 		got := tx.Block(pos).(Dropper)
 		source, _ := got.inventory.Item(0)

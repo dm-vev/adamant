@@ -69,10 +69,10 @@ func (s stateSel) or(other stateSel) stateSel {
 type ruleCtx struct {
 	canonical, native string
 	// prop is the Java property and target the native one.
-	prop, target string
-	canonicalProps    map[string]any
-	nativeProps  map[string]any
-	out          map[string]any
+	prop, target   string
+	canonicalProps map[string]any
+	nativeProps    map[string]any
+	out            map[string]any
 }
 
 // fail formats a row's message. {v} is the value, {q} the value quoted,

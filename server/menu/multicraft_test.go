@@ -207,8 +207,8 @@ func (p *mapProvider) AllocateMapID() (int64, error) {
 	return p.nextID, nil
 }
 
-func (p *mapProvider) CanonicalMapID(id int64) (int32, error)   { return int32(id), nil }
-func (p *mapProvider) NativeMapID(id int32) (int64, error) { return int64(id), nil }
+func (p *mapProvider) CanonicalMapID(id int64) (int32, error) { return int32(id), nil }
+func (p *mapProvider) NativeMapID(id int32) (int64, error)    { return int64(id), nil }
 
 // TestMultiCraftMapsAtTheCartographyTable checks the map recipes of a
 // cartography table: its two inputs, named for their roles, a map locked

@@ -45,7 +45,7 @@ func (CopperChest) canPairChest(other world.Block) bool   { _, ok := other.(Copp
 
 // WithJavaChestState preserves contents across source oxidation and pairing updates.
 func (c CopperChest) WithChestState(previous world.Block, pos cube.Pos, kind string) world.Block {
-	c.Chest = c.Chest.withChestState(previous, pos, kind)
+	c.Chest = c.withChestState(previous, pos, kind)
 	return c
 }
 func (c CopperChest) CanOxidate() bool                              { return !c.Waxed }

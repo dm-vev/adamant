@@ -72,11 +72,11 @@ func FilledMapVariantFromID(id string) (FilledMapVariant, bool) {
 // FilledMap is a Bedrock filled map referencing persisted world data by its
 // native signed map UUID. JavaID is a separate Java map registry ID.
 type FilledMap struct {
-	CanonicalID      int32
-	HasCanonicalID   bool
-	NativeID    int64
-	HasNativeID bool
-	Variant     FilledMapVariant
+	CanonicalID    int32
+	HasCanonicalID bool
+	NativeID       int64
+	HasNativeID    bool
+	Variant        FilledMapVariant
 }
 
 // MaxCount returns Java's default item stack size for maps.

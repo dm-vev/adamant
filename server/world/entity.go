@@ -85,7 +85,7 @@ type EntityHandle struct {
 	spawnSeed      int64
 	spawnRandom    *vanilla.Random
 	spawnGroup     *EntitySpawnGroup
-	vanillaRandom     *vanilla.Random
+	vanillaRandom  *vanilla.Random
 	pendingVehicle uuid.UUID
 
 	// TODO Handler? Handle world change here?

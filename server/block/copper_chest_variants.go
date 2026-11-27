@@ -6,12 +6,13 @@ import (
 )
 
 var (
-	hashCopperChest = NextHash()
-	hashVault = NextHash()
-	hashTrialSpawner = NextHash()
+	hashCopperChest       = NextHash()
+	hashVault             = NextHash()
+	hashTrialSpawner      = NextHash()
 	hashChiseledBookshelf = NextHash()
-	hashCrafter = NextHash()
+	hashCrafter           = NextHash()
 )
+
 func allCopperChests() []world.Block {
 	blocks := make([]world.Block, 0, 32)
 	for _, oxidation := range OxidationTypes() {

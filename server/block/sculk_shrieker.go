@@ -23,7 +23,7 @@ type SculkShrieker struct {
 	CanSummon               bool
 	Shrieking               bool
 	listener                *world.VibrationData
-	shriekerState               map[string]any
+	shriekerState           map[string]any
 	nativeVibrationListener map[string]any
 }
 

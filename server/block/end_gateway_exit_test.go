@@ -10,9 +10,9 @@ import (
 func TestGatewayFullCollisionShapeUnion(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
-		name string
+		name  string
 		boxes []cube.BBox
-		full bool
+		full  bool
 	}{
 		{name: "empty"},
 		{name: "full cube", boxes: []cube.BBox{cube.Box(0, 0, 0, 1, 1, 1)}, full: true},

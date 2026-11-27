@@ -300,9 +300,18 @@ func (p minePiece) Place(clip structure.Bounds, env structure.ProcessorEnvironme
 	return out, nil
 }
 
-func mineLocal(p minePiece,x,y,z int32)(int32,int32,int32){
-	b:=p.box
-	switch p.facing{case "north":return b.Min[0]+x,b.Min[1]+y,b.Max[2]-z;case "south":return b.Min[0]+x,b.Min[1]+y,b.Min[2]+z;case "west":return b.Max[0]-z,b.Min[1]+y,b.Min[2]+x;default:return b.Min[0]+z,b.Min[1]+y,b.Min[2]+x}
+func mineLocal(p minePiece, x, y, z int32) (int32, int32, int32) {
+	b := p.box
+	switch p.facing {
+	case "north":
+		return b.Min[0] + x, b.Min[1] + y, b.Max[2] - z
+	case "south":
+		return b.Min[0] + x, b.Min[1] + y, b.Min[2] + z
+	case "west":
+		return b.Max[0] - z, b.Min[1] + y, b.Min[2] + x
+	default:
+		return b.Min[0] + z, b.Min[1] + y, b.Min[2] + x
+	}
 }
 func mineBlockDirection(pieceDirection, local string) string {
 	switch pieceDirection {
@@ -589,10 +598,32 @@ func mineLootChest(p minePiece, out *structure.Placement, journal *journalStruct
 	out.Entities = append(out.Entities, structure.Entity{Pos: [3]float64{float64(wx) + 0.5, float64(wy) + 0.5, float64(wz) + 0.5}, BlockPos: [3]int32{wx, wy, wz}, NBT: map[string]any{"id": "minecraft:chest_minecart", "LootTable": loot, "LootTableSeed": lootSeed}, SpawnReason: "CHUNK_GENERATION"})
 }
 
-type mineGraph struct { pieces []minePiece; boxes []structure.Box; r *vanilla.Random; wood string; origin [3]int32 }
+type mineGraph struct {
+	pieces []minePiece
+	boxes  []structure.Box
+	r      *vanilla.Random
+	wood   string
+	origin [3]int32
+}
 
-func (g *mineGraph) add(p minePiece) bool { for _,b:=range g.boxes {if boxesOverlap(b,p.box){return false}};g.pieces=append(g.pieces,p);g.boxes=append(g.boxes,p.box);return true }
-func boxesOverlap(a,b structure.Box)bool {for i:=range 3 {if a.Max[i]<b.Min[i]||b.Max[i]<a.Min[i] {return false}};return true}
+func (g *mineGraph) add(p minePiece) bool {
+	for _, b := range g.boxes {
+		if boxesOverlap(b, p.box) {
+			return false
+		}
+	}
+	g.pieces = append(g.pieces, p)
+	g.boxes = append(g.boxes, p.box)
+	return true
+}
+func boxesOverlap(a, b structure.Box) bool {
+	for i := range 3 {
+		if a.Max[i] < b.Min[i] || b.Max[i] < a.Min[i] {
+			return false
+		}
+	}
+	return true
+}
 func (g *mineGraph) child(x, y, z int32, dir string, depth int) {
 	if depth > 9 || abs32(x-g.origin[0]) > 80 || abs32(z-g.origin[2]) > 80 {
 		return
@@ -666,7 +697,14 @@ func (g *mineGraph) child(x, y, z int32, dir string, depth int) {
 	}
 	g.branch(p, depth)
 }
-func(g *mineGraph)canAdd(box structure.Box)bool{for _,other:=range g.boxes{if boxesOverlap(other,box){return false}};return true}
+func (g *mineGraph) canAdd(box structure.Box) bool {
+	for _, other := range g.boxes {
+		if boxesOverlap(other, box) {
+			return false
+		}
+	}
+	return true
+}
 func (g *mineGraph) branch(p minePiece, depth int) {
 	b := p.box
 	if p.kind == "room" {
@@ -842,10 +880,27 @@ func (g *mineGraph) branch(p minePiece, depth int) {
 		g.child(x, y, z, p.facing, depth+1)
 	}
 }
-func mbox(x0,y0,z0,x1,y1,z1 int32)structure.Box{return structure.Box{Min:[3]int32{x0,y0,z0},Max:[3]int32{x1,y1,z1}}}
-func abs32(v int32)int32{if v<0{return -v};return v}
-func max32(a,b int32)int32{if a>b{return a};return b}
-func min32(a,b int32)int32{if a<b{return a};return b}
+func mbox(x0, y0, z0, x1, y1, z1 int32) structure.Box {
+	return structure.Box{Min: [3]int32{x0, y0, z0}, Max: [3]int32{x1, y1, z1}}
+}
+func abs32(v int32) int32 {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+func max32(a, b int32) int32 {
+	if a > b {
+		return a
+	}
+	return b
+}
+func min32(a, b int32) int32 {
+	if a < b {
+		return a
+	}
+	return b
+}
 
 func buildModernMineshaft(in modernStructureBuildInput) (modernStructureStart, bool, error) {
 	if in.random == nil || in.source == nil {

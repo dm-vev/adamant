@@ -600,7 +600,9 @@ func (f *frog) JumpGoalJumping() bool { return f.behaviour().pose == frogLongJum
 // nil.
 func (f *frog) TongueTargetHandle() *world.EntityHandle { return f.behaviour().tongueTarget }
 
-func NewFrog(opts world.EntitySpawnOpts) *world.EntityHandle { return opts.New(entityFrogType, frogConfig{}) }
+func NewFrog(opts world.EntitySpawnOpts) *world.EntityHandle {
+	return opts.New(entityFrogType, frogConfig{})
+}
 
 var _ world.EntityType = frogType{}
 var _ Living = (*frog)(nil)

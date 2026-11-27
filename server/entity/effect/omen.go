@@ -55,6 +55,7 @@ func (raidOmen) ApplyWithTx(e world.Entity, eff Effect, tx *world.Tx) {
 		}
 	}
 }
+
 // TrialOmen is applied by trial spawners to begin an ominous trial.
 var TrialOmen trialOmen
 
@@ -64,6 +65,7 @@ type trialOmen struct{ nopLasting }
 func (trialOmen) RGBA() color.RGBA { return color.RGBA{R: 0x16, G: 0xa6, B: 0xa6, A: 0xff} }
 
 func (trialOmen) Apply(world.Entity, Effect) {}
+
 // HeroOfTheVillage is granted to players after they successfully defend a
 // village from a raid.
 var HeroOfTheVillage heroOfTheVillage

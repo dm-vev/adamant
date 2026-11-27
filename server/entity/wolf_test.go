@@ -64,7 +64,7 @@ func TestWolfNBTPreservesTamableAndArmorState(t *testing.T) {
 func TestNewFromCanonicalNBTRejectsUnknownWolfEquipment(t *testing.T) {
 	t.Parallel()
 	_, err := NewFromStructureNBT(map[string]any{
-		"id": "minecraft:wolf",
+		"id":        "minecraft:wolf",
 		"equipment": map[string]any{"body": map[string]any{"id": "minecraft:not_an_item", "count": int32(1)}},
 	}, world.EntitySpawnOpts{})
 	if err == nil {

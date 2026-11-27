@@ -124,9 +124,11 @@ type wardenState struct {
 // smell.
 type warden struct{ *Ent }
 
-func NewWarden(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(entityWardenType, wardenConfig{}) }
-func (*warden) SpeciesType() world.EntityType               { return entityWardenType }
-func (w *warden) state() *wardenState                       { return w.Behaviour().(*wardenState) }
+func NewWarden(o world.EntitySpawnOpts) *world.EntityHandle {
+	return o.New(entityWardenType, wardenConfig{})
+}
+func (*warden) SpeciesType() world.EntityType { return entityWardenType }
+func (w *warden) state() *wardenState         { return w.Behaviour().(*wardenState) }
 
 // ignoresExplosion ports Warden.ignoreExplosion: a warden that digs into the
 // ground or emerges from it is not pushed.

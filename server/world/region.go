@@ -86,7 +86,7 @@ type region struct {
 	fatal *Fault
 	// javaRandom and lootSequences are the streams the region draws from in
 	// place of the world's, seeded from them.
-	vanillaRandom    *vanilla.Random
+	vanillaRandom *vanilla.Random
 	lootSequences map[string]*vanilla.Random
 	// locals are the values Tx.Local keeps for the worker ticking the
 	// region.

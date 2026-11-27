@@ -67,7 +67,7 @@ type PalettedStorage struct {
 	// point to block states.
 	palette             *Palette
 	missingStateEntries map[uint16]missingStateEntry
-	stateIDs        map[uint16]uint32
+	stateIDs            map[uint16]uint32
 	// indices contains all indices in the PalettedStorage and changes only when the whole storage is resized.
 	indices []uint32
 }

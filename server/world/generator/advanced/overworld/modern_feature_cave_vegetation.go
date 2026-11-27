@@ -189,7 +189,6 @@ func vegetationPatchHashSetOrder(positions []featurePos) []featurePos {
 	return ordered
 }
 
-
 func vegetationPatchSturdy(region *featureRegion, pos, faceDirection featurePos) bool {
 	face := cube.FaceUp
 	switch {

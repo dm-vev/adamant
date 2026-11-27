@@ -14,8 +14,8 @@ type blockState struct {
 	// changes of their blocks.
 	blockUpdates blockUpdateQueue
 	// gameEventBlocks caches the game event flags of block runtime IDs.
-	gameEventBlocks   ridCache[uint8]
-	heightmapTags [2]ridCache[bool]
+	gameEventBlocks ridCache[uint8]
+	heightmapTags   [2]ridCache[bool]
 }
 
 // blockLoaded reads a block from a position only if its chunk is already loaded.

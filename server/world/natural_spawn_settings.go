@@ -65,7 +65,7 @@ func BiomeAttribute(biome, attribute string, def float32) float32 {
 	return def
 }
 
-var ErrBiomeNaturalSpawnsUnavailable = errors.New("Java biome natural spawn settings unavailable")
+var ErrBiomeNaturalSpawnsUnavailable = errors.New("biome natural spawn settings unavailable")
 
 // JavaBiomeNaturalSpawns returns the exact natural mob spawn rows embedded from
 // the Java 26.3 biome registry for the biome name passed.
@@ -101,12 +101,12 @@ func loadBiomeSpawnSettings() {
 			Attributes map[string]json.RawMessage `json:"attributes"`
 		}
 		if err := json.Unmarshal(data, &root); err != nil {
-			spawnSettingsErr = fmt.Errorf("decode Java biome spawn settings %s: %w", name, err)
+			spawnSettingsErr = fmt.Errorf("decode biome spawn settings %s: %w", name, err)
 			return
 		}
 		attribute, ok := root.Attributes["minecraft:gameplay/natural_mob_spawns"]
 		if !ok {
-			spawnSettingsErr = fmt.Errorf("Java biome %s has no natural mob spawn settings", filepath.Base(name))
+			spawnSettingsErr = fmt.Errorf("biome %s has no natural mob spawn settings", filepath.Base(name))
 			return
 		}
 		biome := strings.TrimSuffix(filepath.Base(name), ".json")

@@ -16,4 +16,6 @@ type OminousTrialKey struct{}
 func (OminousTrialKey) MaxCount() int { return 64 }
 
 // EncodeItem returns the Bedrock item identifier.
-func (OminousTrialKey) EncodeItem() (name string, meta int16) { return "minecraft:ominous_trial_key", 0 }
+func (OminousTrialKey) EncodeItem() (name string, meta int16) {
+	return "minecraft:ominous_trial_key", 0
+}

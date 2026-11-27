@@ -17,8 +17,8 @@ import (
 // Bedrock's exact RGBA byte array for lossless storage and packet delivery.
 type MapData struct {
 	ID                                                 int64
-	CanonicalID                                             int32
-	HasCanonicalID                                          bool
+	CanonicalID                                        int32
+	HasCanonicalID                                     bool
 	ParentID                                           int64
 	Dimension                                          int32
 	CenterX, CenterZ                                   int32
@@ -61,10 +61,10 @@ type MapPixelPatch struct {
 
 // MapFrameInfo describes the map stack displayed by a loaded item frame.
 type MapFrameInfo struct {
-	NativeID    int64
-	HasNativeID bool
-	CanonicalID      int32
-	HasCanonicalID   bool
+	NativeID       int64
+	HasNativeID    bool
+	CanonicalID    int32
+	HasCanonicalID bool
 }
 
 type mapFrameProvider interface {

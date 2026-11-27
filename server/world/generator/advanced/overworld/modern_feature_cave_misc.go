@@ -361,12 +361,21 @@ func placeModernReplaceBlob(region *featureRegion, config map[string]any, origin
 }
 
 func featureRequireState(region *featureRegion, id string) world.NativeState {
-	if !strings.Contains(id, ":") { id = "minecraft:" + id }
+	if !strings.Contains(id, ":") {
+		id = "minecraft:" + id
+	}
 	state, err := world.ResolveState(region.c.BlockRegistry(), world.BlockState{Name: id})
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	return state
 }
-func absI32(x int32) int32 { if x<0 { return -x }; return x }
+func absI32(x int32) int32 {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
 func placeModernDelta(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	contents, ok := featureStateBlock(config["contents"])
 	if !ok {
@@ -447,18 +456,30 @@ func caveDeltaClear(region *featureRegion, p featurePos, contents string) bool {
 	}
 	return true
 }
-func manhattanPositions(origin featurePos,reachX,reachY,reachZ int32,visit func(featurePos,int32)bool){
-	maxDepth:=reachX+reachY+reachZ
-	for depth:=int32(0);depth<=maxDepth;depth++{
-		maxX:=reachX;if depth<maxX{maxX=depth}
-		for x:=-maxX;x<=maxX;x++{
-			maxY:=reachY;if depth-absI32(x)<maxY{maxY=depth-absI32(x)}
-			for y:=-maxY;y<=maxY;y++{
-				z:=depth-absI32(x)-absI32(y)
-				if z>reachZ{continue}
-				for _,zz:=range []int32{z,-z}{
-					if !visit(featurePos{origin.x+x,origin.y+y,origin.z+zz},depth){return}
-					if zz==0{break}
+func manhattanPositions(origin featurePos, reachX, reachY, reachZ int32, visit func(featurePos, int32) bool) {
+	maxDepth := reachX + reachY + reachZ
+	for depth := int32(0); depth <= maxDepth; depth++ {
+		maxX := reachX
+		if depth < maxX {
+			maxX = depth
+		}
+		for x := -maxX; x <= maxX; x++ {
+			maxY := reachY
+			if depth-absI32(x) < maxY {
+				maxY = depth - absI32(x)
+			}
+			for y := -maxY; y <= maxY; y++ {
+				z := depth - absI32(x) - absI32(y)
+				if z > reachZ {
+					continue
+				}
+				for _, zz := range []int32{z, -z} {
+					if !visit(featurePos{origin.x + x, origin.y + y, origin.z + zz}, depth) {
+						return
+					}
+					if zz == 0 {
+						break
+					}
 				}
 			}
 		}

@@ -123,8 +123,8 @@ func (d DriedGhast) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 			return
 		}
 		opts := world.EntitySpawnOpts{
-			Position:   pos.Vec3().Add(mgl64.Vec3{.5, 0, .5}),
-			Rotation:   cube.Rotation{ghastYaw(d.Facing), 0},
+			Position:    pos.Vec3().Add(mgl64.Vec3{.5, 0, .5}),
+			Rotation:    cube.Rotation{ghastYaw(d.Facing), 0},
 			SpawnReason: "breeding",
 		}
 		ghastling := spawn("minecraft:happy_ghast", opts)

@@ -19,12 +19,12 @@ const (
 // Overworld generates Java 26.3 terrain and features with Bedrock block states.
 // Immutable terrain previews and worker-local samplers permit concurrent use.
 type Overworld struct {
-	seed             int64
-	noise            *vanilla.OverworldNoise
-	zoomSeed         int64
-	modernSurface    *modernSurface
-	modernStructures *modernStructures
-	modernFeatures   *ModernFeatures
+	seed               int64
+	noise              *vanilla.OverworldNoise
+	zoomSeed           int64
+	modernSurface      *modernSurface
+	modernStructures   *modernStructures
+	modernFeatures     *ModernFeatures
 	rawCache           *previewCache
 	terrainScratchMu   sync.Mutex
 	terrainScratchFree []*modernTerrainScratch

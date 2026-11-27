@@ -177,7 +177,7 @@ func newPlayerData(cfg, conf Config) *playerData {
 		unlockedRecipes:     unlockedRecipes,
 		shoulderLeft:        cfg.ShoulderLeft,
 		shoulderRight:       cfg.ShoulderRight,
-		extraState:           world.CloneNativeEntityNBT(conf.ExtraState),
+		extraState:          world.CloneNativeEntityNBT(conf.ExtraState),
 		wardenSpawnTracker:  decodePlayerWardenTracker(conf.ExtraState),
 		respawnDimension:    conf.RespawnDimension,
 		respawnPosition:     conf.RespawnPosition,

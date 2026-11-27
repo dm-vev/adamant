@@ -399,7 +399,8 @@ func (c *Conn) flushSegmentedSnappy() {
 		c.out = out
 		return
 	}
-	out := append(c.out[:0], byte(AlgorithmSnappy))
+	out := c.out[:0]
+	out = append(out, byte(AlgorithmSnappy))
 	out = binary.AppendUvarint(out, uint64(len(c.body)))
 	prev := 0
 	for _, end := range c.segments {

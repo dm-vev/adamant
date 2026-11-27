@@ -91,7 +91,9 @@ func (p *sidecarProvider) AllocateMapID() (int64, error) {
 }
 
 func (p *sidecarProvider) CanonicalMapID(nativeID int64) (int32, error) { return int32(-nativeID), nil }
-func (p *sidecarProvider) NativeMapID(canonicalID int32) (int64, error) { return -int64(canonicalID), nil }
+func (p *sidecarProvider) NativeMapID(canonicalID int32) (int64, error) {
+	return -int64(canonicalID), nil
+}
 
 func (p *sidecarProvider) LoadPlayerSpawnPosition(id uuid.UUID) (cube.Pos, bool, error) {
 	p.mu.Lock()

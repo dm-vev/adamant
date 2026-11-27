@@ -49,6 +49,7 @@ func (w WolfArmor) UseOnEntity(target world.Entity, tx *world.Tx, user User, ctx
 	ctx.SubtractFromCount(1)
 	return true
 }
+
 // EncodeNBT preserves the wolf armour's custom dye colour.
 func (w WolfArmor) EncodeNBT() map[string]any {
 	if w.Colour == (color.RGBA{}) {

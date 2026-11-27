@@ -209,8 +209,8 @@ func TestInfestedReleasesSilverfishWhenHurt(t *testing.T) {
 func TestTrialPotionsGiveTheirEffects(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		potion potion.Potion
-		effect effect.LastingType
+		potion      potion.Potion
+		effect      effect.LastingType
 		canonicalID string
 	}{
 		{potion.WindCharging(), effect.WindCharged, "minecraft:wind_charged"},

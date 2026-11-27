@@ -10,19 +10,20 @@ import (
 	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 )
 
-func init(){registerModernStructureBuilder("ruined_portal",buildModernRuinedPortal)}
+func init() { registerModernStructureBuilder("ruined_portal", buildModernRuinedPortal) }
+
 type modernRuinedPortal struct {
-	template *structure.Template
-	box structure.Box
-	origin [3]int32
-	pivot [3]int32
-	rotation structure.Rotation
-	mirror structure.Mirror
-	processorSpecs []structure.ProcessorSpec
-	vertical string
+	template                          *structure.Template
+	box                               structure.Box
+	origin                            [3]int32
+	pivot                             [3]int32
+	rotation                          structure.Rotation
+	mirror                            structure.Mirror
+	processorSpecs                    []structure.ProcessorSpec
+	vertical                          string
 	airPocket, cold, overgrown, vines bool
-	seed int64
-	source ModernFeatureSource
+	seed                              int64
+	source                            ModernFeatureSource
 }
 
 func (p modernRuinedPortal) Bounds() structure.Box { return p.box }
@@ -229,16 +230,61 @@ func (p modernRuinedPortal) maybeAddVines(w *portalWorld, random *vanilla.Random
 	return nil
 }
 
-func buildModernRuinedPortal(in modernStructureBuildInput)(modernStructureStart,bool,error){
- if in.random==nil||in.source==nil{return modernStructureStart{},false,fmt.Errorf("ruined portal requires structure random and world source")}
- setups,ok:=in.config["setups"].([]any);if !ok||len(setups)==0{return modernStructureStart{},false,fmt.Errorf("ruined portal has no setup variants")}
- chosen,err:=chooseRuinedPortalSetup(setups,in.random);if err!=nil{return modernStructureStart{},false,err}
- airProbability:=portalFloat32(chosen["air_pocket_probability"]);airPocket:=airProbability==1||(airProbability>0&&in.random.NextFloat()<airProbability)
- giant:=in.random.NextFloat()<.05
- templates:=[]string{"ruined_portal/portal_1","ruined_portal/portal_2","ruined_portal/portal_3","ruined_portal/portal_4","ruined_portal/portal_5","ruined_portal/portal_6","ruined_portal/portal_7","ruined_portal/portal_8","ruined_portal/portal_9","ruined_portal/portal_10"};if giant{templates=[]string{"ruined_portal/giant_portal_1","ruined_portal/giant_portal_2","ruined_portal/giant_portal_3"}}
- t,err:=structure.Load(templates[in.random.NextInt(int32(len(templates))) ]);if err!=nil{return modernStructureStart{},false,err};rotation:=structure.Rotation(in.random.NextInt(4));mirror:=structure.FrontBack;if in.random.NextFloat()<0.5{mirror=structure.NoMirror}
- pivot:=[3]int32{t.Size[0]/2,0,t.Size[2]/2};base:=[3]int32{in.chunkX*16,0,in.chunkZ*16};rotPivot:=structure.TransformPosition(pivot,structure.NoMirror,rotation);placeOrigin:=[3]int32{base[0]+pivot[0]-rotPivot[0],0,base[2]+pivot[2]-rotPivot[2]};box:=modernMirroredTemplateBounds(t,placeOrigin,mirror,rotation);centerX,centerZ:=boxCenter(box.Min[0],box.Max[0]),boxCenter(box.Min[2],box.Max[2])
- vertical:=stringValue(chosen["placement"]);height:=in.source.BaseHeight(centerX,centerZ,vertical=="on_ocean_floor")-1;newY:=height;span:=box.Max[1]-box.Min[1]+1;switch vertical{case "in_nether":if airPocket{newY=32+int32(in.random.NextInt(69))}else if in.random.NextFloat()<.5{newY=27+int32(in.random.NextInt(3))}else{newY=29+int32(in.random.NextInt(72))};case "in_mountain":newY=portalRandomInterval(in.random,70,height-span);case "underground":newY=portalRandomInterval(in.random,-49,height-span);case "partly_buried":newY=height-span+2+int32(in.random.NextInt(7))}
+func buildModernRuinedPortal(in modernStructureBuildInput) (modernStructureStart, bool, error) {
+	if in.random == nil || in.source == nil {
+		return modernStructureStart{}, false, fmt.Errorf("ruined portal requires structure random and world source")
+	}
+	setups, ok := in.config["setups"].([]any)
+	if !ok || len(setups) == 0 {
+		return modernStructureStart{}, false, fmt.Errorf("ruined portal has no setup variants")
+	}
+	chosen, err := chooseRuinedPortalSetup(setups, in.random)
+	if err != nil {
+		return modernStructureStart{}, false, err
+	}
+	airProbability := portalFloat32(chosen["air_pocket_probability"])
+	airPocket := airProbability == 1 || (airProbability > 0 && in.random.NextFloat() < airProbability)
+	giant := in.random.NextFloat() < .05
+	templates := []string{"ruined_portal/portal_1", "ruined_portal/portal_2", "ruined_portal/portal_3", "ruined_portal/portal_4", "ruined_portal/portal_5", "ruined_portal/portal_6", "ruined_portal/portal_7", "ruined_portal/portal_8", "ruined_portal/portal_9", "ruined_portal/portal_10"}
+	if giant {
+		templates = []string{"ruined_portal/giant_portal_1", "ruined_portal/giant_portal_2", "ruined_portal/giant_portal_3"}
+	}
+	t, err := structure.Load(templates[in.random.NextInt(int32(len(templates)))])
+	if err != nil {
+		return modernStructureStart{}, false, err
+	}
+	rotation := structure.Rotation(in.random.NextInt(4))
+	mirror := structure.FrontBack
+	if in.random.NextFloat() < 0.5 {
+		mirror = structure.NoMirror
+	}
+	pivot := [3]int32{t.Size[0] / 2, 0, t.Size[2] / 2}
+	base := [3]int32{in.chunkX * 16, 0, in.chunkZ * 16}
+	rotPivot := structure.TransformPosition(pivot, structure.NoMirror, rotation)
+	placeOrigin := [3]int32{base[0] + pivot[0] - rotPivot[0], 0, base[2] + pivot[2] - rotPivot[2]}
+	box := modernMirroredTemplateBounds(t, placeOrigin, mirror, rotation)
+	centerX, centerZ := boxCenter(box.Min[0], box.Max[0]), boxCenter(box.Min[2], box.Max[2])
+	vertical := stringValue(chosen["placement"])
+	height := in.source.BaseHeight(centerX, centerZ, vertical == "on_ocean_floor") - 1
+	newY := height
+	span := box.Max[1] - box.Min[1] + 1
+	switch vertical {
+	case "in_nether":
+		switch {
+		case airPocket:
+			newY = 32 + int32(in.random.NextInt(69))
+		case in.random.NextFloat() < .5:
+			newY = 27 + int32(in.random.NextInt(3))
+		default:
+			newY = 29 + int32(in.random.NextInt(72))
+		}
+	case "in_mountain":
+		newY = portalRandomInterval(in.random, 70, height-span)
+	case "underground":
+		newY = portalRandomInterval(in.random, -49, height-span)
+	case "partly_buried":
+		newY = height - span + 2 + int32(in.random.NextInt(7))
+	}
 	// findSuitableY: walk down until three bottom corners of the box stand on
 	// blocks the placement's heightmap counts as occupied. The template goes
 	// to that height, where the stub's biome is checked.
@@ -325,7 +371,7 @@ func portalProcessorSpecs(setup map[string]any, air, cold bool, placement string
 	rules := []any{
 		map[string]any{
 			"input_predicate": map[string]any{"predicate_type": "minecraft:random_block_match", "block": "minecraft:gold_block", "probability": .3},
-			"output_state": "minecraft:air",
+			"output_state":    "minecraft:air",
 		},
 	}
 	lavaOutput := "minecraft:magma_block"
@@ -337,13 +383,13 @@ func portalProcessorSpecs(setup map[string]any, air, cold bool, placement string
 	} else {
 		rules = append(rules, map[string]any{
 			"input_predicate": map[string]any{"predicate_type": "minecraft:random_block_match", "block": "minecraft:lava", "probability": .2},
-			"output_state": lavaOutput,
+			"output_state":    lavaOutput,
 		})
 	}
 	if !cold {
 		rules = append(rules, map[string]any{
 			"input_predicate": map[string]any{"predicate_type": "minecraft:random_block_match", "block": "minecraft:netherrack", "probability": .07},
-			"output_state": lavaOutput,
+			"output_state":    lavaOutput,
 		})
 	}
 	specs := []structure.ProcessorSpec{
@@ -386,4 +432,3 @@ func boolPortal(value any) bool {
 }
 
 var portalSpreadChance = [...]float64{1, 1, 1, 1, 1, 1, 1, 0.9, 0.9, 0.8, 0.7, 0.6, 0.4, 0.2}
-

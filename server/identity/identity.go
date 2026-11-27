@@ -64,7 +64,7 @@ type Key struct {
 // xuidPrefix starts the text of a key of an XUID; javaPrefix is kept for
 // the keys of Java Edition accounts.
 const (
-	xuidPrefix = "xuid:"
+	xuidPrefix        = "xuid:"
 	reservedKeyPrefix = "java:"
 )
 

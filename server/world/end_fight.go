@@ -142,12 +142,12 @@ func (tx *Tx) LoadDragonArena(active bool) bool {
 	}
 	if w.dragonArena == nil {
 		arena := &Loader{
-			r: 8,
-			square: true,
+			r:           8,
+			square:      true,
 			forceActive: true,
-			loaded: make(map[ChunkPos]*Column, 17*17),
-			pending: make(map[ChunkPos]struct{}, 17*17),
-			viewer: NopViewer{},
+			loaded:      make(map[ChunkPos]*Column, 17*17),
+			pending:     make(map[ChunkPos]struct{}, 17*17),
+			viewer:      NopViewer{},
 		}
 		arena.world(w)
 		w.dragonArena = arena

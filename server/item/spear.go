@@ -11,7 +11,6 @@ type Spear struct {
 	Tier ToolTier
 }
 
-
 // KineticWeaponInfo returns the Java 26 kinetic parameters for the spear material.
 func (s Spear) KineticWeaponInfo() KineticWeaponInfo {
 	info := KineticWeaponInfo{ContactCooldownTicks: 10, ForwardMovement: 0.38}
@@ -92,6 +91,6 @@ func (s Spear) FireProof() bool { return s.Tier == ToolTierNetherite }
 func (s Spear) EncodeItem() (string, int16) { return "minecraft:" + s.Tier.Name + "_spear", 0 }
 
 // Category returns the equipment category used by weapons.
-func (Spear) Category() category.Category { return category.Equipment().WithGroup("itemGroup.name.sword") }
-
-
+func (Spear) Category() category.Category {
+	return category.Equipment().WithGroup("itemGroup.name.sword")
+}

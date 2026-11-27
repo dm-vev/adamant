@@ -11,7 +11,7 @@ import (
 func TestSuspiciousBlocksAdvanceBrushProgress(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
-		name string
+		name  string
 		block world.Block
 	}{
 		{name: "sand", block: SuspiciousSand{}},

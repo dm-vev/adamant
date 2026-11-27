@@ -15,8 +15,8 @@ import (
 // Data may be used in LevelDat.Unmarshal to collect the data of the level.dat.
 type Data struct {
 	// ExtraState retains extended server rules without inventing native Bedrock tags.
-	ExtraState       map[string]any `nbt:"adamant:state,omitempty"`
-	LegacyExtraState map[string]any `nbt:"adamant:java,omitempty"`
+	ExtraState                     map[string]any `nbt:"adamant:state,omitempty"`
+	LegacyExtraState               map[string]any `nbt:"adamant:java,omitempty"`
 	BaseGameVersion                string         `nbt:"baseGameVersion"`
 	BiomeOverride                  string
 	ConfirmedPlatformLockedContent bool

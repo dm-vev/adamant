@@ -935,8 +935,8 @@ func (p *mapCraftingProvider) AllocateMapID() (int64, error) {
 	return p.nextID, nil
 }
 
-func (p *mapCraftingProvider) CanonicalMapID(id int64) (int32, error)   { return int32(id), nil }
-func (p *mapCraftingProvider) NativeMapID(id int32) (int64, error) { return int64(id), nil }
+func (p *mapCraftingProvider) CanonicalMapID(id int64) (int32, error) { return int32(id), nil }
+func (p *mapCraftingProvider) NativeMapID(id int32) (int64, error)    { return int64(id), nil }
 
 func craftingMapStack() item.Stack {
 	return item.NewStack(item.FilledMap{NativeID: 42, HasNativeID: true}, 1)

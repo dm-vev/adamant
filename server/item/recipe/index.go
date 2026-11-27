@@ -18,9 +18,9 @@ var recipeIndexData []byte
 type indexedRecipe struct {
 	ID          string                     `json:"id"`
 	Type        string                     `json:"type"`
-	Result      indexedRecipeResult         `json:"result"`
+	Result      indexedRecipeResult        `json:"result"`
 	Ingredients []json.RawMessage          `json:"ingredients"`
-	Pattern     indexedRecipePattern        `json:"pattern"`
+	Pattern     indexedRecipePattern       `json:"pattern"`
 	Key         map[string]json.RawMessage `json:"key"`
 	Template    json.RawMessage            `json:"template"`
 	Base        json.RawMessage            `json:"base"`
