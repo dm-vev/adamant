@@ -1,6 +1,9 @@
 package entity
 
 import (
+	"strings"
+	"sync/atomic"
+
 	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/cmd"
@@ -9,7 +12,6 @@ import (
 	"github.com/dm-vev/adamant/server/item/inventory"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/google/uuid"
-	"strings"
 )
 
 // MinecartCommandBlock is a minecart carrying an activator-rail command actor.
@@ -50,6 +52,7 @@ type commandBlockMinecartBehaviour struct {
 	mode                                                                               int
 	lastActivatorRail                                                                  cube.Pos
 	hasActivatorRail                                                                   bool
+	inFlight                                                                           atomic.Bool
 }
 
 // Inventory exposes the one-slot container used by Bedrock's detector-rail
@@ -107,8 +110,43 @@ func (b *commandBlockMinecartBehaviour) execute(e *Ent, tx *world.Tx) {
 		b.conditionMet = false
 		return
 	}
+	if !b.inFlight.CompareAndSwap(false, true) {
+		return
+	}
+	h := e.H()
 	source := cmd.NewBlockSource(cube.PosFromVec3(e.Position()), tx.World(), b.customName)
+	source.OnDeferred(func(output *cmd.Output, text string) {
+		if output == nil {
+			b.inFlight.Store(false)
+			return
+		}
+		task := h.Do(func(rtx *world.Tx, ent world.Entity) {
+			defer b.inFlight.Store(false)
+			mc, ok := ent.(*minecartCommandBlock)
+			if !ok {
+				return
+			}
+			beh := mc.Behaviour().(*commandBlockMinecartBehaviour)
+			beh.successCount, beh.conditionMet = output.Result(), output.Success()
+			if beh.trackOutput && rtx.World().GameRuleBool("command_block_output") {
+				beh.lastOutput = text
+			}
+		})
+		task.OnDone(func(err error) {
+			if err != nil {
+				b.inFlight.Store(false)
+			}
+		})
+	})
+	defer func() {
+		if !source.Deferred() {
+			b.inFlight.Store(false)
+		}
+	}()
 	c.Execute(strings.TrimSpace(strings.TrimPrefix(line, words[0])), source, tx)
+	if source.Deferred() {
+		return
+	}
 	out := source.Output()
 	b.successCount, b.conditionMet = out.Result(), out.Success()
 	if b.trackOutput && tx.World().GameRuleBool("command_block_output") {

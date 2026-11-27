@@ -3,6 +3,7 @@ package block
 import (
 	"math/rand/v2"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dm-vev/adamant/server/block/cube"
@@ -157,10 +158,22 @@ func (b CommandBlock) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, aft
 func (b CommandBlock) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	b.execute(pos, tx)
 }
+type commandBlockKey struct {
+	w   *world.World
+	pos cube.Pos
+}
+
+// commandBlockInFlight bounds repeating command blocks to at most one in-flight
+// cross-world execution per block position.
+var commandBlockInFlight sync.Map // map[commandBlockKey]struct{}
+
 func (b CommandBlock) Tick(tick int64, pos cube.Pos, tx *world.Tx) {
 	// Only repeating blocks run every tick; always-active impulse blocks run
 	// once when configured, and chain blocks run only through their chain.
 	if b.Mode != CommandBlockRepeat || b.NeedsRedstone && !b.Powered || b.TickDelay > 0 && tick-b.lastExecutionTick < int64(b.TickDelay) {
+		return
+	}
+	if _, busy := commandBlockInFlight.Load(commandBlockKey{w: tx.World(), pos: pos}); busy {
 		return
 	}
 	b.execute(pos, tx)
@@ -209,23 +222,77 @@ func (b CommandBlock) run(pos cube.Pos, tx *world.Tx) CommandBlock {
 
 // perform runs the stored command and records its result and output.
 func (b CommandBlock) perform(pos cube.Pos, tx *world.Tx) CommandBlock {
-	b.lastExecutionTick = tx.World().CurrentTick()
+	w := tx.World()
+	key := commandBlockKey{w: w, pos: pos}
+	repeating := b.Mode == CommandBlockRepeat
+	if repeating {
+		if _, busy := commandBlockInFlight.LoadOrStore(key, struct{}{}); busy {
+			return b
+		}
+	}
+	b.lastExecutionTick = w.CurrentTick()
 	b.SuccessCount = 0
 	line := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(b.Command), "/"))
 	words := strings.Fields(line)
 	if len(words) == 0 {
+		if repeating {
+			commandBlockInFlight.Delete(key)
+		}
 		return b
 	}
 	command, ok := cmd.ByAlias(words[0])
 	if !ok {
+		if repeating {
+			commandBlockInFlight.Delete(key)
+		}
 		return b
 	}
-	source := cmd.NewBlockSource(pos, tx.World(), b.CustomName)
+	source := cmd.NewBlockSource(pos, w, b.CustomName)
+	source.OnDeferred(func(output *cmd.Output, text string) {
+		clearInFlight := func() {
+			if repeating {
+				commandBlockInFlight.Delete(key)
+			}
+		}
+		if output == nil {
+			clearInFlight()
+			return
+		}
+		task := w.Do(func(rtx *world.Tx) {
+			defer clearInFlight()
+			cur, ok := rtx.Block(pos).(CommandBlock)
+			if !ok {
+				return
+			}
+			if output.Success() {
+				cur.SuccessCount = output.Result()
+			} else {
+				cur.SuccessCount = 0
+			}
+			if cur.TrackOutput && rtx.World().GameRuleBool("command_block_output") {
+				cur.LastOutput = text
+			}
+			rtx.SetBlock(pos, cur, nil)
+		})
+		task.OnDone(func(err error) {
+			if err != nil {
+				clearInFlight()
+			}
+		})
+	})
+	defer func() {
+		if repeating && !source.Deferred() {
+			commandBlockInFlight.Delete(key)
+		}
+	}()
 	command.Execute(strings.TrimSpace(strings.TrimPrefix(line, words[0])), source, tx)
+	if source.Deferred() {
+		return b
+	}
 	if output := source.Output(); output.Success() {
 		b.SuccessCount = output.Result()
 	}
-	if b.TrackOutput && tx.World().GameRuleBool("command_block_output") {
+	if b.TrackOutput && w.GameRuleBool("command_block_output") {
 		b.LastOutput = source.Text()
 	}
 	return b

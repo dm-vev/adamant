@@ -116,3 +116,96 @@ func TestConditionalChainDoesNotRunAfterFailedCommand(t *testing.T) {
 		}
 	})
 }
+
+var (
+	deferredCmdRuns   atomic.Int32
+	deferredCmdGate   chan struct{}
+	deferredCmdResult atomic.Int32
+)
+
+type commandBlockDeferredCommand struct{}
+
+func (commandBlockDeferredCommand) Run(src cmd.Source, _ *cmd.Output, _ *world.Tx) {
+	deferredCmdRuns.Add(1)
+	send := cmd.Later(src)
+	gate := deferredCmdGate
+	res := int(deferredCmdResult.Load())
+	go func() {
+		<-gate
+		out := &cmd.Output{}
+		out.SetResult(res)
+		out.Print("late ok")
+		send(nil, out)
+	}()
+}
+
+func TestCommandBlockLateResult(t *testing.T) {
+	cmd.Register(cmd.New("test_command_block_deferred", "", nil, commandBlockDeferredCommand{}))
+	w := world.Config{RandomTickSpeed: -1}.New()
+	defer w.Close()
+
+	// Impulse command block records deferred SuccessCount and LastOutput.
+	deferredCmdRuns.Store(0)
+	deferredCmdResult.Store(3)
+	deferredCmdGate = make(chan struct{})
+	impulsePos := cube.Pos{2, 64, 0}
+	<-w.Exec(func(tx *world.Tx) {
+		b := CommandBlock{Command: "test_command_block_deferred", NeedsRedstone: true, TrackOutput: true}
+		tx.SetBlock(impulsePos, b, nil)
+		b.ScheduledTick(impulsePos, tx, rand.New(rand.NewPCG(7, 8)))
+	})
+	close(deferredCmdGate)
+
+	deadline := make(chan struct{})
+	go func() {
+		defer close(deadline)
+		for range 100 {
+			var got CommandBlock
+			<-w.Exec(func(tx *world.Tx) { got, _ = tx.Block(impulsePos).(CommandBlock) })
+			if got.SuccessCount == 3 && got.LastOutput == "late ok" {
+				return
+			}
+		}
+	}()
+	<-deadline
+	var got CommandBlock
+	<-w.Exec(func(tx *world.Tx) { got = tx.Block(impulsePos).(CommandBlock) })
+	if got.SuccessCount != 3 || got.LastOutput != "late ok" {
+		t.Fatalf("impulse deferred state = (%d, %q), want (3, %q)", got.SuccessCount, got.LastOutput, "late ok")
+	}
+
+	// Repeating command block skips overlapping ticks while one cross-world run is in flight.
+	deferredCmdRuns.Store(0)
+	deferredCmdResult.Store(2)
+	deferredCmdGate = make(chan struct{})
+	repeatPos := cube.Pos{6, 64, 0}
+	<-w.Exec(func(tx *world.Tx) {
+		b := CommandBlock{Mode: CommandBlockRepeat, Command: "test_command_block_deferred", NeedsRedstone: true, Powered: true, TrackOutput: true}
+		tx.SetBlock(repeatPos, b, nil)
+		b.Tick(1, repeatPos, tx)
+		b = tx.Block(repeatPos).(CommandBlock)
+		b.Tick(2, repeatPos, tx)
+		b.Tick(3, repeatPos, tx)
+	})
+	if runs := deferredCmdRuns.Load(); runs != 1 {
+		t.Fatalf("in-flight repeating runs = %d, want 1", runs)
+	}
+	close(deferredCmdGate)
+	for range 100 {
+		var cur CommandBlock
+		<-w.Exec(func(tx *world.Tx) { cur, _ = tx.Block(repeatPos).(CommandBlock) })
+		if cur.SuccessCount == 2 {
+			break
+		}
+	}
+	// Once finished, a new tick starts another run.
+	deferredCmdGate = make(chan struct{})
+	<-w.Exec(func(tx *world.Tx) {
+		b := tx.Block(repeatPos).(CommandBlock)
+		b.Tick(4, repeatPos, tx)
+	})
+	close(deferredCmdGate)
+	if runs := deferredCmdRuns.Load(); runs != 2 {
+		t.Fatalf("post-completion repeating runs = %d, want 2", runs)
+	}
+}
