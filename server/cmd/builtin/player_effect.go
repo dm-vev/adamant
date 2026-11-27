@@ -17,7 +17,7 @@ import (
 type effectCommand struct {
 	gameMaster
 	Give      cmd.SubCommand       `cmd:"give"`
-	Targets   []cmd.Target         `cmd:"targets"`
+	Targets   cmd.Entities         `cmd:"targets"`
 	Effect    string               `cmd:"effect"`
 	Duration  cmd.Optional[string] `cmd:"seconds"`
 	Amplifier cmd.Optional[int]    `cmd:"amplifier"`
@@ -26,12 +26,12 @@ type effectCommand struct {
 type clearEffectCommand struct {
 	gameMaster
 	Clear   cmd.SubCommand             `cmd:"clear"`
-	Targets cmd.Optional[[]cmd.Target] `cmd:"targets"`
+	Targets cmd.Optional[cmd.Entities] `cmd:"targets"`
 	Effect  cmd.Optional[string]       `cmd:"effect"`
 }
 type enchantCommand struct {
 	worldOpCommand
-	Targets     []cmd.Target      `cmd:"targets"`
+	Targets     cmd.Entities      `cmd:"targets"`
 	Enchantment string            `cmd:"enchantment"`
 	Level       cmd.Optional[int] `cmd:"level"`
 }
@@ -46,25 +46,11 @@ func effectType(name string) effect.Type {
 	return t
 }
 
-func targetsOf(targets []cmd.Target) []entity.Living {
-	out := make([]entity.Living, 0, len(targets))
-	for _, target := range targets {
-		if l, ok := target.(entity.Living); ok {
-			out = append(out, l)
-		}
-	}
-	return out
-}
-func (c effectCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
+func (c effectCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	t := effectType(c.Effect)
 	lt, ok := t.(effect.LastingType)
 	if !ok || t == nil {
 		o.Errort(cmd.MessageParameterInvalid, c.Effect)
-		return
-	}
-	living := targetsOf(c.Targets)
-	if len(living) == 0 {
-		o.Errort(cmd.MessageNoTargets)
 		return
 	}
 	seconds, present := c.Duration.Load()
@@ -88,30 +74,35 @@ func (c effectCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	}
 	level++
 	hide, _ := c.Hide.Load()
-	for _, l := range living {
-		eff := effect.New(lt, level, dur)
-		if infinite {
-			eff = effect.NewInfinite(lt, level)
-		}
-		if hide {
-			eff = eff.WithoutParticles()
-		}
-		l.AddEffect(eff)
+	eff := effect.New(lt, level, dur)
+	if infinite {
+		eff = effect.NewInfinite(lt, level)
 	}
-	o.Printf("Applied effect %s to %d targets.", c.Effect, len(living))
+	if hide {
+		eff = eff.WithoutParticles()
+	}
+	effectName := c.Effect
+	cmd.ForEach(src, o, tx, c.Targets,
+		func(_ *world.Tx, target cmd.Target) int {
+			l, ok := target.(entity.Living)
+			if !ok {
+				return 0
+			}
+			l.AddEffect(eff)
+			return 1
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[int]) {
+			tally := cmd.TallyOf(rs)
+			if tally.NonZero == 0 {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			o.SetResult(tally.Total)
+			o.Printf("Applied effect %s to %d targets.", effectName, tally.NonZero)
+		},
+	)
 }
-func (c clearEffectCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
-	targets, ok := c.Targets.Load()
-	if !ok {
-		if p, yes := src.(*player.Player); yes {
-			targets = []cmd.Target{p}
-		}
-	}
-	living := targetsOf(targets)
-	if len(living) == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
+func (c clearEffectCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	var t effect.Type
 	if name, ok := c.Effect.Load(); ok {
 		t = effectType(name)
@@ -120,16 +111,31 @@ func (c clearEffectCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
 			return
 		}
 	}
-	for _, l := range living {
-		if t != nil {
-			l.RemoveEffect(t)
-		} else {
-			for _, e := range l.Effects() {
-				l.RemoveEffect(e.Type())
+	cmd.ForEach(src, o, tx, optionalEntities(c.Targets, src),
+		func(_ *world.Tx, target cmd.Target) int {
+			l, ok := target.(entity.Living)
+			if !ok {
+				return 0
 			}
-		}
-	}
-	o.Printf("Cleared effects from %d targets.", len(living))
+			if t != nil {
+				l.RemoveEffect(t)
+			} else {
+				for _, e := range l.Effects() {
+					l.RemoveEffect(e.Type())
+				}
+			}
+			return 1
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[int]) {
+			tally := cmd.TallyOf(rs)
+			if tally.NonZero == 0 {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			o.SetResult(tally.Total)
+			o.Printf("Cleared effects from %d targets.", tally.NonZero)
+		},
+	)
 }
 
 func enchantmentType(name string) item.EnchantmentType {
@@ -142,12 +148,49 @@ func enchantmentType(name string) item.EnchantmentType {
 	return nil
 }
 
+const (
+	enchantApplied uint8 = iota
+	enchantNotLiving
+	enchantNoItem
+	enchantIncompatible
+)
+
+type enchantOutcome struct {
+	status      uint8
+	displayName string
+	itemName    string
+}
+
+func applyEnchantTarget(target cmd.Target, e item.EnchantmentType, level int) enchantOutcome {
+	display := commandTargetDisplayName(target)
+	if _, living := target.(entity.Living); !living {
+		return enchantOutcome{status: enchantNotLiving, displayName: display}
+	}
+	holder, ok := target.(interface {
+		HeldItems() (main, off item.Stack)
+		SetHeldItems(main, off item.Stack)
+	})
+	var main, off item.Stack
+	if ok {
+		main, off = holder.HeldItems()
+	}
+	if main.Empty() {
+		return enchantOutcome{status: enchantNoItem, displayName: display}
+	}
+	next, ok := enchantedMainHand(main, e, level)
+	if !ok {
+		return enchantOutcome{status: enchantIncompatible, displayName: display, itemName: stackDisplayName(main)}
+	}
+	holder.SetHeldItems(next, off)
+	return enchantOutcome{status: enchantApplied, displayName: display}
+}
+
 // Run ports EnchantCommand.enchant: the enchantment goes on the main-hand item
 // of each living target. A target that cannot take it fails the command with
 // the reason only if it is the sole target, and the command fails with Java's
 // commands.enchant.failed ("Nothing changed. Targets either have no item in
 // their hands or the enchantment could not be applied") if no target took it.
-func (c enchantCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
+func (c enchantCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	e := enchantmentType(c.Enchantment)
 	if e == nil {
 		o.Errort(cmd.MessageParameterInvalid, c.Enchantment)
@@ -165,56 +208,45 @@ func (c enchantCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 		o.Errorf("%d is higher than the maximum level of %d supported by that enchantment", level, e.MaxLevel())
 		return
 	}
-	if len(c.Targets) == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
-	single := len(c.Targets) == 1
-	var enchanted []cmd.Target
-	for _, target := range c.Targets {
-		if _, living := target.(entity.Living); !living {
-			if single {
-				o.Errorf("%s is not a valid entity for this command", commandTargetDisplayName(target))
-				return
-			}
-			continue
-		}
-		// An entity whose main hand /enchant can change.
-		holder, ok := target.(interface {
-			HeldItems() (main, off item.Stack)
-			SetHeldItems(main, off item.Stack)
-		})
-		var main, off item.Stack
-		if ok {
-			main, off = holder.HeldItems()
-		}
-		if main.Empty() {
-			if single {
-				o.Errorf("%s is not holding any item", commandTargetDisplayName(target))
-				return
-			}
-			continue
-		}
-		next, ok := enchantedMainHand(main, e, level)
-		if !ok {
-			if single {
-				o.Errorf("%s cannot support that enchantment", stackDisplayName(main))
-				return
-			}
-			continue
-		}
-		holder.SetHeldItems(next, off)
-		enchanted = append(enchanted, target)
-	}
 	name := enchantmentFullName(e, level)
-	switch len(enchanted) {
-	case 0:
-		o.Errorf("Nothing changed. Targets either have no item in their hands or the enchantment could not be applied")
-	case 1:
-		o.Printf("Applied enchantment %s to %s's item", name, commandTargetDisplayName(enchanted[0]))
-	default:
-		o.Printf("Applied enchantment %s to %d entities", name, len(enchanted))
-	}
+	cmd.ForEach(src, o, tx, c.Targets,
+		func(_ *world.Tx, target cmd.Target) enchantOutcome {
+			return applyEnchantTarget(target, e, level)
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[enchantOutcome]) {
+			if len(rs) == 0 {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			if len(rs) == 1 && rs[0].Value.status != enchantApplied {
+				switch rs[0].Value.status {
+				case enchantNotLiving:
+					o.Errorf("%s is not a valid entity for this command", rs[0].Value.displayName)
+				case enchantNoItem:
+					o.Errorf("%s is not holding any item", rs[0].Value.displayName)
+				case enchantIncompatible:
+					o.Errorf("%s cannot support that enchantment", rs[0].Value.itemName)
+				}
+				return
+			}
+			var applied []string
+			for _, r := range rs {
+				if r.Value.status == enchantApplied {
+					applied = append(applied, r.Value.displayName)
+				}
+			}
+			switch len(applied) {
+			case 0:
+				o.Errorf("Nothing changed. Targets either have no item in their hands or the enchantment could not be applied")
+			case 1:
+				o.SetResult(1)
+				o.Printf("Applied enchantment %s to %s's item", name, applied[0])
+			default:
+				o.SetResult(len(applied))
+				o.Printf("Applied enchantment %s to %d entities", name, len(applied))
+			}
+		},
+	)
 }
 
 // enchantedMainHand returns the stack with the enchantment put on it, as

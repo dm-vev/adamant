@@ -20,71 +20,92 @@ type tagTarget interface {
 }
 type tagAddCommand struct {
 	gameMaster
-	Targets []cmd.Target   `cmd:"targets"`
+	Targets cmd.Entities   `cmd:"targets"`
 	Add     cmd.SubCommand `cmd:"add"`
 	Name    string         `cmd:"name"`
 }
 type tagRemoveCommand struct {
 	gameMaster
-	Targets []cmd.Target   `cmd:"targets"`
+	Targets cmd.Entities   `cmd:"targets"`
 	Remove  cmd.SubCommand `cmd:"remove"`
 	Name    string         `cmd:"name"`
 }
 type tagListCommand struct {
 	gameMaster
-	Targets []cmd.Target   `cmd:"targets"`
+	Targets cmd.Entities   `cmd:"targets"`
 	List    cmd.SubCommand `cmd:"list"`
 }
 
-func (c tagAddCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	changeCommandTags(c.Targets, c.Name, true, o)
+type tagListEntry struct {
+	ok         bool
+	targetName string
+	tags       []string
 }
-func (c tagRemoveCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	changeCommandTags(c.Targets, c.Name, false, o)
+
+func (c tagAddCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	changeCommandTags(src, o, tx, c.Targets, c.Name, true)
 }
-func (c tagListCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	if len(c.Targets) == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
-	for _, target := range c.Targets {
-		if tags, ok := target.(tagTarget); ok {
-			values := tags.CommandTags()
-			o.Printf("%s has %d tag(s): %s", commandTargetName(target), len(values), strings.Join(values, ", "))
-		}
-	}
+func (c tagRemoveCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	changeCommandTags(src, o, tx, c.Targets, c.Name, false)
 }
-func changeCommandTags(targets []cmd.Target, name string, add bool, o *cmd.Output) {
-	if len(targets) == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
+func (c tagListCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	cmd.ForEach(src, o, tx, c.Targets,
+		func(_ *world.Tx, target cmd.Target) tagListEntry {
+			tags, ok := target.(tagTarget)
+			if !ok {
+				return tagListEntry{}
+			}
+			return tagListEntry{ok: true, targetName: commandTargetName(target), tags: slices.Clone(tags.CommandTags())}
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[tagListEntry]) {
+			if len(rs) == 0 {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			total := 0
+			for _, r := range rs {
+				if r.Value.ok {
+					total += len(r.Value.tags)
+					o.Printf("%s has %d tag(s): %s", r.Value.targetName, len(r.Value.tags), strings.Join(r.Value.tags, ", "))
+				}
+			}
+			o.SetResult(total)
+		},
+	)
+}
+func changeCommandTags(src cmd.Source, o *cmd.Output, tx *world.Tx, targets cmd.Entities, name string, add bool) {
 	if name == "" {
 		o.Errort(cmd.MessageParameterInvalid, name)
 		return
 	}
-	changed := 0
-	for _, target := range targets {
-		tags, ok := target.(tagTarget)
-		if !ok {
-			continue
-		}
-		current := tags.CommandTags()
-		index := slices.Index(current, name)
-		if add && index < 0 {
-			tags.SetCommandTags(append(current, name))
-			changed++
-		}
-		if !add && index >= 0 {
-			tags.SetCommandTags(slices.Delete(current, index, index+1))
-			changed++
-		}
-	}
-	if changed == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
-	o.Printf("Updated tags for %d target(s).", changed)
+	cmd.ForEach(src, o, tx, targets,
+		func(_ *world.Tx, target cmd.Target) int {
+			tags, ok := target.(tagTarget)
+			if !ok {
+				return 0
+			}
+			current := tags.CommandTags()
+			index := slices.Index(current, name)
+			if add && index < 0 {
+				tags.SetCommandTags(append(current, name))
+				return 1
+			}
+			if !add && index >= 0 {
+				tags.SetCommandTags(slices.Delete(current, index, index+1))
+				return 1
+			}
+			return 0
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[int]) {
+			tally := cmd.TallyOf(rs)
+			if tally.NonZero == 0 {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			o.SetResult(tally.Total)
+			o.Printf("Updated tags for %d target(s).", tally.NonZero)
+		},
+	)
 }
 func commandTargetName(target cmd.Target) string {
 	if p, ok := target.(*player.Player); ok {
@@ -98,21 +119,21 @@ func commandTargetName(target cmd.Target) string {
 
 type attributeGetCommand struct {
 	gameMaster
-	Target    []cmd.Target          `cmd:"target"`
+	Target    cmd.OneEntity         `cmd:"target"`
 	Attribute string                `cmd:"attribute"`
 	Get       cmd.SubCommand        `cmd:"get"`
 	Scale     cmd.Optional[float64] `cmd:"scale"`
 }
 type attributeBaseGetCommand struct {
 	gameMaster
-	Target    []cmd.Target   `cmd:"target"`
+	Target    cmd.OneEntity  `cmd:"target"`
 	Attribute string         `cmd:"attribute"`
 	Base      cmd.SubCommand `cmd:"base"`
 	Get       cmd.SubCommand `cmd:"get"`
 }
 type attributeBaseSetCommand struct {
 	gameMaster
-	Target    []cmd.Target   `cmd:"target"`
+	Target    cmd.OneEntity  `cmd:"target"`
 	Attribute string         `cmd:"attribute"`
 	Base      cmd.SubCommand `cmd:"base"`
 	Set       cmd.SubCommand `cmd:"set"`
@@ -120,14 +141,14 @@ type attributeBaseSetCommand struct {
 }
 type attributeBaseResetCommand struct {
 	gameMaster
-	Target    []cmd.Target   `cmd:"target"`
+	Target    cmd.OneEntity  `cmd:"target"`
 	Attribute string         `cmd:"attribute"`
 	Base      cmd.SubCommand `cmd:"base"`
 	Reset     cmd.SubCommand `cmd:"reset"`
 }
 type attributeModifierAddCommand struct {
 	gameMaster
-	Target    []cmd.Target   `cmd:"target"`
+	Target    cmd.OneEntity  `cmd:"target"`
 	Attribute string         `cmd:"attribute"`
 	Modifier  cmd.SubCommand `cmd:"modifier"`
 	Add       cmd.SubCommand `cmd:"add"`
@@ -137,7 +158,7 @@ type attributeModifierAddCommand struct {
 }
 type attributeModifierRemoveCommand struct {
 	gameMaster
-	Target    []cmd.Target   `cmd:"target"`
+	Target    cmd.OneEntity  `cmd:"target"`
 	Attribute string         `cmd:"attribute"`
 	Modifier  cmd.SubCommand `cmd:"modifier"`
 	Remove    cmd.SubCommand `cmd:"remove"`
@@ -145,7 +166,7 @@ type attributeModifierRemoveCommand struct {
 }
 type attributeModifierValueCommand struct {
 	gameMaster
-	Target    []cmd.Target   `cmd:"target"`
+	Target    cmd.OneEntity  `cmd:"target"`
 	Attribute string         `cmd:"attribute"`
 	Modifier  cmd.SubCommand `cmd:"modifier"`
 	Value     cmd.SubCommand `cmd:"value"`
@@ -153,90 +174,164 @@ type attributeModifierValueCommand struct {
 	ID        string         `cmd:"id"`
 }
 
-func (c attributeGetCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	target, ok := singleTarget(c.Target, o)
-	if !ok {
-		return
-	}
+type attrValueRes struct {
+	ok         bool
+	val        float64
+	targetName string
+}
+
+func (c attributeGetCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	scale, loaded := c.Scale.Load()
 	if !loaded {
 		scale = 1
 	}
-	v, ok := attributeValue(target, c.Attribute)
-	if !ok {
-		o.Errort(cmd.MessageParameterInvalid, c.Attribute)
-		return
-	}
-	o.Printf("%s has %s: %g", commandTargetName(target), c.Attribute, v*scale)
+	attr := c.Attribute
+	cmd.ForEach(src, o, tx, c.Target,
+		func(_ *world.Tx, target cmd.Target) attrValueRes {
+			v, ok := attributeValue(target, attr)
+			return attrValueRes{ok: ok, val: v, targetName: commandTargetName(target)}
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[attrValueRes]) {
+			if len(rs) == 0 {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			if !rs[0].Value.ok {
+				o.Errort(cmd.MessageParameterInvalid, attr)
+				return
+			}
+			scaled := rs[0].Value.val * scale
+			o.SetResult(int(scaled))
+			o.Printf("%s has %s: %g", rs[0].Value.targetName, attr, scaled)
+		},
+	)
 }
-func (c attributeBaseGetCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	target, ok := singleTarget(c.Target, o)
-	if !ok {
-		return
-	}
-	v, ok := attributeBase(target, c.Attribute)
-	if !ok {
-		o.Errort(cmd.MessageParameterInvalid, c.Attribute)
-		return
-	}
-	o.Printf("%s base for %s is %g", c.Attribute, commandTargetName(target), v)
+func (c attributeBaseGetCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	attr := c.Attribute
+	cmd.ForEach(src, o, tx, c.Target,
+		func(_ *world.Tx, target cmd.Target) attrValueRes {
+			v, ok := attributeBase(target, attr)
+			return attrValueRes{ok: ok, val: v, targetName: commandTargetName(target)}
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[attrValueRes]) {
+			if len(rs) == 0 {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			if !rs[0].Value.ok {
+				o.Errort(cmd.MessageParameterInvalid, attr)
+				return
+			}
+			o.SetResult(int(rs[0].Value.val))
+			o.Printf("%s base for %s is %g", attr, rs[0].Value.targetName, rs[0].Value.val)
+		},
+	)
 }
-func (c attributeBaseSetCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	target, ok := singleTarget(c.Target, o)
-	if !ok {
-		return
-	}
-	if !setAttributeBase(target, c.Attribute, c.Value) {
-		o.Errort(cmd.MessageParameterInvalid, c.Attribute)
-		return
-	}
-	o.Printf("Set %s base to %g.", c.Attribute, c.Value)
+func (c attributeBaseSetCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	attr, val := c.Attribute, c.Value
+	cmd.ForEach(src, o, tx, c.Target,
+		func(_ *world.Tx, target cmd.Target) bool {
+			return setAttributeBase(target, attr, val)
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[bool]) {
+			if len(rs) == 0 {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			if !rs[0].Value {
+				o.Errort(cmd.MessageParameterInvalid, attr)
+				return
+			}
+			o.SetResult(1)
+			o.Printf("Set %s base to %g.", attr, val)
+		},
+	)
 }
-func (c attributeBaseResetCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	target, ok := singleTarget(c.Target, o)
-	if !ok {
-		return
-	}
-	v, ok := defaultAttributeBase(target, c.Attribute)
-	if !ok || !setAttributeBase(target, c.Attribute, v) {
-		o.Errort(cmd.MessageParameterInvalid, c.Attribute)
-		return
-	}
-	o.Printf("Reset %s base.", c.Attribute)
+func (c attributeBaseResetCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	attr := c.Attribute
+	cmd.ForEach(src, o, tx, c.Target,
+		func(_ *world.Tx, target cmd.Target) bool {
+			v, ok := defaultAttributeBase(target, attr)
+			return ok && setAttributeBase(target, attr, v)
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[bool]) {
+			if len(rs) == 0 {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			if !rs[0].Value {
+				o.Errort(cmd.MessageParameterInvalid, attr)
+				return
+			}
+			o.SetResult(1)
+			o.Printf("Reset %s base.", attr)
+		},
+	)
 }
-func (c attributeModifierAddCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	target, ok := singleTarget(c.Target, o)
-	if !ok {
+func (c attributeModifierAddCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	attr, id, amount, op := c.Attribute, c.ID, c.Amount, c.Operation
+	if id == "" || !slices.Contains([]string{"add_value", "add_multiplied_base", "add_multiplied_total"}, op) {
+		o.Errort(cmd.MessageParameterInvalid, attr)
 		return
 	}
-	if c.ID == "" || !slices.Contains([]string{"add_value", "add_multiplied_base", "add_multiplied_total"}, c.Operation) || !setModifier(target, c.Attribute, c.ID, c.Amount, c.Operation, false) {
-		o.Errort(cmd.MessageParameterInvalid, c.Attribute)
-		return
-	}
-	o.Printf("Added modifier %s.", c.ID)
+	cmd.ForEach(src, o, tx, c.Target,
+		func(_ *world.Tx, target cmd.Target) bool {
+			return setModifier(target, attr, id, amount, op, false)
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[bool]) {
+			if len(rs) == 0 {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			if !rs[0].Value {
+				o.Errort(cmd.MessageParameterInvalid, attr)
+				return
+			}
+			o.SetResult(1)
+			o.Printf("Added modifier %s.", id)
+		},
+	)
 }
-func (c attributeModifierRemoveCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	target, ok := singleTarget(c.Target, o)
-	if !ok {
-		return
-	}
-	if !setModifier(target, c.Attribute, c.ID, 0, "", true) {
-		o.Errort(cmd.MessageParameterInvalid, c.ID)
-		return
-	}
-	o.Printf("Removed modifier %s.", c.ID)
+func (c attributeModifierRemoveCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	attr, id := c.Attribute, c.ID
+	cmd.ForEach(src, o, tx, c.Target,
+		func(_ *world.Tx, target cmd.Target) bool {
+			return setModifier(target, attr, id, 0, "", true)
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[bool]) {
+			if len(rs) == 0 {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			if !rs[0].Value {
+				o.Errort(cmd.MessageParameterInvalid, id)
+				return
+			}
+			o.SetResult(1)
+			o.Printf("Removed modifier %s.", id)
+		},
+	)
 }
-func (c attributeModifierValueCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	target, ok := singleTarget(c.Target, o)
-	if !ok {
-		return
-	}
-	v, ok := modifierValue(target, c.Attribute, c.ID)
-	if !ok {
-		o.Errort(cmd.MessageParameterInvalid, c.ID)
-		return
-	}
-	o.Printf("Modifier %s value is %g.", c.ID, v)
+func (c attributeModifierValueCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	attr, id := c.Attribute, c.ID
+	cmd.ForEach(src, o, tx, c.Target,
+		func(_ *world.Tx, target cmd.Target) attrValueRes {
+			v, ok := modifierValue(target, attr, id)
+			return attrValueRes{ok: ok, val: v}
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[attrValueRes]) {
+			if len(rs) == 0 {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			if !rs[0].Value.ok {
+				o.Errort(cmd.MessageParameterInvalid, id)
+				return
+			}
+			o.SetResult(int(rs[0].Value.val))
+			o.Printf("Modifier %s value is %g.", id, rs[0].Value.val)
+		},
+	)
 }
 
 func attributeID(name string) string {

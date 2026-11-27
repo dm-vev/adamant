@@ -9,7 +9,7 @@ import (
 
 type itemReplaceEntityCommand struct {
 	gameMaster
-	Targets []cmd.Target      `cmd:"targets"`
+	Targets cmd.Entities      `cmd:"targets"`
 	Slot    int               `cmd:"slot"`
 	Item    itemArgument      `cmd:"item"`
 	Count   cmd.Optional[int] `cmd:"count"`
@@ -17,7 +17,7 @@ type itemReplaceEntityCommand struct {
 
 type itemModifyEntityCommand struct {
 	gameMaster
-	Targets []cmd.Target `cmd:"targets"`
+	Targets cmd.Entities `cmd:"targets"`
 	Slot    int          `cmd:"slot"`
 	Name    string       `cmd:"name"`
 }
@@ -26,7 +26,7 @@ func newItemCommand() cmd.Command {
 	return newCommand("item", nil, itemReplaceEntityCommand{}, itemModifyEntityCommand{})
 }
 
-func (c itemReplaceEntityCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
+func (c itemReplaceEntityCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	if c.Slot < 0 {
 		o.Errort(cmd.MessageParameterInvalid, c.Slot)
 		return
@@ -49,46 +49,60 @@ func (c itemReplaceEntityCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) 
 		return
 	}
 	stack := item.NewStack(it, count)
-	changed := 0
-	for _, target := range c.Targets {
-		inv, ok := target.(interface{ Inventory() *inventory.Inventory })
-		if !ok {
-			continue
-		}
-		if err := inv.Inventory().SetItem(c.Slot, stack); err == nil {
-			changed++
-		}
-	}
-	if changed == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
-	o.Printf("Replaced slot %d in %d target(s) with %s.", c.Slot, changed, stack.String())
+	slot := c.Slot
+	cmd.ForEach(src, o, tx, c.Targets,
+		func(_ *world.Tx, target cmd.Target) int {
+			inv, ok := target.(interface{ Inventory() *inventory.Inventory })
+			if !ok {
+				return 0
+			}
+			if err := inv.Inventory().SetItem(slot, stack); err == nil {
+				return 1
+			}
+			return 0
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[int]) {
+			tally := cmd.TallyOf(rs)
+			if tally.NonZero == 0 {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			o.SetResult(tally.Total)
+			o.Printf("Replaced slot %d in %d target(s) with %s.", slot, tally.NonZero, stack.String())
+		},
+	)
 }
 
-func (c itemModifyEntityCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
+func (c itemModifyEntityCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	if c.Slot < 0 {
 		o.Errort(cmd.MessageParameterInvalid, c.Slot)
 		return
 	}
-	changed := 0
-	for _, target := range c.Targets {
-		inv, ok := target.(interface{ Inventory() *inventory.Inventory })
-		if !ok {
-			continue
-		}
-		inventory := inv.Inventory()
-		stack, err := inventory.Item(c.Slot)
-		if err != nil || stack.Empty() {
-			continue
-		}
-		if inventory.SetItem(c.Slot, stack.WithCustomName(c.Name)) == nil {
-			changed++
-		}
-	}
-	if changed == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
-	o.Printf("Modified slot %d in %d target(s).", c.Slot, changed)
+	slot, name := c.Slot, c.Name
+	cmd.ForEach(src, o, tx, c.Targets,
+		func(_ *world.Tx, target cmd.Target) int {
+			inv, ok := target.(interface{ Inventory() *inventory.Inventory })
+			if !ok {
+				return 0
+			}
+			inventory := inv.Inventory()
+			stack, err := inventory.Item(slot)
+			if err != nil || stack.Empty() {
+				return 0
+			}
+			if inventory.SetItem(slot, stack.WithCustomName(name)) == nil {
+				return 1
+			}
+			return 0
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[int]) {
+			tally := cmd.TallyOf(rs)
+			if tally.NonZero == 0 {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			o.SetResult(tally.Total)
+			o.Printf("Modified slot %d in %d target(s).", slot, tally.NonZero)
+		},
+	)
 }

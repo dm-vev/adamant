@@ -3,6 +3,7 @@ package builtin
 import (
 	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 
 	"github.com/df-mc/goleveldb/leveldb"
@@ -138,12 +139,13 @@ func dataStorageMerge(c *dataCall, s dataStorageRef) {
 	c.out.Printf("Merged storage %s", s.key)
 }
 
-// dataEntityActions are the actions of /data entity by keyword. They work on
-// one entity, and report whether the command goes on with the next.
-var dataEntityActions = map[string]func(c *dataCall, e world.Entity) bool{
-	"get":    dataEntityGet,
-	"merge":  dataEntityMerge,
-	"remove": dataEntityRemove,
+type dataEntityOutcome struct {
+	isEntity  bool
+	msg       string
+	result    int
+	hasResult bool
+	errMsg    string
+	err       error
 }
 
 // dataEntity is `entity <targets>`.
@@ -152,81 +154,104 @@ func dataEntity(c *dataCall) {
 		c.out.Error("data entity requires a target")
 		return
 	}
-	targets, err := cmd.ResolveTargets(c.words[2], c.src, c.tx)
+	sel, err := cmd.ParseEntities(c.words[2], c.src)
 	if err != nil {
 		c.out.Error(err)
 		return
 	}
-	var entities []world.Entity
-	for _, t := range targets {
-		if e, ok := t.(world.Entity); ok {
-			entities = append(entities, e)
-		}
-	}
-	if len(entities) == 0 {
-		c.out.Errort(cmd.MessageNoTargets)
-		return
-	}
-	action, ok := dataEntityActions[c.action]
-	if !ok {
-		c.out.Error("unsupported entity data action")
-		return
-	}
-	for _, e := range entities {
-		if !action(c, e) {
-			return
-		}
-	}
-	c.out.Printf("Updated data for %d entity(s)", len(entities))
-}
-
-// dataEntityGet is `get entity <targets> [<path>]`.
-func dataEntityGet(c *dataCall, e world.Entity) bool {
-	tag := e.H().NBT(c.tx)
-	if len(c.words) > 3 {
-		v, exists := nbtPath(tag, c.words[3])
-		if !exists {
-			c.out.Error("missing data path " + c.words[3])
-			return false
-		}
-		c.out.SetResult(dataResult(v))
-		c.out.Printf("%s", formatData(v))
-		return true
-	}
-	c.out.SetResult(dataResult(tag))
-	c.out.Printf("%s", formatData(tag))
-	return true
-}
-
-// dataEntityMerge is `merge entity <targets> <json>`.
-func dataEntityMerge(c *dataCall, e world.Entity) bool {
-	if len(c.words) <= 3 {
-		c.out.Error("unsupported entity data action")
-		return false
-	}
+	action := c.action
+	words := slices.Clone(c.words)
 	var patch map[string]any
-	if err := json.Unmarshal([]byte(strings.Join(c.words[3:], " ")), &patch); err != nil {
-		c.out.Error(err)
-		return false
+	var patchErr error
+	if action == "merge" && len(words) > 3 {
+		patchErr = json.Unmarshal([]byte(strings.Join(words[3:], " ")), &patch)
 	}
-	if err := e.H().MergeNBT(c.tx, patch); err != nil {
-		c.out.Error(err)
-		return false
-	}
-	return true
+	cmd.ForEach(c.src, c.out, c.tx, sel,
+		func(rtx *world.Tx, t cmd.Target) dataEntityOutcome {
+			e, ok := t.(world.Entity)
+			if !ok {
+				return dataEntityOutcome{}
+			}
+			return evalDataEntity(action, words, patch, patchErr, rtx, e)
+		},
+		func(_ cmd.Source, out *cmd.Output, _ *world.Tx, rs []cmd.Result[dataEntityOutcome]) {
+			var matched []dataEntityOutcome
+			for _, r := range rs {
+				if r.Value.isEntity {
+					matched = append(matched, r.Value)
+				}
+			}
+			if len(matched) == 0 {
+				out.Errort(cmd.MessageNoTargets)
+				return
+			}
+			if action != "get" && action != "merge" && action != "remove" {
+				out.Error("unsupported entity data action")
+				return
+			}
+			for _, m := range matched {
+				if m.err != nil {
+					out.Error(m.err)
+					return
+				}
+				if m.errMsg != "" {
+					out.Error(m.errMsg)
+					return
+				}
+				if m.hasResult {
+					out.SetResult(m.result)
+				}
+				if m.msg != "" {
+					out.Printf("%s", m.msg)
+				}
+			}
+			out.Printf("Updated data for %d entity(s)", len(matched))
+		},
+	)
 }
 
-// dataEntityRemove is `remove entity <targets> <path>`.
-func dataEntityRemove(c *dataCall, e world.Entity) bool {
-	if len(c.words) <= 3 {
-		c.out.Error("unsupported entity data action")
-		return false
+func evalDataEntity(action string, words []string, patch map[string]any, patchErr error, tx *world.Tx, e world.Entity) dataEntityOutcome {
+	res := dataEntityOutcome{isEntity: true}
+	switch action {
+	case "get":
+		tag := e.H().NBT(tx)
+		if len(words) > 3 {
+			v, exists := nbtPath(tag, words[3])
+			if !exists {
+				res.errMsg = "missing data path " + words[3]
+				return res
+			}
+			res.result, res.hasResult, res.msg = dataResult(v), true, formatData(v)
+			return res
+		}
+		res.result, res.hasResult, res.msg = dataResult(tag), true, formatData(tag)
+		return res
+	case "merge":
+		if len(words) <= 3 {
+			res.errMsg = "unsupported entity data action"
+			return res
+		}
+		if patchErr != nil {
+			res.err = patchErr
+			return res
+		}
+		if err := e.H().MergeNBT(tx, patch); err != nil {
+			res.err = err
+		}
+		return res
+	case "remove":
+		if len(words) <= 3 {
+			res.errMsg = "unsupported entity data action"
+			return res
+		}
+		if err := e.H().MergeNBT(tx, map[string]any{words[3]: nil}); err != nil {
+			res.err = err
+		}
+		return res
+	default:
+		res.errMsg = "unsupported entity data action"
+		return res
 	}
-	if err := e.H().MergeNBT(c.tx, map[string]any{c.words[3]: nil}); err != nil {
-		c.out.Error(err)
-		return false
-	}
-	return true
 }
 
 // dataBlockCall is the block a /data block command names, as the data that it

@@ -24,49 +24,46 @@ func (killDamageSource) BypassesInvulnerability() bool { return true }
 
 type killCommand struct {
 	gameMaster
-	Targets cmd.Optional[[]cmd.Target] `cmd:"targets"`
+	Targets cmd.Optional[cmd.Entities] `cmd:"targets"`
 }
 
 func newKillCommand() cmd.Command {
 	return newCommand("kill", nil, killCommand{})
 }
 
-func (k killCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
-	targets, ok := k.Targets.Load()
-	if !ok {
-		if src == nil {
-			o.Errort(cmd.MessageNoTargets)
-			return
-		}
-		targets = []cmd.Target{src}
-	}
-	count := 0
-	for _, target := range targets {
-		living, ok := target.(entity.Living)
-		if !ok || living.Dead() {
-			continue
-		}
-		living.Hurt(living.Health()+1, killDamageSource{})
-		count++
-	}
-	if count == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
-	o.Printf("Killed %d entities.", count)
+func (k killCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	cmd.ForEach(src, o, tx, optionalEntities(k.Targets, src),
+		func(_ *world.Tx, t cmd.Target) int {
+			living, ok := t.(entity.Living)
+			if !ok || living.Dead() {
+				return 0
+			}
+			living.Hurt(living.Health()+1, killDamageSource{})
+			return 1
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[int]) {
+			tally := cmd.TallyOf(rs)
+			if tally.NonZero == 0 {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			o.SetResult(tally.Total)
+			o.Printf("Killed %d entities.", tally.NonZero)
+		},
+	)
 }
 
 // damageCommand ports Java DamageCommand:
 // damage <targets> <amount> [<type>] [at <location> | by <entity> [from <cause>]].
 type damageCommand struct {
 	gameMaster
-	Targets []cmd.Target         `cmd:"targets"`
+	Targets cmd.Entities         `cmd:"targets"`
 	Amount  float64              `cmd:"amount"`
 	Type    cmd.Optional[string] `cmd:"damageType"`
 }
 type damageAtCommand struct {
 	gameMaster
-	Targets  []cmd.Target   `cmd:"targets"`
+	Targets  cmd.Entities   `cmd:"targets"`
 	Amount   float64        `cmd:"amount"`
 	Type     string         `cmd:"damageType"`
 	At       cmd.SubCommand `cmd:"at"`
@@ -74,21 +71,21 @@ type damageAtCommand struct {
 }
 type damageByCommand struct {
 	gameMaster
-	Targets []cmd.Target   `cmd:"targets"`
+	Targets cmd.Entities   `cmd:"targets"`
 	Amount  float64        `cmd:"amount"`
 	Type    string         `cmd:"damageType"`
 	By      cmd.SubCommand `cmd:"by"`
-	Entity  []cmd.Target   `cmd:"entity"`
+	Entity  cmd.OneEntity  `cmd:"entity"`
 }
 type damageByFromCommand struct {
 	gameMaster
-	Targets []cmd.Target   `cmd:"targets"`
+	Targets cmd.Entities   `cmd:"targets"`
 	Amount  float64        `cmd:"amount"`
 	Type    string         `cmd:"damageType"`
 	By      cmd.SubCommand `cmd:"by"`
-	Entity  []cmd.Target   `cmd:"entity"`
+	Entity  cmd.OneEntity  `cmd:"entity"`
 	From    cmd.SubCommand `cmd:"from"`
-	Cause   []cmd.Target   `cmd:"cause"`
+	Cause   cmd.OneEntity  `cmd:"cause"`
 }
 
 type genericDamageSource struct{}
@@ -147,70 +144,99 @@ func newDamageCommand() cmd.Command {
 	return newCommand("damage", nil, damageCommand{}, damageAtCommand{}, damageByCommand{}, damageByFromCommand{})
 }
 
-func (d damageCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	applyCommandDamage(d.Targets, d.Amount, d.Type.LoadOr("generic"), nil, nil, o)
+func (d damageCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	applyCommandDamage(src, o, tx, d.Targets, d.Amount, d.Type.LoadOr("generic"), nil, nil)
 }
 
 // The Bedrock damage API carries no positional origin, so `at` only selects
 // the damage type, as Java does for types without position-scaled effects.
-func (d damageAtCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	applyCommandDamage(d.Targets, d.Amount, d.Type, nil, nil, o)
+func (d damageAtCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	applyCommandDamage(src, o, tx, d.Targets, d.Amount, d.Type, nil, nil)
 }
 
-func (d damageByCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	attacker, ok := singleTarget(d.Entity, o)
-	if !ok {
-		return
-	}
-	applyCommandDamage(d.Targets, d.Amount, d.Type, attacker, nil, o)
+func (d damageByCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	targets, amount, damageType := d.Targets, d.Amount, d.Type
+	cmd.ForEach(src, o, tx, d.Entity,
+		func(_ *world.Tx, _ cmd.Target) struct{} { return struct{}{} },
+		func(src cmd.Source, o *cmd.Output, tx *world.Tx, rs []cmd.Result[struct{}]) {
+			if len(rs) == 0 || rs[0].Handle == nil {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			applyCommandDamage(src, o, tx, targets, amount, damageType, rs[0].Handle, nil)
+		},
+	)
 }
 
-func (d damageByFromCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	direct, ok := singleTarget(d.Entity, o)
-	if !ok {
-		return
-	}
-	cause, ok := singleTarget(d.Cause, o)
-	if !ok {
-		return
-	}
-	applyCommandDamage(d.Targets, d.Amount, d.Type, direct, cause, o)
+func (d damageByFromCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	targets, amount, damageType, causeSel := d.Targets, d.Amount, d.Type, d.Cause
+	cmd.ForEach(src, o, tx, d.Entity,
+		func(_ *world.Tx, _ cmd.Target) struct{} { return struct{}{} },
+		func(src cmd.Source, o *cmd.Output, tx *world.Tx, rs []cmd.Result[struct{}]) {
+			if len(rs) == 0 || rs[0].Handle == nil {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			direct := rs[0].Handle
+			cmd.ForEach(src, o, tx, causeSel,
+				func(_ *world.Tx, _ cmd.Target) struct{} { return struct{}{} },
+				func(src cmd.Source, o *cmd.Output, tx *world.Tx, crs []cmd.Result[struct{}]) {
+					if len(crs) == 0 || crs[0].Handle == nil {
+						o.Error(cmd.ErrNoEntityFound)
+						return
+					}
+					applyCommandDamage(src, o, tx, targets, amount, damageType, direct, crs[0].Handle)
+				},
+			)
+		},
+	)
 }
 
 // applyCommandDamage resolves the source like Java DamageSource construction:
 // a direct entity with a different causing entity is a projectile-style source.
-func applyCommandDamage(targets []cmd.Target, amount float64, name string, direct, cause cmd.Target, o *cmd.Output) {
+func applyCommandDamage(src cmd.Source, o *cmd.Output, tx *world.Tx, targets cmd.Entities, amount float64, name string, direct, cause *world.EntityHandle) {
 	if amount <= 0 {
 		o.Errort(cmd.MessageParameterInvalid, amount)
 		return
 	}
 	name = strings.TrimPrefix(strings.ToLower(name), "minecraft:")
-	source, ok := damageSource(name, nil)
+	baseSource, ok := damageSource(name, nil)
 	if !ok {
 		o.Errort(cmd.MessageParameterInvalid, name)
 		return
 	}
-	if attacker, isEntity := direct.(world.Entity); isEntity {
-		source = entity.AttackDamageSource{Attacker: attacker}
-		if owner, isEntity := cause.(world.Entity); isEntity && owner != attacker {
-			source = entity.ProjectileDamageSource{Projectile: attacker, Owner: owner}
-		}
-	}
-	count := 0
-	for _, target := range targets {
-		living, ok := target.(entity.Living)
-		if !ok || living.Dead() {
-			continue
-		}
-		if _, vulnerable := living.Hurt(amount, source); vulnerable {
-			count++
-		}
-	}
-	if count == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
-	o.Printf("Applied %g damage to %d entities.", amount, count)
+	cmd.ForEach(src, o, tx, targets,
+		func(rtx *world.Tx, target cmd.Target) int {
+			living, ok := target.(entity.Living)
+			if !ok || living.Dead() {
+				return 0
+			}
+			source := baseSource
+			if direct != nil && rtx != nil && direct.World() == rtx.World() {
+				if attacker, ok := direct.Entity(rtx); ok {
+					source = entity.AttackDamageSource{Attacker: attacker}
+					if cause != nil && cause != direct && cause.World() == rtx.World() {
+						if owner, ok := cause.Entity(rtx); ok {
+							source = entity.ProjectileDamageSource{Projectile: attacker, Owner: owner}
+						}
+					}
+				}
+			}
+			if _, vulnerable := living.Hurt(amount, source); vulnerable {
+				return 1
+			}
+			return 0
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[int]) {
+			tally := cmd.TallyOf(rs)
+			if tally.NonZero == 0 {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			o.SetResult(tally.Total)
+			o.Printf("Applied %g damage to %d entities.", amount, tally.NonZero)
+		},
+	)
 }
 
 var _ cmd.Target = (*player.Player)(nil)

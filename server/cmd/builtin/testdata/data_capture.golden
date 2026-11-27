@@ -1831,7 +1831,7 @@ nbt cow {"Age":0,"Fire":0,"Motion":[0,0,0],"NameTag":"","Pitch":10,"Pos":[5.5,64
 nbt cow2 {"Age":0,"Fire":0,"Motion":[0,0,0],"NameTag":"","Pitch":0,"Pos":[-3.5,64,2.5],"Rotation":[0,0],"Yaw":0} <nil>
 nbt zombie {"Age":0,"Fire":0,"Motion":[0,0,0],"NameTag":"","Pitch":0,"Pos":[40.5,64,0.5],"Rotation":[0,0],"Yaw":0} <nil>
 === console | get entity Nobody
-error: §r§c> That player cannot be found§r
+error: §r§cNo targets matched selector§r
 result=0 success=false
 block (0,64,0) minecraft:stone map[]
 block (1,64,0) minecraft:stone map[]
@@ -1855,7 +1855,7 @@ nbt cow {"Age":0,"Fire":0,"Motion":[0,0,0],"NameTag":"","Pitch":10,"Pos":[5.5,64
 nbt cow2 {"Age":0,"Fire":0,"Motion":[0,0,0],"NameTag":"","Pitch":0,"Pos":[-3.5,64,2.5],"Rotation":[0,0],"Yaw":0} <nil>
 nbt zombie {"Age":0,"Fire":0,"Motion":[0,0,0],"NameTag":"","Pitch":0,"Pos":[40.5,64,0.5],"Rotation":[0,0],"Yaw":0} <nil>
 === cow | get entity Nobody
-error: §r§c> That player cannot be found§r
+error: §r§cNo targets matched selector§r
 result=0 success=false
 block (0,64,0) minecraft:stone map[]
 block (1,64,0) minecraft:stone map[]

@@ -28,11 +28,11 @@ func TestRotateTurnsAnEntity(t *testing.T) {
 				t.Fatalf("/rotate %s turned the cow to %v, want yaw %v pitch %v", args, got, yaw, pitch)
 			}
 		}
-		check("@e[type=cow] 90 10", 90, 10)
+		check("@e[type=cow,limit=1] 90 10", 90, 10)
 		// The console looks south, so relative angles count from zero.
-		check("@e[type=cow] ~45 ~", 45, 0)
+		check("@e[type=cow,limit=1] ~45 ~", 45, 0)
 		// Looking east is a yaw of -90 in Minecraft.
-		check("@e[type=cow] facing 10.5 64 0.5", -90, 0)
+		check("@e[type=cow,limit=1] facing 10.5 64 0.5", -90, 0)
 		tx.AddEntity(entity.NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{3, 64, 0}}))
 		if out := runTestCommand(rotate, "@e[type=cow] 0 0", tx); out.ErrorCount() == 0 {
 			t.Fatal("rotating two cows at once succeeded")

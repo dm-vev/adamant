@@ -59,15 +59,15 @@ func (entityAnchor) Options(cmd.Source) []string { return []string{"eyes", "feet
 // rotateCommand ports RotateCommand: /rotate <target> <yRot> <xRot>.
 type rotateCommand struct {
 	worldOpCommand
-	Target []cmd.Target `cmd:"target"`
-	Yaw    commandAngle `cmd:"yRot"`
-	Pitch  commandAngle `cmd:"xRot"`
+	Target cmd.OneEntity `cmd:"target"`
+	Yaw    commandAngle  `cmd:"yRot"`
+	Pitch  commandAngle  `cmd:"xRot"`
 }
 
 // rotateFacingCommand is /rotate <target> facing <facingLocation>.
 type rotateFacingCommand struct {
 	worldOpCommand
-	Target   []cmd.Target   `cmd:"target"`
+	Target   cmd.OneEntity  `cmd:"target"`
 	Facing   cmd.SubCommand `cmd:"facing"`
 	Location mgl64.Vec3     `cmd:"facingLocation"`
 }
@@ -76,10 +76,10 @@ type rotateFacingCommand struct {
 // [<facingAnchor>].
 type rotateFacingEntityCommand struct {
 	worldOpCommand
-	Target       []cmd.Target               `cmd:"target"`
+	Target       cmd.OneEntity              `cmd:"target"`
 	Facing       cmd.SubCommand             `cmd:"facing"`
 	Entity       cmd.SubCommand             `cmd:"entity"`
-	FacingEntity []cmd.Target               `cmd:"facingEntity"`
+	FacingEntity cmd.OneEntity              `cmd:"facingEntity"`
 	Anchor       cmd.Optional[entityAnchor] `cmd:"facingAnchor"`
 }
 
@@ -88,51 +88,94 @@ func registerRotateCommand(guard worldOpCommand) {
 }
 
 // Run ...
-func (c rotateCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
-	target, ok := singleTarget(c.Target, o)
-	if !ok {
-		return
-	}
+func (c rotateCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	source := sourceRotation(src)
-	setTargetRotation(target, c.Yaw.of(source.Yaw()), c.Pitch.of(source.Pitch()))
-	o.Printf("Rotated %s", commandTargetName(target))
+	yaw, pitch := c.Yaw.of(source.Yaw()), c.Pitch.of(source.Pitch())
+	cmd.ForEach(src, o, tx, c.Target,
+		func(_ *world.Tx, target cmd.Target) string {
+			setTargetRotation(target, yaw, pitch)
+			return commandTargetName(target)
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[string]) {
+			if len(rs) == 0 {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			o.SetResult(1)
+			o.Printf("Rotated %s", rs[0].Value)
+		},
+	)
 }
 
 // Run ...
-func (c rotateFacingCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
-	target, ok := singleTarget(c.Target, o)
-	if !ok {
-		return
-	}
-	lookAtFrom(target, c.Location, src)
-	o.Printf("Rotated %s", commandTargetName(target))
+func (c rotateFacingCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	loc := c.Location
+	anchorEyes := anchoredAtEyes(src)
+	cmd.ForEach(src, o, tx, c.Target,
+		func(_ *world.Tx, target cmd.Target) string {
+			lookAtFromAnchor(target, loc, anchorEyes)
+			return commandTargetName(target)
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[string]) {
+			if len(rs) == 0 {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			o.SetResult(1)
+			o.Printf("Rotated %s", rs[0].Value)
+		},
+	)
 }
 
 // Run ...
-func (c rotateFacingEntityCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
-	target, ok := singleTarget(c.Target, o)
-	if !ok {
-		return
-	}
-	facing, ok := singleTarget(c.FacingEntity, o)
-	if !ok {
-		return
-	}
-	look := facing.Position()
-	if c.Anchor.LoadOr("feet") == "eyes" {
-		if eyed, ok := facing.(interface{ EyeHeight() float64 }); ok {
-			look[1] += eyed.EyeHeight()
-		}
-	}
-	lookAtFrom(target, look, src)
-	o.Printf("Rotated %s", commandTargetName(target))
+func (c rotateFacingEntityCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	facingEyes := c.Anchor.LoadOr("feet") == "eyes"
+	anchorEyes := anchoredAtEyes(src)
+	targetSel := c.Target
+	cmd.ForEach(src, o, tx, c.FacingEntity,
+		func(_ *world.Tx, facing cmd.Target) mgl64.Vec3 {
+			look := facing.Position()
+			if facingEyes {
+				if eyed, ok := facing.(interface{ EyeHeight() float64 }); ok {
+					look[1] += eyed.EyeHeight()
+				}
+			}
+			return look
+		},
+		func(src cmd.Source, o *cmd.Output, tx *world.Tx, rs []cmd.Result[mgl64.Vec3]) {
+			if len(rs) == 0 {
+				o.Error(cmd.ErrNoEntityFound)
+				return
+			}
+			look := rs[0].Value
+			cmd.ForEach(src, o, tx, targetSel,
+				func(_ *world.Tx, target cmd.Target) string {
+					lookAtFromAnchor(target, look, anchorEyes)
+					return commandTargetName(target)
+				},
+				func(_ cmd.Source, o *cmd.Output, _ *world.Tx, trs []cmd.Result[string]) {
+					if len(trs) == 0 {
+						o.Error(cmd.ErrNoEntityFound)
+						return
+					}
+					o.SetResult(1)
+					o.Printf("Rotated %s", trs[0].Value)
+				},
+			)
+		},
+	)
 }
 
-// lookAtFrom ports Entity.lookAt: the target turns to look at the position
-// from its feet, or its eyes if the command runs anchored at the eyes.
-func lookAtFrom(target cmd.Target, look mgl64.Vec3, src cmd.Source) {
+func anchoredAtEyes(src cmd.Source) bool {
+	context, ok := cmd.ExecutionContextOf(src)
+	return ok && context.Anchor == cmd.Eyes
+}
+
+// lookAtFromAnchor ports Entity.lookAt: the target turns to look at the
+// position from its feet, or its eyes if anchoredAtEyes is true.
+func lookAtFromAnchor(target cmd.Target, look mgl64.Vec3, eyes bool) {
 	from := target.Position()
-	if context, ok := cmd.ExecutionContextOf(src); ok && context.Anchor == cmd.Eyes {
+	if eyes {
 		if eyed, ok := target.(interface{ EyeHeight() float64 }); ok {
 			from[1] += eyed.EyeHeight()
 		}

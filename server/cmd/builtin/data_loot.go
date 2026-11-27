@@ -12,6 +12,7 @@ import (
 	"github.com/dm-vev/adamant/server/item"
 	"github.com/dm-vev/adamant/server/item/inventory"
 	"github.com/dm-vev/adamant/server/loot"
+	"github.com/dm-vev/adamant/server/player"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -22,7 +23,7 @@ import (
 type lootGiveCommand struct {
 	gameMaster
 	Give    cmd.SubCommand `cmd:"give"`
-	Targets []cmd.Target   `cmd:"players"`
+	Targets cmd.Players    `cmd:"players"`
 	Loot    cmd.SubCommand `cmd:"loot"`
 	Table   string         `cmd:"loot_table"`
 }
@@ -57,7 +58,7 @@ type lootReplaceEntityCommand struct {
 	gameMaster
 	Replace cmd.SubCommand `cmd:"replace"`
 	Entity  cmd.SubCommand `cmd:"entity"`
-	Targets []cmd.Target   `cmd:"targets"`
+	Targets cmd.Entities   `cmd:"targets"`
 	Slot    string         `cmd:"slot"`
 	Loot    cmd.SubCommand `cmd:"loot"`
 	Table   string         `cmd:"loot_table"`
@@ -73,25 +74,50 @@ func generateCommandLoot(table string, tx *world.Tx, origin mgl64.Vec3) ([]item.
 	return loot.Generate(table, rand.Int64(), loot.Context{Tx: tx, Origin: origin})
 }
 
-func (c lootGiveCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
-	ps := playersFromTargets(c.Targets)
-	if len(ps) == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
-	for _, p := range ps {
-		stacks, err := generateCommandLoot(c.Table, tx, p.Position())
-		if err != nil {
-			o.Errort(cmd.MessageParameterInvalid, c.Table)
-			return
-		}
-		for _, stack := range stacks {
-			if added, _ := p.Inventory().AddItem(stack); added < stack.Count() {
-				tx.AddEntity(entity.NewItem(world.EntitySpawnOpts{Position: p.Position()}, stack.Grow(-added)))
+type lootTargetResult struct {
+	ok  bool
+	err error
+}
+
+func (c lootGiveCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	table := c.Table
+	cmd.ForEach(src, o, tx, c.Targets,
+		func(rtx *world.Tx, t cmd.Target) lootTargetResult {
+			p, ok := t.(*player.Player)
+			if !ok {
+				return lootTargetResult{}
 			}
-		}
-	}
-	o.Printf("Generated loot from %s for %s.", c.Table, joinNames(ps))
+			stacks, err := generateCommandLoot(table, rtx, p.Position())
+			if err != nil {
+				return lootTargetResult{ok: true, err: err}
+			}
+			for _, stack := range stacks {
+				if added, _ := p.Inventory().AddItem(stack); added < stack.Count() && rtx != nil {
+					rtx.AddEntity(entity.NewItem(world.EntitySpawnOpts{Position: p.Position()}, stack.Grow(-added)))
+				}
+			}
+			return lootTargetResult{ok: true}
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[lootTargetResult]) {
+			var names []string
+			for _, r := range rs {
+				if !r.Value.ok {
+					continue
+				}
+				if r.Value.err != nil {
+					o.Errort(cmd.MessageParameterInvalid, table)
+					return
+				}
+				names = append(names, r.Name)
+			}
+			if len(names) == 0 {
+				o.Error(cmd.ErrNoPlayerFound)
+				return
+			}
+			o.SetResult(len(names))
+			o.Printf("Generated loot from %s for %s.", table, joinSortedStrings(names))
+		},
+	)
 }
 
 func (c lootSpawnCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
@@ -179,7 +205,7 @@ func (c lootReplaceBlockCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) 
 	o.Printf("Generated loot from %s in the container at %v.", c.Table, pos)
 }
 
-func (c lootReplaceEntityCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
+func (c lootReplaceEntityCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	if tx == nil {
 		o.Errort(cmd.MessageNoTargets)
 		return
@@ -197,34 +223,47 @@ func (c lootReplaceEntityCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx)
 			return
 		}
 	}
-	changed := 0
-	for _, target := range c.Targets {
-		stacks, err := generateCommandLoot(c.Table, tx, target.Position())
-		if err != nil {
-			o.Errort(cmd.MessageParameterInvalid, c.Table)
-			return
-		}
-		targetChanged := false
-		for i, stack := range stacks {
-			slot := c.Slot
-			if containerSlot >= 0 {
-				slot = "container." + strconv.Itoa(containerSlot+i)
-			} else if i > 0 {
-				break
+	table := c.Table
+	baseSlot := c.Slot
+	cmd.ForEach(src, o, tx, c.Targets,
+		func(rtx *world.Tx, target cmd.Target) lootTargetResult {
+			stacks, err := generateCommandLoot(table, rtx, target.Position())
+			if err != nil {
+				return lootTargetResult{err: err}
 			}
-			if setLootEntitySlot(target, slot, stack) {
-				targetChanged = true
+			targetChanged := false
+			for i, stack := range stacks {
+				slot := baseSlot
+				if containerSlot >= 0 {
+					slot = "container." + strconv.Itoa(containerSlot+i)
+				} else if i > 0 {
+					break
+				}
+				if setLootEntitySlot(target, slot, stack) {
+					targetChanged = true
+				}
 			}
-		}
-		if targetChanged {
-			changed++
-		}
-	}
-	if changed == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
-	o.Printf("Generated loot from %s for %d target(s).", c.Table, changed)
+			return lootTargetResult{ok: targetChanged}
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[lootTargetResult]) {
+			changed := 0
+			for _, r := range rs {
+				if r.Value.err != nil {
+					o.Errort(cmd.MessageParameterInvalid, table)
+					return
+				}
+				if r.Value.ok {
+					changed++
+				}
+			}
+			if changed == 0 {
+				o.Errort(cmd.MessageNoTargets)
+				return
+			}
+			o.SetResult(changed)
+			o.Printf("Generated loot from %s for %d target(s).", table, changed)
+		},
+	)
 }
 
 func setLootEntitySlot(target cmd.Target, slot string, stack item.Stack) bool {
