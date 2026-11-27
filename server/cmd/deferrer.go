@@ -26,13 +26,22 @@ type Deferrer interface {
 // that is a Deferrer is told output follows, and that it was sent once it was
 // (including when called with a nil Output to signal cancellation).
 func Later(src Source) func(tx *world.Tx, o *Output) {
+	var interceptors []func(*Output)
 	base := src
 	for {
+		if ic, ok := base.(interface{ OnCommandOutput(*Output) }); ok {
+			interceptors = append(interceptors, ic.OnCommandOutput)
+		}
 		w, ok := base.(Wrapper)
 		if !ok {
 			break
 		}
 		base = w.Unwrap()
+	}
+	notifyInterceptors := func(o *Output) {
+		for _, ic := range interceptors {
+			ic(o)
+		}
 	}
 	if d, ok := base.(Deferrer); ok {
 		done := d.Defer()
@@ -41,6 +50,7 @@ func Later(src Source) func(tx *world.Tx, o *Output) {
 			once.Do(func() {
 				defer done()
 				if o != nil {
+					notifyInterceptors(o)
 					base.SendCommandOutput(o)
 				}
 			})
@@ -50,6 +60,7 @@ func Later(src Source) func(tx *world.Tx, o *Output) {
 	if !ok {
 		return func(_ *world.Tx, o *Output) {
 			if o != nil {
+				notifyInterceptors(o)
 				base.SendCommandOutput(o)
 			}
 		}
@@ -64,6 +75,7 @@ func Later(src Source) func(tx *world.Tx, o *Output) {
 		if o == nil {
 			return
 		}
+		notifyInterceptors(o)
 		if e, ok := handleEntityInTx(h, tx); ok {
 			sendTo(e, o)
 			return

@@ -9,11 +9,22 @@ import (
 // ExecutionContext describes Java execute-command state without changing the
 // transaction that owns the command's world operations.
 type ExecutionContext struct {
-	Executor world.Entity
-	Position mgl64.Vec3
-	Rotation cube.Rotation
-	World    *world.World
-	Anchor   Anchor
+	Executor       world.Entity
+	ExecutorHandle *world.EntityHandle
+	Position       mgl64.Vec3
+	Rotation       cube.Rotation
+	World          *world.World
+	Anchor         Anchor
+}
+
+// EntityHandle returns the handle of the executing entity, whether resolved
+// in the current transaction (Executor) or carried across worlds
+// (ExecutorHandle).
+func (c ExecutionContext) EntityHandle() *world.EntityHandle {
+	if c.Executor != nil {
+		return c.Executor.H()
+	}
+	return c.ExecutorHandle
 }
 
 // Anchor identifies the point on an executor used by position-relative commands.

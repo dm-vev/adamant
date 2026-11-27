@@ -36,7 +36,9 @@ func (s *BlockSource) Name() string {
 }
 func (s *BlockSource) SendCommandOutput(o *Output) {
 	s.mu.Lock()
-	s.output = o
+	if s.output == nil || o.MessageCount() > 0 || o.ErrorCount() > 0 || o.resultSet {
+		s.output = o
+	}
 	s.mu.Unlock()
 }
 

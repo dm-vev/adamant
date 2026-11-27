@@ -8,7 +8,9 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 	"iter"
+	"sync"
 	"testing"
+	"time"
 )
 
 type executeDimensionAdapter struct {
@@ -24,10 +26,57 @@ func (a executeDimensionAdapter) Nether() *world.World          { return a.nethe
 func (a executeDimensionAdapter) End() *world.World             { return a.end }
 func (executeDimensionAdapter) PlayerIsOperator(uuid.UUID) bool { return true }
 
+type deferWaitSource struct {
+	executeTestSource
+	mu      sync.Mutex
+	pending int
+	done    chan struct{}
+}
+
+func newDeferWaitSource(pos mgl64.Vec3) *deferWaitSource {
+	return &deferWaitSource{
+		executeTestSource: executeTestSource{position: pos},
+		done:              make(chan struct{}),
+	}
+}
+
+func (s *deferWaitSource) Defer() func() {
+	s.mu.Lock()
+	s.pending++
+	s.mu.Unlock()
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			s.mu.Lock()
+			s.pending--
+			finished := s.pending == 0
+			s.mu.Unlock()
+			if finished {
+				close(s.done)
+			}
+		})
+	}
+}
+
+func (s *deferWaitSource) wait(t *testing.T) {
+	t.Helper()
+	s.mu.Lock()
+	p := s.pending
+	s.mu.Unlock()
+	if p == 0 {
+		return
+	}
+	select {
+	case <-s.done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for cross-world execute command")
+	}
+}
+
 func TestExecuteInTeleportMovesPlayerAcrossDimensions(t *testing.T) {
-	overworld := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
-	nether := world.Config{Dim: world.Nether, Synchronous: true, RandomTickSpeed: -1}.New()
-	end := world.Config{Dim: world.End, Synchronous: true, RandomTickSpeed: -1}.New()
+	overworld := world.Config{RandomTickSpeed: -1}.New()
+	nether := world.Config{Dim: world.Nether, RandomTickSpeed: -1}.New()
+	end := world.Config{Dim: world.End, RandomTickSpeed: -1}.New()
 	defer overworld.Close()
 	defer nether.Close()
 	defer end.Close()
@@ -69,18 +118,33 @@ func TestExecuteInTeleportMovesPlayerAcrossDimensions(t *testing.T) {
 			<-test.from.Exec(func(tx *world.Tx) {
 				p := tx.AddEntity(world.EntitySpawnOpts{Position: mgl64.Vec3{0, 64, 0}}.New(player.Type, player.Config{Name: "Executor", Position: mgl64.Vec3{0, 64, 0}, GameMode: world.GameModeCreative})).(*player.Player)
 				handle = p.H()
-				src := cmd.WithContext(executeTestSource{position: p.Position()}, cmd.ExecutionContext{Executor: p, Position: p.Position(), Rotation: p.Rotation(), World: tx.World(), Anchor: cmd.Feet})
-				execute.Execute("in "+test.into+" run effect give @s speed 10", src, tx)
-				execute.Execute("in "+test.into+" run give @s minecraft:stone 1", src, tx)
-				if _, ok := p.Effect(effect.Speed); !ok {
+			})
+			runExec := func(line string) {
+				waitSrc := newDeferWaitSource(mgl64.Vec3{0, 64, 0})
+				<-test.from.Exec(func(tx *world.Tx) {
+					p, _ := handle.Entity(tx)
+					src := cmd.WithContext(waitSrc, cmd.ExecutionContext{Executor: p, ExecutorHandle: handle, Position: p.Position(), Rotation: p.Rotation(), World: tx.World(), Anchor: cmd.Feet})
+					execute.Execute(line, src, tx)
+				})
+				waitSrc.wait(t)
+			}
+			runExec("in " + test.into + " run effect give @s speed 10")
+			runExec("in " + test.into + " run give @s minecraft:stone 1")
+			<-test.from.Exec(func(tx *world.Tx) {
+				p, ok := handle.Entity(tx)
+				if !ok {
+					t.Fatal("player missing from origin world")
+				}
+				pl := p.(*player.Player)
+				if _, ok := pl.Effect(effect.Speed); !ok {
 					t.Fatal("execute in effect did not apply speed to executor")
 				}
-				stack, _ := p.Inventory().Item(0)
+				stack, _ := pl.Inventory().Item(0)
 				if stack.Count() != 1 {
 					t.Fatalf("execute in give inventory count = %d, want 1", stack.Count())
 				}
-				execute.Execute("in "+test.into+" run tp @s 300000 70 300000", src, tx)
 			})
+			runExec("in " + test.into + " run tp @s 300000 70 300000")
 			if got := handle.World(); got != test.to {
 				t.Fatalf("player world = %v, want %v", got, test.to)
 			}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -41,19 +42,60 @@ func (c executeCommand) Run(src cmd.Source, out *cmd.Output, tx *world.Tx) {
 	if !ok {
 		ctx = cmd.ExecutionContext{Position: src.Position(), World: tx.World(), Anchor: cmd.Feet}
 		if e, ok := src.(world.Entity); ok {
-			ctx.Executor, ctx.Rotation = e, e.Rotation()
+			ctx.Executor, ctx.ExecutorHandle, ctx.Rotation = e, e.H(), e.Rotation()
 		}
-		if inner, ok := src.(cmd.ContextSource); ok {
-			src = inner.Source
-		}
-	} else if inner, ok := src.(cmd.ContextSource); ok {
-		src = inner.Source
+	} else {
+		ctx.ExecutorHandle = ctx.EntityHandle()
 	}
+	src = unwrapContextSource(src)
 	if ctx.World == nil {
 		ctx.World = tx.World()
 	}
+	eyeHeight := executorEyeHeight(ctx.Executor)
 	forks := &executeForks{limit: tx.World().GameRuleInt("max_command_forks"), counts: map[int]int{}}
-	executeChain(src, ctx, words, out, tx, forks)
+	if ctx.World != tx.World() {
+		next := stripExecuteEntity(ctx)
+		cmd.InWorld(src, out, tx, ctx.World, func(wSrc cmd.Source, wOut *cmd.Output, wTx *world.Tx) {
+			executeChain(unwrapContextSource(wSrc), resolveExecuteCtx(next, wTx), eyeHeight, nil, words, wOut, wTx, forks)
+		})
+		return
+	}
+	executeChain(src, ctx, eyeHeight, nil, words, out, tx, forks)
+}
+
+func unwrapContextSource(src cmd.Source) cmd.Source {
+	for {
+		inner, ok := src.(cmd.ContextSource)
+		if !ok {
+			return src
+		}
+		src = inner.Source
+	}
+}
+
+func executorEyeHeight(e world.Entity) float64 {
+	if eyed, ok := e.(interface{ EyeHeight() float64 }); ok {
+		return eyed.EyeHeight()
+	}
+	return 0
+}
+
+func stripExecuteEntity(ctx cmd.ExecutionContext) cmd.ExecutionContext {
+	ctx.ExecutorHandle = ctx.EntityHandle()
+	ctx.Executor = nil
+	return ctx
+}
+
+func resolveExecuteCtx(ctx cmd.ExecutionContext, tx *world.Tx) cmd.ExecutionContext {
+	h := ctx.EntityHandle()
+	ctx.ExecutorHandle = h
+	ctx.Executor = nil
+	if h != nil && tx != nil && h.World() == tx.World() {
+		if e, ok := h.Entity(tx); ok {
+			ctx.Executor = e
+		}
+	}
+	return ctx
 }
 
 // executeForks ports ExecutionContext's fork limit: when the contexts created
@@ -82,11 +124,13 @@ func (f *executeForks) admit(out *cmd.Output, remaining, n int) bool {
 	return true
 }
 
-func anchorPosition(ctx cmd.ExecutionContext) mgl64.Vec3 {
+func anchorPosition(ctx cmd.ExecutionContext, eyeHeight float64) mgl64.Vec3 {
 	pos := ctx.Position
 	if ctx.Anchor == cmd.Eyes {
-		if eyed, ok := ctx.Executor.(interface{ EyeHeight() float64 }); ok {
-			pos[1] += eyed.EyeHeight()
+		if h := executorEyeHeight(ctx.Executor); h != 0 {
+			pos[1] += h
+		} else {
+			pos[1] += eyeHeight
 		}
 	}
 	return pos
@@ -164,27 +208,40 @@ func relatedEntities(e world.Entity, relation string, tx *world.Tx) []world.Enti
 	return nil
 }
 
-// storeSource intercepts the nested command's output to store its result or
-// success, as ExecuteCommand's result consumers do.
+// storeSource intercepts the nested command's output (both synchronous and
+// deferred via cmd.Later) to store its result or success, as ExecuteCommand's
+// result consumers do.
 type storeSource struct {
 	cmd.Source
 	store func(success bool, result int)
 }
 
-// Unwrap returns the source of the command, whose level the storeSource
-// has.
+// Unwrap returns the source of the command, whose level the storeSource has.
 func (s *storeSource) Unwrap() cmd.Source { return s.Source }
 
-func (s *storeSource) SendCommandOutput(o *cmd.Output) {
+// OnCommandOutput is invoked by cmd.Later before delivering deferred output.
+func (s *storeSource) OnCommandOutput(o *cmd.Output) {
+	if o == nil || s.store == nil {
+		return
+	}
 	s.store(o.Success(), o.Result())
+}
+
+func (s *storeSource) SendCommandOutput(o *cmd.Output) {
+	s.OnCommandOutput(o)
 	s.Source.SendCommandOutput(o)
 }
 
-// executeStoreSink parses `store (result|success) <destination>` for score,
-// bossbar and storage destinations.
-func executeStoreSink(words []string, src cmd.Source, ctx cmd.ExecutionContext, tx *world.Tx) (func(bool, int), int, error) {
+// resolveExecuteStoreSink parses `store (result|success) <destination>` for
+// score, bossbar and storage destinations, resolving score selectors across
+// worlds when needed.
+func resolveExecuteStoreSink(
+	words []string, src cmd.Source, ctx cmd.ExecutionContext, out *cmd.Output, tx *world.Tx,
+	then func(sink func(bool, int), used int, err error, nextSrc cmd.Source, nextTx *world.Tx),
+) {
 	if len(words) < 2 || words[0] != "result" && words[0] != "success" {
-		return nil, 0, errExecuteSyntax
+		then(nil, 0, errExecuteSyntax, src, tx)
+		return
 	}
 	storeSuccess := words[0] == "success"
 	value := func(success bool, result int) int {
@@ -196,48 +253,61 @@ func executeStoreSink(words []string, src cmd.Source, ctx cmd.ExecutionContext, 
 		}
 		return result
 	}
+	storeWorld := tx.World()
 	switch words[1] {
 	case "score":
 		if len(words) < 4 {
-			return nil, 0, errExecuteSyntax
+			then(nil, 0, errExecuteSyntax, src, tx)
+			return
 		}
-		m := tx.World().Scoreboard()
-		holders, err := scoreHolders(words[2], cmd.WithContext(src, ctx), tx, m)
-		if err != nil {
-			return nil, 0, err
-		}
+		m := storeWorld.Scoreboard()
 		objective := words[3]
-		return func(success bool, result int) {
-			for _, holder := range holders {
-				_ = m.SetScore(objective, holder, value(success, result))
+		resolveScoreHolders(words[2], cmd.WithContext(src, ctx), out, tx, m, func(nSrc cmd.Source, _ *cmd.Output, nTx *world.Tx, holders []string, err error) {
+			if err != nil {
+				then(nil, 0, err, unwrapContextSource(nSrc), nTx)
+				return
 			}
-			refreshScoreboard(tx, m)
-		}, 4, nil
+			holders = slices.Clone(holders)
+			sink := func(success bool, result int) {
+				v := value(success, result)
+				for _, holder := range holders {
+					_ = m.SetScore(objective, holder, v)
+				}
+				storeWorld.Do(func(rtx *world.Tx) { refreshScoreboard(rtx, m) })
+			}
+			then(sink, 4, nil, unwrapContextSource(nSrc), nTx)
+		})
 	case "bossbar":
 		if len(words) < 4 || words[3] != "value" && words[3] != "max" {
-			return nil, 0, errExecuteSyntax
+			then(nil, 0, errExecuteSyntax, src, tx)
+			return
 		}
-		m := tx.World().Scoreboard()
+		m := storeWorld.Scoreboard()
 		id, property := words[2], words[3]
-		return func(success bool, result int) {
+		sink := func(success bool, result int) {
 			if m.ModifyBossBar(id, property, strconv.Itoa(value(success, result))) == nil {
-				refreshBossBar(tx, m, id)
+				storeWorld.Do(func(rtx *world.Tx) { refreshBossBar(rtx, m, id) })
 			}
-		}, 4, nil
+		}
+		then(sink, 4, nil, src, tx)
 	case "storage":
 		if len(words) < 6 {
-			return nil, 0, errExecuteSyntax
+			then(nil, 0, errExecuteSyntax, src, tx)
+			return
 		}
 		key, path, kind := words[2], words[3], words[4]
 		scale, err := cmd.ParseNumber(words[5], 64)
 		if err != nil {
-			return nil, 0, err
+			then(nil, 0, err, src, tx)
+			return
 		}
-		return func(success bool, result int) {
-			storeDataValue(tx, key, path, kind, float64(value(success, result))*scale)
-		}, 6, nil
+		sink := func(success bool, result int) {
+			storeDataValueWorld(storeWorld, key, path, kind, float64(value(success, result))*scale)
+		}
+		then(sink, 6, nil, src, tx)
+	default:
+		then(nil, 0, fmt.Errorf("unsupported store destination '%s'", words[1]), src, tx)
 	}
-	return nil, 0, fmt.Errorf("unsupported store destination '%s'", words[1])
 }
 
 // blockMatches compares the full state when properties are given and only the
@@ -317,15 +387,24 @@ func refreshBossBar(tx *world.Tx, m *scoreboard.Model, id string) {
 }
 
 // storeDataValue writes a stored number into command storage at a dotted
+// path using tx's world.
+func storeDataValue(tx *world.Tx, key, path, kind string, v float64) {
+	storeDataValueWorld(tx.World(), key, path, kind, v)
+}
+
+// storeDataValueWorld writes a stored number into command storage at a dotted
 // path, converting it to the requested NBT numeric type like Java's
 // StoreResult: integral types truncate, float and double keep fractions.
-func storeDataValue(tx *world.Tx, key, path, kind string, v float64) {
+func storeDataValueWorld(w *world.World, key, path, kind string, v float64) {
+	if w == nil {
+		return
+	}
 	namespace := "cmd:storage:" + key
 	legacyNamespace := "java:storage:" + key
 	current := map[string]any{}
-	data, err := tx.World().LoadWorldData(namespace)
+	data, err := w.LoadWorldData(namespace)
 	if errors.Is(err, leveldb.ErrNotFound) {
-		data, err = tx.World().LoadWorldData(legacyNamespace)
+		data, err = w.LoadWorldData(legacyNamespace)
 	}
 	if err == nil {
 		_ = json.Unmarshal(data, &current)
@@ -347,6 +426,6 @@ func storeDataValue(tx *world.Tx, key, path, kind string, v float64) {
 	}
 	node[parts[len(parts)-1]] = stored
 	if encoded, err := json.Marshal(current); err == nil {
-		_ = tx.World().SaveWorldData(namespace, encoded)
+		_ = w.SaveWorldData(namespace, encoded)
 	}
 }

@@ -171,6 +171,42 @@ func scoreHolders(spec string, src cmd.Source, tx *world.Tx, m *scoreboard.Model
 	}
 }
 
+// resolveScoreHolders resolves a Java ScoreHolderArgument across worlds via
+// cmd.ForEach when spec is an @-selector, and synchronously for `*` or literal
+// fake-player names.
+func resolveScoreHolders(spec string, src cmd.Source, o *cmd.Output, tx *world.Tx, m *scoreboard.Model, then func(src cmd.Source, o *cmd.Output, tx *world.Tx, holders []string, err error)) {
+	switch {
+	case spec == "*":
+		then(src, o, tx, m.Holders(), nil)
+	case strings.HasPrefix(spec, "@"):
+		sel, err := cmd.ParseEntities(spec, src)
+		if err != nil {
+			then(src, o, tx, nil, err)
+			return
+		}
+		cmd.ForEach(src, o, tx, sel,
+			func(_ *world.Tx, t cmd.Target) string {
+				return cmd.ScoreHolderName(t)
+			},
+			func(src cmd.Source, o *cmd.Output, tx *world.Tx, rs []cmd.Result[string]) {
+				names := make([]string, 0, len(rs))
+				for _, r := range rs {
+					if r.Value != "" {
+						names = append(names, r.Value)
+					}
+				}
+				if len(names) == 0 {
+					then(src, o, tx, nil, cmd.MessageNoTargets.F())
+					return
+				}
+				then(src, o, tx, names, nil)
+			},
+		)
+	default:
+		then(src, o, tx, []string{spec}, nil)
+	}
+}
+
 func (c scoreboardScoreSet) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	updateScores(src, o, tx, c.Holder, c.Objective, func(m *scoreboard.Model, holder string) (int, error) {
 		return c.Value, m.SetScore(c.Objective, holder, c.Value)

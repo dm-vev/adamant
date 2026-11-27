@@ -137,6 +137,27 @@ func forEachSelf[R any](
 	each func(*world.Tx, Target) R,
 	then func(Source, *Output, *world.Tx, []Result[R]),
 ) {
+	if ec, ok := ExecutionContextOf(src); ok {
+		h := ec.EntityHandle()
+		if h == nil {
+			if then != nil {
+				then(src, o, tx, nil)
+			}
+			return
+		}
+		if live, ok := handleEntityInTx(h, tx); ok {
+			var results []Result[R]
+			if s.matchesTarget(tx, live) {
+				results = []Result[R]{evalTarget(tx, live, each)}
+			}
+			if then != nil {
+				then(src, o, tx, results)
+			}
+			return
+		}
+		forEachSingleHandle(src, o, ctxWorld, h, s, each, then)
+		return
+	}
 	self, ok := executor(src)
 	if !ok || self == nil {
 		if then != nil {
@@ -1044,10 +1065,9 @@ func captureSource(src Source) sourceRef {
 	ref.pos = src.Position()
 	ref.level = SourceLevel(src)
 	if ec, ok := ExecutionContextOf(src); ok {
-		if ec.Executor != nil {
-			ref.execHandle = ec.Executor.H()
-			ec.Executor = nil
-		}
+		ref.execHandle = ec.EntityHandle()
+		ec.Executor = nil
+		ec.ExecutorHandle = ref.execHandle
 		ref.ctx = &ec
 	}
 	inner := src
@@ -1102,8 +1122,11 @@ func (r sourceRef) resolve(tx *world.Tx) Source {
 		return base
 	}
 	ec := *r.ctx
+	ec.ExecutorHandle = r.execHandle
 	if e, ok := handleEntityInTx(r.execHandle, tx); ok {
 		ec.Executor = e
+	} else {
+		ec.Executor = nil
 	}
 	return WithContext(base, ec)
 }

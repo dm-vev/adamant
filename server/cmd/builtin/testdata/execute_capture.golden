@@ -883,8 +883,7 @@ score cow obj 3
 bossbar bar value=10 max=100
 storage st {"a":{"b":1},"s":"text","l":[1,2,3]}
 === console | as Nobody run _capture_probe_
-error: §r§c> That player cannot be found§r
-result=0 success=false
+result=1 success=true
 block (0,64,0) minecraft:stone map[]
 block (1,64,0) minecraft:stone map[]
 block (0,64,1) minecraft:dirt map[]
@@ -903,8 +902,7 @@ score cow obj 3
 bossbar bar value=10 max=100
 storage st {"a":{"b":1},"s":"text","l":[1,2,3]}
 === cow | as Nobody run _capture_probe_
-error: §r§c> That player cannot be found§r
-result=0 success=false
+result=1 success=true
 block (0,64,0) minecraft:stone map[]
 block (1,64,0) minecraft:stone map[]
 block (0,64,1) minecraft:dirt map[]
@@ -3674,7 +3672,7 @@ bossbar bar value=10 max=100
 storage st {"a":{"b":1},"s":"text","l":[1,2,3]}
 === cow | in the_nether run _capture_probe_
 result=1 success=true
-probe executor=cow position=(0.6875,64.0000,0.6875) rotation=90.0000,10.0000 anchor=0 context world=nether tx world=overworld
+probe executor=- position=(0.6875,64.0000,0.6875) rotation=90.0000,10.0000 anchor=0 context world=nether tx world=nether
 block (0,64,0) minecraft:stone map[]
 block (1,64,0) minecraft:stone map[]
 block (0,64,1) minecraft:dirt map[]
@@ -3714,7 +3712,7 @@ bossbar bar value=10 max=100
 storage st {"a":{"b":1},"s":"text","l":[1,2,3]}
 === cow | in minecraft:the_nether run _capture_probe_
 result=1 success=true
-probe executor=cow position=(0.6875,64.0000,0.6875) rotation=90.0000,10.0000 anchor=0 context world=nether tx world=overworld
+probe executor=- position=(0.6875,64.0000,0.6875) rotation=90.0000,10.0000 anchor=0 context world=nether tx world=nether
 block (0,64,0) minecraft:stone map[]
 block (1,64,0) minecraft:stone map[]
 block (0,64,1) minecraft:dirt map[]
@@ -3834,7 +3832,7 @@ bossbar bar value=10 max=100
 storage st {"a":{"b":1},"s":"text","l":[1,2,3]}
 === cow | in the_end positioned ~ ~ ~ run _capture_probe_
 result=1 success=true
-probe executor=cow position=(5.5000,64.0000,5.5000) rotation=90.0000,10.0000 anchor=0 context world=end tx world=overworld
+probe executor=- position=(5.5000,64.0000,5.5000) rotation=90.0000,10.0000 anchor=0 context world=end tx world=end
 block (0,64,0) minecraft:stone map[]
 block (1,64,0) minecraft:stone map[]
 block (0,64,1) minecraft:dirt map[]
@@ -4152,7 +4150,7 @@ bossbar bar value=10 max=100
 storage st {"a":{"b":1},"s":"text","l":[1,2,3]}
 === cow | in the_nether if dimension the_nether run _capture_probe_
 result=1 success=true
-probe executor=cow position=(0.6875,64.0000,0.6875) rotation=90.0000,10.0000 anchor=0 context world=nether tx world=overworld
+probe executor=- position=(0.6875,64.0000,0.6875) rotation=90.0000,10.0000 anchor=0 context world=nether tx world=nether
 block (0,64,0) minecraft:stone map[]
 block (1,64,0) minecraft:stone map[]
 block (0,64,1) minecraft:dirt map[]
