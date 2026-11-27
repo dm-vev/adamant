@@ -9,37 +9,35 @@ import (
 
 type clearCommand struct {
 	gameMaster
-	Targets cmd.Optional[[]cmd.Target] `cmd:"target"`
+	Targets cmd.Optional[cmd.Players] `cmd:"target"`
 }
 
 func newClearCommand() cmd.Command {
 	return newCommand("clear", nil, clearCommand{})
 }
 
-func (c clearCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
-	targets, ok := c.Targets.Load()
-	if !ok {
-		if p, ok := src.(*player.Player); ok {
-			targets = []cmd.Target{p}
-		} else {
-			o.Errort(cmd.MessageNoTargets)
-			return
-		}
-	}
-
-	players := playersFromTargets(targets)
-	if len(players) == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
-
-	for _, p := range players {
-		for range p.Inventory().Clear() {
-		}
-		for range p.Armour().Clear() {
-		}
-		p.SetHeldItems(item.Stack{}, item.Stack{})
-	}
-
-	o.Printf("Cleared inventory of %s.", joinNames(players))
+func (c clearCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	cmd.ForEach(src, o, tx, optionalPlayers(c.Targets, src),
+		func(_ *world.Tx, t cmd.Target) int {
+			p, ok := t.(*player.Player)
+			if !ok {
+				return 0
+			}
+			for range p.Inventory().Clear() {
+			}
+			for range p.Armour().Clear() {
+			}
+			p.SetHeldItems(item.Stack{}, item.Stack{})
+			return 1
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[int]) {
+			tally := cmd.TallyOf(rs)
+			if tally.NonZero == 0 {
+				o.Error(cmd.ErrNoPlayerFound)
+				return
+			}
+			o.SetResult(tally.Total)
+			o.Printf("Cleared inventory of %s.", joinNonZeroNames(rs))
+		},
+	)
 }

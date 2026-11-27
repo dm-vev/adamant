@@ -78,9 +78,9 @@ type idleTimeoutCmd struct {
 type transferCmd struct {
 	admin
 	srv      serverAdapter
-	Hostname string                     `cmd:"hostname"`
-	Port     cmd.Optional[int]          `cmd:"port"`
-	Targets  cmd.Optional[[]cmd.Target] `cmd:"players"`
+	Hostname string                    `cmd:"hostname"`
+	Port     cmd.Optional[int]         `cmd:"port"`
+	Targets  cmd.Optional[cmd.Players] `cmd:"players"`
 }
 
 // versionCmd needs cmd.LevelGameMaster, as Java's /version does on a
@@ -386,7 +386,12 @@ func (c idleTimeoutCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	c.srv.SetIdleTimeout(c.Minutes)
 	o.Printf("Set the idle timeout to %d minutes.", c.Minutes)
 }
-func (c transferCmd) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
+type transferResult struct {
+	ok  bool
+	err error
+}
+
+func (c transferCmd) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	port := 25565
 	if value, ok := c.Port.Load(); ok {
 		port = value
@@ -395,27 +400,35 @@ func (c transferCmd) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
 		o.Errort(cmd.MessageParameterInvalid, port)
 		return
 	}
-	targets, ok := c.Targets.Load()
-	if !ok {
-		p, isPlayer := src.(*player.Player)
-		if !isPlayer {
-			o.Errort(cmd.MessageNoTargets)
-			return
-		}
-		targets = []cmd.Target{p}
-	}
-	players := playersFromTargets(targets)
-	if len(players) == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
-	address := net.JoinHostPort(c.Hostname, strconv.Itoa(port))
-	for _, p := range players {
-		if err := p.Transfer(address); err != nil {
-			o.Error(err)
-			return
-		}
-	}
-	o.Printf("Transferred %s to %s:%d.", joinNames(players), c.Hostname, port)
+	hostname := c.Hostname
+	address := net.JoinHostPort(hostname, strconv.Itoa(port))
+	cmd.ForEach(src, o, tx, optionalPlayers(c.Targets, src),
+		func(_ *world.Tx, t cmd.Target) transferResult {
+			p, ok := t.(*player.Player)
+			if !ok {
+				return transferResult{}
+			}
+			return transferResult{ok: true, err: p.Transfer(address)}
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[transferResult]) {
+			var names []string
+			for _, r := range rs {
+				if !r.Value.ok {
+					continue
+				}
+				if r.Value.err != nil {
+					o.Error(r.Value.err)
+					return
+				}
+				names = append(names, r.Name)
+			}
+			if len(names) == 0 {
+				o.Error(cmd.ErrNoPlayerFound)
+				return
+			}
+			o.SetResult(len(names))
+			o.Printf("Transferred %s to %s:%d.", joinSortedStrings(names), hostname, port)
+		},
+	)
 }
 func (c versionCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) { o.Print(c.srv.Version()) }

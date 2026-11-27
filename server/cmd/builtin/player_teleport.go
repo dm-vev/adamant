@@ -231,30 +231,45 @@ func teleportLookAt(from, to mgl64.Vec3) (yaw, pitch float64) {
 
 type spawnpointCommand struct {
 	srv      serverAdapter
-	Targets  cmd.Optional[[]cmd.Target] `cmd:"targets"`
-	Position cmd.Optional[mgl64.Vec3]   `cmd:"position"`
+	Targets  cmd.Optional[cmd.Players] `cmd:"targets"`
+	Position cmd.Optional[mgl64.Vec3]  `cmd:"position"`
 }
 
 func (spawnpointCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
 func (c spawnpointCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
-	targets, ok := c.Targets.Load()
-	if !ok {
-		if p, yes := src.(*player.Player); yes {
-			targets = []cmd.Target{p}
-		}
-	}
 	pos, hasPos := c.Position.Load()
-	for _, target := range targets {
-		p, yes := target.(*player.Player)
-		if !yes {
-			continue
-		}
-		if !hasPos {
-			pos = p.Position()
-		}
-		p.SetRespawnPosition(cube.PosFromVec3(pos), tx.World().Dimension())
+	var dim world.Dimension
+	if ec, ok := cmd.ExecutionContextOf(src); ok && ec.World != nil {
+		dim = ec.World.Dimension()
+	} else if tx != nil {
+		dim = tx.World().Dimension()
 	}
-	o.Printf("Set the respawn point for %d players.", len(targets))
+	cmd.ForEach(src, o, tx, optionalPlayers(c.Targets, src),
+		func(rtx *world.Tx, t cmd.Target) int {
+			p, ok := t.(*player.Player)
+			if !ok {
+				return 0
+			}
+			pPos, pDim := pos, dim
+			if !hasPos {
+				pPos = p.Position()
+				pDim = rtx.World().Dimension()
+			} else if pDim == nil {
+				pDim = rtx.World().Dimension()
+			}
+			p.SetRespawnPosition(cube.PosFromVec3(pPos), pDim)
+			return 1
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[int]) {
+			tally := cmd.TallyOf(rs)
+			if tally.NonZero == 0 {
+				o.Error(cmd.ErrNoPlayerFound)
+				return
+			}
+			o.SetResult(tally.Total)
+			o.Printf("Set the respawn point for %d players.", tally.NonZero)
+		},
+	)
 }
 
 type rideCommand struct {

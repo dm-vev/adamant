@@ -16,21 +16,21 @@ func registerPlayerExperienceCommands(srv serverAdapter) {
 type experienceAddCommand struct {
 	gameMaster
 	Add     cmd.SubCommand               `cmd:"add"`
-	Targets []cmd.Target                 `cmd:"targets"`
+	Targets cmd.Players                  `cmd:"targets"`
 	Amount  int                          `cmd:"amount"`
 	Unit    cmd.Optional[experienceUnit] `cmd:"unit"`
 }
 type experienceSetCommand struct {
 	gameMaster
 	Set     cmd.SubCommand               `cmd:"set"`
-	Targets []cmd.Target                 `cmd:"targets"`
+	Targets cmd.Players                  `cmd:"targets"`
 	Amount  int                          `cmd:"amount"`
 	Unit    cmd.Optional[experienceUnit] `cmd:"unit"`
 }
 type experienceQueryCommand struct {
 	gameMaster
 	Query  cmd.SubCommand `cmd:"query"`
-	Target []cmd.Target   `cmd:"target"`
+	Target cmd.OnePlayer  `cmd:"target"`
 	Unit   experienceUnit `cmd:"unit"`
 }
 type experienceUnit string
@@ -40,63 +40,98 @@ func (experienceUnit) Options(cmd.Source) []string { return []string{"points", "
 func newExperienceCommand() cmd.Command {
 	return newCommand("experience", []string{"xp"}, experienceAddCommand{}, experienceSetCommand{}, experienceQueryCommand{})
 }
-func (c experienceAddCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	ps := playersFromTargets(c.Targets)
-	if len(ps) == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
+func (c experienceAddCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	if c.Amount < 0 {
 		o.Errort(cmd.MessageParameterInvalid, c.Amount)
 		return
 	}
 	unit, _ := c.Unit.Load()
-	for _, p := range ps {
-		if unit == "levels" {
-			p.SetExperienceLevel(p.ExperienceLevel() + c.Amount)
-		} else {
-			p.AddExperience(c.Amount)
-		}
-	}
-	o.Printf("Added %d %s to %s.", c.Amount, unitName(unit), joinNames(ps))
+	amount := c.Amount
+	cmd.ForEach(src, o, tx, c.Targets,
+		func(_ *world.Tx, t cmd.Target) int {
+			p, ok := t.(*player.Player)
+			if !ok {
+				return 0
+			}
+			if unit == "levels" {
+				p.SetExperienceLevel(p.ExperienceLevel() + amount)
+			} else {
+				p.AddExperience(amount)
+			}
+			return 1
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[int]) {
+			tally := cmd.TallyOf(rs)
+			if tally.NonZero == 0 {
+				o.Error(cmd.ErrNoPlayerFound)
+				return
+			}
+			o.SetResult(tally.Total)
+			o.Printf("Added %d %s to %s.", amount, unitName(unit), joinNonZeroNames(rs))
+		},
+	)
 }
-func (c experienceSetCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	ps := playersFromTargets(c.Targets)
-	if len(ps) == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
+func (c experienceSetCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	if c.Amount < 0 {
 		o.Errort(cmd.MessageParameterInvalid, c.Amount)
 		return
 	}
 	unit, _ := c.Unit.Load()
-	for _, p := range ps {
-		if unit == "levels" {
-			p.SetExperienceLevel(c.Amount)
-		} else {
-			p.RemoveExperience(p.Experience())
-			p.AddExperience(c.Amount)
-		}
-	}
-	o.Printf("Set experience for %s to %d %s.", joinNames(ps), c.Amount, unitName(unit))
+	amount := c.Amount
+	cmd.ForEach(src, o, tx, c.Targets,
+		func(_ *world.Tx, t cmd.Target) int {
+			p, ok := t.(*player.Player)
+			if !ok {
+				return 0
+			}
+			if unit == "levels" {
+				p.SetExperienceLevel(amount)
+			} else {
+				p.RemoveExperience(p.Experience())
+				p.AddExperience(amount)
+			}
+			return 1
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[int]) {
+			tally := cmd.TallyOf(rs)
+			if tally.NonZero == 0 {
+				o.Error(cmd.ErrNoPlayerFound)
+				return
+			}
+			o.SetResult(tally.Total)
+			o.Printf("Set experience for %s to %d %s.", joinNonZeroNames(rs), amount, unitName(unit))
+		},
+	)
 }
-func (c experienceQueryCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	target, ok := singleTarget(c.Target, o)
-	if !ok {
-		return
-	}
-	p, ok := target.(*player.Player)
-	if !ok {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
-	n := p.Experience()
-	if c.Unit == "levels" {
-		n = p.ExperienceLevel()
-	}
-	o.SetResult(n)
-	o.Printf("%s has %d experience %s.", p.Name(), n, unitName(c.Unit))
+
+type xpQueryResult struct {
+	ok  bool
+	val int
+}
+
+func (c experienceQueryCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	unit := c.Unit
+	cmd.ForEach(src, o, tx, c.Target,
+		func(_ *world.Tx, t cmd.Target) xpQueryResult {
+			p, ok := t.(*player.Player)
+			if !ok {
+				return xpQueryResult{}
+			}
+			n := p.Experience()
+			if unit == "levels" {
+				n = p.ExperienceLevel()
+			}
+			return xpQueryResult{ok: true, val: n}
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[xpQueryResult]) {
+			if len(rs) == 0 || !rs[0].Value.ok {
+				o.Error(cmd.ErrNoPlayerFound)
+				return
+			}
+			o.SetResult(rs[0].Value.val)
+			o.Printf("%s has %d experience %s.", rs[0].Name, rs[0].Value.val, unitName(unit))
+		},
+	)
 }
 func unitName(u experienceUnit) string {
 	if u == "levels" {
@@ -108,31 +143,32 @@ func unitName(u experienceUnit) string {
 type recipeGiveCommand struct {
 	gameMaster
 	Give    cmd.SubCommand `cmd:"give"`
-	Targets []cmd.Target   `cmd:"targets"`
+	Targets cmd.Players    `cmd:"targets"`
 	Recipe  string         `cmd:"recipe"`
 }
 type recipeTakeCommand struct {
 	gameMaster
 	Take    cmd.SubCommand `cmd:"take"`
-	Targets []cmd.Target   `cmd:"targets"`
+	Targets cmd.Players    `cmd:"targets"`
 	Recipe  string         `cmd:"recipe"`
 }
 
 func newRecipeCommand() cmd.Command {
 	return newCommand("recipe", nil, recipeGiveCommand{}, recipeTakeCommand{})
 }
-func (c recipeGiveCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	changeRecipes(c.Targets, c.Recipe, true, o)
+func (c recipeGiveCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	changeRecipes(src, o, tx, c.Targets, c.Recipe, true)
 }
-func (c recipeTakeCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	changeRecipes(c.Targets, c.Recipe, false, o)
+func (c recipeTakeCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	changeRecipes(src, o, tx, c.Targets, c.Recipe, false)
 }
-func changeRecipes(targets []cmd.Target, id string, give bool, o *cmd.Output) {
-	ps := playersFromTargets(targets)
-	if len(ps) == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
+
+type recipeChangeResult struct {
+	ok      bool
+	changed int
+}
+
+func changeRecipes(src cmd.Source, o *cmd.Output, tx *world.Tx, targets cmd.Players, id string, give bool) {
 	ids := []string{id}
 	if id == "*" {
 		ids = ids[:0]
@@ -144,21 +180,41 @@ func changeRecipes(targets []cmd.Target, id string, give bool, o *cmd.Output) {
 		o.Errort(cmd.MessageParameterInvalid, id)
 		return
 	}
-	changed := 0
-	for _, p := range ps {
-		if give {
-			before := len(p.UnlockedRecipeIDs())
-			p.UnlockRecipes(ids)
-			changed += len(p.UnlockedRecipeIDs()) - before
-		} else {
-			changed += p.LockRecipes(ids)
-		}
-	}
 	verb := "unlocked"
 	if !give {
 		verb = "locked"
 	}
-	o.Printf("%s %d recipes for %s.", verb, changed, joinNames(ps))
+	cmd.ForEach(src, o, tx, targets,
+		func(_ *world.Tx, t cmd.Target) recipeChangeResult {
+			p, ok := t.(*player.Player)
+			if !ok {
+				return recipeChangeResult{}
+			}
+			if give {
+				before := len(p.UnlockedRecipeIDs())
+				p.UnlockRecipes(ids)
+				return recipeChangeResult{ok: true, changed: len(p.UnlockedRecipeIDs()) - before}
+			}
+			return recipeChangeResult{ok: true, changed: p.LockRecipes(ids)}
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[recipeChangeResult]) {
+			var names []string
+			changed := 0
+			for _, r := range rs {
+				if !r.Value.ok {
+					continue
+				}
+				names = append(names, r.Name)
+				changed += r.Value.changed
+			}
+			if len(names) == 0 {
+				o.Error(cmd.ErrNoPlayerFound)
+				return
+			}
+			o.SetResult(changed)
+			o.Printf("%s %d recipes for %s.", verb, changed, joinSortedStrings(names))
+		},
+	)
 }
 func validRecipeID(id string) bool {
 	return recipe.KnownID(id)

@@ -19,13 +19,13 @@ func registerPlayerSoundCommands(_ serverAdapter) {
 
 type playSoundCommand struct {
 	gameMaster
-	Sound     string                     `cmd:"sound"`
-	Source    cmd.Optional[string]       `cmd:"source"`
-	Targets   cmd.Optional[[]cmd.Target] `cmd:"targets"`
-	Position  cmd.Optional[mgl64.Vec3]   `cmd:"pos"`
-	Volume    cmd.Optional[float64]      `cmd:"volume"`
-	Pitch     cmd.Optional[float64]      `cmd:"pitch"`
-	MinVolume cmd.Optional[float64]      `cmd:"minVolume"`
+	Sound     string                    `cmd:"sound"`
+	Source    cmd.Optional[string]      `cmd:"source"`
+	Targets   cmd.Optional[cmd.Players] `cmd:"targets"`
+	Position  cmd.Optional[mgl64.Vec3]  `cmd:"pos"`
+	Volume    cmd.Optional[float64]     `cmd:"volume"`
+	Pitch     cmd.Optional[float64]     `cmd:"pitch"`
+	MinVolume cmd.Optional[float64]     `cmd:"minVolume"`
 }
 
 func (p playSoundCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
@@ -43,9 +43,37 @@ func (p playSoundCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	if v, ok := p.Pitch.Load(); ok {
 		pitch = v
 	}
+	snd := sound.Custom{Name: p.Sound, Volume: volume, Pitch: pitch}
+	if targets, ok := p.Targets.Load(); ok {
+		name := p.Sound
+		cmd.ForEach(src, o, tx, targets,
+			func(_ *world.Tx, t cmd.Target) int {
+				pl, ok := t.(*player.Player)
+				if !ok {
+					return 0
+				}
+				pl.PlaySound(snd)
+				return 1
+			},
+			func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[int]) {
+				tally := cmd.TallyOf(rs)
+				if tally.NonZero == 0 {
+					o.Error(cmd.ErrNoPlayerFound)
+					return
+				}
+				o.SetResult(tally.Total)
+				o.Printf("Played sound %s.", name)
+			},
+		)
+		return
+	}
+	if tx == nil {
+		o.Error(cmd.ErrNoPlayerFound)
+		return
+	}
 	viewers := tx.Viewers(pos)
 	for _, v := range viewers {
-		v.ViewSound(pos, sound.Custom{Name: p.Sound, Volume: volume, Pitch: pitch})
+		v.ViewSound(pos, snd)
 	}
 	tx.ReleaseViewers(viewers)
 	o.Printf("Played sound %s.", p.Sound)
@@ -53,32 +81,46 @@ func (p playSoundCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 
 type stopSoundCommand struct {
 	gameMaster
-	Targets []cmd.Target         `cmd:"targets"`
+	Targets cmd.Players          `cmd:"targets"`
 	Source  cmd.Optional[string] `cmd:"source"`
 	Sound   cmd.Optional[string] `cmd:"sound"`
 }
 
-func (s stopSoundCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	players := playersFromTargets(s.Targets)
+func (s stopSoundCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	name := ""
 	if v, ok := s.Sound.Load(); ok {
 		name = v
 	}
-	for _, p := range players {
-		p.StopSound(name)
-	}
-	o.Printf("Stopped sounds for %s.", joinNames(players))
+	cmd.ForEach(src, o, tx, s.Targets,
+		func(_ *world.Tx, t cmd.Target) int {
+			p, ok := t.(*player.Player)
+			if !ok {
+				return 0
+			}
+			p.StopSound(name)
+			return 1
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[int]) {
+			tally := cmd.TallyOf(rs)
+			if tally.NonZero == 0 {
+				o.Error(cmd.ErrNoPlayerFound)
+				return
+			}
+			o.SetResult(tally.Total)
+			o.Printf("Stopped sounds for %s.", joinNonZeroNames(rs))
+		},
+	)
 }
 
 type spawnParticleCommand struct {
 	gameMaster
-	Name     string                     `cmd:"name"`
-	Position cmd.Optional[mgl64.Vec3]   `cmd:"pos"`
-	Delta    cmd.Optional[mgl64.Vec3]   `cmd:"delta"`
-	Speed    cmd.Optional[float64]      `cmd:"speed"`
-	Count    cmd.Optional[int]          `cmd:"count"`
-	Mode     cmd.Optional[string]       `cmd:"mode"`
-	Viewers  cmd.Optional[[]cmd.Target] `cmd:"viewers"`
+	Name     string                    `cmd:"name"`
+	Position cmd.Optional[mgl64.Vec3]  `cmd:"pos"`
+	Delta    cmd.Optional[mgl64.Vec3]  `cmd:"delta"`
+	Speed    cmd.Optional[float64]     `cmd:"speed"`
+	Count    cmd.Optional[int]         `cmd:"count"`
+	Mode     cmd.Optional[string]      `cmd:"mode"`
+	Viewers  cmd.Optional[cmd.Players] `cmd:"viewers"`
 }
 
 func (p spawnParticleCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
@@ -94,20 +136,36 @@ func (p spawnParticleCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 		o.Errort(cmd.MessageParameterInvalid, p.Name)
 		return
 	}
-	var players []*player.Player
-	if targets, ok := p.Viewers.Load(); ok {
-		players = playersFromTargets(targets)
-	} else {
+	if viewers, ok := p.Viewers.Load(); ok {
+		cmd.ForEach(src, o, tx, viewers,
+			func(_ *world.Tx, t cmd.Target) int {
+				pl, ok := t.(*player.Player)
+				if !ok {
+					return 0
+				}
+				pl.ViewNamedParticle(pos, name)
+				return 1
+			},
+			func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[int]) {
+				tally := cmd.TallyOf(rs)
+				if tally.NonZero == 0 {
+					o.Error(cmd.ErrNoPlayerFound)
+					return
+				}
+				o.SetResult(tally.Total)
+				o.Printf("Spawned particle %s.", name)
+			},
+		)
+		return
+	}
+	if tx != nil {
 		// Java ParticleCommand's default viewers are every player in the level;
 		// the client culls by its own particle range.
 		for e := range tx.Players() {
 			if pl, ok := e.(*player.Player); ok {
-				players = append(players, pl)
+				pl.ViewNamedParticle(pos, name)
 			}
 		}
-	}
-	for _, pl := range players {
-		pl.ViewNamedParticle(pos, name)
 	}
 	o.Printf("Spawned particle %s.", name)
 }

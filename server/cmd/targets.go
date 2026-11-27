@@ -43,6 +43,46 @@ func (e OneEntity) selector() *entitySelector { return e.sel }
 func (p Players) selector() *entitySelector   { return p.sel }
 func (p OnePlayer) selector() *entitySelector { return p.sel }
 
+// ParseEntities parses a target selector, entity UUID, or player name as an
+// Entities selector relative to src without needing a world transaction.
+func ParseEntities(text string, src Source) (Entities, error) {
+	sel, err := parseSelectorInput(text, src, false, false)
+	if err != nil {
+		return Entities{}, err
+	}
+	return Entities{sel: sel}, nil
+}
+
+// ParseOneEntity parses a single-entity selector, entity UUID, or player name
+// relative to src without needing a world transaction.
+func ParseOneEntity(text string, src Source) (OneEntity, error) {
+	sel, err := parseSelectorInput(text, src, false, true)
+	if err != nil {
+		return OneEntity{}, err
+	}
+	return OneEntity{sel: sel}, nil
+}
+
+// ParsePlayers parses a player-only selector or player name relative to src
+// without needing a world transaction.
+func ParsePlayers(text string, src Source) (Players, error) {
+	sel, err := parseSelectorInput(text, src, true, false)
+	if err != nil {
+		return Players{}, err
+	}
+	return Players{sel: sel}, nil
+}
+
+// ParseOnePlayer parses a single-player selector or player name relative to
+// src without needing a world transaction.
+func ParseOnePlayer(text string, src Source) (OnePlayer, error) {
+	sel, err := parseSelectorInput(text, src, true, true)
+	if err != nil {
+		return OnePlayer{}, err
+	}
+	return OnePlayer{sel: sel}, nil
+}
+
 // Result is what a command did to one target.
 type Result[R any] struct {
 	// Name is the name of the target as output shows it, read in its world.

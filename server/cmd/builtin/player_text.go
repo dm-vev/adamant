@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dm-vev/adamant/server/cmd"
+	"github.com/dm-vev/adamant/server/player"
 	"github.com/dm-vev/adamant/server/player/title"
 	"github.com/dm-vev/adamant/server/world"
 )
@@ -21,26 +22,20 @@ func registerPlayerTextCommands(srv serverAdapter) {
 type textCommand struct {
 	gameMaster
 	srv     serverAdapter
-	Targets []cmd.Target `cmd:"targets"`
-	Action  string       `cmd:"action"`
-	Value   cmd.Varargs  `cmd:"value"`
+	Targets cmd.Players `cmd:"targets"`
+	Action  string      `cmd:"action"`
+	Value   cmd.Varargs `cmd:"value"`
 }
 
 func newTextCommand(srv serverAdapter) cmd.Command {
 	return newCommand("title", nil, textCommand{srv: srv})
 }
-func (c textCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	players := playersFromTargets(c.Targets)
-	if len(players) == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
+func (c textCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	raw := strings.TrimSpace(string(c.Value))
+	var apply func(*player.Player)
 	switch c.Action {
 	case "clear", "reset":
-		for _, p := range players {
-			p.SendTitle(title.New(""))
-		}
+		apply = func(p *player.Player) { p.SendTitle(title.New("")) }
 	case "times":
 		parts := strings.Fields(raw)
 		if len(parts) != 3 {
@@ -54,61 +49,100 @@ func (c textCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 			o.Errorf("Invalid title durations")
 			return
 		}
-		for _, p := range players {
-			p.SendTitle(title.New("").WithFadeInDuration(time.Duration(in) * time.Millisecond).WithDuration(time.Duration(stay) * time.Millisecond).WithFadeOutDuration(time.Duration(out) * time.Millisecond))
-		}
-	case "title", "subtitle", "actionbar":
+		t := title.New("").
+			WithFadeInDuration(time.Duration(in) * time.Millisecond).
+			WithDuration(time.Duration(stay) * time.Millisecond).
+			WithFadeOutDuration(time.Duration(out) * time.Millisecond)
+		apply = func(p *player.Player) { p.SendTitle(t) }
+	case "title":
+		t := title.New(componentText(raw))
+		apply = func(p *player.Player) { p.SendTitle(t) }
+	case "subtitle":
+		t := title.New("").WithSubtitle(componentText(raw))
+		apply = func(p *player.Player) { p.SendTitle(t) }
+	case "actionbar":
 		text := componentText(raw)
-		for _, p := range players {
-			switch c.Action {
-			case "title":
-				p.SendTitle(title.New(text))
-			case "subtitle":
-				p.SendTitle(title.New("").WithSubtitle(text))
-			case "actionbar":
-				p.SendJukeboxPopup(text)
-			}
-		}
+		apply = func(p *player.Player) { p.SendJukeboxPopup(text) }
 	default:
 		o.Errorf("Unknown title action %q", c.Action)
+		return
 	}
+	cmd.ForEach(src, o, tx, c.Targets,
+		func(_ *world.Tx, t cmd.Target) int {
+			p, ok := t.(*player.Player)
+			if !ok {
+				return 0
+			}
+			apply(p)
+			return 1
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[int]) {
+			tally := cmd.TallyOf(rs)
+			if tally.NonZero == 0 {
+				o.Error(cmd.ErrNoPlayerFound)
+				return
+			}
+			o.SetResult(tally.Total)
+		},
+	)
 }
 
 type tellRawCommand struct {
 	gameMaster
-	Targets []cmd.Target `cmd:"targets"`
-	JSON    cmd.Varargs  `cmd:"message"`
+	Targets cmd.Players `cmd:"targets"`
+	JSON    cmd.Varargs `cmd:"message"`
 }
 
-func (c tellRawCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	ps := playersFromTargets(c.Targets)
-	if len(ps) == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
+func (c tellRawCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	text := componentText(string(c.JSON))
-	for _, p := range ps {
-		p.Message(text)
-	}
+	cmd.ForEach(src, o, tx, c.Targets,
+		func(_ *world.Tx, t cmd.Target) int {
+			p, ok := t.(*player.Player)
+			if !ok {
+				return 0
+			}
+			p.Message(text)
+			return 1
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[int]) {
+			tally := cmd.TallyOf(rs)
+			if tally.NonZero == 0 {
+				o.Error(cmd.ErrNoPlayerFound)
+				return
+			}
+			o.SetResult(tally.Total)
+		},
+	)
 }
 
 type msgCommand struct {
-	Targets []cmd.Target `cmd:"targets"`
-	Message cmd.Varargs  `cmd:"message"`
+	Targets cmd.Players `cmd:"targets"`
+	Message cmd.Varargs `cmd:"message"`
 }
 
-func (c msgCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
-	ps := playersFromTargets(c.Targets)
-	if len(ps) == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
+func (c msgCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	from := sourceName(src)
 	msg := strings.TrimSpace(string(c.Message))
-	for _, p := range ps {
-		p.Message(fmt.Sprintf("§d%s whispers to you: §f%s", from, msg))
-	}
-	o.Printf("§dYou whisper to %s: §f%s", joinNames(ps), msg)
+	whisper := fmt.Sprintf("§d%s whispers to you: §f%s", from, msg)
+	cmd.ForEach(src, o, tx, c.Targets,
+		func(_ *world.Tx, t cmd.Target) int {
+			p, ok := t.(*player.Player)
+			if !ok {
+				return 0
+			}
+			p.Message(whisper)
+			return 1
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[int]) {
+			tally := cmd.TallyOf(rs)
+			if tally.NonZero == 0 {
+				o.Error(cmd.ErrNoPlayerFound)
+				return
+			}
+			o.SetResult(tally.Total)
+			o.Printf("§dYou whisper to %s: §f%s", joinNonZeroNames(rs), msg)
+		},
+	)
 }
 
 func componentText(raw string) string {

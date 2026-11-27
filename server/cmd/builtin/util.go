@@ -83,6 +83,48 @@ func joinNames(players []*player.Player) string {
 	return strings.Join(names, ", ")
 }
 
+// joinNonZeroNames joins the display names of results with a non-zero integer
+// value into a sorted, comma-separated list.
+func joinNonZeroNames(results []cmd.Result[int]) string {
+	names := make([]string, 0, len(results))
+	for _, r := range results {
+		if r.Value != 0 {
+			names = append(names, r.Name)
+		}
+	}
+	return joinSortedStrings(names)
+}
+
+// joinSortedStrings joins names in sorted order.
+func joinSortedStrings(names []string) string {
+	switch len(names) {
+	case 0:
+		return ""
+	case 1:
+		return names[0]
+	}
+	slices.Sort(names)
+	return strings.Join(names, ", ")
+}
+
+// optionalPlayers returns opt when set, or a @s player selector otherwise.
+func optionalPlayers(opt cmd.Optional[cmd.Players], src cmd.Source) cmd.Players {
+	if sel, ok := opt.Load(); ok {
+		return sel
+	}
+	sel, _ := cmd.ParsePlayers("@s", src)
+	return sel
+}
+
+// optionalEntities returns opt when set, or a @s entity selector otherwise.
+func optionalEntities(opt cmd.Optional[cmd.Entities], src cmd.Source) cmd.Entities {
+	if sel, ok := opt.Load(); ok {
+		return sel
+	}
+	sel, _ := cmd.ParseEntities("@s", src)
+	return sel
+}
+
 // gameModeValue exposes the vanilla GameMode enum so the client can show rich command hints.
 type gameModeValue string
 

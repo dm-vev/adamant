@@ -22,9 +22,12 @@ func TestExperienceCommandAddLevelsSetPointsAndQuery(t *testing.T) {
 		if p.Experience() != 17 {
 			t.Fatalf("set points: experience=%d, want 17", p.Experience())
 		}
-		query := runTestCommand(xp, "query @a points", tx)
+		query := runTestCommand(xp, "query @p points", tx)
 		if query.MessageCount() != 1 || !strings.Contains(query.Messages()[0].String(), "17") {
 			t.Fatalf("query messages=%v errors=%v", query.Messages(), query.Errors())
+		}
+		if bad := runTestCommand(xp, "query @a points", tx); bad.ErrorCount() == 0 {
+			t.Fatal("query @a unexpectedly succeeded for single-player argument")
 		}
 	})
 }

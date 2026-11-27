@@ -10,8 +10,8 @@ import (
 
 type gamemodeCommand struct {
 	gameMaster
-	Mode    gameModeValue              `cmd:"mode"`
-	Targets cmd.Optional[[]cmd.Target] `cmd:"target"`
+	Mode    gameModeValue             `cmd:"mode"`
+	Targets cmd.Optional[cmd.Players] `cmd:"target"`
 }
 
 func newGamemodeCommand() cmd.Command {
@@ -24,27 +24,25 @@ func (g gamemodeCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 		o.Errort(cmd.MessageParameterInvalid, g.Mode)
 		return
 	}
-
-	targets, ok := g.Targets.Load()
-	if !ok {
-		if p, ok := src.(*player.Player); ok {
-			targets = []cmd.Target{p}
-		} else {
-			o.Errort(cmd.MessageNoTargets)
-			return
-		}
-	}
-
-	players := playersFromTargets(targets)
-	if len(players) == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
-
-	for _, p := range players {
-		p.SetGameMode(mode)
-	}
-	o.Printf("Set %s to %s mode.", joinNames(players), alias)
+	cmd.ForEach(src, o, tx, optionalPlayers(g.Targets, src),
+		func(_ *world.Tx, t cmd.Target) int {
+			p, ok := t.(*player.Player)
+			if !ok {
+				return 0
+			}
+			p.SetGameMode(mode)
+			return 1
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[int]) {
+			tally := cmd.TallyOf(rs)
+			if tally.NonZero == 0 {
+				o.Error(cmd.ErrNoPlayerFound)
+				return
+			}
+			o.SetResult(tally.Total)
+			o.Printf("Set %s to %s mode.", joinNonZeroNames(rs), alias)
+		},
+	)
 }
 
 func parseGameMode(value string) (world.GameMode, string, bool) {
