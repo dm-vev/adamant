@@ -85,7 +85,7 @@ func StewTypes() []StewType {
 
 // StewTypeFromJavaEffect returns the suspicious stew giving the Java mob
 // effect passed, for loot and trades that set a stew effect.
-func StewTypeFromJavaEffect(id string) (StewType, bool) {
+func StewTypeFromEffect(id string) (StewType, bool) {
 	switch strings.TrimPrefix(id, "minecraft:") {
 	case "night_vision":
 		return NightVisionPoppyStew(), true

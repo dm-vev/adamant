@@ -12,7 +12,7 @@ import (
 	"github.com/dm-vev/adamant/server/world"
 )
 
-func TestHiveResidenceMatchesJava263Source(t *testing.T) {
+func TestHiveResidenceMatchesSource(t *testing.T) {
 	t.Parallel()
 	data, err := testfixture.Read("testdata/java263_beehive_residence_source.json")
 	if err != nil {
@@ -38,9 +38,9 @@ func TestHiveResidenceMatchesJava263Source(t *testing.T) {
 				pos := cube.Pos{8, 64, 8}
 				exit := pos.Side(cube.FaceNorth)
 				tx.SetBlock(exit, block.Stone{}, nil)
-				java := map[string]any{"ticks_in_hive": tc.Ticks, "min_ticks_in_hive": tc.Minimum}
+				extra := map[string]any{"ticks_in_hive": tc.Ticks, "min_ticks_in_hive": tc.Minimum}
 				hive := block.Beehive{Facing: cube.North, Occupants: []any{map[string]any{
-					"ActorIdentifier": "minecraft:bee", "SaveData": map[string]any{"id": "minecraft:bee"}, "adamant:java": java,
+					"ActorIdentifier": "minecraft:bee", "SaveData": map[string]any{"id": "minecraft:bee"}, "adamant:java": extra,
 				}}}
 				tx.SetBlock(pos, hive, nil)
 				random := rand.New(rand.NewPCG(17, 29))
@@ -49,7 +49,7 @@ func TestHiveResidenceMatchesJava263Source(t *testing.T) {
 				if len(current.Occupants) != 1 {
 					t.Fatalf("blocked exit retained %d bees, want 1", len(current.Occupants))
 				}
-				saved := current.Occupants[0].(map[string]any)["adamant:java"].(map[string]any)
+				saved := current.Occupants[0].(map[string]any)["adamant:state"].(map[string]any)
 				if saved["ticks_in_hive"] != tc.AfterFirstTick || saved["min_ticks_in_hive"] != tc.Minimum {
 					t.Fatalf("residence after first tick=%v Source={ticks:%d minimum:%d}", saved, tc.AfterFirstTick, tc.Minimum)
 				}

@@ -1,0 +1,616 @@
+package world
+
+import "testing"
+
+func TestCanonicalDirtPathDoesNotInventSnowyProperty(t *testing.T) {
+	t.Parallel()
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	rid, ok := registry.StateToRuntimeID("minecraft:grass_path", nil)
+	if !ok {
+		t.Fatal("native dirt path state is missing")
+	}
+	// Read a native-only write, as Tx.SetBlock or a loaded Bedrock chunk does,
+	// without a retained source ID that could mask an invalid inverse mapping.
+	native := NativeState{Block: rid, Liquid: registry.AirRuntimeID()}
+	source, err := CanonicalState(registry, native)
+	if err != nil || source.Name != "minecraft:dirt_path" {
+		t.Fatalf("native dirt path resolved to %+v, error %v", source, err)
+	}
+	if _, snowy := source.Properties["snowy"]; snowy {
+		t.Fatal("dirt paths have no Java snowy property")
+	}
+	if native.CanonicalID(registry) == 0 {
+		t.Fatal("dirt path lost its canonical source identity and support shape")
+	}
+}
+
+func TestCanonicalTorchAttachmentDirections(t *testing.T) {
+	t.Parallel()
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	for _, family := range []struct{ standing, wall, native string }{
+		{"torch", "wall_torch", "torch"},
+		{"soul_torch", "soul_wall_torch", "soul_torch"},
+		{"redstone_torch", "redstone_wall_torch", "redstone_torch"},
+		{"copper_torch", "copper_wall_torch", "copper_torch"},
+	} {
+		t.Run(family.standing, func(t *testing.T) {
+			for _, attachment := range []struct{ facing, native string }{
+				{"", "top"}, {"north", "south"}, {"south", "north"}, {"west", "east"}, {"east", "west"},
+			} {
+				name := family.standing
+				var props map[string]any
+				if attachment.facing != "" {
+					name = family.wall
+					props = map[string]any{"facing": attachment.facing}
+				}
+				source := BlockState{Name: "minecraft:" + name, Properties: props}
+				state, err := ResolveState(registry, source)
+				if err != nil {
+					t.Fatal(err)
+				}
+				nativeName, nativeProps, _ := registry.RuntimeIDToState(state.Block)
+				if nativeName != "minecraft:"+family.native || nativeProps["torch_facing_direction"] != attachment.native {
+					t.Fatalf("%+v: native attachment = %s %v, want %s", source, nativeName, nativeProps, attachment.native)
+				}
+				back, err := CanonicalState(registry, state)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if back.Name != source.Name || back.Properties["facing"] != props["facing"] {
+					t.Fatalf("native attachment %s: Java state = %+v, want %+v", attachment.native, back, source)
+				}
+			}
+		})
+	}
+}
+
+func TestCanonicalDefaultsPreserveExplicitState(t *testing.T) {
+	t.Parallel()
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	properties := map[string]any{"facing": "west"}
+	state, err := ResolveState(registry, BlockState{Name: "minecraft:leaf_litter", Properties: properties})
+	if err != nil {
+		t.Fatal(err)
+	}
+	name, native, _ := registry.RuntimeIDToState(state.Block)
+	if name != "minecraft:leaf_litter" || native["growth"] != int32(0) || native["minecraft:cardinal_direction"] != "west" {
+		t.Fatalf("default amount and explicit facing were not retained: %s %v", name, native)
+	}
+	if len(properties) != 1 || properties["facing"] != "west" {
+		t.Fatalf("resolving defaults mutated input: %v", properties)
+	}
+}
+
+func TestCanonicalLeafLitterNativeSegmentCounts(t *testing.T) {
+	t.Parallel()
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	// BDS 1.26.52.3 build 51798919 drops growth+1 items for all eight
+	// native growth values. Java permits only one through four segments.
+	for _, facing := range []string{"north", "south", "west", "east"} {
+		for growth := range int32(8) {
+			rid, ok := registry.StateToRuntimeID("minecraft:leaf_litter", map[string]any{
+				"growth": growth, "minecraft:cardinal_direction": facing,
+			})
+			if !ok {
+				t.Fatalf("native leaf litter state missing: growth=%d facing=%s", growth, facing)
+			}
+			native := NativeState{Block: rid, Liquid: registry.AirRuntimeID()}
+			source, err := CanonicalState(registry, native)
+			if growth > 3 {
+				if err == nil {
+					t.Fatalf("native %d-segment litter accepted as Java state: %+v", growth+1, source)
+				}
+				continue
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if source.Name != "minecraft:leaf_litter" || source.Properties["segment_amount"] != growth+1 || source.Properties["facing"] != facing {
+				t.Fatalf("native growth=%d facing=%s decoded to %+v", growth, facing, source)
+			}
+			again, err := ResolveState(registry, source)
+			if err != nil || again != native {
+				t.Fatalf("leaf litter amount/facing lost: source=%+v native=%+v want=%+v error=%v", source, again, native, err)
+			}
+		}
+	}
+}
+
+func TestCanonicalDoorOpenIndependentOfPower(t *testing.T) {
+	t.Parallel()
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	for _, name := range []string{"oak_door", "oak_trapdoor", "oak_fence_gate"} {
+		for _, open := range []bool{false, true} {
+			for _, powered := range []bool{false, true} {
+				state, err := ResolveState(registry, BlockState{Name: "minecraft:" + name, Properties: map[string]any{"open": open, "powered": powered}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				_, native, _ := registry.RuntimeIDToState(state.Block)
+				if got, _ := boolProperty(native["open_bit"]); got != open {
+					t.Fatalf("%s open=%v powered=%v encoded %v", name, open, powered, native)
+				}
+				back, err := CanonicalState(registry, state)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if back.Properties["open"] != open || back.Properties["powered"] != powered {
+					t.Fatalf("%s lost independent source state: %+v", name, back)
+				}
+			}
+		}
+	}
+}
+
+func TestCanonicalMovingPistonPaletteAndCanonicalStates(t *testing.T) {
+	t.Parallel()
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	for _, facing := range []string{"down", "up", "north", "south", "west", "east"} {
+		for _, pistonType := range []string{"normal", "sticky"} {
+			source := BlockState{
+				Name:       "minecraft:moving_piston",
+				Properties: map[string]any{"facing": facing, "type": pistonType},
+			}
+			state, err := ResolveState(registry, source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			name, properties, ok := registry.RuntimeIDToState(state.Block)
+			if !ok || name != "minecraft:moving_block" || len(properties) != 0 {
+				t.Fatalf("moving piston leaked Java properties into native palette: %s %v", name, properties)
+			}
+			back, err := CanonicalState(registry, state)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if back.Name != source.Name || back.Properties["facing"] != facing || back.Properties["type"] != pistonType {
+				t.Fatalf("moving piston lost facing/type: Source=%+v actual=%+v", source, back)
+			}
+		}
+	}
+}
+
+func TestCanonicalCaveVineTipAgeRoundTrip(t *testing.T) {
+	t.Parallel()
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	for _, berries := range []bool{false, true} {
+		state, err := ResolveState(registry, BlockState{Name: "minecraft:cave_vines", Properties: map[string]any{"age": int32(25), "berries": berries}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, native, _ := registry.RuntimeIDToState(state.Block)
+		if native["growing_plant_age"] != int32(25) {
+			t.Fatalf("tip age lost: %v", native)
+		}
+		back, err := CanonicalState(registry, state)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if back.Name != "minecraft:cave_vines" || back.Properties["age"] != int32(25) || back.Properties["berries"] != berries {
+			t.Fatalf("tip state lost on reverse conversion: %+v", back)
+		}
+	}
+}
+
+func TestCanonicalFreeFluidSecondaryLayer(t *testing.T) {
+	t.Parallel()
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	for _, names := range []struct{ native, canonical string }{
+		{"minecraft:water", "minecraft:water"},
+		{"minecraft:flowing_water", "minecraft:water"},
+		{"minecraft:lava", "minecraft:lava"},
+		{"minecraft:flowing_lava", "minecraft:lava"},
+	} {
+		for _, level := range []int32{0, 4, 8, 15} {
+			fluid, ok := registry.StateToRuntimeID(names.native, map[string]any{"liquid_depth": level})
+			if !ok {
+				t.Fatalf("native fluid missing: %s level=%d", names.native, level)
+			}
+			for _, native := range []NativeState{
+				{Block: fluid, Liquid: registry.AirRuntimeID()},
+				{Block: registry.AirRuntimeID(), Liquid: fluid},
+			} {
+				state, err := CanonicalState(registry, native)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if state.Name != names.canonical || state.Properties["level"] != level {
+					t.Fatalf("%s level=%d layers=%+v decoded as %+v", names.native, level, native, state)
+				}
+			}
+		}
+	}
+}
+
+func TestCanonicalWallHeadIdentityRoundTrip(t *testing.T) {
+	t.Parallel()
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	for _, name := range []string{"skeleton_wall_skull", "wither_skeleton_wall_skull", "zombie_wall_head", "player_wall_head", "creeper_wall_head", "dragon_wall_head", "piglin_wall_head"} {
+		for _, facing := range []string{"north", "south", "east", "west"} {
+			source := BlockState{Name: "minecraft:" + name, Properties: map[string]any{"facing": facing}}
+			native, err := ResolveState(registry, source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			back, err := CanonicalState(registry, native)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if back.Name != source.Name || back.Properties["facing"] != facing {
+				t.Fatalf("wall head became standing/rotated: %+v -> %+v", source, back)
+			}
+			if _, hasRotation := back.Properties["rotation"]; hasRotation {
+				t.Fatalf("wall head acquired floor rotation: %+v", back)
+			}
+			again, err := ResolveState(registry, back)
+			if err != nil || again != native {
+				t.Fatalf("wall head native state changed: %v -> %v, error %v", native, again, err)
+			}
+		}
+	}
+}
+
+func TestCanonicalBubbleColumnDirectionAndWater(t *testing.T) {
+	t.Parallel()
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	for _, drag := range []bool{false, true} {
+		state, err := ResolveState(registry, BlockState{Name: "minecraft:bubble_column", Properties: map[string]any{"drag": drag}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		name, props, _ := registry.RuntimeIDToState(state.Block)
+		if name != "minecraft:bubble_column" || nativeBoolValue(props["drag_down"]) != drag {
+			t.Fatalf("drag=%v became %s %v", drag, name, props)
+		}
+		liquid, properties, _ := registry.RuntimeIDToState(state.Liquid)
+		if liquid != "minecraft:water" || properties["liquid_depth"] != int32(0) {
+			t.Fatalf("bubble column lost source water: %s %v", liquid, properties)
+		}
+		back, err := CanonicalState(registry, state)
+		if err != nil || back.Name != name || back.Properties["drag"] != drag {
+			t.Fatalf("bubble column direction lost: %+v, %v", back, err)
+		}
+	}
+}
+
+func TestCanonicalWaterloggingUsesSourcePropertyCapability(t *testing.T) {
+	t.Parallel()
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	for _, name := range []string{"minecraft:campfire", "minecraft:candle", "minecraft:chest", "minecraft:lantern"} {
+		state, err := ResolveState(registry, BlockState{Name: name, Properties: map[string]any{"waterlogged": true}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		back, err := CanonicalState(registry, state)
+		if err != nil || back.Name != name || back.Properties["waterlogged"] != true {
+			t.Errorf("waterlogged %s roundtrip=%+v error=%v", name, back, err)
+		}
+	}
+	water, err := ResolveState(registry, BlockState{Name: "minecraft:water"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"minecraft:oak_fence_gate", "minecraft:muddy_mangrove_roots"} {
+		state, err := ResolveState(registry, BlockState{Name: name})
+		if err != nil {
+			t.Fatal(err)
+		}
+		state.Liquid = water.Block
+		if converted, err := CanonicalState(registry, state); err == nil {
+			t.Errorf("native water layer on non-waterloggable Java block %s accepted as %+v", name, converted)
+		}
+	}
+}
+
+func TestCanonicalSharedNativeBlockNamesKeepMaterialIdentity(t *testing.T) {
+	t.Parallel()
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	for _, pair := range []struct{ canonical, native string }{
+		{"stone_stairs", "normal_stone_stairs"},
+		{"cobblestone_stairs", "stone_stairs"},
+		{"end_stone_brick_stairs", "end_brick_stairs"},
+		{"prismarine_brick_stairs", "prismarine_bricks_stairs"},
+		{"nether_bricks", "nether_brick"},
+		{"red_nether_bricks", "red_nether_brick"},
+		{"slime_block", "slime"},
+		{"frogspawn", "frog_spawn"},
+		{"grass_block", "grass_block"},
+		{"poppy", "poppy"},
+	} {
+		native, err := ResolveState(registry, BlockState{Name: "minecraft:" + pair.canonical})
+		if err != nil {
+			t.Fatalf("%s: %v", pair.canonical, err)
+		}
+		name, _, _ := registry.RuntimeIDToState(native.Block)
+		if name != "minecraft:"+pair.native {
+			t.Fatalf("%s became native %s, want %s", pair.canonical, name, pair.native)
+		}
+		back, err := CanonicalState(registry, native)
+		if err != nil || back.Name != "minecraft:"+pair.canonical {
+			t.Fatalf("%s material identity lost: %+v, error %v", pair.canonical, back, err)
+		}
+	}
+}
+
+func TestCanonicalSeaPickleCountsAndHydration(t *testing.T) {
+	t.Parallel()
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	for _, count := range []int32{1, 4} {
+		for _, wet := range []bool{false, true} {
+			state := BlockState{Name: "minecraft:sea_pickle", Properties: map[string]any{"pickles": count, "waterlogged": wet}}
+			native, err := ResolveState(registry, state)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, properties, _ := registry.RuntimeIDToState(native.Block)
+			dead, ok := boolProperty(properties["dead_bit"])
+			if properties["cluster_count"] != count-1 || !ok || dead == wet {
+				t.Fatalf("pickles=%d wet=%v became native %v", count, wet, properties)
+			}
+			back, err := CanonicalState(registry, native)
+			if err != nil || back.Properties["pickles"] != count || back.Properties["waterlogged"] != wet {
+				t.Fatalf("pickle count/hydration lost: %+v, error %v", back, err)
+			}
+		}
+	}
+}
+
+func TestCanonicalCopperDoubleSlabIdentity(t *testing.T) {
+	t.Parallel()
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	for _, pair := range []struct{ canonical, native string }{
+		{"cut_copper_slab", "double_cut_copper_slab"},
+		{"waxed_weathered_cut_copper_slab", "waxed_weathered_double_cut_copper_slab"},
+	} {
+		state := BlockState{Name: "minecraft:" + pair.canonical, Properties: map[string]any{"type": "double", "waterlogged": true}}
+		native, err := ResolveState(registry, state)
+		if err != nil {
+			t.Fatal(err)
+		}
+		name, _, _ := registry.RuntimeIDToState(native.Block)
+		if name != "minecraft:"+pair.native || native.Liquid == registry.AirRuntimeID() {
+			t.Fatalf("double slab %s lost material or water: %s %+v", pair.canonical, name, native)
+		}
+		back, err := CanonicalState(registry, native)
+		if err != nil || back.Name != state.Name || back.Properties["type"] != "double" || back.Properties["waterlogged"] != true {
+			t.Fatalf("double slab became %+v, error %v", back, err)
+		}
+	}
+}
+
+func TestCanonicalPortalAndEggStateProperties(t *testing.T) {
+	t.Parallel()
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	for _, row := range []struct {
+		name, key string
+		value     any
+	}{
+		{"nether_portal", "axis", "x"},
+		{"nether_portal", "axis", "z"},
+		{"end_portal_frame", "eye", false},
+		{"end_portal_frame", "eye", true},
+		{"sniffer_egg", "hatch", int32(0)},
+		{"sniffer_egg", "hatch", int32(2)},
+	} {
+		state := BlockState{Name: "minecraft:" + row.name, Properties: map[string]any{row.key: row.value}}
+		native, err := ResolveState(registry, state)
+		if err != nil {
+			t.Fatal(err)
+		}
+		back, err := CanonicalState(registry, native)
+		if err != nil || back.Name != state.Name || back.Properties[row.key] != row.value {
+			t.Fatalf("%s property lost: %+v, error %v", row.name, back, err)
+		}
+	}
+}
+
+func TestCanonicalRetainedLeafDistance(t *testing.T) {
+	t.Parallel()
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	var nativeID uint32
+	for distance := int32(1); distance <= 7; distance++ {
+		source := BlockState{Name: "minecraft:oak_leaves", Properties: map[string]any{"distance": distance}}
+		native, err := ResolveState(registry, source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if distance == 1 {
+			nativeID = native.Block
+		} else if native.Block != nativeID {
+			t.Fatal("source leaf distance changed the native palette state")
+		}
+		back, err := CanonicalState(registry, native)
+		if err != nil || back.Properties["distance"] != distance {
+			t.Fatalf("leaf distance %d became %+v: %v", distance, back, err)
+		}
+	}
+}
+
+func TestCanonicalInverseIncludesUnrepresentedDefaults(t *testing.T) {
+	t.Parallel()
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	native, err := ResolveState(registry, BlockState{Name: "minecraft:mangrove_propagule", Properties: map[string]any{"hanging": true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The native palette has no growth stage. Its source view must nevertheless
+	// supply the Java stage used by growth predicates.
+	native.StateID = 0
+	back, err := CanonicalState(registry, native)
+	if err != nil || back.Properties["stage"] != int32(0) || back.Properties["hanging"] != true {
+		t.Fatalf("incomplete propagule source state: %+v: %v", back, err)
+	}
+}
+
+func TestCanonicalHangingSignAttachments(t *testing.T) {
+	t.Parallel()
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	for _, tc := range []struct {
+		name       string
+		properties map[string]any
+		facing     int32
+		rotation   int32
+		attached   uint8
+		hanging    uint8
+	}{
+		{"oak_wall_hanging_sign", map[string]any{"facing": "north"}, 2, 0, 0, 0},
+		{"oak_wall_hanging_sign", map[string]any{"facing": "south"}, 3, 0, 0, 0},
+		{"oak_wall_hanging_sign", map[string]any{"facing": "west"}, 4, 0, 0, 0},
+		{"oak_wall_hanging_sign", map[string]any{"facing": "east"}, 5, 0, 0, 0},
+		{"oak_hanging_sign", map[string]any{"rotation": int32(0), "attached": false}, 3, 0, 0, 1},
+		{"oak_hanging_sign", map[string]any{"rotation": int32(4), "attached": false}, 4, 0, 0, 1},
+		{"oak_hanging_sign", map[string]any{"rotation": int32(8), "attached": false}, 2, 0, 0, 1},
+		{"oak_hanging_sign", map[string]any{"rotation": int32(12), "attached": false}, 5, 0, 0, 1},
+		{"oak_hanging_sign", map[string]any{"rotation": int32(5), "attached": false}, 0, 5, 0, 1},
+		{"oak_hanging_sign", map[string]any{"rotation": int32(8), "attached": true}, 0, 8, 1, 1},
+		{"oak_hanging_sign", map[string]any{"rotation": int32(5), "attached": true}, 0, 5, 1, 1},
+	} {
+		for _, wet := range []bool{false, true} {
+			tc.properties["waterlogged"] = wet
+			source := BlockState{Name: "minecraft:" + tc.name, Properties: tc.properties}
+			state, err := ResolveState(registry, source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			name, properties, _ := registry.RuntimeIDToState(state.Block)
+			if name != "minecraft:oak_hanging_sign" || properties["facing_direction"] != tc.facing ||
+				properties["ground_sign_direction"] != tc.rotation || properties["attached_bit"] != tc.attached ||
+				properties["hanging"] != tc.hanging {
+				t.Fatalf("%+v: native attachment = %s %v", source, name, properties)
+			}
+			if (state.Liquid != registry.AirRuntimeID()) != wet {
+				t.Fatalf("%+v: native liquid layer = %d", source, state.Liquid)
+			}
+			// Decode the native attachment itself, not retained source metadata.
+			back, err := CanonicalState(registry, NativeState{Block: state.Block, Liquid: state.Liquid})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if back.Name != source.Name {
+				t.Fatalf("native attachment %v decoded to %s, want %s", properties, back.Name, source.Name)
+			}
+			for key, value := range source.Properties {
+				if back.Properties[key] != value {
+					t.Fatalf("%+v: reverse %s = %v, want %v", source, key, back.Properties[key], value)
+				}
+			}
+		}
+	}
+}
+
+// TestJavaPistonFacingsMatchBDS checks Java piston and piston head facings
+// map to the facing_direction BDS gives them: pistons number the horizontal
+// directions the other way round, so a piston pushing east is 4.
+func TestCanonicalPistonFacingsMatchBDS(t *testing.T) {
+	t.Parallel()
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	want := map[string]int32{"down": 0, "up": 1, "north": 3, "south": 2, "west": 5, "east": 4}
+	for _, name := range []string{"piston", "sticky_piston", "piston_head"} {
+		for facing, native := range want {
+			source := BlockState{Name: "minecraft:" + name, Properties: map[string]any{"facing": facing}}
+			state, err := ResolveState(registry, source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, nativeProps, _ := registry.RuntimeIDToState(state.Block)
+			if nativeProps["facing_direction"] != native {
+				t.Fatalf("%s facing %s: facing_direction = %v, want %d", name, facing, nativeProps["facing_direction"], native)
+			}
+			back, err := CanonicalState(registry, state)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if back.Properties["facing"] != facing {
+				t.Fatalf("%s facing_direction %d: Java facing = %v, want %s", name, native, back.Properties["facing"], facing)
+			}
+		}
+	}
+}
+
+// TestHugeMushroomVariantsAreEnumerated checks Java mushroom faces against
+// Bedrock's huge_mushroom_bits, an enumeration that was read as a bitmask:
+// red caps then showed pores on their outer sides.
+func TestHugeMushroomVariantsAreEnumerated(t *testing.T) {
+	t.Parallel()
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	faces := func(up, down, north, east, south, west bool) map[string]any {
+		return map[string]any{"up": up, "down": down, "north": north, "east": east, "south": south, "west": west}
+	}
+	cases := []struct {
+		name  string
+		faces map[string]any
+		want  int32
+	}{
+		{"minecraft:red_mushroom_block", faces(false, false, false, false, false, false), 0},
+		{"minecraft:red_mushroom_block", faces(true, false, true, false, false, true), 1},
+		{"minecraft:red_mushroom_block", faces(true, false, true, false, false, false), 2},
+		{"minecraft:red_mushroom_block", faces(true, false, true, true, false, false), 3},
+		{"minecraft:red_mushroom_block", faces(true, false, false, false, false, true), 4},
+		{"minecraft:red_mushroom_block", faces(true, false, false, false, false, false), 5},
+		{"minecraft:red_mushroom_block", faces(true, false, false, true, false, false), 6},
+		{"minecraft:red_mushroom_block", faces(true, false, false, false, true, true), 7},
+		{"minecraft:red_mushroom_block", faces(true, false, false, false, true, false), 8},
+		{"minecraft:red_mushroom_block", faces(true, false, false, true, true, false), 9},
+		{"minecraft:red_mushroom_block", faces(false, false, false, true, true, false), 9},
+		{"minecraft:brown_mushroom_block", faces(true, true, true, true, true, true), 14},
+		{"minecraft:mushroom_stem", faces(false, false, true, true, true, true), 10},
+		{"minecraft:mushroom_stem", faces(true, true, true, true, true, true), 15},
+	}
+	for _, tc := range cases {
+		native, err := ResolveState(registry, BlockState{Name: tc.name, Properties: tc.faces})
+		if err != nil {
+			t.Fatalf("%s %v: %v", tc.name, tc.faces, err)
+		}
+		_, properties, _ := registry.RuntimeIDToState(native.Block)
+		if got := properties["huge_mushroom_bits"]; got != tc.want {
+			t.Fatalf("%s %v: huge_mushroom_bits=%v, want %d", tc.name, tc.faces, got, tc.want)
+		}
+		source, err := CanonicalState(registry, native)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for face, want := range tc.faces {
+			if source.Properties[face] != want {
+				t.Fatalf("%s %v: round trip %s=%v", tc.name, tc.faces, face, source.Properties[face])
+			}
+		}
+	}
+	// A variant without a retained Java state decodes to the faces it shows.
+	for variant := range int32(10) {
+		rid, ok := registry.StateToRuntimeID("minecraft:red_mushroom_block", map[string]any{"huge_mushroom_bits": variant})
+		if !ok {
+			t.Fatalf("native red mushroom block %d missing", variant)
+		}
+		source, err := CanonicalState(registry, NativeState{Block: rid, Liquid: registry.AirRuntimeID()})
+		if err != nil {
+			t.Fatal(err)
+		}
+		row, column := (variant-1)/3, (variant-1)%3
+		want := faces(variant != 0, false, variant != 0 && row == 0, variant != 0 && column == 2, variant != 0 && row == 2, variant != 0 && column == 0)
+		for face, value := range want {
+			if source.Properties[face] != value {
+				t.Fatalf("variant %d decoded %s=%v, want %v", variant, face, source.Properties[face], value)
+			}
+		}
+	}
+}

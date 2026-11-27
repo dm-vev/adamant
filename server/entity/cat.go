@@ -29,10 +29,10 @@ func (catType) EncodeEntity() string        { return "minecraft:cat" }
 func (catType) BBox(world.Entity) cube.BBox { return cube.Box(-.3, 0, -.3, .3, .7, .3) }
 func (catType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	c := catBehaviourConfig{}
-	javaState := readNativeMobJavaState(m)
+	extraState := readNativeMobExtraState(m)
 	source := m
-	if javaState != nil {
-		source = javaState
+	if extraState != nil {
+		source = extraState
 	}
 	if _, ok := source["Health"]; ok {
 		c.Health = float64(nbtconv.Float32(source, "Health"))
@@ -81,13 +81,13 @@ func (catType) EncodeNBT(d *world.EntityData) map[string]any {
 	health := b.health
 	attrs := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: health.MaxHealth(), Current: health.Health(), DefaultMin: 0, DefaultMax: health.MaxHealth(), Min: 0, Max: health.MaxHealth()}, {Name: "minecraft:movement", Base: .3, Current: .3, DefaultMin: 0, DefaultMax: .3, Min: 0, Max: .3}, {Name: "minecraft:attack_damage", Base: 3, Current: 3, DefaultMin: 0, DefaultMax: 3, Min: 0, Max: 3}})
 	native := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs, "Variant": bedrockCatVariants[b.variant]})
-	javaState := mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.ageTicks), "Health": float32(health.Health()), "MaxHealth": float32(health.MaxHealth()), "Tame": byte(catBool(b.tamed)), "Sitting": byte(catBool(b.orderedToSit)), "variant": "minecraft:" + catVariantNames[b.variant], "sound_variant": "minecraft:" + b.soundVariant, "CollarColor": b.collarColor}))
+	extraState := mergeNativeMobNBT(readNativeMobExtraState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.ageTicks), "Health": float32(health.Health()), "MaxHealth": float32(health.MaxHealth()), "Tame": byte(catBool(b.tamed)), "Sitting": byte(catBool(b.orderedToSit)), "variant": "minecraft:" + catVariantNames[b.variant], "sound_variant": "minecraft:" + b.soundVariant, "CollarColor": b.collarColor}))
 	if owner := catOwnerNBT(b.ownerUUID); owner != nil {
-		javaState["Owner"] = owner
+		extraState["Owner"] = owner
 	} else {
-		delete(javaState, "Owner")
+		delete(extraState, "Owner")
 	}
-	return mergeNativeMobJavaState(native, javaState)
+	return mergeNativeMobExtraState(native, extraState)
 }
 func catOwnerNBT(owner string) []int32 {
 	id, err := uuid.Parse(owner)

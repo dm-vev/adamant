@@ -23,7 +23,7 @@ type SculkShrieker struct {
 	CanSummon               bool
 	Shrieking               bool
 	listener                *world.VibrationData
-	javaState               map[string]any
+	shriekerState               map[string]any
 	nativeVibrationListener map[string]any
 }
 
@@ -253,16 +253,19 @@ func (s SculkShrieker) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
 	tx.World().TickVibrationSystem(tx, pos, s, s.listener)
 }
 func (s SculkShrieker) DecodeNBT(m map[string]any) any {
-	javaState, ok := m["adamant:java"].(map[string]any)
+	shriekerState, ok := m["adamant:state"].(map[string]any)
 	if !ok {
-		javaState = world.CloneNativeEntityNBT(m)
+		shriekerState, ok = m["adamant:java"].(map[string]any)
+	}
+	if !ok {
+		shriekerState = world.CloneNativeEntityNBT(m)
 		for _, key := range []string{"id", "x", "y", "z", "BlockEntityVersion", "VibrationListener"} {
-			delete(javaState, key)
+			delete(shriekerState, key)
 		}
 	}
-	s.javaState = world.CloneNativeEntityNBT(javaState)
-	s.WarningLevel = max(0, min(4, int(nbtconv.Int32(s.javaState, "warning_level"))))
-	if listener, ok := s.javaState["listener"].(map[string]any); ok {
+	s.shriekerState = world.CloneNativeEntityNBT(shriekerState)
+	s.WarningLevel = max(0, min(4, int(nbtconv.Int32(s.shriekerState, "warning_level"))))
+	if listener, ok := s.shriekerState["listener"].(map[string]any); ok {
 		data := world.DecodeVibrationData(listener)
 		s.listener = &data
 	} else {
@@ -283,17 +286,17 @@ func (s SculkShrieker) EncodeNBT() map[string]any {
 	} else {
 		data["VibrationListener"] = map[string]any{"selector": map[string]any{}}
 	}
-	javaState := world.CloneNativeEntityNBT(s.javaState)
-	if javaState == nil {
-		javaState = map[string]any{}
+	shriekerState := world.CloneNativeEntityNBT(s.shriekerState)
+	if shriekerState == nil {
+		shriekerState = map[string]any{}
 	}
-	javaState["warning_level"] = int32(s.WarningLevel)
+	shriekerState["warning_level"] = int32(s.WarningLevel)
 	if s.listener != nil {
-		javaState["listener"] = s.listener.EncodeNBT()
+		shriekerState["listener"] = s.listener.EncodeNBT()
 	} else {
-		javaState["listener"] = (&world.VibrationData{}).EncodeNBT()
+		shriekerState["listener"] = (&world.VibrationData{}).EncodeNBT()
 	}
-	data["adamant:java"] = javaState
+	data["adamant:state"] = shriekerState
 	return data
 }
 

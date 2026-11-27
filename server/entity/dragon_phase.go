@@ -208,7 +208,7 @@ func (b *enderDragonBehaviour) tickPhase(e *Ent, tx *world.Tx) {
 // podium returns the top of the End podium, as getHeightmapPos of the fight
 // origin.
 func (b *enderDragonBehaviour) podium(tx *world.Tx, noLeaves bool) cube.Pos {
-	return cube.Pos{b.origin[0], tx.JavaMotionBlockingHeight(b.origin[0], b.origin[2], noLeaves), b.origin[2]}
+	return cube.Pos{b.origin[0], tx.MotionBlockingHeight(b.origin[0], b.origin[2], noLeaves), b.origin[2]}
 }
 
 // distToCenterSqr ports Vec3i.distToCenterSqr.
@@ -355,9 +355,9 @@ func (b *enderDragonBehaviour) tickStrafe(e *Ent, tx *world.Tx) {
 		return
 	}
 	ph.strafeCharge++
-	aim := javaNormalize(mgl64.Vec3{tp[0] - pos[0], 0, tp[2] - pos[2]})
+	aim := normalizeVec3(mgl64.Vec3{tp[0] - pos[0], 0, tp[2] - pos[2]})
 	yaw := float32(e.Rotation().Yaw()) * float32(math.Pi/180)
-	dir := javaNormalize(mgl64.Vec3{float64(vanilla.Sin(float64(yaw))), 0, -float64(vanilla.Cos(float64(yaw)))})
+	dir := normalizeVec3(mgl64.Vec3{float64(vanilla.Sin(float64(yaw))), 0, -float64(vanilla.Cos(float64(yaw)))})
 	dot := float32(dir.Dot(aim))
 	angle := float32(math.Acos(float64(dot))*180/math.Pi) + .5
 	if ph.strafeCharge < 5 || angle < 0 || angle >= 10 {
@@ -410,7 +410,7 @@ func (b *enderDragonBehaviour) tickLandingApproach(e *Ent, tx *world.Tx) {
 		egg := b.podium(tx, true)
 		var targetNode int
 		if player := dragonNearestPlayer(tx, e, egg.Vec3(), 0, false, nil); player != nil {
-			aim := javaNormalize(mgl64.Vec3{player.Position()[0], 0, player.Position()[2]})
+			aim := normalizeVec3(mgl64.Vec3{player.Position()[0], 0, player.Position()[2]})
 			targetNode = b.closestNodeTo(tx, -aim[0]*40, 105, -aim[2]*40)
 		} else {
 			targetNode = b.closestNodeTo(tx, 40, float64(egg[1]), 0)
@@ -486,10 +486,10 @@ func (b *enderDragonBehaviour) tickSittingScanning(e *Ent, tx *world.Tx) {
 			return
 		}
 		tp := target.Position()
-		aim := javaNormalize(mgl64.Vec3{tp[0] - pos[0], 0, tp[2] - pos[2]})
+		aim := normalizeVec3(mgl64.Vec3{tp[0] - pos[0], 0, tp[2] - pos[2]})
 		yaw := float32(e.Rotation().Yaw())
 		yawRad := yaw * float32(math.Pi/180)
-		dir := javaNormalize(mgl64.Vec3{float64(vanilla.Sin(float64(yawRad))), 0, -float64(vanilla.Cos(float64(yawRad)))})
+		dir := normalizeVec3(mgl64.Vec3{float64(vanilla.Sin(float64(yawRad))), 0, -float64(vanilla.Cos(float64(yawRad)))})
 		dot := float32(dir.Dot(aim))
 		angle := float32(math.Acos(float64(dot))*180/math.Pi) + .5
 		if angle < 0 || angle > 10 {
@@ -534,7 +534,7 @@ func (b *enderDragonBehaviour) tickSittingFlaming(e *Ent, tx *world.Tx) {
 		return
 	}
 	head, pos := b.parts[dragonPartHead], e.Position()
-	look := javaNormalize(mgl64.Vec3{head[0] - pos[0], 0, head[2] - pos[2]})
+	look := normalizeVec3(mgl64.Vec3{head[0] - pos[0], 0, head[2] - pos[2]})
 	x, z := head[0]+look[0]*5/2, head[2]+look[2]*5/2
 	initialY := head[1] + .5
 	y := initialY

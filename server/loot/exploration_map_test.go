@@ -35,7 +35,7 @@ func TestEveryLootMapDecorationHasABedrockType(t *testing.T) {
 		t.Fatal("no loot table names a map decoration")
 	}
 	for name, path := range names {
-		if _, ok := world.MapDecorationTypeFromJava(name); !ok {
+		if _, ok := world.MapDecorationTypeFromName(name); !ok {
 			t.Errorf("%s names map decoration %q, which has no Bedrock type", path, name)
 		}
 	}

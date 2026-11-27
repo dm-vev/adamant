@@ -37,10 +37,10 @@ func (wolfType) EncodeEntity() string        { return "minecraft:wolf" }
 func (wolfType) BBox(world.Entity) cube.BBox { return cube.Box(-0.4, 0, -0.4, 0.4, 0.85, 0.4) }
 func (wolfType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	c := WolfBehaviourConfig{}
-	javaState := readNativeMobJavaState(m)
+	extraState := readNativeMobExtraState(m)
 	source := m
-	if javaState != nil {
-		source = javaState
+	if extraState != nil {
+		source = extraState
 	}
 	if _, ok := source["Health"]; ok {
 		c.Health, c.healthSet = float64(nbtconv.Float32(source, "Health")), true
@@ -59,11 +59,11 @@ func (wolfType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	c.Sitting = nbtconv.Bool(source, "Sitting") || nbtconv.Bool(m, "Sitting")
 	c.Angry = nbtconv.Bool(source, "Angry") || nativeMobAngry(m)
 	c.AgeTicks = int(nbtconv.Int32(source, "Age"))
-	if owner := javaUUIDString(source["Owner"]); owner != "" {
+	if owner := uuidString(source["Owner"]); owner != "" {
 		c.OwnerUUID, c.Tamed = owner, true
 	} else if most, ok := source["OwnerMost"].(int64); ok {
 		if least, ok := source["OwnerLeast"].(int64); ok {
-			c.OwnerUUID, c.Tamed = javaUUIDFromHalves(most, least), true
+			c.OwnerUUID, c.Tamed = uuidFromHalves(most, least), true
 		}
 	}
 	// Java saves a byte; earlier Adamant versions an int.
@@ -160,27 +160,27 @@ func (wolfType) EncodeNBT(data *world.EntityData) map[string]any {
 	}
 	native = mergeNativeMobNBT(native, encodeNativeMobEquipment(equipment))
 
-	javaState := mergeNativeMobNBT(readNativeMobJavaState(data.NativeNBT), b.breeding.encodeNBT(map[string]any{
+	extraState := mergeNativeMobNBT(readNativeMobExtraState(data.NativeNBT), b.breeding.encodeNBT(map[string]any{
 		"Tame": boolByte(b.tamed), "Sitting": boolByte(b.orderedToSit), "Age": int32(b.ageTicks),
 		"CollarColor": b.collarColor, "Angry": boolByte(b.angry()),
 		"variant":       "minecraft:" + wolfVariantNames[b.variant],
 		"sound_variant": "minecraft:" + b.soundVariant,
 	}))
 	if b.ownerUUID != "" {
-		if owner := javaUUIDIntArray(b.ownerUUID); owner != nil {
-			javaState["Owner"] = owner
+		if owner := uuidIntArray(b.ownerUUID); owner != nil {
+			extraState["Owner"] = owner
 		}
 	} else {
-		delete(javaState, "Owner")
+		delete(extraState, "Owner")
 	}
 	if !b.bodyArmor.Empty() {
 		if armor, err := item.StackToStructureNBT(b.bodyArmor); err == nil {
-			javaState["equipment"] = map[string]any{"body": armor}
+			extraState["equipment"] = map[string]any{"body": armor}
 		}
 	} else {
-		delete(javaState, "equipment")
+		delete(extraState, "equipment")
 	}
-	return mergeNativeMobJavaState(native, javaState)
+	return mergeNativeMobExtraState(native, extraState)
 }
 
 func nativeWolfArmorStack(armor nativeMobItem) (item.Stack, bool) {
@@ -234,7 +234,7 @@ func wolfVariantFromBedrock(v int32) (int, bool) {
 	}
 	return 0, false
 }
-func javaUUIDString(value any) string {
+func uuidString(value any) string {
 	var parts []int32
 	switch uuid := value.(type) {
 	case []int32:
@@ -272,11 +272,11 @@ func javaUUIDString(value any) string {
 	return encoded[:8] + "-" + encoded[8:12] + "-" + encoded[12:16] + "-" + encoded[16:20] + "-" + encoded[20:]
 }
 
-func javaUUIDFromHalves(most, least int64) string {
-	return javaUUIDString([]int32{int32(uint64(most) >> 32), int32(most), int32(uint64(least) >> 32), int32(least)})
+func uuidFromHalves(most, least int64) string {
+	return uuidString([]int32{int32(uint64(most) >> 32), int32(most), int32(uint64(least) >> 32), int32(least)})
 }
 
-func javaUUIDIntArray(uuid string) []int32 {
+func uuidIntArray(uuid string) []int32 {
 	raw, err := hex.DecodeString(strings.ReplaceAll(uuid, "-", ""))
 	if err != nil || len(raw) != 16 {
 		return nil

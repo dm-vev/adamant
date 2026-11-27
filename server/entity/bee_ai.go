@@ -240,12 +240,12 @@ func (b *beeBehaviour) hiveNearFire(m *Mob) bool {
 func (b *beeBehaviour) enterHive(m *Mob, home beeHome) {
 	pos := *b.hive
 	data := entityBeeType.EncodeNBT(m.data)
-	if j := readNativeMobJavaState(data); j != nil {
+	if j := readNativeMobExtraState(data); j != nil {
 		// BeehiveBlockEntity.IGNORED_BEE_TAGS.
 		for _, key := range [...]string{"NoGravity", "CannotEnterHiveTicks", "TicksSincePollination", "CropsGrownSincePollination", "hive_pos"} {
 			delete(j, key)
 		}
-		data = mergeNativeMobJavaState(data, j)
+		data = mergeNativeMobExtraState(data, j)
 	}
 	next, ok := home.AddBeeOccupant(data)
 	if !ok {

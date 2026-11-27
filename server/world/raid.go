@@ -382,7 +382,7 @@ func (tx *Tx) tickRaids() {
 		if r.cooldown == -1 && r.groupsSpawned > 0 {
 			r.cooldown = raidWaveCooldown
 		}
-		if alive == 0 && r.groupsSpawned < r.groupCount+javaStateBoolInt(r.omenLevel > 1) {
+		if alive == 0 && r.groupsSpawned < r.groupCount+canonicalStateBoolInt(r.omenLevel > 1) {
 			if r.cooldown <= 0 {
 				if r.cooldown == 0 && r.groupsSpawned > 0 {
 					r.cooldown = raidWaveCooldown
@@ -399,7 +399,7 @@ func (tx *Tx) tickRaids() {
 				r.cooldown--
 			}
 		}
-		if r.started && r.groupsSpawned >= r.groupCount+javaStateBoolInt(r.omenLevel > 1) && alive == 0 {
+		if r.started && r.groupsSpawned >= r.groupCount+canonicalStateBoolInt(r.omenLevel > 1) && alive == 0 {
 			if r.postRaidTicks < 40 {
 				r.postRaidTicks++
 			} else {

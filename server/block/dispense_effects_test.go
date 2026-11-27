@@ -226,7 +226,7 @@ func TestDispenserEffectsFollowBDS(t *testing.T) {
 // splashes at random places over the top of the dispenser (one block up, within
 // the block's width), the sound of an emptied bottle at the centre of the
 // dispenser, then the click and the smoke of the dispense.
-func TestDispenserWaterBottleOnDirtShowsJavaEffects(t *testing.T) {
+func TestDispenserWaterBottleOnDirtEffects(t *testing.T) {
 	t.Parallel()
 	dt := newDispenserTest(t, cube.FaceEast)
 	dt.dispense(func(tx *world.Tx, front cube.Pos) { tx.SetBlock(front, block.Dirt{}, nil) },

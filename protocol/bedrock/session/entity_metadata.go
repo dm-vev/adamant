@@ -95,15 +95,38 @@ func boxInt32(v int32) any {
 	return v
 }
 
+type int64BoxEntry struct {
+	v   int64
+	box any
+}
+
+type float32BoxEntry struct {
+	bits uint32
+	box  any
+}
+
+var (
+	int64BoxCache   [256]atomic.Pointer[int64BoxEntry]
+	float32BoxCache [256]atomic.Pointer[float32BoxEntry]
+)
+
 func boxInt64(v int64) any {
 	if v == 0 {
 		return metaInt64Zero
 	}
-	return v
+	u := uint64(v)
+	idx := byte(u ^ (u >> 8) ^ (u >> 16) ^ (u >> 32))
+	if p := int64BoxCache[idx].Load(); p != nil && p.v == v {
+		return p.box
+	}
+	box := any(v)
+	int64BoxCache[idx].Store(&int64BoxEntry{v: v, box: box})
+	return box
 }
 
 func boxFloat32(v float32) any {
-	switch math.Float32bits(v) {
+	bits := math.Float32bits(v)
+	switch bits {
 	case 0:
 		return metaFloat32Zero
 	case 0x3e800000: // 0.25
@@ -127,7 +150,13 @@ func boxFloat32(v float32) any {
 	case 0x40000000: // 2.0
 		return metaFloat32Two
 	default:
-		return v
+		idx := byte(bits ^ (bits >> 8) ^ (bits >> 16) ^ (bits >> 24))
+		if p := float32BoxCache[idx].Load(); p != nil && p.bits == bits {
+			return p.box
+		}
+		box := any(v)
+		float32BoxCache[idx].Store(&float32BoxEntry{bits: bits, box: box})
+		return box
 	}
 }
 
@@ -190,6 +219,7 @@ type entityTypeMeta struct {
 
 	props        []actorProperty
 	defaultProps []mc.IntegerEntityProperty
+	baseMeta     mc.Metadata
 	mapHint      atomic.Int32
 }
 
@@ -334,7 +364,34 @@ func buildEntityTypeMeta(t world.EntityType) *entityTypeMeta {
 			meta.fallMultiplier = metaFloat32One
 		}
 	}
+	meta.baseMeta = buildBaseMeta(meta)
 	return meta
+}
+
+func buildBaseMeta(meta *entityTypeMeta) mc.Metadata {
+	m := make(mc.Metadata, 28)
+	m[mc.EntityDataKeyPlayerFlags] = boxedBytes[0]
+	m[mc.EntityDataKeyEffectColor] = boxedInt32s[1]
+	m[mc.EntityDataKeyEffectAmbience] = boxedBytes[0]
+	m[mc.EntityDataKeyColorIndex] = boxedBytes[0]
+	if meta.hasShape && !meta.dynamicShape {
+		m[mc.EntityDataKeyWidth] = meta.adultW
+		m[mc.EntityDataKeyHeight] = meta.adultH
+		m[mc.EntityDataKeyScale] = meta.adultS
+	}
+	if !meta.isPlayer {
+		m[mc.EntityDataKeyAmbientSoundInterval] = meta.soundInterval
+		m[mc.EntityDataKeyAmbientSoundIntervalRange] = meta.soundSpread
+		m[mc.EntityDataKeyAmbientSoundEventName] = meta.soundEvent
+		m[mc.EntityDataKeyFallDamageMultiplier] = meta.fallMultiplier
+	}
+	m[mc.EntityDataKeySeatLockPassengerRotation] = boxedBytes[0]
+	m[mc.EntityDataKeySeatLockPassengerRotationDegrees] = metaFloat32Zero
+	m[mc.EntityDataKeySeatRotationOffset] = boxedBytes[0]
+	m[mc.EntityDataKeySeatRotationOffsetDegrees] = metaFloat32Zero
+	m[mc.EntityDataKeyFlags] = meta.baseFlags0Boxed
+	m[mc.EntityDataKeyFlagsTwo] = meta.baseFlags1Boxed
+	return m
 }
 
 // parseEntityMetadata returns an entity metadata object with default values. It is equivalent to setting
@@ -348,37 +405,29 @@ func (s *Session) parseEntityMetadata(e world.Entity) mc.Metadata {
 }
 
 func (s *Session) parseEntityMetadataWith(e world.Entity, meta *entityTypeMeta, caps metaCaps) mc.Metadata {
+	return s.parseEntityMetadataWithBeh(e, meta, caps, nil, metaCaps{}, false)
+}
+
+func (s *Session) parseEntityMetadataWithBeh(e world.Entity, meta *entityTypeMeta, caps metaCaps, beh entity.Behaviour, behCaps metaCaps, behKnown bool) mc.Metadata {
 	if meta == nil {
 		return s.parseEntityMetadataSlow(e, e.H().Type())
+	}
+	if !behKnown && caps.hi&capBehaviour != 0 {
+		beh = e.(behaviourHolder).Behaviour()
+		behCaps = metaCapsOf(beh)
 	}
 	hint := int(meta.mapHint.Load())
 	if hint == 0 {
 		hint = 28
 	}
-	m := make(mc.Metadata, hint)
-
-	m[mc.EntityDataKeyPlayerFlags] = boxedBytes[0]
-	m[mc.EntityDataKeyEffectColor] = boxedInt32s[1]
-	m[mc.EntityDataKeyEffectAmbience] = boxedBytes[0]
-	m[mc.EntityDataKeyColorIndex] = boxedBytes[0]
-
-	var beh entity.Behaviour
-	var behCaps metaCaps
-	if caps.hi&capBehaviour != 0 {
-		beh = e.(behaviourHolder).Behaviour()
-		behCaps = metaCapsOf(beh)
-	}
-
-	writeBaseShapeMetadata(e, meta, caps, beh, behCaps, m)
-	writeBaseAmbientMetadata(e, meta, caps, m)
-
-	if caps.hi&capRiderSeat != 0 {
-		writeSeatMetadata(m, e.(riderSeat).RiderSeat())
+	var m mc.Metadata
+	cloned := meta.baseMeta != nil && hint <= 28
+	if cloned {
+		m = maps.Clone(meta.baseMeta)
+		writeClonedBaseDiffs(e, meta, caps, beh, behCaps, m)
 	} else {
-		m[mc.EntityDataKeySeatLockPassengerRotation] = boxedBytes[0]
-		m[mc.EntityDataKeySeatLockPassengerRotationDegrees] = metaFloat32Zero
-		m[mc.EntityDataKeySeatRotationOffset] = boxedBytes[0]
-		m[mc.EntityDataKeySeatRotationOffsetDegrees] = metaFloat32Zero
+		m = make(mc.Metadata, hint)
+		writeFreshBaseMetadata(e, meta, caps, beh, behCaps, m)
 	}
 
 	flags := actorFlags{low: meta.baseFlags0, high: meta.baseFlags1}
@@ -394,23 +443,66 @@ func (s *Session) parseEntityMetadataWith(e world.Entity, meta *entityTypeMeta, 
 			flags = applyActorMetaPatch(e, beh, m, flags, &patch)
 		}
 	}
-	switch flags.low {
-	case meta.baseFlags0:
-		m[mc.EntityDataKeyFlags] = meta.baseFlags0Boxed
-	case meta.baseFlags0Breathing:
-		m[mc.EntityDataKeyFlags] = meta.baseFlags0BreathingBoxed
-	default:
-		m[mc.EntityDataKeyFlags] = boxInt64(flags.low)
+	if !cloned || flags.low != meta.baseFlags0 {
+		switch flags.low {
+		case meta.baseFlags0:
+			m[mc.EntityDataKeyFlags] = meta.baseFlags0Boxed
+		case meta.baseFlags0Breathing:
+			m[mc.EntityDataKeyFlags] = meta.baseFlags0BreathingBoxed
+		default:
+			m[mc.EntityDataKeyFlags] = boxInt64(flags.low)
+		}
 	}
-	if flags.high == meta.baseFlags1 {
-		m[mc.EntityDataKeyFlagsTwo] = meta.baseFlags1Boxed
-	} else {
-		m[mc.EntityDataKeyFlagsTwo] = boxInt64(flags.high)
+	if !cloned || flags.high != meta.baseFlags1 {
+		if flags.high == meta.baseFlags1 {
+			m[mc.EntityDataKeyFlagsTwo] = meta.baseFlags1Boxed
+		} else {
+			m[mc.EntityDataKeyFlagsTwo] = boxInt64(flags.high)
+		}
 	}
 	if n := int32(len(m)); n > meta.mapHint.Load() {
 		meta.mapHint.Store(n)
 	}
 	return m
+}
+
+func writeClonedBaseDiffs(e world.Entity, meta *entityTypeMeta, caps metaCaps, beh entity.Behaviour, behCaps metaCaps, m mc.Metadata) {
+	if meta.hasShape && !meta.dynamicShape {
+		if meta.hasBabyShape && actorIsBabyWith(e, caps, beh, behCaps) {
+			m[mc.EntityDataKeyWidth] = meta.babyW
+			m[mc.EntityDataKeyHeight] = meta.babyH
+			m[mc.EntityDataKeyScale] = meta.babyS
+		}
+	} else {
+		writeBaseShapeMetadata(e, meta, caps, beh, behCaps, m)
+	}
+	if meta.isFox && caps.hi&capFoxSleeping != 0 && e.(foxSleeper).Sleeping() {
+		m[mc.EntityDataKeyAmbientSoundInterval] = metaSleepSoundInterval
+		m[mc.EntityDataKeyAmbientSoundIntervalRange] = metaSleepSoundSpread
+		m[mc.EntityDataKeyAmbientSoundEventName] = metaSleepSoundEvent
+	}
+	if caps.hi&capRiderSeat != 0 {
+		if seat := e.(riderSeat).RiderSeat(); seat != (world.RiderSeat{}) {
+			writeSeatMetadata(m, seat)
+		}
+	}
+}
+
+func writeFreshBaseMetadata(e world.Entity, meta *entityTypeMeta, caps metaCaps, beh entity.Behaviour, behCaps metaCaps, m mc.Metadata) {
+	m[mc.EntityDataKeyPlayerFlags] = boxedBytes[0]
+	m[mc.EntityDataKeyEffectColor] = boxedInt32s[1]
+	m[mc.EntityDataKeyEffectAmbience] = boxedBytes[0]
+	m[mc.EntityDataKeyColorIndex] = boxedBytes[0]
+	writeBaseShapeMetadata(e, meta, caps, beh, behCaps, m)
+	writeBaseAmbientMetadata(e, meta, caps, m)
+	if caps.hi&capRiderSeat != 0 {
+		writeSeatMetadata(m, e.(riderSeat).RiderSeat())
+	} else {
+		m[mc.EntityDataKeySeatLockPassengerRotation] = boxedBytes[0]
+		m[mc.EntityDataKeySeatLockPassengerRotationDegrees] = metaFloat32Zero
+		m[mc.EntityDataKeySeatRotationOffset] = boxedBytes[0]
+		m[mc.EntityDataKeySeatRotationOffsetDegrees] = metaFloat32Zero
+	}
 }
 
 func writeBaseShapeMetadata(e world.Entity, meta *entityTypeMeta, caps metaCaps, beh entity.Behaviour, behCaps metaCaps, m mc.Metadata) {

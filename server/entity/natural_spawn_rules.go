@@ -571,7 +571,7 @@ func checkSlimeSpawnRules(tx *world.Tx, pos cube.Pos, r *vanilla.Random) bool {
 		return false
 	}
 	if biomeHasTag(tx, pos, "allows_surface_slime_spawns") && pos[1] > 50 && pos[1] < 70 {
-		chance := world.JavaBiomeAttribute(world.JavaBiomeName(tx.Biome(pos)), "minecraft:gameplay/surface_slime_spawn_chance", 0)
+		chance := world.BiomeAttribute(world.CanonicalBiomeName(tx.Biome(pos)), "minecraft:gameplay/surface_slime_spawn_chance", 0)
 		if r.NextFloat() < chance && tx.RawBrightness(pos) <= int(r.NextInt(8)) {
 			return checkMobSpawnRules(tx, "minecraft:slime", pos)
 		}
@@ -601,7 +601,7 @@ func mobSpawnWalkTarget(m *Mob, id string, pos cube.Pos) bool {
 	if w, ok := m.Behaviour().(mobWalkTarget); ok {
 		return w.walkTargetValue(m, pos) >= 0
 	}
-	if javaAnimalClasses[id] {
+	if persistentAnimalIDs[id] {
 		if _, grass := m.tx.Block(pos.Side(cube.FaceDown)).(block.Grass); grass {
 			return true
 		}

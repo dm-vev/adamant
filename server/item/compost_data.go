@@ -4,7 +4,7 @@ package item
 
 // javaCompostable holds the chance in percent that each Java item with the
 // compostable component adds a layer to a composter that is not empty.
-var javaCompostable = map[string]int{
+var compostableItem = map[string]int{
 	"minecraft:acacia_leaves":           30,
 	"minecraft:acacia_sapling":          30,
 	"minecraft:allium":                  65,

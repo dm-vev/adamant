@@ -299,7 +299,7 @@ func (p *goldenProvider) AllocateMapID() (int64, error) {
 	return p.reserved, nil
 }
 
-func (*goldenProvider) JavaMapID(nativeID int64) (int32, error) { return int32(nativeID), nil }
+func (*goldenProvider) CanonicalMapID(nativeID int64) (int32, error) { return int32(nativeID), nil }
 func (*goldenProvider) NativeMapID(javaID int32) (int64, error) { return int64(javaID), nil }
 
 // goldenRules sets the game rules of a world of the scenarios: players

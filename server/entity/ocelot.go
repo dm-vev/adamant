@@ -30,7 +30,7 @@ func (ocelotType) BBox(e world.Entity) cube.BBox {
 }
 func (ocelotType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	c := ocelotBehaviourConfig{}
-	s := readNativeMobJavaState(m)
+	s := readNativeMobExtraState(m)
 	if s == nil {
 		s = m
 	}
@@ -62,7 +62,7 @@ func (ocelotType) EncodeNBT(d *world.EntityData) map[string]any {
 	h := b.health
 	attrs := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: h.MaxHealth(), Current: h.Health(), DefaultMin: 0, DefaultMax: h.MaxHealth(), Min: 0, Max: h.MaxHealth()}, {Name: "minecraft:movement", Base: .3, Current: .3, DefaultMin: 0, DefaultMax: .3, Min: 0, Max: .3}, {Name: "minecraft:attack_damage", Base: 3, Current: 3, DefaultMin: 0, DefaultMax: 3, Min: 0, Max: 3}})
 	m := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs})
-	return mergeNativeMobJavaState(m, b.breeding.encodeNBT(map[string]any{"Health": float32(h.Health()), "MaxHealth": float32(h.MaxHealth()), "Trusting": boolByte(b.trusting), "Age": int32(b.age)}))
+	return mergeNativeMobExtraState(m, b.breeding.encodeNBT(map[string]any{"Health": float32(h.Health()), "MaxHealth": float32(h.MaxHealth()), "Trusting": boolByte(b.trusting), "Age": int32(b.age)}))
 }
 
 type ocelotBehaviourConfig struct {

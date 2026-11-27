@@ -55,7 +55,7 @@ func (b *enderDragonBehaviour) ensureDragonNodes(tx *world.Tx) {
 			angle := float32(2) * (float32(-math.Pi) + float32(math.Pi/4)*float32(multiplier))
 			x, z = int(math.Floor(float64(float32(20)*vanilla.Cos(float64(angle))))), int(math.Floor(float64(float32(20)*vanilla.Sin(float64(angle)))))
 		}
-		y := max(73, tx.JavaMotionBlockingHeight(x, z, true)+yAdjustment)
+		y := max(73, tx.MotionBlockingHeight(x, z, true)+yAdjustment)
 		b.nodes[i] = cube.Pos{x, y, z}
 	}
 	b.nodesInitialized = true

@@ -61,7 +61,11 @@ func ParseLegacy(s string) Text {
 	if s == "" {
 		return Text{}
 	}
-	root := &node{}
+	return Text{&node{legacy: s, lazy: true}}
+}
+
+func (root *node) parseLegacy() {
+	s := root.legacy
 	cur := root
 	// fresh is set while cur is a text with Reset that has taken no code
 	// and no content yet; pending while cur has a code no text followed.
@@ -107,8 +111,6 @@ func ParseLegacy(s string) Text {
 		}
 	}
 	end()
-	root.legacy = s
-	return Text{root}
 }
 
 // with returns s with the colour or the decoration that c applies.

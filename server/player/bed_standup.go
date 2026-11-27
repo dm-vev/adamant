@@ -56,7 +56,7 @@ func bedStandUpPosition(tx *world.Tx, pos cube.Pos, forward cube.Direction, yaw 
 // "unknown": the search reads it by its collision shape alone, in no tag
 // and harmless, as Java reads none of its own blocks differently.
 func bedState(tx *world.Tx, pos cube.Pos) (id uint32, name string, ok bool) {
-	if id, ok = tx.JavaBlockState(pos); !ok {
+	if id, ok = tx.CanonicalBlockState(pos); !ok {
 		return 0, "", false
 	}
 	name, ok = gamedata.BlockStateName(id)

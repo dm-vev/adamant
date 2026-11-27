@@ -14,9 +14,12 @@ import (
 
 const mapKeyPrefix = "map_"
 const mapNextIDKey = "adamant:map_next_id"
-const mapNextJavaIDKey = "adamant:map_next_java_id"
-const mapJavaKeyPrefix = "adamant:map_java_"
-const mapNativeJavaKeyPrefix = "adamant:map_native_java_"
+const mapNextCanonicalIDKey = "adamant:map_next_canonical_id"
+const mapCanonicalKeyPrefix = "adamant:map_canonical_"
+const mapNativeCanonicalKeyPrefix = "adamant:map_native_canonical_"
+const legacyMapNextCanonicalIDKey = "adamant:map_next_java_id"
+const legacyMapCanonicalKeyPrefix = "adamant:map_java_"
+const legacyMapNativeCanonicalKeyPrefix = "adamant:map_native_java_"
 
 
 // LoadMap decodes a Bedrock map record. Its signed long mapId is shared by the
@@ -46,11 +49,11 @@ func (db *DB) loadMap(s store, id int64) (world.MapData, error) {
 	if err != nil {
 		return world.MapData{}, err
 	}
-	data.JavaID, err = db.javaMapIDLocked(s, id)
+	data.CanonicalID, err = db.canonicalMapIDLocked(s, id)
 	if err != nil {
 		return world.MapData{}, err
 	}
-	data.HasJavaID = true
+	data.HasCanonicalID = true
 	return data, nil
 }
 
@@ -69,7 +72,7 @@ func (db *DB) StoreMap(data world.MapData) error {
 
 // storeMap stores a map in s.
 func (db *DB) storeMap(s store, data world.MapData) error {
-	if !data.HasJavaID {
+	if !data.HasCanonicalID {
 		return fmt.Errorf("store map %d: Java map ID presence is required", data.ID)
 	}
 	if len(data.NativeColors) != 128*128*4 {
@@ -98,12 +101,12 @@ func (db *DB) storeMap(s store, data world.MapData) error {
 	if err != nil {
 		return fmt.Errorf("encode map %d: %w", data.ID, err)
 	}
-	if err := db.persistJavaMapMapping(s, data.ID, data.JavaID); err != nil {
-		return fmt.Errorf("store map %d Java ID %d: %w", data.ID, data.JavaID, err)
+	if err := db.persistCanonicalMapMapping(s, data.ID, data.CanonicalID); err != nil {
+		return fmt.Errorf("store map %d Java ID %d: %w", data.ID, data.CanonicalID, err)
 	}
 	s.put(key, encoded)
-	s.put(javaMapKey(data.JavaID), int64Bytes(data.ID))
-	s.put(nativeJavaMapKey(data.ID), int32Bytes(data.JavaID))
+	s.put(canonicalMapKey(data.CanonicalID), int64Bytes(data.ID))
+	s.put(nativeCanonicalMapKey(data.ID), int32Bytes(data.CanonicalID))
 	return nil
 }
 
@@ -152,113 +155,140 @@ func (db *DB) AllocateMapID() (int64, error) {
 }
 // JavaMapID returns the stable Java map ID for a native Bedrock map ID,
 // allocating the next non-negative Java ID when no mapping exists.
-func (db *DB) JavaMapID(nativeID int64) (int32, error) {
+func (db *DB) CanonicalMapID(nativeID int64) (int32, error) {
 	db.lmu.Lock()
 	defer db.lmu.Unlock()
 	s := db.direct()
-	id, err := db.javaMapIDLocked(s, nativeID)
+	id, err := db.canonicalMapIDLocked(s, nativeID)
 	if err == nil && s.batch.Len() != 0 {
 		err = s.flush()
 	}
 	return id, err
 }
 
-func (db *DB) javaMapIDLocked(s store, nativeID int64) (int32, error) {
-	b, err := s.get(nativeJavaMapKey(nativeID))
+func (db *DB) canonicalMapIDLocked(s store, nativeID int64) (int32, error) {
+	b, err := storeGetWithFallback(s, nativeCanonicalMapKey(nativeID), legacyNativeCanonicalMapKey(nativeID))
 	if err == nil {
 		if len(b) != 4 {
-			return 0, fmt.Errorf("invalid Java map ID mapping for native ID %d: length %d", nativeID, len(b))
+			return 0, fmt.Errorf("invalid canonical map ID mapping for native ID %d: length %d", nativeID, len(b))
 		}
-		javaID := int32(binary.LittleEndian.Uint32(b))
-		if err := db.persistJavaMapMapping(s, nativeID, javaID); err != nil {
+		canonicalID := int32(binary.LittleEndian.Uint32(b))
+		if err := db.persistCanonicalMapMapping(s, nativeID, canonicalID); err != nil {
 			return 0, err
 		}
-		return javaID, nil
+		return canonicalID, nil
 	}
 	if !errors.Is(err, leveldb.ErrNotFound) {
-		return 0, fmt.Errorf("read Java map ID mapping: %w", err)
+		return 0, fmt.Errorf("read canonical map ID mapping: %w", err)
 	}
-	counter, err := s.get([]byte(mapNextJavaIDKey))
+	counter, err := storeGetWithFallback(s, []byte(mapNextCanonicalIDKey), []byte(legacyMapNextCanonicalIDKey))
 	var next int64
 	switch {
 	case err == nil:
 		if len(counter) != 8 {
-			return 0, fmt.Errorf("invalid Java map ID counter length %d", len(counter))
+			return 0, fmt.Errorf("invalid canonical map ID counter length %d", len(counter))
 		}
 		next = int64(binary.LittleEndian.Uint64(counter))
 	case errors.Is(err, leveldb.ErrNotFound):
 		next = 0
 	default:
-		return 0, fmt.Errorf("read Java map ID counter: %w", err)
+		return 0, fmt.Errorf("read canonical map ID counter: %w", err)
 	}
 	if next < 0 || next > int64(^uint32(0)>>1) {
-		return 0, fmt.Errorf("Java map ID space exhausted")
+		return 0, fmt.Errorf("canonical map ID space exhausted")
 	}
-	javaID := int32(next)
-	if err := db.persistJavaMapMapping(s, nativeID, javaID); err != nil {
+	canonicalID := int32(next)
+	if err := db.persistCanonicalMapMapping(s, nativeID, canonicalID); err != nil {
 		return 0, err
 	}
-	return javaID, nil
+	return canonicalID, nil
 }
 
-// NativeMapID resolves a Java map ID to its distinct native signed map ID.
-func (db *DB) NativeMapID(javaID int32) (int64, error) {
+// NativeMapID resolves a canonical map ID to its distinct native signed map ID.
+func (db *DB) NativeMapID(canonicalID int32) (int64, error) {
 	db.lmu.Lock()
 	defer db.lmu.Unlock()
-	b, err := db.ldb.Get(javaMapKey(javaID), nil)
+	b, err := db.ldb.Get(canonicalMapKey(canonicalID), nil)
+	if errors.Is(err, leveldb.ErrNotFound) {
+		b, err = db.ldb.Get(legacyCanonicalMapKey(canonicalID), nil)
+	}
 	if err != nil {
-		return 0, fmt.Errorf("load native map ID for Java ID %d: %w", javaID, err)
+		return 0, fmt.Errorf("load native map ID for canonical ID %d: %w", canonicalID, err)
 	}
 	if len(b) != 8 {
-		return 0, fmt.Errorf("invalid native map ID mapping for Java ID %d: length %d", javaID, len(b))
+		return 0, fmt.Errorf("invalid native map ID mapping for canonical ID %d: length %d", canonicalID, len(b))
 	}
 	return int64(binary.LittleEndian.Uint64(b)), nil
 }
 
-func (db *DB) persistJavaMapMapping(s store, nativeID int64, javaID int32) error {
-	forward, err := s.get(javaMapKey(javaID))
+func (db *DB) persistCanonicalMapMapping(s store, nativeID int64, canonicalID int32) error {
+	forward, err := storeGetWithFallback(s, canonicalMapKey(canonicalID), legacyCanonicalMapKey(canonicalID))
 	if err == nil && (len(forward) != 8 || int64(binary.LittleEndian.Uint64(forward)) != nativeID) {
-		return fmt.Errorf("Java map ID %d already maps to another native ID", javaID)
+		return fmt.Errorf("canonical map ID %d already maps to another native ID", canonicalID)
 	}
 	if err != nil && !errors.Is(err, leveldb.ErrNotFound) {
 		return err
 	}
-	reverse, err := s.get(nativeJavaMapKey(nativeID))
-	if err == nil && (len(reverse) != 4 || int32(binary.LittleEndian.Uint32(reverse)) != javaID) {
-		return fmt.Errorf("native map ID %d already maps to another Java ID", nativeID)
+	reverse, err := storeGetWithFallback(s, nativeCanonicalMapKey(nativeID), legacyNativeCanonicalMapKey(nativeID))
+	if err == nil && (len(reverse) != 4 || int32(binary.LittleEndian.Uint32(reverse)) != canonicalID) {
+		return fmt.Errorf("native map ID %d already maps to another canonical ID", nativeID)
 	}
 	if err != nil && !errors.Is(err, leveldb.ErrNotFound) {
 		return err
 	}
 	next := int64(0)
-	counter, err := s.get([]byte(mapNextJavaIDKey))
+	counter, err := storeGetWithFallback(s, []byte(mapNextCanonicalIDKey), []byte(legacyMapNextCanonicalIDKey))
 	if err == nil {
 		if len(counter) != 8 {
-			return fmt.Errorf("invalid Java map ID counter length %d", len(counter))
+			return fmt.Errorf("invalid canonical map ID counter length %d", len(counter))
 		}
 		next = int64(binary.LittleEndian.Uint64(counter))
 	} else if !errors.Is(err, leveldb.ErrNotFound) {
 		return err
 	}
-	if javaID >= 0 && int64(javaID) >= next {
-		next = int64(javaID) + 1
-	} else if forward != nil && reverse != nil {
-		// Both directions are stored and the counter is past the ID:
-		// reading the map writes nothing.
-		return nil
+	if canonicalID >= 0 && int64(canonicalID) >= next {
+		next = int64(canonicalID) + 1
+	} else if _, hasNewF := dbGetExists(s, canonicalMapKey(canonicalID)); hasNewF {
+		if _, hasNewR := dbGetExists(s, nativeCanonicalMapKey(nativeID)); hasNewR {
+			if _, hasNewC := dbGetExists(s, []byte(mapNextCanonicalIDKey)); hasNewC {
+				// Both new directions and counter are already stored: reading writes nothing.
+				return nil
+			}
+		}
 	}
-	s.put(javaMapKey(javaID), int64Bytes(nativeID))
-	s.put(nativeJavaMapKey(nativeID), int32Bytes(javaID))
-	s.put([]byte(mapNextJavaIDKey), int64Bytes(next))
+	s.put(canonicalMapKey(canonicalID), int64Bytes(nativeID))
+	s.put(nativeCanonicalMapKey(nativeID), int32Bytes(canonicalID))
+	s.put([]byte(mapNextCanonicalIDKey), int64Bytes(next))
 	return nil
 }
 
-func javaMapKey(id int32) []byte {
-	return []byte(mapJavaKeyPrefix + strconv.FormatInt(int64(id), 10))
+func storeGetWithFallback(s store, primary, fallback []byte) ([]byte, error) {
+	b, err := s.get(primary)
+	if errors.Is(err, leveldb.ErrNotFound) {
+		return s.get(fallback)
+	}
+	return b, err
 }
 
-func nativeJavaMapKey(id int64) []byte {
-	return []byte(mapNativeJavaKeyPrefix + strconv.FormatInt(id, 10))
+func dbGetExists(s store, key []byte) ([]byte, bool) {
+	b, err := s.get(key)
+	return b, err == nil
+}
+
+func canonicalMapKey(id int32) []byte {
+	return []byte(mapCanonicalKeyPrefix + strconv.FormatInt(int64(id), 10))
+}
+
+func nativeCanonicalMapKey(id int64) []byte {
+	return []byte(mapNativeCanonicalKeyPrefix + strconv.FormatInt(id, 10))
+}
+
+func legacyCanonicalMapKey(id int32) []byte {
+	return []byte(legacyMapCanonicalKeyPrefix + strconv.FormatInt(int64(id), 10))
+}
+
+func legacyNativeCanonicalMapKey(id int64) []byte {
+	return []byte(legacyMapNativeCanonicalKeyPrefix + strconv.FormatInt(id, 10))
 }
 
 func int64Bytes(v int64) []byte {

@@ -30,7 +30,7 @@ func TestMapDecorationTypesAreProtocolTypes(t *testing.T) {
 		"minecraft:desert_pyramid":   mc.MapDecorationTypeDesertPyramid,
 		"minecraft:ocean_ruin_warm":  mc.MapDecorationTypeWarmOceanRuins,
 	} {
-		if got, ok := world.MapDecorationTypeFromJava(name); !ok || got != want {
+		if got, ok := world.MapDecorationTypeFromName(name); !ok || got != want {
 			t.Errorf("%s: %d, %v; want %d", name, got, ok, want)
 		}
 	}

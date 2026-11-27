@@ -11,7 +11,7 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-func TestNewFromJavaNBTBuildsWorldlessShulkerAndPreservesState(t *testing.T) {
+func TestNewFromCanonicalNBTBuildsWorldlessShulkerAndPreservesState(t *testing.T) {
 	t.Parallel()
 	position := mgl64.Vec3{12.5, 70, -9.25}
 	rotation := cube.Rotation{135, -10}
@@ -50,12 +50,12 @@ func TestNewFromJavaNBTBuildsWorldlessShulkerAndPreservesState(t *testing.T) {
 	if !ok || variant != 10 {
 		t.Fatalf("native shulker variant = %d, want 10", variant)
 	}
-	if java := readNativeMobJavaState(nbt); java["Color"] != byte(5) {
-		t.Fatalf("Java shulker colour = %v, want 5", java["Color"])
+	if extra := readNativeMobExtraState(nbt); extra["Color"] != byte(5) {
+		t.Fatalf("Java shulker colour = %v, want 5", extra["Color"])
 	}
 }
 
-func TestNewFromJavaNBTRejectsUnknownEntity(t *testing.T) {
+func TestNewFromCanonicalNBTRejectsUnknownEntity(t *testing.T) {
 	t.Parallel()
 	if _, err := NewFromStructureNBT(map[string]any{"id": "minecraft:unknown_template_mob"}, world.EntitySpawnOpts{}); err == nil {
 		t.Fatal("expected an unknown Java entity id to fail rather than create a placeholder")

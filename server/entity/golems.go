@@ -94,7 +94,7 @@ func (snowGolemType) EncodeEntity() string        { return "minecraft:snow_golem
 func (ironGolemType) BBox(world.Entity) cube.BBox { return cube.Box(-.7, 0, -.7, .7, 2.7, .7) }
 func (snowGolemType) BBox(world.Entity) cube.BBox { return cube.Box(-.35, 0, -.35, .35, 1.9, .35) }
 func (ironGolemType) DecodeNBT(n map[string]any, d *world.EntityData) {
-	source := readNativeMobJavaState(n)
+	source := readNativeMobExtraState(n)
 	if source == nil {
 		source = n
 	}
@@ -112,7 +112,7 @@ func (ironGolemType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	c.Apply(d)
 }
 func (snowGolemType) DecodeNBT(n map[string]any, d *world.EntityData) {
-	source := readNativeMobJavaState(n)
+	source := readNativeMobExtraState(n)
 	if source == nil {
 		source = n
 	}
@@ -135,22 +135,22 @@ func (ironGolemType) EncodeNBT(d *world.EntityData) map[string]any {
 	attrs := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{
 		{Name: "minecraft:health", Base: ironGolemHealth, Current: h.Health(), DefaultMin: 0, DefaultMax: ironGolemHealth, Min: 0, Max: ironGolemHealth},
 	})
-	javaState := map[string]any{"Health": float32(h.Health()), "PlayerCreated": byte(boolByte(b.playerCreated)),
+	extraState := map[string]any{"Health": float32(h.Health()), "PlayerCreated": byte(boolByte(b.playerCreated)),
 		"AngerTime": int32(b.angerTicks)}
 	var target []int32
 	if b.angerTarget != uuid.Nil {
 		target = golemUUIDNBT(b.angerTarget.String())
 	}
 	if target != nil && b.angerTicks > 0 {
-		javaState["AngryAt"] = target
+		extraState["AngryAt"] = target
 	}
 	native := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Health": float32(h.Health()), "Attributes": attrs,
 		"PlayerCreated": byte(boolByte(b.playerCreated)), "IsAngry": byte(boolByte(b.angerTicks > 0))})
-	state := mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), javaState)
+	state := mergeNativeMobNBT(readNativeMobExtraState(d.NativeNBT), extraState)
 	if target == nil || b.angerTicks <= 0 {
 		delete(state, "AngryAt")
 	}
-	return mergeNativeMobJavaState(native, state)
+	return mergeNativeMobExtraState(native, state)
 }
 func (snowGolemType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*golemState)
@@ -160,8 +160,8 @@ func (snowGolemType) EncodeNBT(d *world.EntityData) map[string]any {
 	})
 	native := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Health": float32(h.Health()), "Attributes": attrs,
 		"Pumpkin": byte(boolByte(b.pumpkin))})
-	javaState := mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), map[string]any{"Health": float32(h.Health()), "Pumpkin": byte(boolByte(b.pumpkin))})
-	return mergeNativeMobJavaState(native, javaState)
+	extraState := mergeNativeMobNBT(readNativeMobExtraState(d.NativeNBT), map[string]any{"Health": float32(h.Health()), "Pumpkin": byte(boolByte(b.pumpkin))})
+	return mergeNativeMobExtraState(native, extraState)
 }
 
 func golemUUIDNBT(raw string) []int32 {

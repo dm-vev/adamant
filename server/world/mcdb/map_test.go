@@ -2,8 +2,11 @@ package mcdb_test
 
 import (
 	"bytes"
+	"encoding/binary"
+	"path/filepath"
 	"testing"
 
+	"github.com/df-mc/goleveldb/leveldb"
 	_ "github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/world"
@@ -48,12 +51,12 @@ func TestIndependentMapTransitionsPersist(t *testing.T) {
 		t.Fatal("copy transitions changed explored or transparent pixels")
 	}
 	maps := []world.MapData{source, scaled, locked, clone}
-	nativeIDs, javaIDs := map[int64]bool{}, map[int32]bool{}
+	nativeIDs, stateIDs := map[int64]bool{}, map[int32]bool{}
 	for _, m := range maps {
-		if !m.HasJavaID || nativeIDs[m.ID] || javaIDs[m.JavaID] {
-			t.Fatalf("duplicate map identity native=%d java=%d", m.ID, m.JavaID)
+		if !m.HasCanonicalID || nativeIDs[m.ID] || stateIDs[m.CanonicalID] {
+			t.Fatalf("duplicate map identity native=%d java=%d", m.ID, m.CanonicalID)
 		}
-		nativeIDs[m.ID], javaIDs[m.JavaID] = true, true
+		nativeIDs[m.ID], stateIDs[m.CanonicalID] = true, true
 	}
 	if err := nether.Close(); err != nil {
 		t.Fatal(err)
@@ -72,11 +75,11 @@ func TestIndependentMapTransitionsPersist(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		native, err := db.NativeMapID(want.JavaID)
+		native, err := db.NativeMapID(want.CanonicalID)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if native != want.ID || got.JavaID != want.JavaID || got.Locked != want.Locked || got.Dimension != want.Dimension || got.Scale != want.Scale || got.CenterX != want.CenterX || got.CenterZ != want.CenterZ || got.Tracking != want.Tracking || got.UnlimitedTracking != want.UnlimitedTracking || !bytes.Equal(got.Colors, want.Colors) || len(got.Decorations) != len(want.Decorations) {
+		if native != want.ID || got.CanonicalID != want.CanonicalID || got.Locked != want.Locked || got.Dimension != want.Dimension || got.Scale != want.Scale || got.CenterX != want.CenterX || got.CenterZ != want.CenterZ || got.Tracking != want.Tracking || got.UnlimitedTracking != want.UnlimitedTracking || !bytes.Equal(got.Colors, want.Colors) || len(got.Decorations) != len(want.Decorations) {
 			t.Fatalf("map %d changed across disk reopen", want.ID)
 		}
 		if got.NativeColors[3] != 0 {
@@ -88,5 +91,51 @@ func TestIndependentMapTransitionsPersist(t *testing.T) {
 				t.Fatal("map decoration changed across disk reopen")
 			}
 		}
+	}
+}
+
+func TestLegacyMapKeysFallbackAndMigrate(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	db, err := (mcdb.Config{}).Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	ldb, err := leveldb.OpenFile(filepath.Join(dir, "db"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var nativeBuf [8]byte
+	var canonBuf [4]byte
+	var nativeIDVal int64 = -42
+	binary.LittleEndian.PutUint64(nativeBuf[:], uint64(nativeIDVal))
+	binary.LittleEndian.PutUint32(canonBuf[:], 7)
+	var nextBuf [8]byte
+	binary.LittleEndian.PutUint64(nextBuf[:], 8)
+	_ = ldb.Put([]byte("adamant:map_java_7"), nativeBuf[:], nil)
+	_ = ldb.Put([]byte("adamant:map_native_java_-42"), canonBuf[:], nil)
+	_ = ldb.Put([]byte("adamant:map_next_java_id"), nextBuf[:], nil)
+	_ = ldb.Close()
+
+	db, err = (mcdb.Config{}).Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	nativeID, err := db.NativeMapID(7)
+	if err != nil || nativeID != -42 {
+		t.Fatalf("NativeMapID(7) = %d, %v; want -42", nativeID, err)
+	}
+	canonID, err := db.CanonicalMapID(-42)
+	if err != nil || canonID != 7 {
+		t.Fatalf("JavaMapID(-42) = %d, %v; want 7", canonID, err)
+	}
+	nextID, err := db.CanonicalMapID(-99)
+	if err != nil || nextID != 8 {
+		t.Fatalf("next JavaMapID(-99) = %d, %v; want 8", nextID, err)
 	}
 }

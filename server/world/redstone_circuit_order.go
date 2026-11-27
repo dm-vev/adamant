@@ -129,9 +129,15 @@ type circuitTraversal struct {
 	pending, chunks circuitPosOrder
 	kinds           map[cube.Pos]uint64
 	entries         map[cube.Pos][]cube.Pos
+	cached          []cube.Pos
+	cachedValid     bool
 }
 
 func circuitChunkOrigin(pos cube.Pos) cube.Pos { return cube.Pos{pos[0] &^ 15, 0, pos[2] &^ 15} }
+
+func (o *circuitTraversal) invalidatePositions() {
+	o.cachedValid = false
+}
 
 func (o *circuitTraversal) replace(pos cube.Pos, block Block) {
 	_, capacitor := block.(RedstoneCircuitComponent)
@@ -146,6 +152,7 @@ func (o *circuitTraversal) replace(pos cube.Pos, block Block) {
 	} else if !existed {
 		return
 	}
+	o.cachedValid = false
 	if o.kinds == nil {
 		o.kinds = make(map[cube.Pos]uint64)
 		o.entries = make(map[cube.Pos][]cube.Pos)
@@ -162,6 +169,10 @@ func (o *circuitTraversal) replace(pos cube.Pos, block Block) {
 }
 
 func (o *circuitTraversal) flush() {
+	if o.pending.head == nil {
+		return
+	}
+	o.cachedValid = false
 	for node := o.pending.head; node != nil; node = node.next {
 		chunk := circuitChunkOrigin(node.pos)
 		o.chunks.insert(chunk)
@@ -171,7 +182,10 @@ func (o *circuitTraversal) flush() {
 }
 
 func (o *circuitTraversal) positions(states map[cube.Pos]RedstoneCircuitState) []cube.Pos {
-	positions := make([]cube.Pos, 0, len(states))
+	if o.cachedValid {
+		return o.cached
+	}
+	positions := o.cached[:0]
 	for node := o.chunks.head; node != nil; node = node.next {
 		for _, pos := range o.entries[node.pos] {
 			if states[pos] != nil {
@@ -179,10 +193,13 @@ func (o *circuitTraversal) positions(states map[cube.Pos]RedstoneCircuitState) [
 			}
 		}
 	}
+	o.cached = positions
+	o.cachedValid = true
 	return positions
 }
 
 func (o *circuitTraversal) removeChunk(chunk ChunkPos) {
+	o.cachedValid = false
 	origin := cube.Pos{int(chunk[0]) * 16, 0, int(chunk[1]) * 16}
 	for pos := range o.kinds {
 		if circuitChunkOrigin(pos) == origin {

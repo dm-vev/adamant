@@ -205,7 +205,7 @@ func (p *Player) Data() Config {
 		RaidOmenPosition:    raidOmenPos,
 		ShoulderLeft:        p.shoulderLeft,
 		ShoulderRight:       p.shoulderRight,
-		JavaState:           encodePlayerJavaState(p),
+		ExtraState:           encodePlayerExtraState(p),
 		Components:          p.Components().EncodeNBT(),
 		HasRaidOmenPosition: hasRaidOmenPos,
 	}

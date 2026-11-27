@@ -3714,7 +3714,7 @@
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 00000000000000000000000000000000000000000000000000000000
->> InventoryContent id=49 len=505 normalised
+>> InventoryContent id=49 len=500 normalised
     InventoryContentPacket
       WindowID: 124
       Content: []v2193.ItemInstance (54)
@@ -3770,7 +3770,7 @@
         [49] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [50] ItemInstance
           StackNetworkID: 47
-          Stack: {NetworkID:423 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map["adamant:java_map_id":2 "map_uuid":2] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}
+          Stack: {NetworkID:423 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map["adamant:map_id":2 "map_uuid":2] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}
         [51] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [52] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [53] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
@@ -3788,10 +3788,10 @@
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
-    | 000000000000000000000000000000000000a701010000015e003cffff010a00
-    | 000313006164616d616e743a6a6176615f6d61705f6964020000000408006d61
-    | 705f757569640200000000000000000000000000000000000000000000000000
-    | 00000000000000000000000000000000000000000000000000
+    | 000000000000000000000000000000000000a701010000015e0037ffff010a00
+    | 00030e006164616d616e743a6d61705f6964020000000408006d61705f757569
+    | 6402000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000
 >> ItemStackResponse id=148 len=82 normalised
     ItemStackResponsePacket
       Responses: []v2193.ItemStackResponse (1)
@@ -8249,7 +8249,7 @@
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 00000000000000000000000000000000000000000000000000000000
->> InventoryContent id=49 len=506 normalised
+>> InventoryContent id=49 len=501 normalised
     InventoryContentPacket
       WindowID: 124
       Content: []v2193.ItemInstance (54)
@@ -8305,7 +8305,7 @@
         [49] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [50] ItemInstance
           StackNetworkID: 80
-          Stack: {NetworkID:423 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map["adamant:java_map_id":3 "map_uuid":3] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}
+          Stack: {NetworkID:423 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map["adamant:map_id":3 "map_uuid":3] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}
         [51] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [52] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [53] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
@@ -8323,10 +8323,10 @@
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
-    | 000000000000000000000000000000000000a70101000001a001003cffff010a
-    | 00000313006164616d616e743a6a6176615f6d61705f6964030000000408006d
-    | 61705f7575696403000000000000000000000000000000000000000000000000
-    | 0000000000000000000000000000000000000000000000000000
+    | 000000000000000000000000000000000000a70101000001a0010037ffff010a
+    | 0000030e006164616d616e743a6d61705f6964030000000408006d61705f7575
+    | 6964030000000000000000000000000000000000000000000000000000000000
+    | 000000000000000000000000000000000000000000
 >> ItemStackResponse id=148 len=37 normalised
     ItemStackResponsePacket
       Responses: []v2193.ItemStackResponse (1)
@@ -8870,7 +8870,7 @@
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 00000000000000000000000000000000000000000000000000000000
->> InventoryContent id=49 len=506 normalised
+>> InventoryContent id=49 len=501 normalised
     InventoryContentPacket
       WindowID: 124
       Content: []v2193.ItemInstance (54)
@@ -8926,7 +8926,7 @@
         [49] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [50] ItemInstance
           StackNetworkID: 84
-          Stack: {NetworkID:423 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map["adamant:java_map_id":4 "map_uuid":4] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}
+          Stack: {NetworkID:423 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map["adamant:map_id":4 "map_uuid":4] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}
         [51] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [52] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [53] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
@@ -8944,10 +8944,10 @@
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
-    | 000000000000000000000000000000000000a70101000001a801003cffff010a
-    | 00000313006164616d616e743a6a6176615f6d61705f6964040000000408006d
-    | 61705f7575696404000000000000000000000000000000000000000000000000
-    | 0000000000000000000000000000000000000000000000000000
+    | 000000000000000000000000000000000000a70101000001a8010037ffff010a
+    | 0000030e006164616d616e743a6d61705f6964040000000408006d61705f7575
+    | 6964040000000000000000000000000000000000000000000000000000000000
+    | 000000000000000000000000000000000000000000
 >> ItemStackResponse id=148 len=38 normalised
     ItemStackResponsePacket
       Responses: []v2193.ItemStackResponse (1)

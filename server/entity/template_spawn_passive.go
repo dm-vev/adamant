@@ -97,7 +97,7 @@ func templateFarmTemperature(biome string) string {
 
 // spawnBiome returns the namespaced name of the biome an entity spawns in.
 func spawnBiome(e *Ent) string {
-	return "minecraft:" + world.JavaBiomeName(e.tx.Biome(cube.PosFromVec3(e.Position())))
+	return "minecraft:" + world.CanonicalBiomeName(e.tx.Biome(cube.PosFromVec3(e.Position())))
 }
 
 func templateSheepColour(random *vanilla.Random, biome string) int {

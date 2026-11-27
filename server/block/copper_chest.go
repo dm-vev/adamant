@@ -44,8 +44,8 @@ func (c CopperChest) withChestData(data Chest) chestBlock { c.Chest = data; retu
 func (CopperChest) canPairChest(other world.Block) bool   { _, ok := other.(CopperChest); return ok }
 
 // WithJavaChestState preserves contents across source oxidation and pairing updates.
-func (c CopperChest) WithJavaChestState(previous world.Block, pos cube.Pos, kind string) world.Block {
-	c.Chest = c.Chest.withJavaChestState(previous, pos, kind)
+func (c CopperChest) WithChestState(previous world.Block, pos cube.Pos, kind string) world.Block {
+	c.Chest = c.Chest.withChestState(previous, pos, kind)
 	return c
 }
 func (c CopperChest) CanOxidate() bool                              { return !c.Waxed }

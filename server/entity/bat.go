@@ -26,7 +26,7 @@ func (batType) EncodeEntity() string        { return "minecraft:bat" }
 func (batType) BBox(world.Entity) cube.BBox { return cube.Box(-.25, 0, -.25, .25, .9, .25) }
 func (batType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	c := batBehaviourConfig{}
-	s := readNativeMobJavaState(m)
+	s := readNativeMobExtraState(m)
 	if s == nil {
 		s = m
 	}
@@ -59,7 +59,7 @@ func (batType) EncodeNBT(d *world.EntityData) map[string]any {
 	h := b.health
 	attrs := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: h.MaxHealth(), Current: h.Health(), DefaultMin: 0, DefaultMax: h.MaxHealth(), Min: 0, Max: h.MaxHealth()}, {Name: "minecraft:movement", Base: .6, Current: .6, DefaultMin: 0, DefaultMax: .6, Min: 0, Max: .6}})
 	m := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs, "Variant": int32(b.variant)})
-	return mergeNativeMobJavaState(m, map[string]any{"Health": float32(h.Health()), "MaxHealth": float32(h.MaxHealth()), "Resting": byte(batBool(b.resting)), "BatFlags": byte(batBool(b.resting))})
+	return mergeNativeMobExtraState(m, map[string]any{"Health": float32(h.Health()), "MaxHealth": float32(h.MaxHealth()), "Resting": byte(batBool(b.resting)), "BatFlags": byte(batBool(b.resting))})
 }
 
 type batBehaviourConfig struct {

@@ -185,71 +185,7 @@ func (e *redstoneEngine) tickCircuits(tx *Tx, tick int64) {
 	// block update pass. LevelChunk::tickImpl publishes them in the next pass.
 	// Publish before collecting this step's inputs, keeping the two phases
 	// separate even if there are no ordinary neighbor invalidations.
-	positions := make([]cube.Pos, 0, len(e.circuitOutputs))
-	for pos := range e.circuitOutputs {
-		positions = append(positions, pos)
-	}
-	slices.SortFunc(positions, func(a, b cube.Pos) int {
-		half := func(pos cube.Pos) bool {
-			s, ok := e.circuits[pos].(RedstoneCircuitHalfPulse)
-			return ok && s.CircuitHalfPulse()
-		}
-		if half(a) != half(b) {
-			if half(a) {
-				return 1
-			}
-			return -1
-		}
-		return compareBlockPos(a, b)
-	})
-	for _, pos := range positions {
-		output := e.circuitOutputs[pos]
-		delete(e.circuitOutputs, pos)
-		d := e.circuitOutputCauses[pos]
-		delete(e.circuitOutputCauses, pos)
-		b, loaded := tx.BlockLoaded(pos)
-		if !loaded {
-			continue
-		}
-		component, ok := b.(RedstoneCircuitComponent)
-		if !ok {
-			continue
-		}
-		output = component.RedstoneCircuitOutput(output)
-		if output == nil {
-			continue
-		}
-		power := 0
-		if source, ok := output.(RedstonePowerSource); ok {
-			for _, face := range cube.Faces() {
-				power = max(power, source.RedstonePower(pos, tx, face))
-			}
-		}
-		d.cause = RedstoneUpdateCauseScheduledTick
-		if !d.hasSource {
-			d.source = pos
-			d.hasSource = true
-			d.sourceRedstoneRelevant = isRedstoneRelevant(b)
-		}
-		oldPower, newPower := e.sourcePower(pos, tx), ClampRedstonePower(power)
-		if consumer, ok := e.circuits[pos].(RedstoneCircuitInputChange); ok {
-			oldPower, newPower = consumer.CircuitInputChange()
-		}
-		update := d.redstoneUpdate(pos, b, oldPower, newPower, tick)
-		update.After = output
-		if e.redstoneUpdateAllowed(tx, update) {
-			actor, actorOnly := e.circuits[pos].(RedstoneCircuitActorOutput)
-			if actorOnly && actor.CircuitActorOutput() {
-				tx.SetBlockEntity(pos, output)
-			} else {
-				tx.SetBlock(pos, output, &SetOpts{DisableRedstoneUpdates: true, circuitPublication: true})
-				e.invalidateAroundWith(pos, d.propagatedFrom(pos), tx.Range())
-			}
-			if state, ok := e.circuits[pos].(RedstoneCircuitPostPublisher); ok {
-				state.CircuitPublished(pos, tx, b, output)
-			}
-		}
-	}
+	e.publishCircuitOutputs(tx, tick)
 	// Dimension::tickRedstone uses CIRCUIT_TICK_RATE=2. Keep every component
 	// on this shared clock; a neighbor update must not start a private clock.
 	if tick&1 != 0 {
@@ -260,22 +196,24 @@ func (e *redstoneEngine) tickCircuits(tx *Tx, tick int64) {
 		return
 	}
 	defer func() { clear(e.circuitInputs) }()
-	positions = e.circuitTraversal.positions(e.circuits)
+	positions := e.circuitTraversal.positions(e.circuits)
 	for _, pos := range positions {
 		b, loaded := tx.BlockLoaded(pos)
 		if !loaded {
 			delete(e.circuits, pos)
+			e.circuitTraversal.invalidatePositions()
 			continue
 		}
 		if _, ok := b.(RedstoneCircuitComponent); !ok {
 			delete(e.circuits, pos)
+			e.circuitTraversal.invalidatePositions()
 			continue
 		}
 	}
 	// Transporter sources are a flattened graph with accumulated attenuation,
 	// including nonadjacent dust steps. Cache the whole network once rather
 	// than treating a wire's six immediate faces as its complete source list.
-	var relayers []cube.Pos
+	relayers := e.scratchRelayersPos[:0]
 	for _, pos := range positions {
 		if b, loaded := tx.BlockLoaded(pos); loaded {
 			if _, ok := b.(RedstonePowerRelayer); ok {
@@ -283,6 +221,7 @@ func (e *redstoneEngine) tickCircuits(tx *Tx, tick int64) {
 			}
 		}
 	}
+	e.scratchRelayersPos = relayers
 	if len(relayers) != 0 {
 		graph := e.compile(tx, relayers)
 		powers := e.graphPower(tx, graph)
@@ -303,10 +242,10 @@ func (e *redstoneEngine) tickCircuits(tx *Tx, tick int64) {
 			}
 		}
 	}
-	groupCached := make(map[cube.Pos]bool)
+	var groupCached map[cube.Pos]bool
 	for _, pos := range positions {
 		state := e.circuits[pos]
-		if state == nil || groupCached[pos] {
+		if state == nil || (groupCached != nil && groupCached[pos]) {
 			continue
 		}
 		if _, late := state.(RedstoneCircuitLateInput); late {
@@ -314,6 +253,14 @@ func (e *redstoneEngine) tickCircuits(tx *Tx, tick int64) {
 		}
 		if group, ok := state.(RedstoneCircuitCacheGroup); ok {
 			if snapshots := group.CacheCircuitGroup(pos, tx, e.circuits, positions); len(snapshots) != 0 {
+				if groupCached == nil {
+					if e.scratchGroupCached == nil {
+						e.scratchGroupCached = make(map[cube.Pos]bool, len(snapshots))
+					} else {
+						clear(e.scratchGroupCached)
+					}
+					groupCached = e.scratchGroupCached
+				}
 				for member, next := range snapshots {
 					e.circuits[member], groupCached[member] = next, true
 				}
@@ -324,6 +271,7 @@ func (e *redstoneEngine) tickCircuits(tx *Tx, tick int64) {
 			e.circuits[pos] = cached
 		} else {
 			delete(e.circuits, pos)
+			e.circuitTraversal.invalidatePositions()
 		}
 	}
 	clear(e.circuitInputs)
@@ -371,6 +319,78 @@ func (e *redstoneEngine) tickCircuits(tx *Tx, tick int64) {
 				e.circuitOutputCauses = make(map[cube.Pos]redstoneDirty)
 			}
 			e.circuitOutputCauses[pos] = e.circuitCauses[pos]
+		}
+	}
+}
+
+func (e *redstoneEngine) publishCircuitOutputs(tx *Tx, tick int64) {
+	if len(e.circuitOutputs) == 0 {
+		return
+	}
+	positions := e.scratchOutPositions[:0]
+	for pos := range e.circuitOutputs {
+		positions = append(positions, pos)
+	}
+	slices.SortFunc(positions, func(a, b cube.Pos) int {
+		half := func(pos cube.Pos) bool {
+			s, ok := e.circuits[pos].(RedstoneCircuitHalfPulse)
+			return ok && s.CircuitHalfPulse()
+		}
+		if half(a) != half(b) {
+			if half(a) {
+				return 1
+			}
+			return -1
+		}
+		return compareBlockPos(a, b)
+	})
+	e.scratchOutPositions = positions
+	for _, pos := range positions {
+		output := e.circuitOutputs[pos]
+		delete(e.circuitOutputs, pos)
+		d := e.circuitOutputCauses[pos]
+		delete(e.circuitOutputCauses, pos)
+		b, loaded := tx.BlockLoaded(pos)
+		if !loaded {
+			continue
+		}
+		component, ok := b.(RedstoneCircuitComponent)
+		if !ok {
+			continue
+		}
+		output = component.RedstoneCircuitOutput(output)
+		if output == nil {
+			continue
+		}
+		power := 0
+		if source, ok := output.(RedstonePowerSource); ok {
+			for _, face := range cube.Faces() {
+				power = max(power, source.RedstonePower(pos, tx, face))
+			}
+		}
+		d.cause = RedstoneUpdateCauseScheduledTick
+		if !d.hasSource {
+			d.source = pos
+			d.hasSource = true
+			d.sourceRedstoneRelevant = isRedstoneRelevant(b)
+		}
+		oldPower, newPower := e.sourcePower(pos, tx), ClampRedstonePower(power)
+		if consumer, ok := e.circuits[pos].(RedstoneCircuitInputChange); ok {
+			oldPower, newPower = consumer.CircuitInputChange()
+		}
+		update := d.redstoneUpdate(pos, b, oldPower, newPower, tick)
+		update.After = output
+		if e.redstoneUpdateAllowed(tx, update) {
+			actor, actorOnly := e.circuits[pos].(RedstoneCircuitActorOutput)
+			if actorOnly && actor.CircuitActorOutput() {
+				tx.SetBlockEntity(pos, output)
+			} else {
+				tx.SetBlock(pos, output, &SetOpts{DisableRedstoneUpdates: true, circuitPublication: true})
+				e.invalidateAroundWith(pos, d.propagatedFrom(pos), tx.Range())
+			}
+			if state, ok := e.circuits[pos].(RedstoneCircuitPostPublisher); ok {
+				state.CircuitPublished(pos, tx, b, output)
+			}
 		}
 	}
 }

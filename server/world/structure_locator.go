@@ -164,6 +164,9 @@ func (w *World) loadStructureReferences() error {
 	}
 	data, err := w.LoadWorldData(structureReferenceNamespace(dimensionID))
 	if errors.Is(err, leveldb.ErrNotFound) {
+		data, err = w.LoadWorldData(legacyStructureReferenceNamespace(dimensionID))
+	}
+	if errors.Is(err, leveldb.ErrNotFound) {
 		return nil
 	}
 	if err != nil {
@@ -177,7 +180,7 @@ func (w *World) loadStructureReferences() error {
 	}
 	for _, reference := range references {
 		if reference.DimensionID != dimensionID {
-			w.structureReferencesErr = fmt.Errorf("Java structure reference has dimension %d in dimension %d namespace", reference.DimensionID, dimensionID)
+			w.structureReferencesErr = fmt.Errorf("structure reference has dimension %d in dimension %d namespace", reference.DimensionID, dimensionID)
 			return w.structureReferencesErr
 		}
 		w.structureReferences[reference] = struct{}{}
@@ -185,17 +188,24 @@ func (w *World) loadStructureReferences() error {
 	return nil
 }
 
-const structureReferenceDataNamespace = "java_structure_references"
+const (
+	structureReferenceDataNamespace       = "structure_references"
+	legacyStructureReferenceDataNamespace = "java_structure_references"
+)
 
 func structureReferenceNamespace(dimensionID int) string {
 	return fmt.Sprintf("%s/%d", structureReferenceDataNamespace, dimensionID)
+}
+
+func legacyStructureReferenceNamespace(dimensionID int) string {
+	return fmt.Sprintf("%s/%d", legacyStructureReferenceDataNamespace, dimensionID)
 }
 
 func encodeStructureReferences(references map[StructureReference]struct{}) ([]byte, error) {
 	ordered := make([]StructureReference, 0, len(references))
 	for reference := range references {
 		if len(reference.StructureID) > 65535 {
-			return nil, fmt.Errorf("Java structure ID too long: %d", len(reference.StructureID))
+			return nil, fmt.Errorf("structure ID too long: %d", len(reference.StructureID))
 		}
 		ordered = append(ordered, reference)
 	}
@@ -217,7 +227,7 @@ func encodeStructureReferences(references map[StructureReference]struct{}) ([]by
 		size += 14 + len(reference.StructureID)
 	}
 	data := make([]byte, size)
-	copy(data, "JSTRREF1")
+	copy(data, "STRREF01")
 	binary.LittleEndian.PutUint32(data[8:], uint32(len(ordered)))
 	at := 12
 	for _, reference := range ordered {
@@ -233,8 +243,8 @@ func encodeStructureReferences(references map[StructureReference]struct{}) ([]by
 }
 
 func decodeStructureReferences(data []byte) ([]StructureReference, error) {
-	if len(data) < 12 || string(data[:8]) != "JSTRREF1" {
-		return nil, errors.New("invalid Java structure reference data header")
+	if len(data) < 12 || (string(data[:8]) != "STRREF01" && string(data[:8]) != "JSTRREF1") {
+		return nil, errors.New("invalid structure reference data header")
 	}
 	count := int(binary.LittleEndian.Uint32(data[8:]))
 	if count > (len(data)-12)/14 {

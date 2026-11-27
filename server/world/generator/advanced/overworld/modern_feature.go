@@ -435,8 +435,8 @@ func (f *ModernFeatures) placeStructures(region *featureRegion, origin world.Chu
 		BaseBlock:     func(x, y, z int32) world.Block { return region.Block(featurePos{x, y, z}) },
 		BaseBlockName: func(x, y, z int32) string { return region.baseBlockName(featurePos{x, y, z}) },
 		BiomeAt:       f.source.BiomeAt,
-		BaseHeight: region.Height,
-		SeaLevel:   f.source.SeaLevel(),
+		BaseHeight:    region.Height,
+		SeaLevel:      f.source.SeaLevel(),
 		MotionBlockingNoLeavesHeight: func(x, z int32) int32 {
 			return region.placementHeight(x, z, "MOTION_BLOCKING_NO_LEAVES")
 		},
@@ -546,7 +546,16 @@ func featureStateRID(c *chunk.Chunk, state map[string]any) (world.NativeState, b
 	return native, true
 }
 
-var simpleStringBlockCache sync.Map // raw string name -> structure.Block
+type simpleProp1Key struct {
+	name string
+	key  string
+	val  any
+}
+
+var (
+	simpleStringBlockCache sync.Map // raw string name -> structure.Block
+	simpleProp1BlockCache  sync.Map // simpleProp1Key -> structure.Block
+)
 
 func featureStateBlock(value any) (structure.Block, bool) {
 	if name, ok := value.(string); ok {
@@ -592,27 +601,60 @@ func featureStateBlock(value any) (structure.Block, bool) {
 		if !ok {
 			panic("overworld: malformed block-state provider")
 		}
-		properties = make(map[string]any, len(values))
-		for key, value := range values {
-			if text, ok := value.(string); ok {
-				switch text {
-				case "true":
-					value = true
-				case "false":
-					value = false
-				default:
-					if n, err := strconv.ParseInt(text, 10, 32); err == nil {
-						value = int32(n)
+		if len(values) == 1 {
+			for k, rawVal := range values {
+				val := parseStatePropValue(rawVal)
+				if keyVal, comparable := comparablePropValue(val); comparable {
+					ck := simpleProp1Key{name: name, key: k, val: keyVal}
+					if cached, ok := simpleProp1BlockCache.Load(ck); ok {
+						return cached.(structure.Block), true
 					}
+					fullName := name
+					if !strings.Contains(fullName, ":") {
+						fullName = "minecraft:" + fullName
+					}
+					b := featureBlock(world.BlockState{Name: fullName, Properties: map[string]any{k: val}})
+					if b.NativeBlock == nil {
+						simpleProp1BlockCache.Store(ck, b)
+					}
+					return b, true
 				}
 			}
-			properties[key] = value
+		}
+		properties = make(map[string]any, len(values))
+		for key, value := range values {
+			properties[key] = parseStatePropValue(value)
 		}
 	}
 	if !strings.Contains(name, ":") {
 		name = "minecraft:" + name
 	}
 	return featureBlock(world.BlockState{Name: name, Properties: properties}), true
+}
+
+func parseStatePropValue(value any) any {
+	if text, ok := value.(string); ok {
+		switch text {
+		case "true":
+			return true
+		case "false":
+			return false
+		default:
+			if n, err := strconv.ParseInt(text, 10, 32); err == nil {
+				return int32(n)
+			}
+		}
+	}
+	return value
+}
+
+func comparablePropValue(value any) (any, bool) {
+	switch value.(type) {
+	case string, bool, int, int32, int64, float32, float64:
+		return value, true
+	default:
+		return nil, false
+	}
 }
 
 func featureBlock(state world.BlockState) structure.Block {

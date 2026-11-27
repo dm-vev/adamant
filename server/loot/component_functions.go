@@ -29,7 +29,7 @@ func lootInstrument(options any, c *Context) (string, error) {
 				return "", fmt.Errorf("set_instrument references unknown instrument tag %q", v)
 			}
 			horns = tagged
-		} else if horn, ok := item.GoatHornFromJavaInstrument(normalize(v)); ok {
+		} else if horn, ok := item.GoatHornFromInstrument(normalize(v)); ok {
 			horns = []sound.Horn{horn}
 		} else {
 			return "", fmt.Errorf("set_instrument references unknown instrument %q", v)
@@ -37,7 +37,7 @@ func lootInstrument(options any, c *Context) (string, error) {
 	case []any:
 		for _, raw := range v {
 			id, _ := raw.(string)
-			horn, ok := item.GoatHornFromJavaInstrument(normalize(id))
+			horn, ok := item.GoatHornFromInstrument(normalize(id))
 			if !ok {
 				return "", fmt.Errorf("set_instrument references unknown instrument %v", raw)
 			}
@@ -49,7 +49,7 @@ func lootInstrument(options any, c *Context) (string, error) {
 	if len(horns) == 0 {
 		return "", nil
 	}
-	return item.JavaInstrumentID(horns[c.Random.NextInt(int32(len(horns)))]), nil
+	return item.InstrumentID(horns[c.Random.NextInt(int32(len(horns)))]), nil
 }
 
 // lootCopyState ports CopyBlockState: the listed properties of the broken

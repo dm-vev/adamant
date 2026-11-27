@@ -142,7 +142,7 @@ func javaOnlyLore(s item.Stack) []string {
 	var lines []string
 	for _, e := range s.Enchantments() {
 		t := e.Type()
-		if !item.IsJavaOnlyEnchantment(t) {
+		if !item.IsServerOnlyEnchantment(t) {
 			continue
 		}
 		// The reset drops the style a client gives lore of its own.

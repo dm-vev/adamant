@@ -90,8 +90,8 @@ func (p *sidecarProvider) AllocateMapID() (int64, error) {
 	return id, nil
 }
 
-func (p *sidecarProvider) JavaMapID(nativeID int64) (int32, error) { return int32(-nativeID), nil }
-func (p *sidecarProvider) NativeMapID(javaID int32) (int64, error) { return -int64(javaID), nil }
+func (p *sidecarProvider) CanonicalMapID(nativeID int64) (int32, error) { return int32(-nativeID), nil }
+func (p *sidecarProvider) NativeMapID(canonicalID int32) (int64, error) { return -int64(canonicalID), nil }
 
 func (p *sidecarProvider) LoadPlayerSpawnPosition(id uuid.UUID) (cube.Pos, bool, error) {
 	p.mu.Lock()
@@ -144,7 +144,7 @@ func TestSidecarWritesWaitForTheNextSave(t *testing.T) {
 			if pos := w.PlayerSpawn(steve); pos != spawn {
 				t.Errorf("spawn point read back before the save = %v, want %v", pos, spawn)
 			}
-			if got, err := w.MapData(m.ID); err != nil || got.ID != m.ID || got.JavaID != m.JavaID || !got.HasJavaID {
+			if got, err := w.MapData(m.ID); err != nil || got.ID != m.ID || got.CanonicalID != m.CanonicalID || !got.HasCanonicalID {
 				t.Errorf("map read back before the save = %+v, %v, want map %d", got.ID, err, m.ID)
 			}
 

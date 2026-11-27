@@ -29,7 +29,7 @@ func worn(s item.Stack) bool { return !s.Empty() && s.Durability() == s.MaxDurab
 // every entity that is Shearable and ready for shearing in 26.3 is sheared from
 // a dispenser, with its drops, and the shears wear down by one; one that is not
 // ready is left alone and the dispenser keeps the shears.
-func TestDispenserShearsWhatJavaShears(t *testing.T) {
+func TestDispenserShearsParity(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
 		name  string

@@ -466,7 +466,7 @@ func newBreezeSlide(s *breezeState) *behavior {
 					// Slide.randomPointInMiddleCircle.
 					d := ep.Sub(m.data.Pos)
 					dist := d.Len() - (8 + m.Random().NextDouble()*(4-8))
-					pos = m.data.Pos.Add(javaNormalize(d).Mul(dist))
+					pos = m.data.Pos.Add(normalizeVec3(d).Mul(dist))
 				}
 			}
 			m.brain().set(memWalkTarget, walkTarget{target: newBlockPosTracker(cube.PosFromVec3(pos)), speed: float64(float32(.6)), closeEnough: 1})

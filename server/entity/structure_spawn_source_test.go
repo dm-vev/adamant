@@ -17,7 +17,7 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-func TestPreparedStructureMobsMatchJava263(t *testing.T) {
+func TestPreparedStructureMobsMatchesSource(t *testing.T) {
 	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_structure_mob_spawn.json")
 	if err != nil {

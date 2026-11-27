@@ -142,7 +142,7 @@ func convertStructureBlock(state world.BlockState, data map[string]any) (map[str
 		}
 	}
 	if len(canonical) != 0 {
-		out["adamant:java"] = canonical
+		out["adamant:state"] = canonical
 	}
 	return out, nil
 }

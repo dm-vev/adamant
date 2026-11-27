@@ -997,13 +997,23 @@ func (tx *Tx) BlockLoaded(pos cube.Pos) (Block, bool) {
 // BlockRID returns the foreground block runtime ID at pos if pos is in bounds
 // and its column is loaded and ready, without loading or generating chunks.
 func (tx *Tx) BlockRID(pos cube.Pos) (uint32, bool) {
-	w := tx.World()
-	if pos.OutOfBounds(w.ra) {
+	if tx.closed {
+		panic("world.Tx: use of transaction after transaction finishes is not permitted")
+	}
+	w := tx.w
+	if pos[1] > w.ra[1] || pos[1] < w.ra[0] {
 		return 0, false
 	}
-	c, ok := tx.readyColumn(chunkPosFromBlockPos(pos))
-	if !ok {
-		return 0, false
+	cp := ChunkPos{int32(pos[0] >> 4), int32(pos[2] >> 4)}
+	var c *Column
+	if tx.region == nil && tx.cacheVersion == w.chunksVersion && tx.chunkCache.last.col != nil && tx.chunkCache.last.pos == cp {
+		c = tx.chunkCache.last.col
+	} else {
+		var ok bool
+		c, ok = tx.readyColumn(cp)
+		if !ok {
+			return 0, false
+		}
 	}
 	return c.Block(uint8(pos[0]), int16(pos[1]), uint8(pos[2]), 0), true
 }
@@ -1019,13 +1029,23 @@ func (tx *Tx) Liquid(pos cube.Pos) (Liquid, bool) {
 // pos is in bounds, its column is loaded and ready, and a liquid is present,
 // without loading or generating chunks.
 func (tx *Tx) LiquidRID(pos cube.Pos) (uint32, bool) {
-	w := tx.World()
-	if pos.OutOfBounds(w.ra) {
+	if tx.closed {
+		panic("world.Tx: use of transaction after transaction finishes is not permitted")
+	}
+	w := tx.w
+	if pos[1] > w.ra[1] || pos[1] < w.ra[0] {
 		return 0, false
 	}
-	c, ok := tx.readyColumn(chunkPosFromBlockPos(pos))
-	if !ok {
-		return 0, false
+	cp := ChunkPos{int32(pos[0] >> 4), int32(pos[2] >> 4)}
+	var c *Column
+	if tx.region == nil && tx.cacheVersion == w.chunksVersion && tx.chunkCache.last.col != nil && tx.chunkCache.last.pos == cp {
+		c = tx.chunkCache.last.col
+	} else {
+		var ok bool
+		c, ok = tx.readyColumn(cp)
+		if !ok {
+			return 0, false
+		}
 	}
 	return w.liquidRIDInColumn(c, pos)
 }

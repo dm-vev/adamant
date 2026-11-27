@@ -92,7 +92,7 @@ type Config struct {
 	ShoulderLeft           map[string]any
 	ShoulderRight          map[string]any
 	// JavaState retains source-only player data not represented by Bedrock.
-	JavaState map[string]any
+	ExtraState map[string]any
 	// Components holds NBT-encoded persistent ECS components registered via
 	// ecs.WithCodec.
 	Components map[string]any
@@ -177,8 +177,8 @@ func newPlayerData(cfg, conf Config) *playerData {
 		unlockedRecipes:     unlockedRecipes,
 		shoulderLeft:        cfg.ShoulderLeft,
 		shoulderRight:       cfg.ShoulderRight,
-		javaState:           world.CloneNativeEntityNBT(conf.JavaState),
-		wardenSpawnTracker:  decodePlayerWardenTracker(conf.JavaState),
+		extraState:           world.CloneNativeEntityNBT(conf.ExtraState),
+		wardenSpawnTracker:  decodePlayerWardenTracker(conf.ExtraState),
 		respawnDimension:    conf.RespawnDimension,
 		respawnPosition:     conf.RespawnPosition,
 		respawnRotation:     conf.RespawnRotation,

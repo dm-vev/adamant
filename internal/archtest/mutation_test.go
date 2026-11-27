@@ -92,7 +92,7 @@ var worldReads = map[string][]string{
 		"AutoSaveEnabled", "BlockRegistry", "Border", "ClampToBorder", "Components", "CreakingActive", "CurrentTick",
 		"DefaultGameMode", "Difficulty", "Dimension", "Do", "DoAfter", "EntityCount", "EntityRegistry", "Events", "Exec",
 		"FallDamage", "ForcedChunks", "Frozen", "GameRule", "GameRuleBool", "GameRuleInt", "Handler",
-		"HighestLightBlocker", "IsChunkForced", "LoadedChunkCount", "MapData", "MapDataByJavaID", "MapIDByJavaID",
+		"HighestLightBlocker", "IsChunkForced", "LoadedChunkCount", "MapData", "MapDataByCanonicalID", "MapIDByCanonicalID",
 		"MonsterSpawningEnabled", "MoonBrightness", "Name", "PlayerSpawn", "PlayersSleepingPercentage", "Range",
 		"Seed", "Spawn", "SpawnMobsEnabled", "SpawnWardensEnabled", "Sprinting", "StructureTemplate",
 		"TPS", "TickRate", "TickTimes", "Time", "TimeCycle", "TrackedPosition", "WeatherCycleEnabled", "WithinBorder",

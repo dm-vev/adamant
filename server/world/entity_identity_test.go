@@ -6,7 +6,7 @@ import (
  "github.com/google/uuid"
 )
 
-func TestJavaUUIDSurvivesNativeEntityReload(t *testing.T) {
+func TestCanonicalUUIDSurvivesNativeEntityReload(t *testing.T) {
 	t.Parallel()
  id:=uuid.MustParse("67491480-7a42-4168-980a-c6906b09f268")
  original:=EntitySpawnOpts{ID:id}.New(testEntityType{},testEntityConfig{})

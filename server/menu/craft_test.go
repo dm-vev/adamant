@@ -160,7 +160,7 @@ func TestCraftLimited(t *testing.T) {
 		if err := craft(); err == nil {
 			t.Fatal("a recipe not unlocked was crafted with limited_crafting on")
 		}
-		o.unlocked = recipe.JavaRecipeIDs(windChargeRecipe)
+		o.unlocked = recipe.RecipeIDs(windChargeRecipe)
 		if err := craft(); err != nil {
 			t.Fatalf("an unlocked recipe: %v", err)
 		}

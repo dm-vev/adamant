@@ -114,11 +114,11 @@ func (s TrialSpawner) WithEntity(entity string) world.Block {
 // EncodeNBT ...
 func (s TrialSpawner) EncodeNBT() map[string]any {
 	d := s.withData().data
-	java := map[string]any{}
+	stateMap := map[string]any{}
 	m := map[string]any{
 		"id":                    "TrialSpawner",
-		"normal_config":         d.normal.encode("normal_config", d.targetCooldownLength, java),
-		"ominous_config":        d.ominous.encode("ominous_config", d.targetCooldownLength, java),
+		"normal_config":         d.normal.encode("normal_config", d.targetCooldownLength, stateMap),
+		"ominous_config":        d.ominous.encode("ominous_config", d.targetCooldownLength, stateMap),
 		"required_player_range": int32(d.requiredPlayerRange),
 		"registered_players":    uniqueIDCompoundsNBT(d.players),
 		"current_mobs":          uniqueIDCompoundsNBT(d.mobs),
@@ -130,16 +130,16 @@ func (s TrialSpawner) EncodeNBT() map[string]any {
 		m["spawn_data"] = spawnData
 	}
 	if d.next != nil {
-		java["spawn_data"] = d.next
+		stateMap["spawn_data"] = d.next
 	}
 	if d.ejecting != "" {
 		m["selected_loot_table"] = loot.BedrockTablePath(d.ejecting)
 	}
 	if d.normal.key != "" && d.ominous.key != "" && d.targetCooldownLength != trialDefaultCooldown {
-		java["target_cooldown_length"] = int32(d.targetCooldownLength)
+		stateMap["target_cooldown_length"] = int32(d.targetCooldownLength)
 	}
-	if len(java) != 0 {
-		m["adamant:java"] = java
+	if len(stateMap) != 0 {
+		m["adamant:state"] = stateMap
 	}
 	return m
 }
@@ -153,18 +153,21 @@ func (s TrialSpawner) UpdateNBT() map[string]any {
 	return nil
 }
 
-// DecodeNBT reads a trial spawner saved by BDS, placed from a Java structure
-// template, or saved in the Java layout by earlier Adamant versions.
+// DecodeNBT reads a trial spawner saved by BDS, placed from a structure
+// template, or saved by earlier Adamant versions.
 func (s TrialSpawner) DecodeNBT(m map[string]any) any {
 	d := newTrialSpawnerData()
-	java, _ := m["adamant:java"].(map[string]any)
-	d.normal = decodeTrialConfigRef(m["normal_config"], java["normal_config"])
-	d.ominous = decodeTrialConfigRef(m["ominous_config"], java["ominous_config"])
+	stateMap, ok := m["adamant:state"].(map[string]any)
+	if !ok {
+		stateMap, _ = m["adamant:java"].(map[string]any)
+	}
+	d.normal = decodeTrialConfigRef(m["normal_config"], stateMap["normal_config"])
+	d.ominous = decodeTrialConfigRef(m["ominous_config"], stateMap["ominous_config"])
 	if r, ok := trialInteger(m["required_player_range"]); ok && r >= 1 && r <= 128 {
 		d.requiredPlayerRange = int(r)
 	}
 	inline, _ := m["normal_config"].(map[string]any)
-	for _, v := range []any{java["target_cooldown_length"], inline["target_cooldown_length"], m["target_cooldown_length"]} {
+	for _, v := range []any{stateMap["target_cooldown_length"], inline["target_cooldown_length"], m["target_cooldown_length"]} {
 		if n, ok := trialInteger(v); ok && n >= 0 {
 			d.targetCooldownLength = int(n)
 			break
@@ -185,7 +188,7 @@ func (s TrialSpawner) DecodeNBT(m map[string]any) any {
 	if w, ok := trialInteger(spawnData["Weight"]); ok {
 		d.nextWeight = int(w)
 	}
-	if next, ok := java["spawn_data"].(map[string]any); ok {
+	if next, ok := stateMap["spawn_data"].(map[string]any); ok {
 		d.next = next
 	} else if typeID, _ := spawnData["TypeId"].(string); typeID != "" {
 		d.next = map[string]any{"entity": map[string]any{"id": typeID}}
@@ -194,7 +197,7 @@ func (s TrialSpawner) DecodeNBT(m map[string]any) any {
 	}
 	for _, key := range []string{"selected_loot_table", "ejecting_loot_table"} {
 		if table, _ := m[key].(string); table != "" {
-			d.ejecting = loot.JavaTableKey(table)
+			d.ejecting = loot.TableKey(table)
 			break
 		}
 	}
@@ -878,11 +881,11 @@ func decodeTrialConfig(c *trialSpawnerConfig, m map[string]any) {
 				continue
 			}
 			weight, _ := trialInteger(entry["weight"])
-			c.lootTablesToEject = append(c.lootTablesToEject, trialLootChoice{table: loot.JavaTableKey(table), weight: max(int(weight), 1)})
+			c.lootTablesToEject = append(c.lootTablesToEject, trialLootChoice{table: loot.TableKey(table), weight: max(int(weight), 1)})
 		}
 	}
 	if table, _ := m["items_to_drop_when_ominous"].(string); table != "" {
-		c.itemsToDropWhenOminous = loot.JavaTableKey(table)
+		c.itemsToDropWhenOminous = loot.TableKey(table)
 	}
 }
 
@@ -931,7 +934,7 @@ func (r trialConfigRef) config() trialSpawnerConfig {
 // encode returns the value saved for the configuration under name. The spawn
 // potentials of an inline configuration, which BDS has no field for, are kept
 // in java.
-func (r trialConfigRef) encode(name string, targetCooldownLength int, java map[string]any) any {
+func (r trialConfigRef) encode(name string, targetCooldownLength int, stateMap map[string]any) any {
 	if r.key != "" {
 		return r.key
 	}
@@ -941,21 +944,21 @@ func (r trialConfigRef) encode(name string, targetCooldownLength int, java map[s
 		for i, potential := range c.spawnPotentials {
 			potentials[i] = map[string]any{"data": potential.data, "weight": int32(potential.weight)}
 		}
-		java[name] = map[string]any{"spawn_potentials": potentials}
+		stateMap[name] = map[string]any{"spawn_potentials": potentials}
 	}
 	return c.bedrockNBT(targetCooldownLength)
 }
 
 // decodeTrialConfigRef reads a configuration saved as a key or inline, with
 // the Java fields kept beside an inline one.
-func decodeTrialConfigRef(v, java any) trialConfigRef {
+func decodeTrialConfigRef(v, stateMap any) trialConfigRef {
 	if key, ok := v.(string); ok && key != "" {
-		if _, known := trialSpawnerConfigs()[key]; known || java == nil {
+		if _, known := trialSpawnerConfigs()[key]; known || stateMap == nil {
 			return trialConfigRef{key: key}
 		}
 	}
 	m, _ := v.(map[string]any)
-	extra, _ := java.(map[string]any)
+	extra, _ := stateMap.(map[string]any)
 	if m == nil && extra == nil {
 		return trialConfigRef{}
 	}

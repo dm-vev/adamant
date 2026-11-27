@@ -72,7 +72,7 @@ func TestBindingBlocksArmourRemovalOutsideCreative(t *testing.T) {
 func TestLimitedCraftingLocksRecipes(t *testing.T) {
 	t.Parallel()
 	windCharge := recipe.NewShapeless([]recipe.Item{item.NewStack(item.BreezeRod{}, 1)}, item.NewStack(item.WindCharge{}, 4), "crafting_table")
-	ids := recipe.JavaRecipeIDs(windCharge)
+	ids := recipe.RecipeIDs(windCharge)
 	if len(ids) != 1 || ids[0] != "minecraft:wind_charge" {
 		t.Fatalf("wind charge recipe Java IDs = %v, want [minecraft:wind_charge]", ids)
 	}

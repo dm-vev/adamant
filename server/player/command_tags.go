@@ -4,9 +4,9 @@ import "slices"
 
 // CommandTags returns the Java command tags retained for the player.
 func (p *Player) CommandTags() []string {
-	tags, _ := p.javaState["Tags"].([]string)
+	tags, _ := p.extraState["Tags"].([]string)
 	if tags == nil {
-		if raw, ok := p.javaState["Tags"].([]any); ok {
+		if raw, ok := p.extraState["Tags"].([]any); ok {
 			tags = make([]string, 0, len(raw))
 			for _, value := range raw {
 				if tag, ok := value.(string); ok {
@@ -20,18 +20,18 @@ func (p *Player) CommandTags() []string {
 
 // SetCommandTags replaces the Java command tags retained for the player.
 func (p *Player) SetCommandTags(tags []string) {
-	if p.javaState == nil {
-		p.javaState = make(map[string]any)
+	if p.extraState == nil {
+		p.extraState = make(map[string]any)
 	}
-	p.javaState["Tags"] = slices.Clone(tags)
+	p.extraState["Tags"] = slices.Clone(tags)
 }
 
 // SetCommandAttributeModifier stores a command modifier in persistent Java player state.
 func (p *Player) SetCommandAttributeModifier(attribute, id string, amount float64, operation string, remove bool) bool {
-	if p.javaState == nil {
-		p.javaState = make(map[string]any)
+	if p.extraState == nil {
+		p.extraState = make(map[string]any)
 	}
-	all, _ := p.javaState["CommandAttributeModifiers"].(map[string]any)
+	all, _ := p.extraState["CommandAttributeModifiers"].(map[string]any)
 	if all == nil {
 		all = make(map[string]any)
 	}
@@ -52,13 +52,13 @@ func (p *Player) SetCommandAttributeModifier(attribute, id string, amount float6
 	} else {
 		all[attribute] = modifiers
 	}
-	p.javaState["CommandAttributeModifiers"] = all
+	p.extraState["CommandAttributeModifiers"] = all
 	return true
 }
 
 // CommandAttributeModifier reads a stored command modifier amount.
 func (p *Player) CommandAttributeModifier(attribute, id string) (float64, bool) {
-	all, _ := p.javaState["CommandAttributeModifiers"].(map[string]any)
+	all, _ := p.extraState["CommandAttributeModifiers"].(map[string]any)
 	modifiers, _ := all[attribute].(map[string]any)
 	raw, ok := modifiers[id].(map[string]any)
 	if !ok {

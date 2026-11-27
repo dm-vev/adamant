@@ -9,16 +9,16 @@ import (
 	"github.com/dm-vev/adamant/server/world/generator/advanced/internal/structure"
 )
 
-const javaPortalSeed = -7406315911040434051
+const canonicalPortalSeed = -7406315911040434051
 
 // TestRuinedPortalStartsMatchJava checks ruined portal starts against the
 // pieces the Java 26.3 server saved for them. The mirror used to be drawn
 // the wrong way round and to move the pivot, the template stayed at y 0
 // instead of the height findSuitableY chose, and the biome at that height
 // was never checked.
-func TestRuinedPortalStartsMatchJava(t *testing.T) {
+func TestRuinedPortalStartsMatchParity(t *testing.T) {
 	t.Parallel()
-	s := New(javaPortalSeed).modernStructures
+	s := New(canonicalPortalSeed).modernStructures
 	for _, c := range []struct {
 		structure string
 		chunk     [2]int32
@@ -58,7 +58,7 @@ func TestRuinedPortalStartsMatchJava(t *testing.T) {
 // 379, 143 is centred in chunk 379, 144.
 func TestRuinedPortalReachesNeighbourChunks(t *testing.T) {
 	t.Parallel()
-	g := New(javaPortalSeed)
+	g := New(canonicalPortalSeed)
 	chunks := map[world.ChunkPos]*chunk.Chunk{}
 	for _, b := range []struct {
 		pos   cube.Pos
@@ -84,7 +84,7 @@ func TestRuinedPortalReachesNeighbourChunks(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := javaStateString(state); got != b.state {
+		if got := canonicalStateString(state); got != b.state {
 			t.Errorf("%v is %s, want %s as Java generates it", b.pos, got, b.state)
 		}
 	}

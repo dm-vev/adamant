@@ -102,7 +102,7 @@ func (k Kelp) NeighbourUpdateTick(pos, changedNeighbour cube.Pos, tx *world.Tx) 
 
 // ScheduledTick matches GrowingPlantBlock.tick: invalid kelp is destroyed with drops.
 func (k Kelp) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
-	if survives, hasSourceState := tx.JavaBlockCanSurvive(pos); hasSourceState && !survives {
+	if survives, hasSourceState := tx.BlockCanSurvive(pos); hasSourceState && !survives {
 		breakBlock(k, pos, tx)
 	}
 }

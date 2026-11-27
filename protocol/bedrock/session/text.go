@@ -2,7 +2,6 @@ package session
 
 import (
 	"slices"
-	"strings"
 	"time"
 
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
@@ -124,37 +123,54 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 		nameCopy := name
 		s.currentScoreboard.Store(&nameCopy)
 	} else if len(currentLines) > 0 {
-		// Remove all current lines from the scoreboard. We can't replace them without removing them.
-		entries := make([]mc.ScoreboardEntry, len(currentLines))
-		for i := range entries {
-			entries[i] = mc.ScoreboardEntry{
+		// Remove all current lines from the scoreboard and write the replacements together.
+		allEntries := make([]mc.ScoreboardEntry, len(currentLines)+len(lines))
+		rmEntries := allEntries[:len(currentLines)]
+		for i := range rmEntries {
+			rmEntries[i] = mc.ScoreboardEntry{
 				IdentityType:  mc.ScoreboardIdentityRemove,
 				EntryID:       int64(i),
 				ObjectiveName: currentName,
 				Score:         int32(i),
 			}
 		}
-		s.writePacket(&mc.SetScorePacket{Entries: entries})
+		if len(lines) > 0 {
+			addEntries := allEntries[len(currentLines):]
+			fillScoreboardAddEntries(addEntries, lines, name)
+			pks := &[2]mc.SetScorePacket{
+				{Entries: rmEntries},
+				{Entries: addEntries},
+			}
+			s.writePacket(&pks[0])
+			s.writePacket(&pks[1])
+			s.currentLines.Store(&lines)
+			return
+		}
+		s.writePacket(&mc.SetScorePacket{Entries: rmEntries})
 	}
 	if len(lines) > 0 {
 		entries := make([]mc.ScoreboardEntry, len(lines))
-		for k, line := range lines {
-			if len(line) == 0 {
-				line = emptyScoreboardLines[k]
-				lines[k] = line
-			}
-			entries[k] = mc.ScoreboardEntry{
-				EntryID:       int64(k),
-				ObjectiveName: name,
-				Score:         int32(k),
-				IdentityType:  mc.ScoreboardIdentityFakePlayer,
-				DisplayName:   line,
-			}
-		}
+		fillScoreboardAddEntries(entries, lines, name)
 		s.writePacket(&mc.SetScorePacket{Entries: entries})
 		s.currentLines.Store(&lines)
 	} else {
 		s.currentLines.Store(&emptyScoreboardLineSlice)
+	}
+}
+
+func fillScoreboardAddEntries(entries []mc.ScoreboardEntry, lines []string, name string) {
+	for k, line := range lines {
+		if len(line) == 0 {
+			line = emptyScoreboardLines[k]
+			lines[k] = line
+		}
+		entries[k] = mc.ScoreboardEntry{
+			EntryID:       int64(k),
+			ObjectiveName: name,
+			Score:         int32(k),
+			IdentityType:  mc.ScoreboardIdentityFakePlayer,
+			DisplayName:   line,
+		}
 	}
 }
 
@@ -166,21 +182,24 @@ func scoreboardLines(lines []text.Text, name string, padding, descending bool) [
 		return nil
 	}
 	out := make([]string, len(lines))
+	var stackBuf [256]byte
 	for i, line := range lines {
-		out[i] = bedrocktext.String(line)
-	}
-	if padding {
-		for i, line := range out {
-			pad := len(name) - len(line) - 2
-			switch {
-			case pad <= 0:
-				out[i] = " " + line + " "
-			case pad <= len(scoreboardSpaces):
-				out[i] = " " + line + scoreboardSpaces[:pad]
-			default:
-				out[i] = " " + line + strings.Repeat(" ", pad)
+		if !padding {
+			out[i] = bedrocktext.String(line)
+			continue
+		}
+		buf := stackBuf[:1]
+		buf[0] = ' '
+		buf = bedrocktext.Append(buf, line)
+		pad := max(len(name)-(len(buf)-1)-2, 1)
+		if pad <= len(scoreboardSpaces) {
+			buf = append(buf, scoreboardSpaces[:pad]...)
+		} else {
+			for range pad {
+				buf = append(buf, ' ')
 			}
 		}
+		out[i] = string(buf)
 	}
 	if descending {
 		slices.Reverse(out)

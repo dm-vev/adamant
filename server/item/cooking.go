@@ -38,7 +38,7 @@ type CookingRecipe struct {
 
 // javaCookingRecipe is a generated Java cooking recipe naming its items by
 // Java identifier.
-type javaCookingRecipe struct {
+type cookingRecipeEntry struct {
 	kind           CookingKind
 	ingredient, id string
 	result         string
@@ -73,14 +73,14 @@ func cookingItem(it world.Item) cookingItemKey {
 // loadCooking resolves the generated recipes and fuels to registered items.
 // It runs on first use, once every item is registered.
 func loadCooking() {
-	cookingByInput = make(map[cookingKey]CookingRecipe, len(javaCookingRecipes))
-	cookingByID = make(map[string]CookingRecipe, len(javaCookingRecipes))
-	for _, r := range javaCookingRecipes {
-		in, ok := javaItem(r.ingredient)
+	cookingByInput = make(map[cookingKey]CookingRecipe, len(cookingRecipesList))
+	cookingByID = make(map[string]CookingRecipe, len(cookingRecipesList))
+	for _, r := range cookingRecipesList {
+		in, ok := canonicalItem(r.ingredient)
 		if !ok {
 			continue
 		}
-		out, ok := javaItem(r.result)
+		out, ok := canonicalItem(r.result)
 		if !ok {
 			panic(fmt.Sprintf("cooking recipe %v produces unknown item %v", r.id, r.result))
 		}
@@ -88,9 +88,9 @@ func loadCooking() {
 		cookingByInput[cookingKey{kind: r.kind, item: cookingItem(in)}] = recipe
 		cookingByID[r.id] = recipe
 	}
-	cookingFuel = make(map[cookingItemKey]int, len(javaCookingFuel))
-	for id, ticks := range javaCookingFuel {
-		if it, ok := javaItem(id); ok {
+	cookingFuel = make(map[cookingItemKey]int, len(cookingFuelItem))
+	for id, ticks := range cookingFuelItem {
+		if it, ok := canonicalItem(id); ok {
 			cookingFuel[cookingItem(it)] = ticks
 		}
 	}
@@ -189,9 +189,9 @@ func CompostChance(it world.Item) (int, bool) {
 		return 0, false
 	}
 	compostOnce.Do(func() {
-		compostable = make(map[cookingItemKey]int, len(javaCompostable))
-		for id, chance := range javaCompostable {
-			if it, ok := javaItem(id); ok {
+		compostable = make(map[cookingItemKey]int, len(compostableItem))
+		for id, chance := range compostableItem {
+			if it, ok := canonicalItem(id); ok {
 				compostable[cookingItem(it)] = chance
 			}
 		}

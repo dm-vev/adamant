@@ -27,7 +27,7 @@ var bedrockSoundPrefixes = []string{"mob.", "random.", "bottle.", "leashknot.", 
 // server/{entity,item,block,player,world} that is spelled as a Bedrock sound
 // definition must be listed in bedrock_names.txt, and every name listed there
 // must still be used.
-func TestCustomSoundsUseJavaNames(t *testing.T) {
+func TestCustomSoundsUseCanonicalNames(t *testing.T) {
 	listed := readBedrockNames(t)
 	used := map[string][]string{}
 	for _, dir := range []string{"entity", "item", "block", "player", "world"} {

@@ -303,41 +303,12 @@ func (a *lightArea) setLight(pos cube.Pos, l light, v uint8) {
 	l.setLight(a.sub(pos), uint8(pos[0]&0xf), uint8(pos[1]&0xf), uint8(pos[2]&0xf), v)
 }
 
-// iterSubChunks iterates over all blocks of the lightArea on a per-SubChunk basis. A filter function may be passed to
-// specify if a SubChunk should be iterated over. If it returns false, it will not be iterated over.
-func (a *lightArea) iterSubChunks(filter func(sub *SubChunk) bool, f func(pos cube.Pos)) {
-	for cx := 0; cx < a.w; cx++ {
-		for cz := 0; cz < a.w; cz++ {
-			baseX, baseZ, c := a.baseX+(cx<<4), a.baseZ+(cz<<4), a.c[a.chunkIndex(cx, cz)]
-
-			for index, sub := range c.sub {
-				if !filter(sub) {
-					continue
-				}
-				baseY := int(c.SubY(int16(index)))
-				a.iterSubChunk(func(x, y, z int) {
-					f(cube.Pos{x + baseX, y + baseY, z + baseZ})
-				})
-			}
-		}
-	}
-}
-
-// iterSubChunk iterates over the coordinates of a SubChunk (0-15 on all axes) and calls the function f for each of
-// those coordinates.
-func (a *lightArea) iterSubChunk(f func(x, y, z int)) {
-	for y := 0; y < 16; y++ {
-		for x := 0; x < 16; x++ {
-			for z := 0; z < 16; z++ {
-				f(x, y, z)
-			}
-		}
-	}
-}
-
 // props returns the light properties of the blocks at pos.
 func (a *lightArea) props(pos cube.Pos) LightProperties {
-	x, y, z, sub := uint8(pos[0]&0xf), uint8(pos[1]&0xf), uint8(pos[2]&0xf), a.sub(pos)
+	return a.propsFromSub(a.sub(pos), uint8(pos[0]&0xf), uint8(pos[1]&0xf), uint8(pos[2]&0xf))
+}
+
+func (a *lightArea) propsFromSub(sub *SubChunk, x, y, z uint8) LightProperties {
 	switch len(sub.storages) {
 	case 0:
 		return a.air

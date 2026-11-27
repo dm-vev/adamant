@@ -227,13 +227,18 @@ func (tx *Tx) placeStructureEntities(t *StructureTemplate, pos cube.Pos, mirror 
 			continue
 		}
 		data := maps.Clone(source)
-		if javaData, ok := data["adamant:java"].(map[string]any); ok {
+		extraData, ok := data["adamant:state"].(map[string]any)
+		if !ok {
+			extraData, ok = data["adamant:java"].(map[string]any)
+		}
+		if ok {
 			// The copy is not the original entity, and does not ride its
 			// vehicle.
-			javaData = maps.Clone(javaData)
-			delete(javaData, "UUID")
-			delete(javaData, "VehicleUUID")
-			data["adamant:java"] = javaData
+			extraData = maps.Clone(extraData)
+			delete(extraData, "UUID")
+			delete(extraData, "VehicleUUID")
+			delete(data, "adamant:java")
+			data["adamant:state"] = extraData
 		}
 		delete(data, "LinksTag")
 		h := w.entityFromNBT(typ, rand.Int64(), data)

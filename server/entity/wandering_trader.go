@@ -30,7 +30,7 @@ func (wanderingTraderType) EncodeEntity() string        { return "minecraft:wand
 func (wanderingTraderType) BBox(world.Entity) cube.BBox { return cube.Box(-.3, 0, -.3, .3, 1.95, .3) }
 
 func (wanderingTraderType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	s := readNativeMobJavaState(m)
+	s := readNativeMobExtraState(m)
 	if s == nil {
 		s = m
 	}
@@ -63,15 +63,15 @@ func (wanderingTraderType) EncodeNBT(d *world.EntityData) map[string]any {
 	if b.offersGenerated {
 		state["Offers"] = writeMerchantOffers(b.offers)
 	}
-	javaState := mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), state)
+	extraState := mergeNativeMobNBT(readNativeMobExtraState(d.NativeNBT), state)
 	if !b.hasWanderTarget {
-		delete(javaState, "wander_target")
+		delete(extraState, "wander_target")
 	}
 	if !b.ai.home.set() {
-		delete(javaState, "home_pos")
-		delete(javaState, "home_radius")
+		delete(extraState, "home_pos")
+		delete(extraState, "home_radius")
 	}
-	return mergeNativeMobJavaState(native, javaState)
+	return mergeNativeMobExtraState(native, extraState)
 }
 
 type wanderingTraderConfig struct {

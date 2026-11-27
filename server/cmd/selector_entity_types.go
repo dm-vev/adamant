@@ -5,7 +5,7 @@ package cmd
 // registries report. A selector's type= names one of them or is refused, as
 // Java's argument.entity.options.type.invalid, whether or not this server
 // implements the type.
-var javaEntityTypes = map[string]struct{}{
+var validEntityTypes = map[string]struct{}{
 	"minecraft:acacia_boat":            {},
 	"minecraft:acacia_chest_boat":      {},
 	"minecraft:allay":                  {},

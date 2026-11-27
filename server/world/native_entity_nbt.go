@@ -22,7 +22,7 @@ func CloneNativeEntityNBT(data map[string]any) map[string]any {
 // Java signed bytes and byte arrays retain their payload bits using Go's native
 // unsigned-byte representation. Other NBT fields are unchanged; the temporary
 // decoder registry context is excluded.
-func CloneJavaEntityNBT(data map[string]any) map[string]any {
+func CloneCanonicalEntityNBT(data map[string]any) map[string]any {
 	if data == nil {
 		return nil
 	}
@@ -169,28 +169,28 @@ func nativeEntityNBTInt(value any) (int, bool) {
 	return 0, false
 }
 
-func cloneNativeEntityNBTValue(value any, javaBytes bool) any {
+func cloneNativeEntityNBTValue(value any, canonicalBytes bool) any {
 	switch v := value.(type) {
 	case map[string]any:
-		if javaBytes {
-			return CloneJavaEntityNBT(v)
+		if canonicalBytes {
+			return CloneCanonicalEntityNBT(v)
 		}
 		return CloneNativeEntityNBT(v)
 	case []any:
 		out := make([]any, len(v))
 		for i := range v {
-			out[i] = cloneNativeEntityNBTValue(v[i], javaBytes)
+			out[i] = cloneNativeEntityNBTValue(v[i], canonicalBytes)
 		}
 		return out
 	case int8:
-		if javaBytes {
+		if canonicalBytes {
 			return byte(v)
 		}
 		return v
 	case []byte:
 		return append([]byte(nil), v...)
 	case []int8:
-		if !javaBytes {
+		if !canonicalBytes {
 			return append([]int8(nil), v...)
 		}
 		out := make([]byte, len(v))

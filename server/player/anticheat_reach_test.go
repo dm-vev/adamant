@@ -43,9 +43,9 @@ func TestBlockReachDefaults(t *testing.T) {
 	})
 	// Java's rule, 4.5 blocks to the box and 1 of buffer, and a disabled
 	// check.
-	java := anticheat.Default()
-	java.BlockReach = anticheat.ReachSettings{Measure: "box", Survival: 4.5, Creative: 5, Buffer: 1}
-	withCheckedPlayer(t, w, clienttest.New(), java, at, func(tx *world.Tx, p *Player) {
+	base := anticheat.Default()
+	base.BlockReach = anticheat.ReachSettings{Measure: "box", Survival: 4.5, Creative: 5, Buffer: 1}
+	withCheckedPlayer(t, w, clienttest.New(), base, at, func(tx *world.Tx, p *Player) {
 		if !p.canReachBlock(cube.Pos{0, 101, 5}) || p.canReachBlock(cube.Pos{0, 101, 7}) {
 			t.Fatalf("Java's reach to the box: 5 away %v, 7 away %v", p.canReachBlock(cube.Pos{0, 101, 5}), p.canReachBlock(cube.Pos{0, 101, 7}))
 		}

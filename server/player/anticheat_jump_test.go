@@ -131,15 +131,15 @@ func jumpWorld(t testing.TB) *world.World {
 }
 
 // bedrockSprint returns an input that sprints east, jumping as jump says.
-func bedrockSprint(jump func(i int, j *javaMover) bool) func(int, *javaMover) javaInput {
-	return func(i int, j *javaMover) javaInput {
-		return javaInput{forward: 1, yaw: east, sprint: true, jump: jump(i, j)}
+func bedrockSprint(jump func(i int, j *simMover) bool) func(int, *simMover) simInput {
+	return func(i int, j *simMover) simInput {
+		return simInput{forward: 1, yaw: east, sprint: true, jump: jump(i, j)}
 	}
 }
 
 // always and never are jump inputs.
-func always(int, *javaMover) bool { return true }
-func never(int, *javaMover) bool  { return false }
+func always(int, *simMover) bool { return true }
+func never(int, *simMover) bool  { return false }
 
 // laneStartAt returns where a trace along the lane at z starts, at the
 // height passed.
@@ -153,14 +153,14 @@ func jumpTraces() []acTrace {
 	for _, lane := range jumpLanes() {
 		start := laneStartAt(lane.z, lane.top)
 		traces = append(traces,
-			acTrace{name: "standing jumps on " + lane.name, start: start, ticks: 120, input: func(i int, _ *javaMover) javaInput {
-				return javaInput{jump: i%30 < 3}
+			acTrace{name: "standing jumps on " + lane.name, start: start, ticks: 120, input: func(i int, _ *simMover) simInput {
+				return simInput{jump: i%30 < 3}
 			}},
 			acTrace{name: "a sprint, then one sprint-jump on " + lane.name, start: start, ticks: 80,
-				input: bedrockSprint(func(i int, _ *javaMover) bool { return i == 30 })},
+				input: bedrockSprint(func(i int, _ *simMover) bool { return i == 30 })},
 			acTrace{name: "repeated sprint-jumps on " + lane.name, start: start, ticks: 160, input: bedrockSprint(always)},
-			acTrace{name: "walking jumps on " + lane.name, start: start, ticks: 150, input: func(int, *javaMover) javaInput {
-				return javaInput{forward: 1, yaw: east, jump: true}
+			acTrace{name: "walking jumps on " + lane.name, start: start, ticks: 150, input: func(int, *simMover) simInput {
+				return simInput{forward: 1, yaw: east, jump: true}
 			}},
 		)
 	}
@@ -170,14 +170,14 @@ func jumpTraces() []acTrace {
 		acTrace{name: "sprint-jumping up a staircase", start: laneStartAt(jumpStairs, floorY), ticks: 100,
 			input: bedrockSprint(always)},
 		acTrace{name: "auto-jumping up a step of one block", start: laneStartAt(jumpStep, floorY), ticks: 100,
-			input: bedrockSprint(func(_ int, j *javaMover) bool { return j.onGround && j.horizontalCollision })},
+			input: bedrockSprint(func(_ int, j *simMover) bool { return j.onGround && j.horizontalCollision })},
 		acTrace{name: "sprint-jumping up a step of one block", start: laneStartAt(jumpStep, floorY), ticks: 100,
-			input: bedrockSprint(func(_ int, j *javaMover) bool { return j.onGround && j.pos[0] > -22 })},
+			input: bedrockSprint(func(_ int, j *simMover) bool { return j.onGround && j.pos[0] > -22 })},
 		// The jump begins as the last of the box leaves the edge.
 		acTrace{name: "sprint-jumping over a gap from its edge", start: laneStartAt(jumpGap, floorY), ticks: 100,
-			input: bedrockSprint(func(_ int, j *javaMover) bool { return j.onGround && j.pos[0] > -10.25 })},
+			input: bedrockSprint(func(_ int, j *simMover) bool { return j.onGround && j.pos[0] > -10.25 })},
 		acTrace{name: "jumping off the edge of a gap", start: laneStartAt(jumpGap, floorY), ticks: 100,
-			input: bedrockSprint(func(_ int, j *javaMover) bool { return j.onGround && j.pos[0] > -9.72 })},
+			input: bedrockSprint(func(_ int, j *simMover) bool { return j.onGround && j.pos[0] > -9.72 })},
 	)
 	return traces
 }
@@ -199,12 +199,12 @@ func shapeTraces() []acTrace {
 	} {
 		start := laneStartAt(tc.z, tc.top)
 		traces = append(traces,
-			acTrace{name: "standing jumps on " + tc.name, start: start, ticks: 120, lift: tc.lift, input: func(i int, _ *javaMover) javaInput {
-				return javaInput{jump: i%30 < 3}
+			acTrace{name: "standing jumps on " + tc.name, start: start, ticks: 120, lift: tc.lift, input: func(i int, _ *simMover) simInput {
+				return simInput{jump: i%30 < 3}
 			}},
 			acTrace{name: "sprint-jumps on " + tc.name, start: start, ticks: 160, lift: tc.lift, input: bedrockSprint(always)},
 			acTrace{name: "a sprint, then a sprint-jump on " + tc.name, start: start, ticks: 80, lift: tc.lift,
-				input: bedrockSprint(func(i int, _ *javaMover) bool { return i == 30 })},
+				input: bedrockSprint(func(i int, _ *simMover) bool { return i == 30 })},
 		)
 	}
 	return traces

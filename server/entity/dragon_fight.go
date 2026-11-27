@@ -282,7 +282,7 @@ func (f *dragonFight) SetDragonKilled(tx *world.Tx, e world.Entity) {
 		spawnFightGateway(tx, pos)
 	}
 	if !f.data.PreviouslyKilled {
-		tx.SetBlock(cube.Pos{0, tx.JavaMotionBlockingHeight(0, 0, false), 0}, block.DragonEgg{}, nil)
+		tx.SetBlock(cube.Pos{0, tx.MotionBlockingHeight(0, 0, false), 0}, block.DragonEgg{}, nil)
 	}
 	f.data.PreviouslyKilled, f.data.DragonKilled = true, true
 }

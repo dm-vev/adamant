@@ -40,15 +40,15 @@ func (wardenType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData)
 }
 func (wardenType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	c := wardenConfig{health: nativeBossHealth(n, 500)}
-	if java := readNativeMobJavaState(n); java != nil {
-		if anger, ok := java["anger"].(map[string]any); ok {
+	if extra := readNativeMobExtraState(n); extra != nil {
+		if anger, ok := extra["anger"].(map[string]any); ok {
 			suspects, _ := anger["suspects"].([]any)
 			for _, raw := range suspects {
 				s, ok := raw.(map[string]any)
 				if !ok {
 					continue
 				}
-				id, err := uuid.Parse(javaUUIDString(s["uuid"]))
+				id, err := uuid.Parse(uuidString(s["uuid"]))
 				if err == nil {
 					c.anger = append(c.anger, wardenSavedAnger{id, int(nbtconv.Int32(s, "anger"))})
 				}
@@ -68,7 +68,7 @@ func (wardenType) EncodeNBT(d *world.EntityData) map[string]any {
 	}
 	var suspects []any
 	for _, a := range s.anger.saved() {
-		suspects = append(suspects, map[string]any{"uuid": javaUUIDIntArray(a.id.String()), "anger": int32(a.anger)})
+		suspects = append(suspects, map[string]any{"uuid": uuidIntArray(a.id.String()), "anger": int32(a.anger)})
 	}
 	return encodeBossNBT(d, attrs, map[string]any{"anger": map[string]any{"suspects": suspects}})
 }
@@ -663,7 +663,7 @@ func newWardenSonicBoom(s *wardenState) *behavior {
 			}
 			source := m.data.Pos.Add(mgl64.Vec3{0, 1.6})
 			delta := mgl64.Vec3{target.Position()[0], entityEyeY(target), target.Position()[2]}.Sub(source)
-			dir := javaNormalize(delta)
+			dir := normalizeVec3(delta)
 			for i := 1; i < int(math.Floor(delta.Len()))+7; i++ {
 				m.tx.AddParticle(source.Add(dir.Mul(float64(i))), particle.SonicExplosion{})
 			}

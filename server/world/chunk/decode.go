@@ -3,9 +3,14 @@ package chunk
 import (
 	"bytes"
 	"fmt"
+	"sync"
 
 	"github.com/dm-vev/adamant/server/block/cube"
 )
+
+var decodeBufPool = sync.Pool{
+	New: func() any { return new(bytes.Buffer) },
+}
 
 // DiskDecode decodes the data from a SerialisedData object into a chunk and returns it. If the data was invalid,
 // an error is returned.
@@ -13,12 +18,19 @@ import (
 // The BlockRegistry passed must be finalized and must correspond to the runtime IDs used in the chunk data.
 func DiskDecode(br BlockRegistry, data SerialisedData, r cube.Range) (*Chunk, error) {
 	c := newChunk(br, r, len(data.Biomes) == 0)
+	buf := decodeBufPool.Get().(*bytes.Buffer)
+	defer func() {
+		*buf = bytes.Buffer{}
+		decodeBufPool.Put(buf)
+	}()
 
 	if len(data.Biomes) != 0 {
-		if err := decodeBiomes(bytes.NewBuffer(data.Biomes), c, DiskEncoding); err != nil {
+		*buf = *bytes.NewBuffer(data.Biomes)
+		if err := decodeBiomes(buf, c, DiskEncoding); err != nil {
 			return nil, err
 		}
 	}
+	cache := diskCodecCacheFor(br)
 	for i, sub := range data.SubChunks {
 		if len(sub) == 0 {
 			// No data for this sub chunk.
@@ -33,7 +45,8 @@ func DiskDecode(br BlockRegistry, data SerialisedData, r cube.Range) (*Chunk, er
 			continue
 		}
 		index := uint8(i)
-		if decodeErr := decodeSubChunkInto(bytes.NewBuffer(sub), c, &index, DiskEncoding); decodeErr != nil {
+		*buf = *bytes.NewBuffer(sub)
+		if decodeErr := decodeSubChunkIntoWithCache(buf, c, &index, DiskEncoding, cache); decodeErr != nil {
 			return nil, decodeErr
 		}
 		c.recordMissingBlockStates(index, c.sub[index])
@@ -69,6 +82,10 @@ func (c *Chunk) recordMissingBlockStates(subIndex uint8, sub *SubChunk) {
 
 // decodeSubChunkInto decodes a SubChunk from a bytes.Buffer directly into c.sub[*index].
 func decodeSubChunkInto(buf *bytes.Buffer, c *Chunk, index *byte, e Encoding) error {
+	return decodeSubChunkIntoWithCache(buf, c, index, e, diskCodecCacheFor(c.br))
+}
+
+func decodeSubChunkIntoWithCache(buf *bytes.Buffer, c *Chunk, index *byte, e Encoding, cache *diskCodecCache) error {
 	ver, err := buf.ReadByte()
 	if err != nil {
 		return fmt.Errorf("error reading version: %w", err)
@@ -80,7 +97,7 @@ func decodeSubChunkInto(buf *bytes.Buffer, c *Chunk, index *byte, e Encoding) er
 		if int(*index) >= len(c.sub) {
 			return fmt.Errorf("invalid sub-chunk index %d: chunk range has %d sub-chunks", *index, len(c.sub))
 		}
-		storage, err := decodeBlockStorage(buf, e, c.br)
+		storage, err := decodeBlockStorageWithCache(buf, e, c.br, cache)
 		if err != nil {
 			return err
 		}
@@ -109,7 +126,7 @@ func decodeSubChunkInto(buf *bytes.Buffer, c *Chunk, index *byte, e Encoding) er
 		}
 		storages := make([]*PalettedStorage, storageCount)
 		for i := byte(0); i < storageCount; i++ {
-			storages[i], err = decodeBlockStorage(buf, e, c.br)
+			storages[i], err = decodeBlockStorageWithCache(buf, e, c.br, cache)
 			if err != nil {
 				return err
 			}
@@ -120,7 +137,11 @@ func decodeSubChunkInto(buf *bytes.Buffer, c *Chunk, index *byte, e Encoding) er
 }
 
 func decodeBlockStorage(buf *bytes.Buffer, e Encoding, br BlockRegistry) (*PalettedStorage, error) {
-	migration := paletteStateMigration{decodeJava: e.network() == 0}
+	return decodeBlockStorageWithCache(buf, e, br, diskCodecCacheFor(br))
+}
+
+func decodeBlockStorageWithCache(buf *bytes.Buffer, e Encoding, br BlockRegistry, cache *diskCodecCache) (*PalettedStorage, error) {
+	migration := paletteStateMigration{decodeCanonical: e.network() == 0, cache: cache}
 	storage, err := decodePalettedStorage(buf, e, blockPaletteMigrationEncoding{
 		BlockPaletteEncoding: BlockPaletteEncoding{Blocks: br},
 		migration:            &migration,
@@ -129,7 +150,7 @@ func decodeBlockStorage(buf *bytes.Buffer, e Encoding, br BlockRegistry) (*Palet
 		return nil, err
 	}
 	storage.missingStateEntries = migration.entries
-	storage.javaStateIDs = migration.javaStateIDs
+	storage.stateIDs = migration.stateIDs
 	return storage, nil
 }
 

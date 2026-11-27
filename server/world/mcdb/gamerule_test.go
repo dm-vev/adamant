@@ -6,7 +6,7 @@ import (
 	"github.com/dm-vev/adamant/server/world"
 )
 
-func TestJavaOnlyGameRulePersistsAcrossMCDBReopen(t *testing.T) {
+func TestExtraGameRulePersistsAcrossMCDBReopen(t *testing.T) {
 	dir := t.TempDir()
 	db, err := Open(dir)
 	if err != nil {

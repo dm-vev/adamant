@@ -41,10 +41,10 @@ func (cowType) BBox(entity world.Entity) cube.BBox {
 
 func (cowType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf := CowConfig{}
-	javaState := readNativeMobJavaState(m)
+	extraState := readNativeMobExtraState(m)
 	source := m
-	if javaState != nil {
-		source = javaState
+	if extraState != nil {
+		source = extraState
 	}
 	if _, ok := source["Health"]; ok {
 		conf.Health = float64(nbtconv.Float32(source, "Health"))
@@ -77,11 +77,11 @@ func (cowType) EncodeNBT(data *world.EntityData) map[string]any {
 		DefaultMin: 0, DefaultMax: health.MaxHealth(), Min: 0, Max: health.MaxHealth(),
 	}})
 	native := mergeNativeMobNBT(data.NativeNBT, map[string]any{"Attributes": attributes})
-	javaState := mergeNativeMobNBT(readNativeMobJavaState(data.NativeNBT), cow.breeding.encodeNBT(map[string]any{
+	extraState := mergeNativeMobNBT(readNativeMobExtraState(data.NativeNBT), cow.breeding.encodeNBT(map[string]any{
 		"Age": int32(cow.ageTicks), "variant": "minecraft:" + [...]string{"temperate", "warm", "cold"}[min(cow.variant, 2)],
 		"sound_variant": "minecraft:" + cow.soundVariant,
 	}))
-	return mergeNativeMobJavaState(native, javaState)
+	return mergeNativeMobExtraState(native, extraState)
 }
 
 func cowVariant(value string) int {

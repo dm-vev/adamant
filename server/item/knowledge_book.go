@@ -46,7 +46,7 @@ func (k KnowledgeBook) EncodeNBT() map[string]any {
 }
 
 func (KnowledgeBook) DecodeNBT(data map[string]any) any {
-	recipes, _ := javaRecipeIDs(data["adamant:recipes"])
+	recipes, _ := canonicalRecipeIDs(data["adamant:recipes"])
 	return KnowledgeBook{Recipes: recipes}
 }
 

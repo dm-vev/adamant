@@ -86,9 +86,9 @@ func TestOpsLevelsRoundTrip(t *testing.T) {
 	}
 
 	// A file of Java's fields reads, and writes back as it was.
-	const java = "[\n  {\n    \"name\": \"mod\",\n    \"level\": 2,\n    \"bypassesPlayerLimit\": true\n  },\n  {\n    \"xuid\": \"2535498765432109\",\n    \"name\": \"Admin\",\n    \"level\": 3\n  }\n]\n"
+	const legacy = "[\n  {\n    \"name\": \"mod\",\n    \"level\": 2,\n    \"bypassesPlayerLimit\": true\n  },\n  {\n    \"xuid\": \"2535498765432109\",\n    \"name\": \"Admin\",\n    \"level\": 3\n  }\n]\n"
 	dir = t.TempDir()
-	srv = permissionServer(t, dir, java)
+	srv = permissionServer(t, dir, legacy)
 	if l, ok := srv.OperatorLevel("mod"); !ok || l != cmd.LevelGameMaster {
 		t.Errorf("mod: level %v, %v, want 2", l, ok)
 	}
@@ -98,8 +98,8 @@ func TestOpsLevelsRoundTrip(t *testing.T) {
 	if _, err := srv.Deop("temp"); err != nil {
 		t.Fatal(err)
 	}
-	if got := readFile(t, filepath.Join(dir, "ops.json")); got != java {
-		t.Errorf("ops.json of Java's fields rewritten as\n%s\nwant\n%s", got, java)
+	if got := readFile(t, filepath.Join(dir, "ops.json")); got != legacy {
+		t.Errorf("ops.json of Java's fields rewritten as\n%s\nwant\n%s", got, legacy)
 	}
 
 	// A level out of range is an error of the file.

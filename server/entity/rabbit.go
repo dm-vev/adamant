@@ -34,7 +34,7 @@ func (rabbitType) BBox(e world.Entity) cube.BBox {
 	return cube.Box(-.25, 0, -.25, .25, .5, .25)
 }
 func (rabbitType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	s := readNativeMobJavaState(m)
+	s := readNativeMobExtraState(m)
 	if s == nil {
 		s = m
 	}
@@ -48,7 +48,7 @@ func (rabbitType) DecodeNBT(m map[string]any, d *world.EntityData) {
 func (rabbitType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*rabbitBehaviour)
 	a := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
-	return mergeNativeMobJavaState(map[string]any{"Attributes": a}, mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "RabbitType": int32(b.variant), "MoreCarrotTicks": int32(b.moreCarrotTicks)})))
+	return mergeNativeMobExtraState(map[string]any{"Attributes": a}, mergeNativeMobNBT(readNativeMobExtraState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "RabbitType": int32(b.variant), "MoreCarrotTicks": int32(b.moreCarrotTicks)})))
 }
 
 // RabbitConfig controls variant and age.
@@ -230,7 +230,7 @@ func (r *Rabbit) breedOffspring(tx *world.Tx, partner breeder) *world.EntityHand
 // splotched rabbits in #spawns_white_rabbits, gold ones in
 // #spawns_gold_rabbits, and brown, salt and pepper or black ones elsewhere.
 func rabbitBiomeVariant(tx *world.Tx, pos cube.Pos, random *vanilla.Random) int {
-	return rabbitVariantIn(world.JavaBiomeName(tx.Biome(pos)), randInt(random, 100))
+	return rabbitVariantIn(world.CanonicalBiomeName(tx.Biome(pos)), randInt(random, 100))
 }
 
 // rabbitVariantIn returns the variant of a rabbit spawning in a biome for a

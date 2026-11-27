@@ -287,7 +287,7 @@ func dispenseSaved(col *chunk.Column, origin cube.Pos, desc describer) (entities
 		}
 		// SpawnEgg.spawn draws the yaw of the mob from the global source,
 		// not from the world's.
-		if java, ok := data["adamant:java"].(map[string]any); ok && java["SpawnReason"] == "dispenser" {
+		if extra, ok := data["adamant:state"].(map[string]any); ok && extra["SpawnReason"] == "dispenser" {
 			data["Rotation"], data["Yaw"] = "random", "random"
 		}
 		// dropItem draws the motion of a block's drop from the global source;

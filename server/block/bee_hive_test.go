@@ -51,7 +51,7 @@ func TestHiveEmergencyRelease(t *testing.T) {
 				if blocked {
 					tx.SetBlock(pos.Side(cube.FaceNorth), block.Stone{}, nil)
 				}
-				hive.JavaEmergencyRelease(pos, tx)
+				hive.EmergencyRelease(pos, tx)
 				count := 0
 				var bee world.Entity
 				for e := range tx.Entities() {

@@ -28,6 +28,10 @@ func fromJson(d jsonData, lookupWorld func(world.Dimension) *world.World, fallba
 		}
 	}
 	respawnDimension, _ := world.DimensionByID(int(d.RespawnDimension))
+	extraState := d.ExtraState
+	if len(extraState) == 0 {
+		extraState = d.LegacyExtraState
+	}
 	conf := player.Config{
 		// Fall back to the key UUID if the stored data is corrupted.
 		UUID:                playerID,
@@ -59,7 +63,7 @@ func fromJson(d jsonData, lookupWorld func(world.Dimension) *world.World, fallba
 		HasRaidOmenPosition: d.HasRaidOmenPosition,
 		ShoulderLeft:        d.ShoulderLeft,
 		ShoulderRight:       d.ShoulderRight,
-		JavaState:           world.CloneNativeEntityNBT(d.JavaState),
+		ExtraState:           world.CloneNativeEntityNBT(extraState),
 		Components:          decodeComponentsNBT(d.ComponentsNBT),
 		RespawnDimension:    respawnDimension,
 		RespawnPosition:     d.RespawnPosition,
@@ -140,7 +144,7 @@ func toJson(d player.Config, w *world.World) jsonData {
 		HasRaidOmenPosition: d.HasRaidOmenPosition,
 		ShoulderLeft:        d.ShoulderLeft,
 		ShoulderRight:       d.ShoulderRight,
-		JavaState:           world.CloneNativeEntityNBT(d.JavaState),
+		ExtraState:          world.CloneNativeEntityNBT(d.ExtraState),
 		ComponentsNBT:       encodeComponentsNBT(d.Components),
 		RespawnDimension:    int32(respawnDim),
 		RespawnPosition:     d.RespawnPosition,
@@ -175,7 +179,8 @@ type jsonData struct {
 	HasRaidOmenPosition              bool
 	ShoulderLeft                     map[string]any
 	ShoulderRight                    map[string]any
-	JavaState                        map[string]any `json:"adamant:java,omitempty"`
+	ExtraState                       map[string]any `json:"adamant:state,omitempty"`
+	LegacyExtraState                 map[string]any `json:"adamant:java,omitempty"`
 	ComponentsNBT                    []byte         `json:"adamant:components_nbt,omitempty"`
 	RespawnDimension                 int32
 	RespawnPosition                  cube.Pos

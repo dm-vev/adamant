@@ -27,12 +27,12 @@ func TestParticleName(t *testing.T) {
 
 // TestJavaParticleNames holds the particle types /particle takes by name to
 // those of the table the adapter maps them by, which held them before.
-func TestJavaParticleNames(t *testing.T) {
+func TestParticleNameAliases(t *testing.T) {
 	want := []string{
 		"angry_villager", "cloud", "end_rod", "explosion", "explosion_emitter", "flame", "happy_villager",
 		"heart", "large_smoke", "poof", "portal", "smoke", "soul_fire_flame", "totem_of_undying",
 	}
-	if !slices.Equal(javaParticleNames, want) {
-		t.Errorf("javaParticleNames = %v, want %v", javaParticleNames, want)
+	if !slices.Equal(particleNameAliases, want) {
+		t.Errorf("javaParticleNames = %v, want %v", particleNameAliases, want)
 	}
 }

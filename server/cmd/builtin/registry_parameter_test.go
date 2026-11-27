@@ -54,9 +54,9 @@ func TestItemCompletionsKeepCommandExecution(t *testing.T) {
 		if got, _ := p.Inventory().Item(0); got.Count() != 3 {
 			t.Fatalf("item count = %d, want 3", got.Count())
 		}
-		for _, javaAlias := range []string{"minecraft:oak_button", "red_bed"} {
-			if out := runTestCommand(newGiveCommand(), "@a "+javaAlias, tx); out.ErrorCount() != 0 {
-				t.Errorf("give Java alias %s errors: %v", javaAlias, out.Errors())
+		for _, canonicalAlias := range []string{"minecraft:oak_button", "red_bed"} {
+			if out := runTestCommand(newGiveCommand(), "@a "+canonicalAlias, tx); out.ErrorCount() != 0 {
+				t.Errorf("give Java alias %s errors: %v", canonicalAlias, out.Errors())
 			}
 		}
 	})

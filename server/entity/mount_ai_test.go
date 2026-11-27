@@ -195,7 +195,7 @@ func TestHorsesFinalizeRandomAttributes(t *testing.T) {
 // TestRiddenHorsesRunAtJavaSpeed checks AbstractHorse.travelRidden: a horse
 // with the default movement speed of 0.225 that its rider steers forward
 // covers 0.225/(1-0.546) blocks per tick, about ten blocks a second.
-func TestRiddenHorsesRunAtJavaSpeed(t *testing.T) {
+func TestRiddenHorsesRunAtParitySpeed(t *testing.T) {
 	t.Parallel()
 	w := traderTestWorld(t)
 	var h, rider *world.EntityHandle

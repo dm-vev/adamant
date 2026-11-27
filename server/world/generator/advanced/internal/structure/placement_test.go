@@ -7,7 +7,7 @@ import "testing"
 // Java 26.3 dedicated server generated for two seeds, read from the
 // structure references of its saved chunks. The method seeds its random
 // with setLargeFeatureSeed rather than the salted large feature seed.
-func TestLegacyType3FrequencyMatchesJavaMineshafts(t *testing.T) {
+func TestLegacyType3FrequencyMatchesMineshafts(t *testing.T) {
 	starts := []struct {
 		seed int64
 		x, z int32

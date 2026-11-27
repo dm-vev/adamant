@@ -124,7 +124,7 @@ func (sub *SubChunk) Fill(x0, y0, z0, x1, y1, z1 byte, rid uint32) int {
 	if len(sub.storages) == 0 && rid == sub.air {
 		return 0
 	}
-	if len(sub.storages) == 1 && sub.storages[0].bitsPerIndex == 0 && sub.storages[0].palette.values[0] == rid && len(sub.storages[0].javaStateIDs) == 0 {
+	if len(sub.storages) == 1 && sub.storages[0].bitsPerIndex == 0 && sub.storages[0].palette.values[0] == rid && len(sub.storages[0].stateIDs) == 0 {
 		return 0
 	}
 	layer0 := sub.Layer(0)
@@ -133,7 +133,7 @@ func (sub *SubChunk) Fill(x0, y0, z0, x1, y1, z1 byte, rid uint32) int {
 		layer1 = sub.storages[1]
 	}
 	changed := 0
-	if len(layer0.javaStateIDs) == 0 && len(layer0.missingStateEntries) == 0 {
+	if len(layer0.stateIDs) == 0 && len(layer0.missingStateEntries) == 0 {
 		idx := layer0.palette.Index(rid)
 		if idx == -1 {
 			idx = layer0.addNew(rid)
@@ -202,7 +202,7 @@ func (sub *SubChunk) fillFull(rid uint32) int {
 		layer1 = sub.storages[1]
 	}
 	idx := layer0.palette.Index(rid)
-	hasMeta := len(layer0.javaStateIDs) != 0 || len(layer0.missingStateEntries) != 0
+	hasMeta := len(layer0.stateIDs) != 0 || len(layer0.missingStateEntries) != 0
 	if idx == -1 && !hasMeta && layer1 == nil {
 		changed = 4096
 	} else {

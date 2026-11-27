@@ -152,13 +152,13 @@ type acTrace struct {
 	// after the trace began; by default (i + 1) × 50 ms, a move a tick.
 	arrival func(i int) time.Duration
 	// setup prepares the player and the mover before the trace.
-	setup func(tx *world.Tx, p *Player, j *javaMover)
+	setup func(tx *world.Tx, p *Player, j *simMover)
 	// input is what the client holds down in tick i of the trace.
-	input func(i int, j *javaMover) javaInput
+	input func(i int, j *simMover) simInput
 	// event runs on the server before the move of tick i of the client;
 	// rtt is the round trip in ticks, after which the client applies what
 	// the server gave it.
-	event func(i int, tx *world.Tx, p *Player, j *javaMover, rtt int)
+	event func(i int, tx *world.Tx, p *Player, j *simMover, rtt int)
 	// positions, if set, are the positions of the trace in place of the
 	// mover's.
 	positions func(tx *world.Tx) []mgl64.Vec3
@@ -218,7 +218,7 @@ func runTrace(t testing.TB, w *world.World, tr acTrace) traceResult {
 			p.Tick(tx, current)
 		}
 		rtt := int(math.Ceil(float64(2*tr.latency) / float64(anticheatTick)))
-		j := &javaMover{pos: tr.start, onGround: math.Abs(tr.start[1]-floorY) < 1e-9}
+		j := &simMover{pos: tr.start, onGround: math.Abs(tr.start[1]-floorY) < 1e-9}
 		// The client stands still through the grace of its join.
 		for range conf.Grace.Join + 1 {
 			at := p.Position()
@@ -248,7 +248,7 @@ func runTrace(t testing.TB, w *world.World, tr acTrace) traceResult {
 		begin := wall
 		type sent struct {
 			m  client.Move
-			in javaInput
+			in simInput
 		}
 		var queue []sent
 		next := 0
@@ -260,7 +260,7 @@ func runTrace(t testing.TB, w *world.World, tr acTrace) traceResult {
 				if tr.event != nil {
 					tr.event(i, tx, p, j, rtt)
 				}
-				var in javaInput
+				var in simInput
 				if tr.input != nil {
 					in = tr.input(i, j)
 				}
@@ -327,9 +327,9 @@ func runTrace(t testing.TB, w *world.World, tr acTrace) traceResult {
 
 // forward returns an input that holds forward along yaw, with the options
 // passed.
-func forward(yaw float64, sprint, jump bool) func(int, *javaMover) javaInput {
-	return func(int, *javaMover) javaInput {
-		return javaInput{forward: 1, yaw: yaw, sprint: sprint, jump: jump}
+func forward(yaw float64, sprint, jump bool) func(int, *simMover) simInput {
+	return func(int, *simMover) simInput {
+		return simInput{forward: 1, yaw: yaw, sprint: sprint, jump: jump}
 	}
 }
 
@@ -364,39 +364,39 @@ func legitimateTraces() []acTrace {
 		)
 	}
 	traces = append(traces,
-		acTrace{name: "walking diagonally", start: laneStart(laneStone), ticks: 100, input: func(int, *javaMover) javaInput {
-			return javaInput{forward: 1, strafe: 1, yaw: east, sprint: true}
+		acTrace{name: "walking diagonally", start: laneStart(laneStone), ticks: 100, input: func(int, *simMover) simInput {
+			return simInput{forward: 1, strafe: 1, yaw: east, sprint: true}
 		}},
-		acTrace{name: "sneaking off the edge of the pool", start: mgl64.Vec3{0.5, floorY, -3.5}, ticks: 80, input: func(int, *javaMover) javaInput {
-			return javaInput{forward: 1, yaw: south, sneak: true}
+		acTrace{name: "sneaking off the edge of the pool", start: mgl64.Vec3{0.5, floorY, -3.5}, ticks: 80, input: func(int, *simMover) simInput {
+			return simInput{forward: 1, yaw: south, sneak: true}
 		}},
 		acTrace{name: "walking into the pool", start: mgl64.Vec3{0.5, floorY, -3.5}, ticks: 120, input: forward(south, false, false)},
-		acTrace{name: "swimming at the surface", start: mgl64.Vec3{-30.5, floorY - 0.6, float64(poolZ) + 0.5}, ticks: 200, input: func(int, *javaMover) javaInput {
-			return javaInput{forward: 1, yaw: east, jump: true}
+		acTrace{name: "swimming at the surface", start: mgl64.Vec3{-30.5, floorY - 0.6, float64(poolZ) + 0.5}, ticks: 200, input: func(int, *simMover) simInput {
+			return simInput{forward: 1, yaw: east, jump: true}
 		}},
-		acTrace{name: "swimming under water", start: mgl64.Vec3{-30.5, floorY - 4, float64(poolZ) + 0.5}, ticks: 200, input: func(int, *javaMover) javaInput {
-			return javaInput{forward: 1, yaw: east, sprint: true}
+		acTrace{name: "swimming under water", start: mgl64.Vec3{-30.5, floorY - 4, float64(poolZ) + 0.5}, ticks: 200, input: func(int, *simMover) simInput {
+			return simInput{forward: 1, yaw: east, sprint: true}
 		}},
-		acTrace{name: "swimming with Dolphin's Grace", start: mgl64.Vec3{-30.5, floorY - 4, float64(poolZ) + 0.5}, ticks: 200, input: func(int, *javaMover) javaInput {
-			return javaInput{forward: 1, yaw: east, sprint: true, dolphin: true}
+		acTrace{name: "swimming with Dolphin's Grace", start: mgl64.Vec3{-30.5, floorY - 4, float64(poolZ) + 0.5}, ticks: 200, input: func(int, *simMover) simInput {
+			return simInput{forward: 1, yaw: east, sprint: true, dolphin: true}
 		}},
 		acTrace{name: "rising in a bubble column", start: bubbleUp.Vec3Middle().Add(mgl64.Vec3{0, -0.5, 0}), ticks: 60},
 		acTrace{name: "sinking in a bubble column", start: mgl64.Vec3{bubbleDown.Vec3Middle()[0], floorY, bubbleDown.Vec3Middle()[2]}, ticks: 60},
 		acTrace{name: "climbing a ladder", start: mgl64.Vec3{float64(ladder[0]) + 0.3, floorY, float64(ladder[2]) + 0.5}, ticks: 80, input: forward(90, false, false)},
-		acTrace{name: "climbing scaffolding", start: scaffolding.Vec3Middle().Add(mgl64.Vec3{0, -0.5, 0}), ticks: 80, input: func(int, *javaMover) javaInput {
-			return javaInput{jump: true}
+		acTrace{name: "climbing scaffolding", start: scaffolding.Vec3Middle().Add(mgl64.Vec3{0, -0.5, 0}), ticks: 80, input: func(int, *simMover) simInput {
+			return simInput{jump: true}
 		}},
 		acTrace{name: "walking through cobweb", start: mgl64.Vec3{float64(cobweb[0]) - 2.5, floorY, float64(cobweb[2]) + 0.5}, ticks: 80, input: forward(east, false, false)},
 		acTrace{name: "walking into powder snow", start: mgl64.Vec3{float64(powderSnow[0]) - 2.5, floorY, float64(powderSnow[2]) + 0.5}, ticks: 80, input: forward(east, false, false)},
 		acTrace{name: "jumping in the tunnel", start: mgl64.Vec3{-9.5, floorY, float64(tunnelZ) + 0.5}, ticks: 80, input: forward(east, true, true)},
 		acTrace{name: "crawling through a gap", start: mgl64.Vec3{-9.5, floorY, float64(gapZ) + 0.5}, ticks: 120,
-			setup: func(_ *world.Tx, p *Player, _ *javaMover) { p.StartCrawling() },
-			input: func(int, *javaMover) javaInput { return javaInput{forward: 1, yaw: east, crawl: true} }},
-		acTrace{name: "Levitation V", start: laneStart(laneStone), ticks: 100, input: func(int, *javaMover) javaInput {
-			return javaInput{levitation: 5, forward: 1, yaw: east}
+			setup: func(_ *world.Tx, p *Player, _ *simMover) { p.StartCrawling() },
+			input: func(int, *simMover) simInput { return simInput{forward: 1, yaw: east, crawl: true} }},
+		acTrace{name: "Levitation V", start: laneStart(laneStone), ticks: 100, input: func(int, *simMover) simInput {
+			return simInput{levitation: 5, forward: 1, yaw: east}
 		}, setup: withEffect(effectLevitation(5))},
-		acTrace{name: "falling with Slow Falling", start: mgl64.Vec3{-20.5, floorY + 30, -40.5}, ticks: 300, input: func(int, *javaMover) javaInput {
-			return javaInput{slowFalling: true, forward: 1, yaw: east}
+		acTrace{name: "falling with Slow Falling", start: mgl64.Vec3{-20.5, floorY + 30, -40.5}, ticks: 300, input: func(int, *simMover) simInput {
+			return simInput{slowFalling: true, forward: 1, yaw: east}
 		}, setup: withEffect(effectSlowFalling())},
 		acTrace{name: "falling from 30 blocks onto stone", start: mgl64.Vec3{-20.5, floorY + 30, -40.5}, ticks: 60},
 		acTrace{name: "falling from 30 blocks into the pool", start: mgl64.Vec3{-20.5, floorY + 30, float64(poolZ) + 0.5}, ticks: 80},
@@ -427,7 +427,7 @@ func gamePhysicsTraces() []acTrace {
 		tc := tc
 		traces = append(traces, acTrace{name: "the game's fall " + tc.name, start: tc.at,
 			// The server threw the player, as it throws the body.
-			setup: func(_ *world.Tx, p *Player, _ *javaMover) { p.SetVelocity(tc.vel) },
+			setup: func(_ *world.Tx, p *Player, _ *simMover) { p.SetVelocity(tc.vel) },
 			positions: func(tx *world.Tx) []mgl64.Vec3 {
 				return simulatedFall(tx, tc.at, tc.vel, 160)
 			}})
@@ -469,7 +469,7 @@ func pushTraces() []acTrace {
 			traces = append(traces, acTrace{
 				name: push.name + " at " + latency.String(), start: laneStart(laneStone), ticks: 100, latency: latency,
 				input: forward(east, false, false),
-				event: func(i int, _ *world.Tx, p *Player, j *javaMover, rtt int) {
+				event: func(i int, _ *world.Tx, p *Player, j *simMover, rtt int) {
 					if i == 20 {
 						p.SetVelocity(push.vel)
 						j.apply(j.tick+rtt+1, push.vel, false)
@@ -480,7 +480,7 @@ func pushTraces() []acTrace {
 		traces = append(traces, acTrace{
 			name: "knockback of a zombie's attack at " + latency.String(), start: laneStart(laneStone), ticks: 60, latency: latency,
 			input: forward(east, true, false),
-			event: func(i int, _ *world.Tx, p *Player, j *javaMover, rtt int) {
+			event: func(i int, _ *world.Tx, p *Player, j *simMover, rtt int) {
 				if i == 20 {
 					p.KnockBack(p.Position().Add(mgl64.Vec3{1, 0, 0}), 0.4, 0.4)
 					// Java's knockback halves the velocity and adds the push.
@@ -491,7 +491,7 @@ func pushTraces() []acTrace {
 	}
 	traces = append(traces, acTrace{
 		name: "pushed by a piston", start: laneStart(laneStone), ticks: 60, input: forward(east, false, false),
-		event: func(i int, _ *world.Tx, p *Player, j *javaMover, _ int) {
+		event: func(i int, _ *world.Tx, p *Player, j *simMover, _ int) {
 			if i == 20 {
 				p.Displace(mgl64.Vec3{1, 0, 0})
 				j.pos, j.vel = p.Position(), mgl64.Vec3{}
@@ -507,7 +507,7 @@ func pushTraces() []acTrace {
 func conditionTraces() []acTrace {
 	return []acTrace{
 		{name: "teleported while sprinting", start: laneStart(laneStone), ticks: 100, input: forward(east, true, true),
-			event: func(i int, _ *world.Tx, p *Player, j *javaMover, _ int) {
+			event: func(i int, _ *world.Tx, p *Player, j *simMover, _ int) {
 				if i == 40 {
 					// A command, an ender pearl or chorus fruit: the client
 					// acknowledges at the target and moves on from rest.
@@ -517,7 +517,7 @@ func conditionTraces() []acTrace {
 				}
 			}},
 		{name: "creative flight, then survival in mid-air", start: mgl64.Vec3{-30.5, floorY + 10, -40.5}, ticks: 100,
-			setup: func(_ *world.Tx, p *Player, j *javaMover) {
+			setup: func(_ *world.Tx, p *Player, j *simMover) {
 				p.SetGameMode(world.GameModeCreative)
 				p.StartFlying()
 			},
@@ -538,7 +538,7 @@ func conditionTraces() []acTrace {
 				}
 				return ps
 			},
-			event: func(i int, _ *world.Tx, p *Player, _ *javaMover, _ int) {
+			event: func(i int, _ *world.Tx, p *Player, _ *simMover, _ int) {
 				if i == 30 {
 					p.SetGameMode(world.GameModeSurvival)
 				}
@@ -562,7 +562,7 @@ func conditionTraces() []acTrace {
 				return time.Duration(i+1) * anticheatTick
 			}},
 		{name: "riding, then dismounting", start: laneStart(laneStone), ticks: 80,
-			setup: func(tx *world.Tx, p *Player, _ *javaMover) {
+			setup: func(tx *world.Tx, p *Player, _ *simMover) {
 				pig := tx.AddEntity(entity.NewPig(world.EntitySpawnOpts{Position: p.Position()}))
 				p.SetRiding(pig.H())
 			},
@@ -573,7 +573,7 @@ func conditionTraces() []acTrace {
 				}
 				return ps
 			},
-			event: func(i int, _ *world.Tx, p *Player, _ *javaMover, _ int) {
+			event: func(i int, _ *world.Tx, p *Player, _ *simMover, _ int) {
 				if i == 40 {
 					// The vehicle carried the player 12 blocks: it dismounts
 					// there.
@@ -585,8 +585,8 @@ func conditionTraces() []acTrace {
 }
 
 // withEffect returns a setup that gives the player an effect.
-func withEffect(e func() effect.Effect) func(*world.Tx, *Player, *javaMover) {
-	return func(_ *world.Tx, p *Player, _ *javaMover) { p.AddEffect(e()) }
+func withEffect(e func() effect.Effect) func(*world.Tx, *Player, *simMover) {
+	return func(_ *world.Tx, p *Player, _ *simMover) { p.AddEffect(e()) }
 }
 
 // effectLevitation returns Levitation of the level passed, for a minute.

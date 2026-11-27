@@ -16,7 +16,7 @@ type sourceBorderBounds struct {
 	MinX, MaxX, MinZ, MaxZ float64
 }
 
-func TestWorldBorderMatchesJava263Source(t *testing.T) {
+func TestWorldBorderMatchesSource(t *testing.T) {
 	t.Parallel()
 	var fixture struct {
 		Static struct {

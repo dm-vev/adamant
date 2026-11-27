@@ -1065,7 +1065,7 @@ func (t mountType) BBox(e world.Entity) cube.BBox {
 }
 func (t mountType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	c := defaultMountConfig(t.kind)
-	state := readNativeMobJavaState(n)
+	state := readNativeMobExtraState(n)
 	if state == nil {
 		state = n
 	}
@@ -1114,7 +1114,7 @@ func (t mountType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	b.temper = int(nbtconv.Int32(state, "Temper"))
 	b.bred = nbtconv.Bool(state, "Bred")
 	b.eating = nbtconv.Bool(state, "EatingHaystack")
-	b.owner = javaUUIDString(state["Owner"])
+	b.owner = uuidString(state["Owner"])
 	b.trap = nbtconv.Bool(state, "SkeletonTrap")
 	b.trapTime = int(nbtconv.Int32(state, "SkeletonTrapTime"))
 	if _, ok := state["DespawnDelay"]; ok {
@@ -1151,12 +1151,12 @@ func (t mountType) EncodeNBT(d *world.EntityData) map[string]any {
 	}
 	state := b.breeding.encodeNBT(map[string]any{"Tame": b.tamed, "Saddled": b.saddled, "ChestedHorse": b.chested, "Strength": int32(b.strength), "Variant": int32(b.variant), "Age": int32(b.ageTicks), "Health": float32(b.health.Health()), "Sitting": b.sitting, "JumpStrength": b.jumpStrength, "DashCooldown": int32(b.dashCooldown), "Temper": int32(b.temper), "Bred": b.bred, "EatingHaystack": b.eating, "SkeletonTrap": b.trap, "SkeletonTrapTime": int32(b.trapTime), "LastPoseTick": b.lastPoseTick})
 	if b.owner != "" {
-		state["Owner"] = javaUUIDIntArray(b.owner)
+		state["Owner"] = uuidIntArray(b.owner)
 	}
 	if b.kind == mountTraderLlama {
 		state["DespawnDelay"] = int32(b.traderDespawn)
 	}
-	return mergeNativeMobJavaState(mergeNativeMobNBT(d.NativeNBT, native), state)
+	return mergeNativeMobExtraState(mergeNativeMobNBT(d.NativeNBT, native), state)
 }
 func mountStackFromNative(items []nativeMobItem) item.Stack {
 	for _, v := range items {

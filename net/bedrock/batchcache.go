@@ -51,9 +51,12 @@ type batchCacheEntry struct {
 	data    []byte // data[:bodyLen] is body, data[bodyLen:] is msg
 }
 
-// algFlateSegment is the BatchCache algorithm key for sync-flushed non-final
-// fixed DEFLATE segments (distinct from whole-batch AlgorithmFlate).
-const algFlateSegment = AlgorithmFlate | 0x8000
+// algFlateSegment and algSnappySegment are the BatchCache algorithm keys for
+// individually compressed segments of segmented batches.
+const (
+	algFlateSegment  = AlgorithmFlate | 0x8000
+	algSnappySegment = AlgorithmSnappy | 0x8000
+)
 
 // NewBatchCache returns a BatchCache that holds nothing.
 func NewBatchCache() *BatchCache { return &BatchCache{seed: maphash.MakeSeed()} }
@@ -114,6 +117,26 @@ func (bc *BatchCache) compressSegment(dst []byte, _ Flate, seg []byte) ([]byte, 
 	dst = fixedDeflateBlock(dst, seg, false)
 	s.store(sum, algFlateSegment, seg, dst[start:])
 	return dst, nil
+}
+
+// compressSnappySegment appends the raw Snappy body (without an uncompressed
+// length header) for seg to dst, caching segments by content under
+// algSnappySegment.
+func (bc *BatchCache) compressSnappySegment(dst, seg []byte) []byte {
+	if len(seg) > batchCacheMaxBody {
+		return compressSnappyRaw(dst, seg)
+	}
+	sum := maphash.Bytes(bc.seed, seg)
+	s := &bc.shards[sum&(batchCacheShards-1)]
+	if out, ok := s.lookup(dst, sum, algSnappySegment, seg); ok {
+		batchCacheHits.Inc()
+		return out
+	}
+
+	start := len(dst)
+	dst = compressSnappyRaw(dst, seg)
+	s.store(sum, algSnappySegment, seg, dst[start:])
+	return dst
 }
 
 func (s *batchCacheShard) lookup(dst []byte, sum uint64, a uint16, body []byte) ([]byte, bool) {

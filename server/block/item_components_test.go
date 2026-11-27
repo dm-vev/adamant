@@ -16,7 +16,7 @@ func TestItemComponents(t *testing.T) {
 		id    string
 		stack int
 	}{{"minecraft:cake", 64}, {"minecraft:name_tag", 64}} {
-		if got := javaStack(t, c.id, 1).MaxCount(); got != c.stack {
+		if got := canonicalStack(t, c.id, 1).MaxCount(); got != c.stack {
 			t.Errorf("%v stacks to %v, want %v", c.id, got, c.stack)
 		}
 	}
@@ -24,12 +24,12 @@ func TestItemComponents(t *testing.T) {
 		id         string
 		durability int
 	}{{"minecraft:bow", 384}, {"minecraft:crossbow", 465}, {"minecraft:fishing_rod", 64}, {"minecraft:flint_and_steel", 64}, {"minecraft:elytra", 432}, {"minecraft:turtle_helmet", 275}} {
-		if got := javaStack(t, c.id, 1).Item().(item.Durable).DurabilityInfo().MaxDurability; got != c.durability {
+		if got := canonicalStack(t, c.id, 1).Item().(item.Durable).DurabilityInfo().MaxDurability; got != c.durability {
 			t.Errorf("%v has durability %v, want %v", c.id, got, c.durability)
 		}
 	}
 	for _, id := range []string{"minecraft:netherite_ingot", "minecraft:netherite_scrap", "minecraft:netherite_block", "minecraft:ancient_debris"} {
-		if f, ok := javaStack(t, id, 1).Item().(item.FireProof); !ok || !f.FireProof() {
+		if f, ok := canonicalStack(t, id, 1).Item().(item.FireProof); !ok || !f.FireProof() {
 			t.Errorf("%v burns", id)
 		}
 	}
@@ -38,7 +38,7 @@ func TestItemComponents(t *testing.T) {
 		chance int
 		ok     bool
 	}{{"minecraft:oak_sapling", 30, true}, {"minecraft:sugar_cane", 50, true}, {"minecraft:fern", 65, true}, {"minecraft:short_grass", 30, true}, {"minecraft:cake", 100, true}, {"minecraft:grass_block", 0, false}, {"minecraft:chorus_flower", 0, false}} {
-		if got, ok := item.CompostChance(javaStack(t, c.id, 1).Item()); got != c.chance || ok != c.ok {
+		if got, ok := item.CompostChance(canonicalStack(t, c.id, 1).Item()); got != c.chance || ok != c.ok {
 			t.Errorf("%v composts with %v%% (%v), want %v%% (%v)", c.id, got, ok, c.chance, c.ok)
 		}
 	}
@@ -55,7 +55,7 @@ func TestEmptyComposterAlwaysTakesALayer(t *testing.T) {
 		for range 20 {
 			c := Composter{}
 			tx.SetBlock(pos, c, nil)
-			if !c.fill(javaStack(t, "minecraft:oak_sapling", 1), pos, tx) {
+			if !c.fill(canonicalStack(t, "minecraft:oak_sapling", 1), pos, tx) {
 				t.Fatal("composter refused a sapling")
 			}
 			if got := tx.Block(pos).(Composter).Level; got != 1 {

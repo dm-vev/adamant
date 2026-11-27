@@ -51,7 +51,7 @@ type netherTemplateSpawnCase struct {
 	NextOwn           string  `json:"next_own_long"`
 }
 
-func TestNetherTemplateSpawnMatchesJava263(t *testing.T) {
+func TestNetherTemplateSpawnMatchesSource(t *testing.T) {
 	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_nether_template_spawn.json")
 	if err != nil {

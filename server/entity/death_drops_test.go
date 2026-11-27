@@ -43,7 +43,7 @@ func addDeathTestPlayer(tx *world.Tx) *player.Player {
 	return tx.AddEntity((world.EntitySpawnOpts{}).New(player.Type, player.Config{Position: mgl64.Vec3{0.5, 65, 30.5}, GameMode: world.GameModeCreative})).(*player.Player)
 }
 
-func TestMobExperienceRequiresPlayerKillAndFollowsJavaRewards(t *testing.T) {
+func TestMobExperienceRequiresPlayerKillAndParityRewards(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name           string

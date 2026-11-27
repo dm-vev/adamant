@@ -2,8 +2,10 @@ package builtin
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 
+	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/cmd"
 	"github.com/dm-vev/adamant/server/world"
@@ -69,8 +71,11 @@ func dataStorage(c *dataCall) {
 		c.out.Error("data storage requires a key")
 		return
 	}
-	s := dataStorageRef{namespace: "java:storage:" + c.words[2], key: strings.Join(c.words[2:], " ")}
+	s := dataStorageRef{namespace: "cmd:storage:" + c.words[2], key: strings.Join(c.words[2:], " ")}
 	s.data, s.err = c.tx.World().LoadWorldData(s.namespace)
+	if errors.Is(s.err, leveldb.ErrNotFound) {
+		s.data, s.err = c.tx.World().LoadWorldData("java:storage:" + c.words[2])
+	}
 	action, ok := dataStorageActions[c.action]
 	if !ok {
 		c.out.Error("unsupported storage operation")

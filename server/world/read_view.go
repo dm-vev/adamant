@@ -168,7 +168,7 @@ func (v *ReadView) BlockStateID(pos cube.Pos) (uint32, error) {
 			return 0, fmt.Errorf("column of %v is not readable", pos)
 		}
 	}
-	id := v.w.javaStateIDInColumn(c, pos)
+	id := v.w.canonicalStateIDInColumn(c, pos)
 	if _, ok := gamedata.BlockStateName(id); !ok {
 		return 0, fmt.Errorf("Java block state at %v has no canonical source identity", pos)
 	}

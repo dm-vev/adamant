@@ -46,5 +46,5 @@ func init() {
 	item.RegisterEnchantment(40, Breach)
 	item.RegisterEnchantment(41, Lunge)
 	// Bedrock has no Sweeping Edge, so it has no ID.
-	item.RegisterJavaOnlyEnchantment(SweepingEdge)
+	item.RegisterServerOnlyEnchantment(SweepingEdge)
 }

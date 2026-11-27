@@ -195,7 +195,7 @@ func (overworld) HasSkyLight() bool                 { return true }
 
 func (nether) Range() cube.Range                 { return cube.Range{0, 127} }
 func (nether) WaterEvaporates() bool             { return true }
-func (nether) LavaSpreadDuration() time.Duration { return time.Second / 4 }
+func (nether) LavaSpreadDuration() time.Duration { return time.Second / 2 }
 func (nether) WeatherCycle() bool                { return false }
 func (nether) TimeCycle() bool                   { return false }
 func (nether) String() string                    { return "Nether" }

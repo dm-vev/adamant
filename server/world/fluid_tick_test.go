@@ -265,3 +265,124 @@ func TestFluidMixedSourceNativeBoundaries(t *testing.T) {
 		})
 	}
 }
+
+func TestNetherLavaSpreadDurationMatchesVanilla(t *testing.T) {
+	t.Parallel()
+	if got, want := world.Nether.LavaSpreadDuration(), time.Second/2; got != want {
+		t.Fatalf("Nether.LavaSpreadDuration() = %v, want %v", got, want)
+	}
+}
+
+func TestLavaSlopeSpreadingStaysNarrow(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name  string
+		dim   world.Dimension
+		run   int
+		step  int
+		ticks int
+	}{
+		{"nether 1-in-1 slope", world.Nether, 20, 1, 300},
+		{"nether 1-in-2 slope", world.Nether, 24, 2, 400},
+		{"overworld 1-in-1 slope", world.Overworld, 12, 1, 450},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			w := world.Config{Synchronous: true, Dim: tc.dim, RandomTickSpeed: -1}.New()
+			t.Cleanup(func() { _ = w.Close() })
+			const baseY = 80
+			<-w.Exec(func(tx *world.Tx) {
+				for x := -8; x <= tc.run+8; x++ {
+					for z := -10; z <= 10; z++ {
+						floorY := baseY
+						if x >= 0 {
+							floorY = baseY - (x / tc.step)
+						}
+						for y := floorY - 2; y <= floorY; y++ {
+							tx.SetBlock(cube.Pos{x, y, z}, block.Stone{}, nil)
+						}
+					}
+				}
+				tx.SetBlock(cube.Pos{-1, baseY + 1, 0}, block.Stone{}, nil)
+				tx.SetLiquid(cube.Pos{0, baseY + 1, 0}, block.Lava{Depth: 8, Still: true})
+			})
+			for range tc.ticks {
+				w.AdvanceTick()
+			}
+			<-w.Exec(func(tx *world.Tx) {
+				maxX, count := 0, 0
+				for x := -8; x <= tc.run+8; x++ {
+					floorY := baseY
+					if x >= 0 {
+						floorY = baseY - (x / tc.step)
+					}
+					for z := -10; z <= 10; z++ {
+						for y := floorY - 1; y <= baseY+2; y++ {
+							if liq, ok := tx.Liquid(cube.Pos{x, y, z}); ok && liq.LiquidType() == "lava" {
+								count++
+								if x > maxX {
+									maxX = x
+								}
+								if z != 0 {
+									t.Fatalf("lava spread sideways to %v on %s", cube.Pos{x, y, z}, tc.name)
+								}
+							}
+						}
+					}
+				}
+				if count <= 10 || maxX < 5 {
+					t.Fatalf("lava did not flow downhill cleanly: count=%d maxX=%d", count, maxX)
+				}
+			})
+		})
+	}
+}
+
+func TestLavaFlatSpreadMatchesVanillaDistance(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name      string
+		dim       world.Dimension
+		wantCount int
+		wantMax   int
+		ticks     int
+	}{
+		{"nether flat spread distance 7", world.Nether, 113, 7, 160},
+		{"overworld flat spread distance 3", world.Overworld, 25, 3, 200},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			w := world.Config{Synchronous: true, Dim: tc.dim, RandomTickSpeed: -1}.New()
+			t.Cleanup(func() { _ = w.Close() })
+			const y = 80
+			<-w.Exec(func(tx *world.Tx) {
+				for x := -10; x <= 10; x++ {
+					for z := -10; z <= 10; z++ {
+						tx.SetBlock(cube.Pos{x, y, z}, block.Stone{}, nil)
+					}
+				}
+				tx.SetLiquid(cube.Pos{0, y + 1, 0}, block.Lava{Depth: 8, Still: true})
+			})
+			for range tc.ticks {
+				w.AdvanceTick()
+			}
+			<-w.Exec(func(tx *world.Tx) {
+				count, maxDist := 0, 0
+				for x := -10; x <= 10; x++ {
+					for z := -10; z <= 10; z++ {
+						if liq, ok := tx.Liquid(cube.Pos{x, y + 1, z}); ok && liq.LiquidType() == "lava" {
+							count++
+							dist := max(x, -x) + max(z, -z)
+							if dist > maxDist {
+								maxDist = dist
+							}
+						}
+					}
+				}
+				if count != tc.wantCount || maxDist != tc.wantMax {
+					t.Fatalf("%s: count=%d maxDist=%d, want %d and %d", tc.name, count, maxDist, tc.wantCount, tc.wantMax)
+				}
+			})
+		})
+	}
+}

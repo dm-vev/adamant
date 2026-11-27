@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"math"
 	"slices"
+	"sync"
 	"sync/atomic"
 
 	"github.com/dm-vev/adamant/server/block"
@@ -51,6 +52,8 @@ type pointCharge struct {
 	charge float64
 }
 
+var singlePlayerNear = [1]int{0}
+
 // spawnState ports NaturalSpawner.SpawnState with its LocalMobCapCalculator.
 type spawnState struct {
 	tx            *world.Tx
@@ -70,6 +73,71 @@ type spawnState struct {
 	grid map[[2]int32][]int
 	// playerPos caches each player's position in players order.
 	playerPos []mgl64.Vec3
+
+	// Reusable scratch buffers when acquired via acquireSpawnState.
+	pooled         bool
+	trackersBuf    []world.Entity
+	centresBuf     []world.ChunkPos
+	runsBuf        []chunkRun
+	trackerRunsBuf []chunkRun
+	chunkX, chunkZ []int32
+	posX, posZ     []float64
+	byX, column    []int
+	ends, nearBuf  []int
+	spawnOut       []spawnChunk
+	nearFlat       []int
+	nearSpans      map[world.ChunkPos][2]int32
+}
+
+var spawnStatePool = sync.Pool{
+	New: func() any {
+		return &spawnState{
+			pooled:    true,
+			near:      make(map[world.ChunkPos][]int, 32),
+			nearSpans: make(map[world.ChunkPos][2]int32, 64),
+			grid:      make(map[[2]int32][]int, 16),
+		}
+	},
+}
+
+func acquireSpawnState() *spawnState {
+	return spawnStatePool.Get().(*spawnState)
+}
+
+func releaseSpawnState(s *spawnState) {
+	if s == nil || !s.pooled {
+		return
+	}
+	s.players = nil
+	clear(s.trackersBuf)
+	s.trackersBuf = s.trackersBuf[:0]
+	s.tx = nil
+	s.fortressEnemy = nil
+	s.lastValid = false
+	s.counts = [8]int{}
+	s.charges = s.charges[:0]
+	s.playerPos = s.playerPos[:0]
+	s.playerCounts = s.playerCounts[:0]
+	s.centresBuf = s.centresBuf[:0]
+	s.runsBuf = s.runsBuf[:0]
+	s.trackerRunsBuf = s.trackerRunsBuf[:0]
+	s.nearBuf = s.nearBuf[:0]
+	s.ends = s.ends[:0]
+	s.nearFlat = s.nearFlat[:0]
+	for i := range s.spawnOut {
+		s.spawnOut[i].near = nil
+	}
+	s.spawnOut = s.spawnOut[:0]
+	if len(s.near) > 0 {
+		clear(s.near)
+	}
+	if len(s.nearSpans) > 0 {
+		clear(s.nearSpans)
+	}
+	if len(s.grid) > 0 {
+		clear(s.grid)
+	}
+	spawnStatePool.Put(s)
 }
 
 // playerCell is the size of the cells of spawnState.grid: the 128 blocks
@@ -99,28 +167,34 @@ func (s *spawnState) playersAround(x, z float64, f func(i int)) {
 // chunk within eight chunks of a player and 128 blocks of one spawns the
 // categories of mobs that are under their caps.
 func spawnNaturally(tx *world.Tx, players []world.Entity, r *vanilla.Random) {
+	state := acquireSpawnState()
+	defer releaseSpawnState(state)
+
 	// DistanceManager.naturalSpawnChunkCounter: the chunks within eight of
 	// a player, spectators included while they generate chunks.
 	trackers := players
 	if tx.World().GameRuleBool("spectators_generate_chunks") {
-		trackers = nil
+		state.trackersBuf = state.trackersBuf[:0]
 		for p := range tx.Players() {
-			trackers = append(trackers, p)
+			state.trackersBuf = append(state.trackersBuf, p)
 		}
+		trackers = state.trackersBuf
 	}
-	trackerRuns := chunkRunsAround(trackers, 8)
+	state.centresBuf, state.trackerRunsBuf = chunkRunsInto(trackers, 8, state.centresBuf[:0], state.trackerRunsBuf[:0])
+	trackerRuns := state.trackerRunsBuf
 	chunkCount := 0
 	for _, run := range trackerRuns {
 		chunkCount += int(run.z1-run.z0) + 1
 	}
-	state := newSpawnState(tx, players, chunkCount)
+	initSpawnState(state, tx, players, chunkCount)
 	w := tx.World()
 	// ServerChunkCache.spawnEnemies follows the spawn_monsters rule alone:
 	// on peaceful the spawn rules of each kind turn monsters away, and
 	// hoglins and piglins still spawn.
 	enemies := w.MonsterSpawningEnabled()
 	persistent := tx.CurrentTick()%400 == 0
-	var categories []naturalSpawnCategory
+	var catBuf [len(spawningCategories)]naturalSpawnCategory
+	categories := catBuf[:0]
 	for _, c := range spawningCategories {
 		friendly, isPersistent := c != spawnMonster, c == spawnCreature
 		if (enemies || friendly) && (persistent || !isPersistent) && state.canSpawnGlobal(c) {
@@ -132,7 +206,8 @@ func spawnNaturally(tx *world.Tx, players []world.Entity, r *vanilla.Random) {
 	// every chunk the trackers' do that may spawn mobs.
 	runs := trackerRuns
 	if len(trackers) != len(players) {
-		runs = chunkRunsAround(players, 8)
+		state.centresBuf, state.runsBuf = chunkRunsInto(players, 8, state.centresBuf[:0], state.runsBuf[:0])
+		runs = state.runsBuf
 	}
 	chunks := state.spawningChunks(runs)
 	// Util.shuffle.
@@ -165,13 +240,27 @@ func chunkOf(e world.Entity) world.ChunkPos {
 // chunkRunsAround returns the chunks within r chunks of the chunks of the
 // entities passed, as runs that do not overlap, in order of X and then Z.
 func chunkRunsAround(entities []world.Entity, r int32) []chunkRun {
-	centres := make([]world.ChunkPos, 0, len(entities))
+	_, runs := chunkRunsInto(entities, r, nil, nil)
+	return runs
+}
+
+func chunkRunsInto(entities []world.Entity, r int32, centres []world.ChunkPos, runs []chunkRun) ([]world.ChunkPos, []chunkRun) {
+	if cap(centres) < len(entities) {
+		centres = make([]world.ChunkPos, 0, len(entities))
+	} else {
+		centres = centres[:0]
+	}
 	for _, e := range entities {
 		centres = append(centres, chunkOf(e))
 	}
 	slices.SortFunc(centres, compareChunks)
 	centres = slices.Compact(centres)
-	runs := make([]chunkRun, 0, len(centres)*int(2*r+1))
+	need := len(centres) * int(2*r+1)
+	if cap(runs) < need {
+		runs = make([]chunkRun, 0, need)
+	} else {
+		runs = runs[:0]
+	}
 	for _, c := range centres {
 		for x := c[0] - r; x <= c[0]+r; x++ {
 			runs = append(runs, chunkRun{x: x, z0: c[1] - r, z1: c[1] + r})
@@ -188,7 +277,7 @@ func chunkRunsAround(entities []world.Entity, r int32) []chunkRun {
 		}
 		merged = append(merged, run)
 	}
-	return merged
+	return centres, merged
 }
 
 // compareChunks orders chunks by X and then Z.
@@ -203,6 +292,30 @@ type spawnChunk struct {
 	near []int
 }
 
+func (s *spawnState) spawningChunksSingle(runs []chunkRun) []spawnChunk {
+	chunks := s.spawnOut[:0]
+	p := s.players[0].Position()
+	px, pz := p[0], p[2]
+	const limit = playerCell * playerCell
+	for _, run := range runs {
+		dx := float64(run.x)*16 + 8 - px
+		dx2 := dx * dx
+		if dx2 >= limit {
+			continue
+		}
+		for z := run.z0; z <= run.z1; z++ {
+			dz := float64(z)*16 + 8 - pz
+			if dx2+dz*dz < limit {
+				if pos := (world.ChunkPos{run.x, z}); s.tx.EntityTicking(pos) {
+					chunks = append(chunks, spawnChunk{pos: pos, near: singlePlayerNear[:]})
+				}
+			}
+		}
+	}
+	s.spawnOut = chunks
+	return chunks
+}
+
 // spawningChunks ports ChunkMap.collectSpawningChunks with the check of
 // ServerLevel.canSpawnEntitiesInChunk: the entity-ticking chunks of the runs
 // passed with players near, in the order of the runs. The players near each
@@ -210,24 +323,30 @@ type spawnChunk struct {
 // the runs.
 func (s *spawnState) spawningChunks(runs []chunkRun) []spawnChunk {
 	n := len(s.players)
-	chunkX, chunkZ := make([]int32, n), make([]int32, n)
-	posX, posZ := make([]float64, n), make([]float64, n)
-	byX := make([]int, n)
+	if n == 0 {
+		return nil
+	}
+	if n == 1 {
+		return s.spawningChunksSingle(runs)
+	}
+	if cap(s.chunkX) < n {
+		s.chunkX, s.chunkZ = make([]int32, n), make([]int32, n)
+		s.posX, s.posZ = make([]float64, n), make([]float64, n)
+		s.byX = make([]int, n)
+	} else {
+		s.chunkX, s.chunkZ = s.chunkX[:n], s.chunkZ[:n]
+		s.posX, s.posZ = s.posX[:n], s.posZ[:n]
+		s.byX = s.byX[:n]
+	}
+	chunkX, chunkZ, posX, posZ, byX := s.chunkX, s.chunkZ, s.posX, s.posZ, s.byX
 	for i, p := range s.players {
 		c, pos := chunkOf(p), p.Position()
 		chunkX[i], chunkZ[i], posX[i], posZ[i], byX[i] = c[0], c[1], pos[0], pos[2], i
 	}
 	slices.SortStableFunc(byX, func(a, b int) int { return cmp.Compare(chunkX[a], chunkX[b]) })
-	var (
-		chunks []spawnChunk
-		// ends holds the end of the players of each chunk in near.
-		ends, near []int
-		// column holds the players within eight chunk columns of the run,
-		// by chunk Z.
-		column     []int
-		columnX    int32
-		start, end int
-	)
+	chunks, ends, near, column := s.spawnOut[:0], s.ends[:0], s.nearBuf[:0], s.column[:0]
+	var columnX int32
+	var start, end int
 	for k, run := range runs {
 		if k == 0 || run.x != columnX {
 			columnX = run.x
@@ -270,30 +389,36 @@ func (s *spawnState) spawningChunks(runs []chunkRun) []spawnChunk {
 	for i := range chunks {
 		chunks[i].near, first = near[first:ends[i]:ends[i]], ends[i]
 	}
+	s.spawnOut, s.ends, s.nearBuf, s.column = chunks, ends, near, column
 	return chunks
 }
 
-// newSpawnState ports NaturalSpawner.createState: the mobs that may despawn
+// initSpawnState ports NaturalSpawner.createState: the mobs that may despawn
 // count towards the caps of their categories, near which players they are,
 // and the spawn potential of the mobs with spawn costs.
-func newSpawnState(tx *world.Tx, players []world.Entity, chunkCount int) *spawnState {
-	s := &spawnState{
-		tx:           tx,
-		players:      players,
-		playerPos:    make([]mgl64.Vec3, len(players)),
-		chunkCount:   chunkCount,
-		near:         map[world.ChunkPos][]int{},
-		playerCounts: make([][8]int, len(players)),
-		grid:         map[[2]int32][]int{},
+func initSpawnState(s *spawnState, tx *world.Tx, players []world.Entity, chunkCount int) {
+	s.tx = tx
+	s.players = players
+	s.chunkCount = chunkCount
+	n := len(players)
+	if cap(s.playerPos) < n {
+		s.playerPos = make([]mgl64.Vec3, n)
+		s.playerCounts = make([][8]int, n)
+	} else {
+		s.playerPos = s.playerPos[:n]
+		s.playerCounts = s.playerCounts[:n]
+		clear(s.playerCounts)
 	}
 	for i, p := range players {
 		pos := p.Position()
 		s.playerPos[i] = pos
-		c := playerCellOf(pos[0], pos[2])
-		s.grid[c] = append(s.grid[c], i)
+		if n > 1 {
+			c := playerCellOf(pos[0], pos[2])
+			s.grid[c] = append(s.grid[c], i)
+		}
 	}
 	for e := range tx.EntitiesOfType(countsTowardsCaps) {
-		id := world.JavaEntityID(e)
+		id := world.CanonicalEntityID(e)
 		category, ok := mobCategories[id]
 		if !ok {
 			continue
@@ -307,7 +432,7 @@ func newSpawnState(tx *world.Tx, players []world.Entity, chunkCount int) *spawnS
 		if !tx.ChunkLoaded(chunk) {
 			continue
 		}
-		if !world.HasJavaSpawnCost(id) {
+		if !world.HasSpawnCost(id) {
 			// No biome gives the mob a spawn cost.
 		} else if cost, ok := biomeSpawnsOf(tx.Biome(pos)).costs[id]; ok {
 			s.charges = append(s.charges, pointCharge{pos: pos, charge: cost.Charge})
@@ -317,19 +442,50 @@ func newSpawnState(tx *world.Tx, players []world.Entity, chunkCount int) *spawnS
 		}
 		s.counts[category]++
 	}
-	return s
 }
 
 // countsTowardsCaps reports whether the entities of a type are mobs of a
 // spawning category, which may count towards its caps.
 func countsTowardsCaps(t world.EntityType) bool {
-	_, ok := mobCategories[world.JavaEntityTypeID(t.EncodeEntity())]
+	_, ok := mobCategories[world.CanonicalEntityTypeID(t.EncodeEntity())]
 	return ok
 }
 
 // playersNear ports ChunkMap.getPlayersCloseForSpawning: the players within
 // 128 blocks of the centre of the chunk.
 func (s *spawnState) playersNear(pos world.ChunkPos) []int {
+	if len(s.players) == 1 {
+		ppos := s.ensurePlayerPos()
+		x, z := float64(pos[0])*16+8, float64(pos[1])*16+8
+		dx, dz := x-ppos[0][0], z-ppos[0][2]
+		if dx*dx+dz*dz < playerCell*playerCell {
+			return singlePlayerNear[:]
+		}
+		return nil
+	}
+	if s.nearSpans != nil {
+		if span, ok := s.nearSpans[pos]; ok {
+			return s.nearFlat[span[0]:span[1]]
+		}
+		ppos := s.ensurePlayerPos()
+		start := len(s.nearFlat)
+		x, z := float64(pos[0])*16+8, float64(pos[1])*16+8
+		for dx := int32(-1); dx <= 1; dx++ {
+			c := playerCellOf(x, z)
+			for dz := int32(-1); dz <= 1; dz++ {
+				for _, i := range s.grid[[2]int32{c[0] + dx, c[1] + dz}] {
+					p := ppos[i]
+					px, pz := x-p[0], z-p[2]
+					if px*px+pz*pz < playerCell*playerCell {
+						s.nearFlat = append(s.nearFlat, i)
+					}
+				}
+			}
+		}
+		end := len(s.nearFlat)
+		s.nearSpans[pos] = [2]int32{int32(start), int32(end)}
+		return s.nearFlat[start:end]
+	}
 	if near, ok := s.near[pos]; ok {
 		return near
 	}
@@ -375,7 +531,7 @@ func (s *spawnState) canSpawnLocal(c naturalSpawnCategory, near []int) bool {
 // it adds little enough to the spawn potential.
 func (s *spawnState) canSpawn(id string, pos cube.Pos) bool {
 	s.lastPos, s.lastType, s.lastValid = pos, id, true
-	if !world.HasJavaSpawnCost(id) {
+	if !world.HasSpawnCost(id) {
 		s.lastCharge = 0
 		return true
 	}
@@ -408,7 +564,7 @@ func (s *spawnState) afterSpawn(id string, pos cube.Pos) {
 	charge := 0.
 	if s.lastValid && pos == s.lastPos && id == s.lastType {
 		charge = s.lastCharge
-	} else if !world.HasJavaSpawnCost(id) {
+	} else if !world.HasSpawnCost(id) {
 		// No biome gives the mob a spawn cost.
 	} else if cost, ok := biomeSpawnsOf(s.tx.Biome(pos)).costs[id]; ok {
 		charge = cost.Charge
@@ -760,9 +916,9 @@ func biomeSpawnsOf(b world.Biome) *biomeSpawns {
 			return spawns
 		}
 	}
-	name := world.JavaBiomeName(b)
-	spawns := &biomeSpawns{costs: world.JavaBiomeSpawnCosts(name)}
-	if rows, err := world.JavaBiomeNaturalSpawns(name); err == nil {
+	name := world.CanonicalBiomeName(b)
+	spawns := &biomeSpawns{costs: world.BiomeSpawnCosts(name)}
+	if rows, err := world.BiomeNaturalSpawns(name); err == nil {
 		for c := range spawns.spawns {
 			category := spawnCategoryName(naturalSpawnCategory(c))
 			for _, e := range rows {

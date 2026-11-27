@@ -28,8 +28,8 @@ func dropAllDeathLoot(tx *world.Tx, e world.Entity, src world.DamageSource) {
 			tx.World().Scoreboard().AddCriteria(scoreboard.TotalKillCount, named.Name(), 1)
 		}
 	}
-	id := world.JavaEntityID(e)
-	monster := javaMonsters[id]
+	id := world.CanonicalEntityID(e)
+	monster := monsterTypes[id]
 	baby := mobIsBaby(e)
 	xp := &world.DeathExperience{Amount: mobBaseExperience(tx, e, id, baby), Eligible: monster || id == "minecraft:hoglin" || id != "minecraft:tadpole" && !baby}
 	tx.EmitGameEvent(world.GameEventEntityDie, e.Position(), world.GameEventContext{Source: e, Experience: xp})
@@ -160,7 +160,7 @@ func mobIsBaby(e world.Entity) bool {
 
 // javaMonsters are the entities whose Java class extends Monster: their
 // babies still drop loot and experience.
-var javaMonsters = map[string]bool{
+var monsterTypes = map[string]bool{
 	"minecraft:blaze": true, "minecraft:bogged": true, "minecraft:breeze": true, "minecraft:cave_spider": true,
 	"minecraft:creaking": true, "minecraft:creeper": true, "minecraft:drowned": true, "minecraft:elder_guardian": true,
 	"minecraft:enderman": true, "minecraft:endermite": true, "minecraft:evoker": true, "minecraft:giant": true,
@@ -188,7 +188,7 @@ var mobXPReward = map[string]int{
 
 // javaAnimals are Animal, WaterAnimal and AgeableWaterCreature subclasses,
 // which reward 1-3 experience.
-var javaAnimals = map[string]bool{
+var animalTypes = map[string]bool{
 	"minecraft:cow": true, "minecraft:mooshroom": true, "minecraft:pig": true, "minecraft:sheep": true,
 	"minecraft:chicken": true, "minecraft:rabbit": true, "minecraft:fox": true, "minecraft:wolf": true,
 	"minecraft:cat": true, "minecraft:ocelot": true, "minecraft:parrot": true, "minecraft:panda": true,
@@ -255,7 +255,7 @@ func mobBaseExperience(tx *world.Tx, e world.Entity, id string, baby bool) int {
 		}
 		return reward
 	}
-	if javaAnimals[id] {
+	if animalTypes[id] {
 		return 1 + randInt(random, 3)
 	}
 	return 0
@@ -263,7 +263,7 @@ func mobBaseExperience(tx *world.Tx, e world.Entity, id string, baby bool) int {
 
 // mobLootContext builds the LootContextParamSets.ENTITY parameters.
 func mobLootContext(tx *world.Tx, e world.Entity, src world.DamageSource) loot.Context {
-	ctx := loot.Context{Entity: world.JavaEntityID(e), Origin: e.Position(), Tx: tx, ThisEntity: e, Damage: src, DamageTags: damageTags(src)}
+	ctx := loot.Context{Entity: world.CanonicalEntityID(e), Origin: e.Position(), Tx: tx, ThisEntity: e, Damage: src, DamageTags: damageTags(src)}
 	ctx.SourceEntity, ctx.Player = deathCredit(tx, src)
 	ctx.PlayerKilled = ctx.Player != nil
 	ctx.DirectEntity = directDamageEntity(src)

@@ -1,113 +1,59 @@
 package session
 
 import (
-	"fmt"
-	"reflect"
-
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/world"
 )
 
-// stackRequest is the request an action being handled belongs to, and what
-// the handlers of its actions are given beside the handler: the session, the
-// transaction and the player.
-type stackRequest struct {
-	req mc.ItemStackRequest
-	s   *Session
-	tx  *world.Tx
-	c   Controllable
-}
-
-// stackActionHandler handles an action of an item stack request.
-type stackActionHandler func(h *ItemStackRequestHandler, action mc.StackRequestAction, r *stackRequest) error
-
-// stackActionEntry is a row of stackRequestActions: the type of an action and
-// the function that handles it.
-type stackActionEntry struct {
-	action reflect.Type
-	run    stackActionHandler
-}
-
-// stackAction returns the row of the action type A handled by f, which is
-// given the action as the type it is.
-func stackAction[A mc.StackRequestAction](f func(h *ItemStackRequestHandler, a A, r *stackRequest) error) stackActionEntry {
-	return stackActionEntry{
-		action: reflect.TypeFor[A](),
-		run: func(h *ItemStackRequestHandler, action mc.StackRequestAction, r *stackRequest) error {
-			return f(h, action.(A), r)
-		},
-	}
-}
-
-// stackActions returns the table of the rows passed by the type of the action.
-// It panics for two rows of one type.
-func stackActions(rows ...stackActionEntry) map[reflect.Type]stackActionHandler {
-	table := make(map[reflect.Type]stackActionHandler, len(rows))
-	for _, row := range rows {
-		if _, dup := table[row.action]; dup {
-			panic(fmt.Sprintf("two handlers for the stack request action %v", row.action))
-		}
-		table[row.action] = row.run
-	}
-	return table
-}
-
-// stackRequestActions maps the type of an action of an item stack request to
-// the function that handles it. An action of a type it does not hold is
-// refused as unhandled.
+// handleAction dispatches an item stack request action directly by concrete
+// pointer type without per-request context allocation or reflection lookup.
 //
 //go:generate go run ./internal/gentables -kind stack
-var stackRequestActions = stackActions(
-	stackAction(func(h *ItemStackRequestHandler, a *mc.TakeStackRequestAction, r *stackRequest) error {
-		return h.handleTake(a, r.s, r.tx)
-	}),
-	stackAction(func(h *ItemStackRequestHandler, a *mc.PlaceStackRequestAction, r *stackRequest) error {
-		return h.handlePlace(a, r.s, r.tx)
-	}),
-	stackAction(func(h *ItemStackRequestHandler, a *mc.SwapStackRequestAction, r *stackRequest) error {
-		return h.handleSwap(a, r.s, r.tx)
-	}),
-	stackAction(func(h *ItemStackRequestHandler, a *mc.DestroyStackRequestAction, r *stackRequest) error {
-		return h.handleDestroy(a, r.s, r.tx, r.c)
-	}),
-	stackAction(func(h *ItemStackRequestHandler, a *mc.DropStackRequestAction, r *stackRequest) error {
-		return h.handleDrop(a, r.s, r.tx)
-	}),
-	stackAction(func(h *ItemStackRequestHandler, a *mc.BeaconPaymentStackRequestAction, _ *stackRequest) error {
-		return h.handleBeaconPayment(a)
-	}),
-	stackAction(func(h *ItemStackRequestHandler, a *mc.CraftRecipeStackRequestAction, r *stackRequest) error {
-		return h.handleCraftRecipe(a, r.s, r.tx)
-	}),
-	stackAction(func(h *ItemStackRequestHandler, a *mc.AutoCraftRecipeStackRequestAction, r *stackRequest) error {
-		return h.handleAutoCraft(a, r.s)
-	}),
-	stackAction(func(h *ItemStackRequestHandler, a *mc.CraftRecipeOptionalStackRequestAction, r *stackRequest) error {
-		return h.handleCraftRecipeOptional(a, r.req.FilterStrings)
-	}),
-	stackAction(func(h *ItemStackRequestHandler, a *mc.CraftLoomRecipeStackRequestAction, _ *stackRequest) error {
-		return h.handleLoomCraft(a)
-	}),
-	stackAction(func(h *ItemStackRequestHandler, _ *mc.CraftGrindstoneRecipeStackRequestAction, _ *stackRequest) error {
-		return h.batchOp(h.batch.Grind)
-	}),
-	stackAction(func(h *ItemStackRequestHandler, a *mc.CraftCreativeStackRequestAction, r *stackRequest) error {
-		return h.handleCreativeCraft(a, r.c)
-	}),
-	stackAction(func(h *ItemStackRequestHandler, a *mc.MineBlockStackRequestAction, r *stackRequest) error {
-		return h.handleMineBlock(a, r.s, r.tx)
-	}),
-	stackAction(func(h *ItemStackRequestHandler, a *mc.CreateStackRequestAction, _ *stackRequest) error {
-		return h.batchOp(func() error { return h.batch.TakeResult(int(a.ResultsSlot)) })
-	}),
-	stackAction(func(h *ItemStackRequestHandler, a *mc.ConsumeStackRequestAction, r *stackRequest) error {
-		return h.handleConsume(a, r.s, r.tx)
-	}),
-	stackAction(func(h *ItemStackRequestHandler, a *mc.CraftResultsDeprecatedStackRequestAction, _ *stackRequest) error {
-		return h.handleCraftResults(a)
-	}),
-)
+func (h *ItemStackRequestHandler) handleAction(action mc.StackRequestAction, req mc.ItemStackRequest, s *Session, tx *world.Tx, c Controllable) (error, bool) {
+	switch a := action.(type) {
+	case *mc.TakeStackRequestAction:
+		return h.handleTake(a, s, tx), true
+	case *mc.PlaceStackRequestAction:
+		return h.handlePlace(a, s, tx), true
+	case *mc.SwapStackRequestAction:
+		return h.handleSwap(a, s, tx), true
+	case *mc.DestroyStackRequestAction:
+		return h.handleDestroy(a, s, tx, c), true
+	case *mc.DropStackRequestAction:
+		return h.handleDrop(a, s, tx), true
+	case *mc.BeaconPaymentStackRequestAction:
+		return h.handleBeaconPayment(a), true
+	case *mc.CraftRecipeStackRequestAction:
+		return h.handleCraftRecipe(a, s, tx), true
+	case *mc.AutoCraftRecipeStackRequestAction:
+		return h.handleAutoCraft(a, s), true
+	case *mc.CraftRecipeOptionalStackRequestAction:
+		return h.handleCraftRecipeOptional(a, req.FilterStrings), true
+	case *mc.CraftLoomRecipeStackRequestAction:
+		return h.handleLoomCraft(a), true
+	case *mc.CraftGrindstoneRecipeStackRequestAction:
+		from := len(h.batch.Changes())
+		err := h.batch.Grind()
+		h.recordBatchChanges(from)
+		return err, true
+	case *mc.CraftCreativeStackRequestAction:
+		return h.handleCreativeCraft(a, c), true
+	case *mc.MineBlockStackRequestAction:
+		return h.handleMineBlock(a, s, tx), true
+	case *mc.CreateStackRequestAction:
+		from := len(h.batch.Changes())
+		err := h.batch.TakeResult(int(a.ResultsSlot))
+		h.recordBatchChanges(from)
+		return err, true
+	case *mc.ConsumeStackRequestAction:
+		return h.handleConsume(a, s, tx), true
+	case *mc.CraftResultsDeprecatedStackRequestAction:
+		return h.handleCraftResults(a), true
+	default:
+		return nil, false
+	}
+}
 
 // handleCraftRecipe handles a CraftRecipe stack request action: by the table
 // that is open if it is one that crafts in a way of its own, else as a craft

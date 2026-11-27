@@ -38,7 +38,7 @@ type lootEntity struct {
 	id string
 }
 
-func (e lootEntity) JavaEntityID() string { return e.id }
+func (e lootEntity) CanonicalEntityID() string { return e.id }
 
 // TestEntityTypeTagPredicate checks a predicate naming an entity type tag,
 // as the creeper's music disc pool names #minecraft:skeletons for its
@@ -181,7 +181,7 @@ func TestSetEnchantmentsPreservesOthersAndAppliesAddMode(t *testing.T) {
 	}
 }
 
-func TestDiamondOreFortuneMatchesJavaBonusBoundaries(t *testing.T) {
+func TestDiamondOreFortuneMatchesBonusBoundaries(t *testing.T) {
 	tool := item.NewStack(item.Pickaxe{Tier: item.ToolTierDiamond}, 1).
 		WithForcedEnchantments(item.NewEnchantment(enchantment.Fortune, 3))
 	// Java 26.3 XoroshiroRandomSource and ApplyBonusCount.OreDrops: clamped

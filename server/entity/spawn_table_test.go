@@ -55,7 +55,7 @@ func spawnMobLine(w *world.World, id string) string {
 // randomSpawnNBT are the NBT paths that a mob draws from the global random when it is made, not from the
 // randomness of its spawn options: the time to the next egg of a chicken and to the next scute of an armadillo.
 // nbtHash leaves them out.
-var randomSpawnNBT = map[string]bool{"EggLayTime": true, "adamant:java/scute_time": true}
+var randomSpawnNBT = map[string]bool{"EggLayTime": true, "adamant:state/scute_time": true}
 
 // nbtHash hashes NBT data with its map keys sorted, so that equal data hashes equally. The paths of
 // randomSpawnNBT are left out.

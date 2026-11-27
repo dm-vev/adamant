@@ -34,7 +34,7 @@ func readActorItem(v any) item.Stack {
 	if !ok {
 		return item.Stack{}
 	}
-	if _, java := m["id"]; java {
+	if _, extra := m["id"]; extra {
 		s, _ := item.StackFromStructureNBT(m)
 		return s
 	}

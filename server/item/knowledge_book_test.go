@@ -8,7 +8,7 @@ import (
 	"github.com/dm-vev/adamant/server/world"
 )
 
-func TestKnowledgeBookNativePersistenceRetainsJavaIdentity(t *testing.T) {
+func TestKnowledgeBookNativePersistenceRetainsIdentity(t *testing.T) {
 	recipes := []string{"minecraft:oak_planks", "minecraft:crafting_table"}
 	stack, err := StackFromStructureNBT(map[string]any{
 		"id": "minecraft:knowledge_book", "count": int32(1),

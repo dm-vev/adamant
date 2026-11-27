@@ -304,7 +304,7 @@ type Self interface {
 	CorrectMove(c Controllable, pos, vel mgl64.Vec3, tick uint64)
 	// ViewRecipesUnlocked shows the recipes of the Java Edition IDs passed
 	// as newly unlocked, those of them the client has a recipe for.
-	ViewRecipesUnlocked(javaIDs []string)
+	ViewRecipesUnlocked(stateIDs []string)
 	// ShowSkin shows every client the new skin of the player, those that
 	// only list it too, and lists it so for clients that join later.
 	ShowSkin(sk skin.Skin)

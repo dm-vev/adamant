@@ -13,7 +13,7 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-func TestDrownedJavaSpawnEquipmentAttributesRoundTrip(t *testing.T) {
+func TestDrownedSpawnEquipmentAttributesRoundTrip(t *testing.T) {
 	t.Parallel()
 	weapon := map[string]any{"id": "minecraft:iron_sword", "count": int32(1), "components": map[string]any{
 		"minecraft:damage":       int32(7),
@@ -325,7 +325,7 @@ func TestNativeMapEquipmentAndClearedMetadataSurviveMCDB(t *testing.T) {
 			t.Fatal(err)
 		}
 		m, ok := restored.Item().(item.FilledMap)
-		if !ok || !m.HasNativeID || m.NativeID != 987654321 || m.HasJavaID {
+		if !ok || !m.HasNativeID || m.NativeID != 987654321 || m.HasCanonicalID {
 			t.Fatalf("restart %d changed an unmapped native map: %v", stage, restored)
 		}
 		if stage == 0 {

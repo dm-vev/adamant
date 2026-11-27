@@ -111,7 +111,7 @@ func crashReport(f world.Fault, now time.Time) []byte {
 	}
 
 	b.WriteString("\n-- System Details --\nDetails:\n")
-	fmt.Fprintf(&b, "\tMinecraft Version: %s (Bedrock Edition), porting Java Edition %s\n", version.Minecraft, version.Java)
+	fmt.Fprintf(&b, "\tMinecraft Version: %s (Bedrock Edition), porting Java Edition %s\n", version.Minecraft, version.Reference)
 	revision := "unknown"
 	if info, ok := debug.ReadBuildInfo(); ok {
 		for _, set := range info.Settings {

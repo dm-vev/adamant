@@ -48,6 +48,10 @@ type Movement struct {
 	rotChanged           bool
 }
 
+var velBroadcastPool = sync.Pool{
+	New: func() any { return new(world.Broadcast) },
+}
+
 // Send sends the Movement to any viewers watching the entity at the time of the movement. If the position/velocity
 // changes were negligible, nothing is sent. The movement of an Ent goes as its world.MoveTracker shows it.
 func (m *Movement) Send() {
@@ -56,21 +60,33 @@ func (m *Movement) Send() {
 		m.releaseViewers()
 		return
 	}
+	if len(m.v) == 0 {
+		m.releaseViewers()
+		return
+	}
 	posChanged := !m.dpos.ApproxEqualThreshold(zeroVec3, epsilon)
 	velChanged := !m.dvel.ApproxEqualThreshold(zeroVec3, epsilon)
 
-	var velB world.Broadcast
+	var velB *world.Broadcast
+	if velChanged {
+		velB = velBroadcastPool.Get().(*world.Broadcast)
+		*velB = world.Broadcast{}
+	}
 	for _, v := range m.v {
 		if posChanged || m.rotChanged {
 			v.ViewEntityMovement(m.e, m.pos, m.rot, m.onGround)
 		}
 		if velChanged {
 			if bv, ok := v.(world.EntityBroadcastViewer); ok {
-				bv.ViewEntityVelocityShared(m.e, m.vel, &velB)
+				bv.ViewEntityVelocityShared(m.e, m.vel, velB)
 			} else {
 				v.ViewEntityVelocity(m.e, m.vel)
 			}
 		}
+	}
+	if velB != nil {
+		*velB = world.Broadcast{}
+		velBroadcastPool.Put(velB)
 	}
 	m.releaseViewers()
 }
@@ -101,6 +117,7 @@ func (m *Movement) releaseViewers() {
 		m.releaseTx.ReleaseViewers(m.v)
 		m.releaseTx, m.v = nil, nil
 	}
+	m.e = nil
 }
 
 // Position returns the position as a result of the Movement as an mgl64.Vec3.

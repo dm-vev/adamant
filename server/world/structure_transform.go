@@ -119,7 +119,7 @@ func TransformState(state BlockState, mirror StructureMirror, rotation Structure
 			case k == "facing":
 				v = TransformDirection(str, mirror, rotation)
 			case k == "orientation":
-				v = transformJavaOrientation(str, mirror, rotation)
+				v = transformOrientation(str, mirror, rotation)
 			case isRailShape(str):
 				v = transformRailShape(str, mirror, rotation)
 			}
@@ -134,7 +134,7 @@ func TransformState(state BlockState, mirror StructureMirror, rotation Structure
 		}
 	}
 	if value, exists := props["rotation"]; exists {
-		n, valid := javaStateInteger(value)
+		n, valid := canonicalStateInteger(value)
 		if valid {
 			props["rotation"] = int32(transformSixteenthRotation(uint8(n), mirror, rotation))
 		}
@@ -159,7 +159,7 @@ func TransformState(state BlockState, mirror StructureMirror, rotation Structure
 
 // javaStateInteger reads an integer property value, which Java states may hold
 // as a number or as its decimal text.
-func javaStateInteger(value any) (int64, bool) {
+func canonicalStateInteger(value any) (int64, bool) {
 	switch v := value.(type) {
 	case string:
 		n, err := strconv.ParseInt(v, 10, 64)
@@ -217,7 +217,7 @@ func TransformDirection(direction string, mirror StructureMirror, rotation Struc
 	}
 }
 
-func transformJavaOrientation(value string, mirror StructureMirror, rotation StructureRotation) string {
+func transformOrientation(value string, mirror StructureMirror, rotation StructureRotation) string {
 	parts := strings.Split(value, "_")
 	for i, part := range parts {
 		parts[i] = TransformDirection(part, mirror, rotation)

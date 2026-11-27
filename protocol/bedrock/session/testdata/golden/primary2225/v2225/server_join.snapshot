@@ -5036,7 +5036,7 @@
         [185] "minecraft:dappled_forest"
         [186] "dappled_forest"
     sha256 24159753c6f89d7b663e41f4ef5fc33d2ff323ee32982b43c04c44bf94adafa7
->> CreativeContent id=145 len=72584
+>> CreativeContent id=145 len=72587
     CreativeContentPacket
       Groups: []v2225.CreativeGroup (123)
         [0] CreativeGroup
@@ -6382,9 +6382,9 @@
         [918] {CreativeItemNetworkID:919 Item:{NetworkID:-458 MetadataValue:0 BlockRuntimeID:1041212874 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0} GroupIndex:50}
         [919] {CreativeItemNetworkID:920 Item:{NetworkID:-459 MetadataValue:0 BlockRuntimeID:1467842196 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0} GroupIndex:50}
         [920] {CreativeItemNetworkID:921 Item:{NetworkID:-460 MetadataValue:0 BlockRuntimeID:-5792464 Count:1 NBTData:map["cursors":[] "id":"SculkCatalyst"] CanBePlacedOn:[] CanBreak:[] BlockingTick:0} GroupIndex:50}
-        [921] {CreativeItemNetworkID:922 Item:{NetworkID:-461 MetadataValue:0 BlockRuntimeID:879274693 Count:1 NBTData:map["BlockEntityVersion":0 "VibrationListener":map["selector":map[]] "adamant:java":map["listener":map["event_delay":0 "selector":map["… <351 chars sha256:d2f751a675fdcd2c>
-        [922] {CreativeItemNetworkID:923 Item:{NetworkID:-307 MetadataValue:0 BlockRuntimeID:-145164616 Count:1 NBTData:map["BlockEntityVersion":0 "VibrationListener":map["selector":map[]] "adamant:java":map["last_vibration_frequency":0 "listener":map["e… <371 chars sha256:e61412537aacbfd0>
-        [923] {CreativeItemNetworkID:924 Item:{NetworkID:-580 MetadataValue:0 BlockRuntimeID:1098378432 Count:1 NBTData:map["BlockEntityVersion":0 "VibrationListener":map["selector":map[]] "adamant:java":map["last_vibration_frequency":0 "listener":map["e… <381 chars sha256:a8cfaf85ce15a3b7>
+        [921] {CreativeItemNetworkID:922 Item:{NetworkID:-461 MetadataValue:0 BlockRuntimeID:879274693 Count:1 NBTData:map["BlockEntityVersion":0 "VibrationListener":map["selector":map[]] "adamant:state":map["listener":map["event_delay":0 "selector":map[… <352 chars sha256:e479a8bc5727ff8c>
+        [922] {CreativeItemNetworkID:923 Item:{NetworkID:-307 MetadataValue:0 BlockRuntimeID:-145164616 Count:1 NBTData:map["BlockEntityVersion":0 "VibrationListener":map["selector":map[]] "adamant:state":map["last_vibration_frequency":0 "listener":map["… <372 chars sha256:f35f828bed15d528>
+        [923] {CreativeItemNetworkID:924 Item:{NetworkID:-580 MetadataValue:0 BlockRuntimeID:1098378432 Count:1 NBTData:map["BlockEntityVersion":0 "VibrationListener":map["selector":map[]] "adamant:state":map["last_vibration_frequency":0 "listener":map["… <382 chars sha256:cc660e87d3409760>
         [924] {CreativeItemNetworkID:925 Item:{NetworkID:-466 MetadataValue:0 BlockRuntimeID:1769900828 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0} GroupIndex:51}
         [925] {CreativeItemNetworkID:926 Item:{NetworkID:338 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0} GroupIndex:52}
         [926] {CreativeItemNetworkID:927 Item:{NetworkID:754 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0} GroupIndex:52}
@@ -7332,8 +7332,8 @@
         [1868] {CreativeItemNetworkID:1869 Item:{NetworkID:-551 MetadataValue:0 BlockRuntimeID:340115056 Count:1 NBTData:map["animation":0 "id":"DecoratedPot" "item":map["Count":0 "Damage":0 "Name":"" "WasPickedUp":0] "sherds":["minecraft:brick" "minecraf… <347 chars sha256:b9afc8d089b6860e>
         [1869] {CreativeItemNetworkID:1870 Item:{NetworkID:881 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0} GroupIndex:122}
         [1870] {CreativeItemNetworkID:1871 Item:{NetworkID:880 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0} GroupIndex:122}
-    sha256 5a73c7a13d2df3b7dd309a126193d292b658757f2a016acae95ada1dcbac8cc2
->> CraftingData id=52 len=913887 normalised
+    sha256 b129248d9a66255ba94b9d8e1f5af699d63026e368054d1e10dbbc4e7078b0dd
+>> CraftingData id=52 len=913888 normalised
     CraftingDataPacket
       ShapedRecipes: []v2225.ShapedRecipe (1205)
         [0] {RecipeID:"88670f57-0000-0000-0000-000000000001" Width:3 Height:3 Input:[{Descriptor:&{Name:"minecraft:stick" MetadataValue:32767} Count:1} {Descriptor:&{Tag:"minecraft:wooden_slabs"} Count:1} {Descriptor:&{Name:"minecraft:stick" MetadataVa… <912 chars sha256:1e37af06dce71c0b>
@@ -7581,7 +7581,7 @@
         [242] {RecipeID:"minecraft:bucket" Width:3 Height:2 Input:[{Descriptor:&{Name:"minecraft:iron_ingot" MetadataValue:32767} Count:1} {Descriptor:&{} Count:0} {Descriptor:&{Name:"minecraft:iron_ingot" MetadataValue:32767} Count:1} {Descriptor:&{} Co… <607 chars sha256:400c3789f78f5d12>
         [243] {RecipeID:"minecraft:bundle" Width:1 Height:2 Input:[{Descriptor:&{Name:"minecraft:string" MetadataValue:32767} Count:1} {Descriptor:&{Name:"minecraft:leather" MetadataValue:32767} Count:1}] Output:[{NetworkID:865 MetadataValue:0 BlockRunti… <463 chars sha256:d1f9f9630476bca7>
         [244] {RecipeID:"88670f57-0000-0000-0000-00000000006b" Width:3 Height:3 Input:[{Descriptor:&{Name:"minecraft:milk_bucket" MetadataValue:0} Count:1} {Descriptor:&{Name:"minecraft:milk_bucket" MetadataValue:0} Count:1} {Descriptor:&{Name:"minecraft… <1046 chars sha256:880c93fde18c2d00>
-        [245] {RecipeID:"minecraft:calibrated_sculk_sensor" Width:3 Height:2 Input:[{Descriptor:&{} Count:0} {Descriptor:&{Name:"minecraft:amethyst_shard" MetadataValue:32767} Count:1} {Descriptor:&{} Count:0} {Descriptor:&{Name:"minecraft:amethyst_shard… <905 chars sha256:37b66a287c36d0af>
+        [245] {RecipeID:"minecraft:calibrated_sculk_sensor" Width:3 Height:2 Input:[{Descriptor:&{} Count:0} {Descriptor:&{Name:"minecraft:amethyst_shard" MetadataValue:32767} Count:1} {Descriptor:&{} Count:0} {Descriptor:&{Name:"minecraft:amethyst_shard… <906 chars sha256:b92e3880ea3a4214>
         [246] {RecipeID:"minecraft:campfire" Width:3 Height:3 Input:[{Descriptor:&{} Count:0} {Descriptor:&{Name:"minecraft:stick" MetadataValue:32767} Count:1} {Descriptor:&{} Count:0} {Descriptor:&{Name:"minecraft:stick" MetadataValue:32767} Count:1} {… <832 chars sha256:37b59262408847cb>
         [247] {RecipeID:"88670f57-0000-0000-0000-00000000006c" Width:3 Height:3 Input:[{Descriptor:&{} Count:0} {Descriptor:&{Name:"minecraft:stick" MetadataValue:32767} Count:1} {Descriptor:&{} Count:0} {Descriptor:&{Name:"minecraft:stick" MetadataValue… <960 chars sha256:8e68f0b067cd3753>
         [248] {RecipeID:"88670f57-0000-0000-0000-00000000006d" Width:3 Height:3 Input:[{Descriptor:&{} Count:0} {Descriptor:&{Name:"minecraft:stick" MetadataValue:32767} Count:1} {Descriptor:&{} Count:0} {Descriptor:&{Name:"minecraft:stick" MetadataValue… <963 chars sha256:0143a52d07d26933>
@@ -12520,7 +12520,7 @@
       PotionContainerChangeRecipes: [{InputItemID:430 ReagentItemID:331 OutputItemID:571} {InputItemID:571 ReagentItemID:570 OutputItemID:572}]
       MaterialReducers: []
       ClearRecipes: true
-    sha256 ac58c4f4fa72c3a2276d8ce7b0218943455a6a13365003fee0c39fc71eb93bfc
+    sha256 2c272f9a66f01e767335375667a9170b182b3b9f734afe931669f40ab5536a39
 >> TrimData id=302 len=1269
     TrimDataPacket
       Patterns: []v2225.TrimPattern (18)

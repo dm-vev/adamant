@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/cmd"
 	"github.com/dm-vev/adamant/server/entity"
@@ -319,9 +320,14 @@ func refreshBossBar(tx *world.Tx, m *scoreboard.Model, id string) {
 // path, converting it to the requested NBT numeric type like Java's
 // StoreResult: integral types truncate, float and double keep fractions.
 func storeDataValue(tx *world.Tx, key, path, kind string, v float64) {
-	namespace := "java:storage:" + key
+	namespace := "cmd:storage:" + key
+	legacyNamespace := "java:storage:" + key
 	current := map[string]any{}
-	if data, err := tx.World().LoadWorldData(namespace); err == nil {
+	data, err := tx.World().LoadWorldData(namespace)
+	if errors.Is(err, leveldb.ErrNotFound) {
+		data, err = tx.World().LoadWorldData(legacyNamespace)
+	}
+	if err == nil {
 		_ = json.Unmarshal(data, &current)
 	}
 	var stored any = v

@@ -74,7 +74,7 @@ func striderAttributes() []nativeMobAttr {
 }
 
 func (striderType) DecodeNBT(n map[string]any, d *world.EntityData) {
-	j := readNativeMobJavaState(n)
+	j := readNativeMobExtraState(n)
 	if j == nil {
 		j = n
 	}
@@ -102,7 +102,7 @@ func (striderType) EncodeNBT(d *world.EntityData) map[string]any {
 	attrs[1].Current = s.speed
 	native := map[string]any{"Attributes": encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), attrs), "IsBaby": byte(boolByte(s.age < 0)), "Saddle": byte(boolByte(s.saddled))}
 	out := mergeNativeMobNBT(d.NativeNBT, native)
-	j := readNativeMobJavaState(d.NativeNBT)
+	j := readNativeMobExtraState(d.NativeNBT)
 	if j == nil {
 		j = make(map[string]any)
 	}
@@ -113,7 +113,7 @@ func (striderType) EncodeNBT(d *world.EntityData) map[string]any {
 		boostTime, boostTotal = s.steering.boostTime, s.steering.boostTimeTotal
 	}
 	j["Suffocating"], j["BoostTime"], j["BoostTimeMax"] = byte(boolByte(s.suffocating)), int32(boostTime), int32(boostTotal)
-	return mergeNativeMobJavaState(out, j)
+	return mergeNativeMobExtraState(out, j)
 }
 
 func (s *strider) b() *striderState { return s.Behaviour().(*striderState) }

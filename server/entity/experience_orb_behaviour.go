@@ -166,7 +166,7 @@ func (exp *ExperienceOrbBehaviour) follow(e *Ent, tx *world.Tx, vel mgl64.Vec3) 
 		return vel
 	}
 	power := 1 - delta.Len()/8
-	return vel.Add(javaNormalize(delta).Mul(power * power * .1))
+	return vel.Add(normalizeVec3(delta).Mul(power * power * .1))
 }
 
 // followBox is the bounding box used to search for collectors to follow for experience orbs.

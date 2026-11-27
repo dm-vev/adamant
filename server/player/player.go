@@ -28,7 +28,7 @@ type playerData struct {
 	acFields
 	raidState
 	carriedState
-	javaRuntime
+	sessionState
 	respawnState
 	sleepState
 	breakingState

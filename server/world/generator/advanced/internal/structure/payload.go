@@ -30,7 +30,7 @@ func (p Placement) BlockEntityPayloads() []chunk.BlockEntity {
 				for key, value := range data {
 					// Converted source inventory, patterns and listener memory
 					// take precedence over the state actor's empty defaults.
-					if key == "Items" || key == "Patterns" || key == "adamant:java" {
+					if key == "Items" || key == "Patterns" || key == "adamant:state" || key == "adamant:java" {
 						if _, exists := converted[key]; exists {
 							continue
 						}

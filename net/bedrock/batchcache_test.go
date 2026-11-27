@@ -350,3 +350,62 @@ func TestConnWriteBatchFallbacksAndFullBodyHit(t *testing.T) {
 		}
 	}
 }
+
+func TestBatchCacheSegmentedSnappy(t *testing.T) {
+	cache := NewBatchCache()
+	a, b := pipes()
+	ca, cb := NewConn(a, Config{Cache: cache}), NewConn(b, Config{})
+	ca.EnableCompression(Snappy{})
+	cb.EnableCompression(Snappy{})
+
+	shared1 := bytes.Repeat([]byte("chunk-payload-segment-one-"), 14)
+	shared2 := bytes.Repeat([]byte("chunk-payload-segment-two-"), 14)
+	hdr1 := bytes.Repeat([]byte("hdr-alpha-"), 30)
+	hdr2 := bytes.Repeat([]byte("hdr-beta--"), 30)
+
+	// First batch populates segment cache entries.
+	if err := ca.WriteBatch(func(bw *BatchWriter) error {
+		_ = bw.WritePacket(hdr1)
+		bw.MarkSegment()
+		_ = bw.WritePacket(shared1)
+		bw.MarkSegment()
+		_ = bw.WritePacket(shared2)
+		return bw.Flush()
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range [][]byte{hdr1, shared1, shared2} {
+		got, err := cb.ReadPacket()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(got, want) {
+			t.Fatalf("batch 1 mismatch: got %q, want %q", got, want)
+		}
+	}
+
+	// Second batch changes the unshared header and reuses both shared segments.
+	before := batchCacheHits.Load()
+	if err := ca.WriteBatch(func(bw *BatchWriter) error {
+		_ = bw.WritePacket(hdr2)
+		bw.MarkSegment()
+		_ = bw.WritePacket(shared1)
+		bw.MarkSegment()
+		_ = bw.WritePacket(shared2)
+		return bw.Flush()
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if hits := batchCacheHits.Load() - before; hits != 2 {
+		t.Fatalf("expected 2 Snappy segment cache hits, got %d", hits)
+	}
+	for _, want := range [][]byte{hdr2, shared1, shared2} {
+		got, err := cb.ReadPacket()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(got, want) {
+			t.Fatalf("batch 2 mismatch: got %q, want %q", got, want)
+		}
+	}
+}

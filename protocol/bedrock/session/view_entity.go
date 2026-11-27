@@ -806,13 +806,20 @@ func (s *Session) ViewEntityState(e world.Entity) {
 	}
 }
 
-// sharedEntityState packs SetActorDataPacket, its netconn.Shared wrapper, and
-// an optional mount health packet so a single pointer is cached in world.Broadcast
-// with zero per-viewer allocations.
+// sharedEntityState packs SetActorDataPacket, its netconn.Shared wrapper,
+// optional mount health, and precomputed viewer-sensitivity metadata so a single
+// pointer is cached in world.Broadcast with zero per-viewer capability lookups.
 type sharedEntityState struct {
-	dataPk mc.SetActorDataPacket
-	data   netconn.Shared
-	health *netconn.Shared
+	dataPk         mc.SetActorDataPacket
+	data           netconn.Shared
+	health         netconn.Shared
+	hasHealth      bool
+	protoSensitive bool
+	alwaysPrivate  bool
+	refHandleCount uint8
+	leashCount     uint8
+	refHandles     [4]*world.EntityHandle
+	leashIDs       [2]int64
 }
 
 // ViewEntityStateShared views the current state of an entity using b to share
@@ -825,97 +832,136 @@ func (s *Session) ViewEntityStateShared(e world.Entity, b *world.Broadcast) {
 		s.ViewEntityState(e)
 		return
 	}
+	if st, ok := b.Load().(*sharedEntityState); ok {
+		if st.isPrivateFor(s) {
+			s.ViewEntityState(e)
+			return
+		}
+		s.writePacket(&st.data)
+		if st.hasHealth {
+			s.writePacket(&st.health)
+		}
+		return
+	}
+
+	meta := entityTypeMetaOf(e.H().Type())
 	caps := metaCapsOf(e)
-	if s.needsPrivateEntityState(e, caps) {
+	var beh entity.Behaviour
+	var behCaps metaCaps
+	if caps.hi&capBehaviour != 0 {
+		beh = e.(behaviourHolder).Behaviour()
+		behCaps = metaCapsOf(beh)
+	}
+	st := newSharedEntityStateShell(e, caps, beh, behCaps)
+	if st.isPrivateFor(s) {
 		s.ViewEntityState(e)
 		return
 	}
-	st, ok := b.Load().(*sharedEntityState)
-	if !ok {
-		st = s.buildSharedEntityState(e, caps)
-		b.Store(st)
-	}
+	st.populate(s, e, meta, caps, beh, behCaps)
+	b.Store(st)
 	s.writePacket(&st.data)
-	if st.health != nil {
-		s.writePacket(st.health)
+	if st.hasHealth {
+		s.writePacket(&st.health)
 	}
 }
 
-func (s *Session) buildSharedEntityState(e world.Entity, caps metaCaps) *sharedEntityState {
-	meta := entityTypeMetaOf(e.H().Type())
+func newSharedEntityStateShell(e world.Entity, caps metaCaps, beh entity.Behaviour, behCaps metaCaps) *sharedEntityState {
+	st := &sharedEntityState{}
+	if caps.lo&capDisplayTile != 0 {
+		st.protoSensitive = true
+	} else if caps.hi&capAppearance != 0 {
+		if _, ok := e.(*entity.Enderman); ok {
+			st.protoSensitive = true
+		}
+	}
+	if caps.lo&capSessionRefLo != 0 {
+		st.collectSessionRefsFrom(e, caps.lo)
+	}
+	if beh != nil && behCaps.lo&capSessionRefLo != 0 {
+		st.collectSessionRefsFrom(beh, behCaps.lo)
+	}
+	return st
+}
+
+func (st *sharedEntityState) collectSessionRefsFrom(e any, lo uint64) {
+	if lo&capWither != 0 {
+		for _, h := range e.(witherMeta).HeadTargets() {
+			if h != nil {
+				st.alwaysPrivate = true
+				break
+			}
+		}
+	}
+	if lo&capOwned != 0 {
+		st.addRefHandle(e.(owned).Owner())
+	}
+	if lo&capLeashed != 0 {
+		if id := e.(leashed).HolderLeashID(); id != 0 && int(st.leashCount) < len(st.leashIDs) {
+			st.leashIDs[st.leashCount] = id
+			st.leashCount++
+		}
+	}
+	if lo&capBeamTarget != 0 {
+		st.addRefHandle(e.(beamTargetMeta).BeamTargetHandle())
+	}
+	if lo&capShootTarget != 0 {
+		st.addRefHandle(e.(shootTargetMeta).ShootTargetHandle())
+	}
+	if lo&capTongueTarget != 0 {
+		st.addRefHandle(e.(tongueTargetMeta).TongueTargetHandle())
+	}
+}
+
+func (st *sharedEntityState) addRefHandle(h *world.EntityHandle) {
+	if h == nil {
+		return
+	}
+	if int(st.refHandleCount) >= len(st.refHandles) {
+		st.alwaysPrivate = true
+		return
+	}
+	st.refHandles[st.refHandleCount] = h
+	st.refHandleCount++
+}
+
+func (st *sharedEntityState) isPrivateFor(s *Session) bool {
+	if st.alwaysPrivate || (st.protoSensitive && s.conf.Protocol != nil) {
+		return true
+	}
+	if s.ent == nil {
+		return false
+	}
+	for _, h := range st.refHandles[:st.refHandleCount] {
+		if h == s.ent {
+			return true
+		}
+	}
+	if st.leashCount > 0 {
+		uid := s.ent.UniqueID()
+		for _, id := range st.leashIDs[:st.leashCount] {
+			if id == uid {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (st *sharedEntityState) populate(s *Session, e world.Entity, meta *entityTypeMeta, caps metaCaps, beh entity.Behaviour, behCaps metaCaps) {
 	id := e.H().RuntimeID()
-	st := &sharedEntityState{
-		dataPk: mc.SetActorDataPacket{
-			EntityRuntimeID:  id,
-			EntityMetadata:   toMetadata(s.parseEntityMetadataWith(e, meta, caps)),
-			EntityProperties: entityPropertiesWith(e, meta, caps),
-		},
+	st.dataPk = mc.SetActorDataPacket{
+		EntityRuntimeID:  id,
+		EntityMetadata:   toMetadata(s.parseEntityMetadataWithBeh(e, meta, caps, beh, behCaps, true)),
+		EntityProperties: entityPropertiesWith(e, meta, caps),
 	}
 	st.data.Packet = &st.dataPk
 	if caps.hi&capMountState != 0 {
 		// Riders see the health of their mount, which feeding restores.
 		if healthPk := mobHealthPacket(id, e, meta, caps); healthPk != nil {
-			st.health = &netconn.Shared{Packet: healthPk}
+			st.health.Packet = healthPk
+			st.hasHealth = true
 		}
 	}
-	return st
-}
-
-// needsPrivateEntityState reports whether e currently holds viewer-relative
-// entity IDs (such as owner, leash holder, attack target, or wither head
-// targets) that differ for s compared to the shared public broadcast.
-func (s *Session) needsPrivateEntityState(e world.Entity, caps metaCaps) bool {
-	if s.conf.Protocol != nil {
-		if caps.lo&capDisplayTile != 0 {
-			return true
-		}
-		if caps.hi&capAppearance != 0 {
-			if _, ok := e.(*entity.Enderman); ok {
-				return true
-			}
-		}
-	}
-	if caps.lo&capSessionRefLo != 0 && s.hasSessionRef(e, caps.lo) {
-		return true
-	}
-	if caps.hi&capBehaviour != 0 {
-		beh := e.(behaviourHolder).Behaviour()
-		if behCaps := metaCapsOf(beh); behCaps.lo&capSessionRefLo != 0 && s.hasSessionRef(beh, behCaps.lo) {
-			return true
-		}
-	}
-	return false
-}
-
-func (s *Session) hasSessionRef(e any, lo uint64) bool {
-	if lo&capWither != 0 {
-		for _, h := range e.(witherMeta).HeadTargets() {
-			if h != nil {
-				return true
-			}
-		}
-	}
-	if s.ent == nil {
-		return false
-	}
-	if lo&capOwned != 0 && e.(owned).Owner() == s.ent {
-		return true
-	}
-	if lo&capLeashed != 0 {
-		if id := e.(leashed).HolderLeashID(); id != 0 && id == s.ent.UniqueID() {
-			return true
-		}
-	}
-	if lo&capBeamTarget != 0 && e.(beamTargetMeta).BeamTargetHandle() == s.ent {
-		return true
-	}
-	if lo&capShootTarget != 0 && e.(shootTargetMeta).ShootTargetHandle() == s.ent {
-		return true
-	}
-	if lo&capTongueTarget != 0 && e.(tongueTargetMeta).TongueTargetHandle() == s.ent {
-		return true
-	}
-	return false
 }
 
 // entityMetadata returns the metadata of an entity as viewed by the session, including any overrides

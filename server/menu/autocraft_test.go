@@ -34,7 +34,7 @@ func TestBeginAutoCraft(t *testing.T) {
 		if _, err := b.BeginAutoCraft(windChargeRecipe, 1); err == nil {
 			t.Error("began a recipe not unlocked with limited_crafting on")
 		}
-		o.unlocked = recipe.JavaRecipeIDs(windChargeRecipe)
+		o.unlocked = recipe.RecipeIDs(windChargeRecipe)
 		if _, err := b.BeginAutoCraft(windChargeRecipe, 1); err != nil {
 			t.Errorf("an unlocked recipe: %v", err)
 		}

@@ -289,7 +289,7 @@ func TestNBTContains(t *testing.T) {
 // positive name, gamemode, team or type, a positive one after a negated one,
 // and a negative distance or level on either end. The refusals carry Java's
 // texts: argument.entity.options.inapplicable, .distance.negative and so on.
-func TestSelectorRefusesWhatJavaRefuses(t *testing.T) {
+func TestSelectorRefusesInvalidForms(t *testing.T) {
 	const (
 		inapplicable = "Option '%s' isn't applicable here"
 		distance     = "Distance cannot be negative"

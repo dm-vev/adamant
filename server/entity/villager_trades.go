@@ -390,7 +390,7 @@ func villagerExplorationMap(ctx tradeContext, stack item.Stack, modifier map[str
 	if decorationName == "" {
 		decorationName = "minecraft:woodland_mansion"
 	}
-	decoration, ok := world.MapDecorationTypeFromJava(decorationName)
+	decoration, ok := world.MapDecorationTypeFromName(decorationName)
 	if !ok {
 		return stack, false, fmt.Errorf("villager exploration map has unsupported decoration %q", decorationName)
 	}
@@ -414,7 +414,7 @@ func villagerExplorationMap(ctx tradeContext, stack item.Stack, modifier map[str
 		return stack, false, err
 	}
 	mapItem.NativeID, mapItem.HasNativeID = data.ID, true
-	mapItem.JavaID, mapItem.HasJavaID = data.JavaID, data.HasJavaID
+	mapItem.CanonicalID, mapItem.HasCanonicalID = data.CanonicalID, data.HasCanonicalID
 	return stack.WithItem(mapItem), true, nil
 }
 
@@ -439,7 +439,7 @@ func villagerItemFilter(stack item.Stack, raw any) bool {
 			}
 		case "minecraft:map_id":
 			mapItem, ok := stack.Item().(item.FilledMap)
-			if !ok || !mapItem.HasJavaID {
+			if !ok || !mapItem.HasCanonicalID {
 				return false
 			}
 		default:
@@ -549,7 +549,7 @@ func villagerSetStewEffect(effects any, random *vanilla.Random) item.Stack {
 		name = stringValue(row["type"])
 		duration = time.Duration(number(row["duration"])) * time.Second
 	}
-	stew, ok := item.StewTypeFromJavaEffect(name)
+	stew, ok := item.StewTypeFromEffect(name)
 	if !ok {
 		return item.Stack{}
 	}
@@ -560,7 +560,7 @@ func villagerSetStewEffect(effects any, random *vanilla.Random) item.Stack {
 }
 
 func villagerSetPotion(stack item.Stack, id string) item.Stack {
-	value, ok := potion.FromJavaID(id)
+	value, ok := potion.FromID(id)
 	if !ok {
 		return item.Stack{}
 	}

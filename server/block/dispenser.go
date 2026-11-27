@@ -179,7 +179,7 @@ func (d Dispenser) DecodeNBT(data map[string]any) any {
 	d = NewDispenser()
 	d.Facing, d.Triggered = facing, triggered
 	d.CustomName = nbtconv.String(data, "CustomName")
-	d.lootTable = loot.JavaTableKey(nbtconv.String(data, "LootTable"))
+	d.lootTable = loot.TableKey(nbtconv.String(data, "LootTable"))
 	d.lootSeed, _ = nbtconv.Integer(data, "LootTableSeed")
 	nbtconv.InvFromNBT(d.inventory, nbtconv.Slice(data, "Items"), data)
 	return d

@@ -40,8 +40,8 @@ func (c TrappedChest) withChestData(data Chest) chestBlock { c.Chest = data; ret
 func (TrappedChest) canPairChest(other world.Block) bool   { _, ok := other.(TrappedChest); return ok }
 
 // WithJavaChestState preserves contents across pairing updates.
-func (c TrappedChest) WithJavaChestState(previous world.Block, pos cube.Pos, kind string) world.Block {
-	c.Chest = c.Chest.withJavaChestState(previous, pos, kind)
+func (c TrappedChest) WithChestState(previous world.Block, pos cube.Pos, kind string) world.Block {
+	c.Chest = c.Chest.withChestState(previous, pos, kind)
 	return c
 }
 

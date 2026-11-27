@@ -44,7 +44,7 @@ func playerWithShears(tx *world.Tx) interface {
 // a sulfur cube and a sheep, each with its own sound and drops, and the shears
 // wear down by one. A mob that is not ready is left alone and the shears keep
 // their durability.
-func TestPlayerShearsWhatJavaShears(t *testing.T) {
+func TestPlayerShearsParity(t *testing.T) {
 	t.Parallel()
 	at := world.EntitySpawnOpts{Position: mgl64.Vec3{2.5, 64, .5}}
 	for _, c := range []struct {

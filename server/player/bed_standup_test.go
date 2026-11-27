@@ -11,7 +11,7 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-func TestBedStandUpMatchesJava263Source(t *testing.T) {
+func TestBedStandUpMatchesSource(t *testing.T) {
 	t.Parallel()
 	var fixture struct {
 		Cases []struct {
@@ -80,7 +80,7 @@ func TestBedStandUpMatchesJava263Source(t *testing.T) {
 	}
 }
 
-func TestBedStandUpEffectiveBunkMatchesJava263Source(t *testing.T) {
+func TestBedStandUpEffectiveBunkMatchesSource(t *testing.T) {
 	t.Parallel()
 	var fixture struct {
 		Cases []struct {

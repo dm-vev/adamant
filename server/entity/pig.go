@@ -34,7 +34,7 @@ func (pigType) BBox(e world.Entity) cube.BBox {
 	return cube.Box(-.45, 0, -.45, .45, .9, .45)
 }
 func (pigType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	s := readNativeMobJavaState(m)
+	s := readNativeMobExtraState(m)
 	if s == nil {
 		s = m
 	}
@@ -73,7 +73,7 @@ func (pigType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*pigBehaviour)
 	a := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
 	native := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": a, "Variant": int32(b.variant)})
-	return mergeNativeMobJavaState(native, mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "Saddle": byte(boolByte(b.saddled)), "variant": "minecraft:" + [...]string{"temperate", "warm", "cold"}[b.variant], "sound_variant": "minecraft:" + b.soundVariant})))
+	return mergeNativeMobExtraState(native, mergeNativeMobNBT(readNativeMobExtraState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "Saddle": byte(boolByte(b.saddled)), "variant": "minecraft:" + [...]string{"temperate", "warm", "cold"}[b.variant], "sound_variant": "minecraft:" + b.soundVariant})))
 }
 
 // PigConfig supplies a pig's persistent Java state.

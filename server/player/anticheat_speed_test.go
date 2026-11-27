@@ -14,14 +14,14 @@ import (
 
 // javaPositions runs a javaMover from start for the ticks passed, with the
 // input of in, against the blocks of tx, and returns its positions.
-func javaPositions(tx *world.Tx, start mgl64.Vec3, ticks int, in func(int, *javaMover) javaInput) []mgl64.Vec3 {
+func expectedPositions(tx *world.Tx, start mgl64.Vec3, ticks int, in func(int, *simMover) simInput) []mgl64.Vec3 {
 	h := world.EntitySpawnOpts{Position: start, ID: uuid.New()}.New(Type, Config{Position: start, GameMode: world.GameModeSurvival})
 	body := tx.AddEntity(h).(*Player)
 	defer func() {
 		tx.RemoveEntity(body)
 		_ = h.Close()
 	}()
-	j := &javaMover{pos: start, onGround: math.Abs(start[1]-floorY) < 1e-9}
+	j := &simMover{pos: start, onGround: math.Abs(start[1]-floorY) < 1e-9}
 	positions := make([]mgl64.Vec3, 0, ticks)
 	for i := range ticks {
 		positions = append(positions, j.step(tx, body, in(i, j)))
@@ -32,7 +32,7 @@ func javaPositions(tx *world.Tx, start mgl64.Vec3, ticks int, in func(int, *java
 // TestJavaMoverMatchesJava checks the mover of the suites against Java's
 // numbers in the world: walking 0.2158 a tick, sprinting 0.2806, the apex of
 // a jump 1.2522.
-func TestJavaMoverMatchesJava(t *testing.T) {
+func TestMoverParity(t *testing.T) {
 	w := traceWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		for _, tc := range []struct {
@@ -40,12 +40,12 @@ func TestJavaMoverMatchesJava(t *testing.T) {
 			sprint bool
 			want   float64
 		}{{"walking", false, 0.2158}, {"sprinting", true, 0.2806}} {
-			ps := javaPositions(tx, laneStart(laneStone), 60, forward(east, tc.sprint, false))
+			ps := expectedPositions(tx, laneStart(laneStone), 60, forward(east, tc.sprint, false))
 			if got := ps[59][0] - ps[58][0]; math.Abs(got-tc.want) > 5e-4 {
 				t.Errorf("%s: %.4f a tick, want %.4f", tc.name, got, tc.want)
 			}
 		}
-		ps := javaPositions(tx, laneStart(laneStone), 20, func(i int, _ *javaMover) javaInput { return javaInput{jump: i == 0} })
+		ps := expectedPositions(tx, laneStart(laneStone), 20, func(i int, _ *simMover) simInput { return simInput{jump: i == 0} })
 		apex := 0.0
 		for _, p := range ps {
 			apex = max(apex, p[1]-floorY)
@@ -61,7 +61,7 @@ func TestJavaMoverMatchesJava(t *testing.T) {
 func speedHack(name string, k float64, conf func(c *anticheat.Config)) acTrace {
 	start := laneStart(laneStone)
 	return acTrace{name: name, start: start, conf: conf, positions: func(tx *world.Tx) []mgl64.Vec3 {
-		ps := javaPositions(tx, start, 100, forward(east, true, false))
+		ps := expectedPositions(tx, start, 100, forward(east, true, false))
 		for i, p := range ps {
 			d := p.Sub(start)
 			ps[i] = start.Add(mgl64.Vec3{d[0] * k, d[1], d[2] * k})
@@ -118,7 +118,7 @@ func TestSpeedOffAndExempt(t *testing.T) {
 		t.Errorf("Speed off: %d violations", len(res.violations))
 	}
 	tr := speedHack("spectator", 2, nil)
-	tr.setup = func(_ *world.Tx, p *Player, _ *javaMover) { p.SetGameMode(world.GameModeSpectator) }
+	tr.setup = func(_ *world.Tx, p *Player, _ *simMover) { p.SetGameMode(world.GameModeSpectator) }
 	if res := runTrace(t, w, tr); len(res.violations) != 0 {
 		t.Errorf("a spectator: %d violations", len(res.violations))
 	}

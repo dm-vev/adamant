@@ -1,0 +1,240 @@
+package world
+
+import (
+	"strings"
+
+	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/internal/gamedata"
+	"github.com/dm-vev/adamant/server/internal/vanilla"
+	"github.com/dm-vev/adamant/server/world/chunk"
+)
+
+// GenerationShapeAccess is the WorldGenRegion view used by source shape
+// callbacks. It deliberately does not emulate a live World or neighbour updates.
+// Implementations retain canonical states, loaded actors and proto-chunk tick
+// reservations, including those outside the chunk currently being published.
+// RegionRandom is the region stream, not the structure/feature placement stream.
+// SetBlockState observes the source write radius and update flags.
+// Light returns source raw brightness with zero sky darkening.
+// Signal's face points out of the signaling block towards its receiver.
+// HiveHasOccupants reads the currently loaded generation hive actor.
+// FluidTickDelay accepts minecraft:water or minecraft:lava.
+// Scheduled fluid type names may also be their flowing variants.
+type GenerationShapeAccess interface {
+	BlockStateID(cube.Pos) (uint32, error)
+	Range() cube.Range
+	RegionRandom() *vanilla.Random
+	Light(cube.Pos) uint8
+	FluidTickDelay(name string) int32
+	ScheduleTick(pos cube.Pos, kind chunk.ScheduledTickKind, name string, delay int32)
+	HasBlockTick(pos cube.Pos, name string) bool
+	Signal(pos cube.Pos, face cube.Face) int
+	HiveHasOccupants(pos cube.Pos) bool
+	SetBlockState(pos cube.Pos, state uint32, flags int) bool
+}
+
+// GenerationBlockCanSurvive evaluates a proposed source state against the
+// current generation view without placing it or running neighbour updates.
+func GenerationBlockCanSurvive(access GenerationShapeAccess, state uint32, pos cube.Pos) bool {
+	context := shapeContext{generation: access, pos: pos}
+	return context.canSurvive(state, pos)
+}
+
+// PlaceGenerationSimpleBlock applies SimpleBlockFeature after its state
+// provider has sampled a state. Mossy carpet consumes the region random stream.
+func PlaceGenerationSimpleBlock(access GenerationShapeAccess, state uint32, pos cube.Pos, scheduleTick bool) bool {
+	context := shapeContext{generation: access, pos: pos}
+	owner, err := gamedata.BlockCanSurviveOwnerID(state)
+	if err != nil {
+		panic(err)
+	}
+	owner = owner[strings.LastIndexByte(owner, '.')+1:]
+	if !context.ownerSurvival(owner, state, pos) {
+		return false
+	}
+	// These are the pinned source canSurvive owners of DoublePlantBlock and
+	// its subclasses; no second block-name classification table is needed.
+	switch owner {
+	case "MossyCarpetBlock":
+		placeGenerationMossyCarpet(&context, pos)
+	case "DoublePlantBlock", "PitcherCropBlock", "SmallDripleafBlock", "TallSeagrassBlock":
+		abovePos := pos.Side(cube.FaceUp)
+		above := context.at(abovePos)
+		if !stateIsAir(above) && (context.fluid(state) != context.fluid(above) || !context.replaceable(above)) {
+			return false
+		}
+		lower := stateWith(state, "half", "lower")
+		upper := stateWith(state, "half", "upper")
+		if _, hasWaterlogged := gamedata.BlockStateBool(state, "waterlogged"); hasWaterlogged {
+			for _, placement := range [...]struct {
+				pos   cube.Pos
+				state uint32
+			}{{pos, lower}, {abovePos, upper}} {
+				fluid := context.fluid(context.at(placement.pos))
+				placement.state = stateWith(placement.state, "waterlogged", fluid.kind == fluidWater)
+				access.SetBlockState(placement.pos, placement.state, 2)
+			}
+		} else {
+			access.SetBlockState(pos, lower, 2)
+			access.SetBlockState(abovePos, upper, 2)
+		}
+	default:
+		access.SetBlockState(pos, state, 2)
+	}
+
+	if scheduleTick {
+		current := context.at(pos)
+		access.ScheduleTick(pos, chunk.BlockTick, "minecraft:"+stateName(current), 1)
+	}
+	return true
+}
+
+func placeGenerationMossyCarpet(context *shapeContext, pos cube.Pos) {
+	base := stateDefault("pale_moss_carpet")
+	context.pos = pos
+	base = plant06UpdateMossyCarpetSides(context, base, true)
+	context.generation.SetBlockState(pos, base, 2)
+
+	abovePos := pos.Side(cube.FaceUp)
+	abovePrevious := context.at(abovePos)
+	isMossyCarpet := stateName(abovePrevious) == "pale_moss_carpet"
+	if isMossyCarpet {
+		if stateBool(abovePrevious, "bottom") {
+			return
+		}
+	} else if !context.replaceable(abovePrevious) {
+		return
+	}
+
+	context.pos = abovePos
+	topper := stateWith(stateDefault("pale_moss_carpet"), "bottom", false)
+	topper = plant06UpdateMossyCarpetSides(context, topper, true)
+	for _, property := range [...]string{"north", "east", "south", "west"} {
+		if stateString(topper, property) != "none" && !context.generation.RegionRandom().NextBoolean() {
+			topper = stateWith(topper, property, "none")
+		}
+	}
+	if !plant06MossyCarpetHasFaces(topper) || topper == abovePrevious {
+		return
+	}
+	context.generation.SetBlockState(abovePos, topper, 2)
+	context.pos = pos
+	base = plant06UpdateMossyCarpetSides(context, base, true)
+	context.generation.SetBlockState(pos, base, 2)
+}
+
+// GenerationFireState applies BaseFireBlock.getState against live
+// generation states, including Source flammability and sturdy-face metadata.
+func GenerationFireState(access GenerationShapeAccess, pos cube.Pos) uint32 {
+	context := shapeContext{generation: access, pos: pos}
+	below := context.at(pos.Side(cube.FaceDown))
+	if context.tag(below, "minecraft:soul_fire_base_blocks") {
+		return stateDefault("soul_fire")
+	}
+	state := stateDefault("fire")
+	support := canonicalGenerationShape(below)
+	if support.FireCanBurn || support.Sturdy&(1<<uint(cube.FaceUp)) != 0 {
+		return state
+	}
+	for _, face := range [...]cube.Face{cube.FaceUp, cube.FaceNorth, cube.FaceSouth, cube.FaceWest, cube.FaceEast} {
+		property := [...]string{"down", "up", "north", "south", "west", "east"}[face]
+		state = stateWith(state, property, canonicalGenerationShape(context.at(pos.Side(face))).FireCanBurn)
+	}
+	return state
+}
+
+// UpdateTemplateShapes applies StructureTemplate's immediate shape phase.
+// Call it for one knownShape=false placement, after successful block writes,
+// liquid refill and actor loading, but before entities or data markers. Positions
+// include accepted unchanged writes and retain placement order and duplicates.
+// Generation's updateNeighborsAt is a no-op; it is not a runtime neighbour wave.
+func UpdateTemplateShapes(access GenerationShapeAccess, positions []cube.Pos, flags int) {
+	if len(positions) == 0 {
+		return
+	}
+	low, high := positions[0], positions[0]
+	for _, pos := range positions[1:] {
+		for axis := range 3 {
+			low[axis] = min(low[axis], pos[axis])
+			high[axis] = max(high[axis], pos[axis])
+		}
+	}
+	size := [3]int{high[0] - low[0] + 1, high[1] - low[1] + 1, high[2] - low[2] + 1}
+	updateGenerationShapeAtEdge(access, low, size, positions, flags, true)
+}
+
+// UpdateGenerationShapeAtEdge applies StructureTemplate.updateShapeAtEdge
+// to an explicitly bounded discrete shape. filledPositions are its occupied
+// voxels; size may include empty cells that still constrain the source shape.
+func UpdateGenerationShapeAtEdge(access GenerationShapeAccess, low cube.Pos, size [3]int, filledPositions []cube.Pos, flags int) {
+	updateGenerationShapeAtEdge(access, low, size, filledPositions, flags, false)
+}
+
+func updateGenerationShapeAtEdge(access GenerationShapeAccess, low cube.Pos, size [3]int, positions []cube.Pos, flags int, updateInterior bool) {
+	if len(positions) == 0 {
+		return
+	}
+	volume := size[0] * size[1] * size[2]
+	occupied := make([]uint64, (volume+63)/64)
+	for _, pos := range positions {
+		index := ((pos[0]-low[0])*size[1]+pos[1]-low[1])*size[2] + pos[2] - low[2]
+		occupied[index>>6] |= uint64(1) << uint(index&63)
+	}
+	context := shapeContext{generation: access}
+	// DiscreteVoxelShape.forAllFaces visits NONE, FORWARD, BACKWARD.
+	// Each scan uses the inverse axis cycle: (x,y,z), (z,x,y), (y,z,x).
+	for _, axes := range [...][3]int{{0, 1, 2}, {2, 0, 1}, {1, 2, 0}} {
+		aAxis, bAxis, cAxis := axes[0], axes[1], axes[2]
+		negative := [3]cube.Face{cube.FaceWest, cube.FaceDown, cube.FaceNorth}[cAxis]
+		positive := negative.Opposite()
+		var local cube.Pos
+		for a := range size[aAxis] {
+			local[aAxis] = a
+			for b := range size[bAxis] {
+				local[bAxis] = b
+				lastFull := false
+				for c := range size[cAxis] + 1 {
+					local[cAxis] = c
+					full := false
+					if c < size[cAxis] {
+						index := (local[0]*size[1]+local[1])*size[2] + local[2]
+						full = occupied[index>>6]&(uint64(1)<<uint(index&63)) != 0
+					}
+					if !lastFull && full {
+						templateShapeEdge(&context, local.Add(low), negative, flags&^1)
+					} else if lastFull && !full {
+						pos := local.Add(low)
+						pos[cAxis]--
+						templateShapeEdge(&context, pos, positive, flags&^1)
+					}
+					lastFull = full
+				}
+			}
+		}
+	}
+	if updateInterior {
+		for _, pos := range positions {
+			context.pos = pos
+			state := context.at(pos)
+			updated := context.updateFromNeighbourShapes(state)
+			if updated != state {
+				access.SetBlockState(pos, updated, flags&^1|16)
+			}
+		}
+	}
+}
+
+func templateShapeEdge(context *shapeContext, pos cube.Pos, face cube.Face, flags int) {
+	neighborPos := pos.Side(face)
+	state, neighbor := context.at(pos), context.at(neighborPos)
+	context.pos = pos
+	updated := context.updateShape(state, face, neighbor)
+	if state != updated {
+		context.generation.SetBlockState(pos, updated, flags)
+	}
+	context.pos = neighborPos
+	updatedNeighbor := context.updateShape(neighbor, face.Opposite(), updated)
+	if neighbor != updatedNeighbor {
+		context.generation.SetBlockState(neighborPos, updatedNeighbor, flags)
+	}
+}

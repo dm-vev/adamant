@@ -257,10 +257,10 @@
     | 795f6e616d65080576616c75650e4b6e6f776c6564676520426f6f6b000000
 >> BiomeDefinitionList id=122 len=7667
     sha256 24159753c6f89d7b663e41f4ef5fc33d2ff323ee32982b43c04c44bf94adafa7
->> CreativeContent id=145 len=72592
-    sha256 0a9e8ef24783d04f0ed6b2107ef52c95bb6b80d2257c305f91a0a06374173e6e
->> CraftingData id=52 len=913919 normalised
-    sha256 9c49a282bf61b6af2da03a0093866cf0a23cd6aaccf6e8cdd460321a492d357e
+>> CreativeContent id=145 len=72595
+    sha256 c2e05a2829601a5f9598d872e5c5dffa372819927d16670d5e91482ac77a2249
+>> CraftingData id=52 len=913920 normalised
+    sha256 73e8a5380e85ac4d49ab1097dfe83479e42966b7b20373062630b26e28761bec
 >> TrimData id=302 len=1269
     TrimDataPacket
       Patterns: []v2193.TrimPattern (18)

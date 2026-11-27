@@ -818,7 +818,7 @@ func craftMapValidMulti(t *testing.T, w *world.World, s *Session, id string, exp
 func requireMapTransition(t *testing.T, result item.Stack, id int64) {
 	t.Helper()
 	mapItem, ok := result.Item().(item.FilledMap)
-	if !ok || !mapItem.HasNativeID || mapItem.NativeID != id || !mapItem.HasJavaID || mapItem.JavaID != int32(id) {
+	if !ok || !mapItem.HasNativeID || mapItem.NativeID != id || !mapItem.HasCanonicalID || mapItem.CanonicalID != int32(id) {
 		t.Fatalf("map result = %#v, want filled map with native and Java ID %d", result.Item(), id)
 	}
 }
@@ -935,7 +935,7 @@ func (p *mapCraftingProvider) AllocateMapID() (int64, error) {
 	return p.nextID, nil
 }
 
-func (p *mapCraftingProvider) JavaMapID(id int64) (int32, error)   { return int32(id), nil }
+func (p *mapCraftingProvider) CanonicalMapID(id int64) (int32, error)   { return int32(id), nil }
 func (p *mapCraftingProvider) NativeMapID(id int32) (int64, error) { return int64(id), nil }
 
 func craftingMapStack() item.Stack {

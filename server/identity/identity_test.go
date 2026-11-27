@@ -50,8 +50,8 @@ func TestParseAndString(t *testing.T) {
 		}
 	}
 	for _, in := range []string{"java:069a79f4-44e9-4726-a5be-fca90e38aaf5", "JAVA:x", "java:"} {
-		if _, err := Parse(in); !errors.Is(err, ErrJavaKey) {
-			t.Errorf("Parse(%q): %v, want %v", in, err, ErrJavaKey)
+		if _, err := Parse(in); !errors.Is(err, ErrReservedKey) {
+			t.Errorf("Parse(%q): %v, want %v", in, err, ErrReservedKey)
 		}
 	}
 	if (Key{}).String() != "" || !(Key{}).IsZero() {

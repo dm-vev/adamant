@@ -44,14 +44,37 @@ func (Snappy) Compress(dst, src []byte) ([]byte, error) {
 	}
 	out := dst[:start+maxOut]
 	pos := start + binary.PutUvarint(out[start:], uint64(len(src)))
+	pos = appendSnappySegmentBody(out, pos, src)
+	return out[:pos], nil
+}
+
+// compressSnappyRaw appends the compressed elements of src (starting from local
+// output offset 0, with no uncompressed-length header) so independent segments
+// can be concatenated behind a single block uvarint header.
+func compressSnappyRaw(dst, src []byte) []byte {
+	if len(src) == 0 {
+		return dst
+	}
+	maxOut := 22 + len(src) + len(src)/6
+	start := len(dst)
+	if cap(dst)-start < maxOut {
+		grown := make([]byte, start, start+maxOut)
+		copy(grown, dst)
+		dst = grown
+	}
+	out := dst[:start+maxOut]
+	pos := appendSnappySegmentBody(out, start, src)
+	return out[:pos]
+}
+
+func appendSnappySegmentBody(out []byte, pos int, src []byte) int {
 	if len(src) < minMatch {
 		if len(src) > 0 {
 			pos = emitSnappyLiteral(out, pos, src)
 		}
-		return out[:pos], nil
+		return pos
 	}
-	pos = compressSnappyBody(out, pos, src)
-	return out[:pos], nil
+	return compressSnappyBody(out, pos, src)
 }
 
 func compressSnappyBody(out []byte, pos int, src []byte) int {
@@ -81,9 +104,23 @@ func compressSnappyBody(out []byte, pos int, src []byte) int {
 		}
 		n := minMatch + matchLen(src[cand+minMatch:], src[i+minMatch:])
 		if lit < i {
-			pos = emitSnappyLiteral(out, pos, src[lit:i])
+			litLen := i - lit
+			if litLen <= 60 {
+				out[pos] = byte((litLen-1)<<2) | snappyTagLiteral
+				copy(out[pos+1:], src[lit:i])
+				pos += 1 + litLen
+			} else {
+				pos = emitSnappyLiteral(out, pos, src[lit:i])
+			}
 		}
-		pos = emitSnappyCopy(out, pos, n, i-cand)
+		offset := i - cand
+		if n < 12 && offset < 2048 {
+			out[pos] = byte((offset>>8)<<5) | byte((n-4)<<2) | snappyTagCopy1
+			out[pos+1] = byte(offset)
+			pos += 2
+		} else {
+			pos = emitSnappyCopy(out, pos, n, offset)
+		}
 		i += n
 		lit, skip = i, 32
 		if i <= limit {

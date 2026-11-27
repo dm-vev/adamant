@@ -42,7 +42,7 @@ func (witchType) EncodeEntity() string        { return "minecraft:witch" }
 func (witchType) BBox(world.Entity) cube.BBox { return cube.Box(-.3, 0, -.3, .3, 1.95, .3) }
 func (witchType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	c := witchConfig{}
-	source := readNativeMobJavaState(m)
+	source := readNativeMobExtraState(m)
 	if source == nil {
 		source = m
 	}
@@ -65,12 +65,12 @@ func (witchType) EncodeNBT(d *world.EntityData) map[string]any {
 		native = make(map[string]any)
 	}
 	native["Attributes"] = attributes
-	javaState := mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), map[string]any{
+	extraState := mergeNativeMobNBT(readNativeMobExtraState(d.NativeNBT), map[string]any{
 		"Health": float32(b.health.Health()), "MaxHealth": float32(b.health.MaxHealth()),
 		"DrinkingPotion": byte(boolByte(b.drinking)), "PotionUseTime": int32(b.potionUseTime), "DrinkPotionId": int32(b.drinkPotion.Uint8()),
 		"RaidID": b.raidID, "RaidWave": int32(b.raidWave), "RaidLeader": b.raidLeader,
 	})
-	return mergeNativeMobJavaState(native, javaState)
+	return mergeNativeMobExtraState(native, extraState)
 }
 
 type witchConfig struct {

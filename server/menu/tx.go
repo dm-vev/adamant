@@ -120,9 +120,16 @@ type Tx struct {
 	multiCraft *MultiCraft
 }
 
+type txWithBuf struct {
+	tx      Tx
+	changes [4]Change
+}
+
 // Begin starts a batch. Player.BeginMenu is how adapters start one.
 func Begin(o Opts) *Tx {
-	return &Tx{o: o}
+	b := &txWithBuf{tx: Tx{o: o}}
+	b.tx.changes = b.changes[:0]
+	return &b.tx
 }
 
 // refused returns the error every operation of a refused batch fails with,

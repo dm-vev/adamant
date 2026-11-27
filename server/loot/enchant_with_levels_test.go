@@ -43,7 +43,7 @@ type enchantWithLevelsFixture struct {
 
 // Fixtures are captured by running Java 26.3 EnchantmentHelper and
 // EnchantmentsByCostWithDifficulty against the real vanilla registries.
-func TestEnchantWithLevelsJava263Source(t *testing.T) {
+func TestEnchantWithLevelsSource(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_enchant_with_levels.json")
 	if err != nil {
 		t.Fatal(err)

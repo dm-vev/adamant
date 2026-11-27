@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -12,12 +13,52 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/dm-vev/adamant/protocol/bedrock/netconn"
-	_ "github.com/dm-vev/adamant/server/block"
+	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/entity/effect"
+	"github.com/dm-vev/adamant/server/item"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/chunk"
 )
+
+func TestKnownBlockEntityNBTEquivalence(t *testing.T) {
+	beaconWithEffects := block.Beacon{Primary: effect.Haste, Secondary: effect.Regeneration}
+	cases := []struct {
+		name string
+		blk  world.NBTer
+		pos  cube.Pos
+	}{
+		{"BeaconDefault", block.Beacon{}, cube.Pos{-15, -64, 300}},
+		{"BeaconEffects", beaconWithEffects, cube.Pos{12, 70, -8}},
+		{"Bed", block.Bed{Colour: item.ColourCyan()}, cube.Pos{1, 64, 2}},
+		{"EnderChest", block.NewEnderChest(), cube.Pos{3, 65, 4}},
+		{"EnchantingTable", block.EnchantingTable{}, cube.Pos{5, 66, 6}},
+		{"DaylightDetector", block.DaylightDetector{Inverted: true, Signal: 9}, cube.Pos{7, 67, 8}},
+		{"Note", block.Note{Pitch: 17, Powered: true}, cube.Pos{9, 68, 10}},
+		{"EndPortal", block.EndPortal{}, cube.Pos{-1, 0, -2}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			fast, ok := appendKnownBlockEntityNBT(nil, tc.pos, tc.blk)
+			if !ok {
+				t.Fatalf("%s did not hit fast path", tc.name)
+			}
+			slow := appendClientActorNetworkNBT(nil, tc.blk.EncodeNBT(), tc.pos)
+			var gotMap, wantMap map[string]any
+			if err := nbt.UnmarshalEncoding(fast, &gotMap, nbt.NetworkLittleEndian); err != nil {
+				t.Fatalf("unmarshal fast: %v", err)
+			}
+			if err := nbt.UnmarshalEncoding(slow, &wantMap, nbt.NetworkLittleEndian); err != nil {
+				t.Fatalf("unmarshal slow: %v", err)
+			}
+			if !reflect.DeepEqual(gotMap, wantMap) {
+				t.Fatalf("mismatch:\n got: %#v\nwant: %#v", gotMap, wantMap)
+			}
+		})
+	}
+}
 
 func init() {
 	world.DefaultBlockRegistry.Finalize()

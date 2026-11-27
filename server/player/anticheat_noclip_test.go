@@ -79,7 +79,7 @@ func TestNoClipOffAndExempt(t *testing.T) {
 		t.Fatalf("NoClip off: %d violations", n)
 	}
 	tr.conf = nil
-	tr.setup = func(_ *world.Tx, p *Player, _ *javaMover) { p.SetGameMode(world.GameModeSpectator) }
+	tr.setup = func(_ *world.Tx, p *Player, _ *simMover) { p.SetGameMode(world.GameModeSpectator) }
 	if n, _ := runTrace(t, w, tr).count(anticheat.NoClip); n != 0 {
 		t.Fatalf("a spectator: %d violations", n)
 	}

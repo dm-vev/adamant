@@ -75,7 +75,7 @@ func TestSculkFallbackNBTPersistsWithoutDecoderContext(t *testing.T) {
 		"warning_level": int32(3), "listener": listener,
 		"future_java_field": []int32{7, -9},
 	}
-	if got := persisted["adamant:java"]; !reflect.DeepEqual(got, want) {
+	if got := persisted["adamant:state"]; !reflect.DeepEqual(got, want) {
 		t.Fatalf("persisted source state includes decoder context or lost data: got=%v want=%v", got, want)
 	}
 }

@@ -67,6 +67,10 @@ type entityState struct {
 	// isItem caches whether the entity type is a dropped item (minecraft:item).
 	// This avoids calling EncodeEntity() for every entity on every tick.
 	isItem bool
+	// isPlayer caches whether the entity type is a player (minecraft:player).
+	isPlayer bool
+	// tickAfterBlocks caches EntityType.TickAfterBlocks().
+	tickAfterBlocks bool
 	// isTicker caches whether the entity implements TickerEntity so we can avoid
 	// repeating expensive type assertions in the hot tick path.
 	isTicker      bool
@@ -85,6 +89,11 @@ type entityState struct {
 	lastPreBlockTick int64
 	// bound is the transaction binder was bound to last.
 	bound *Tx
+}
+
+func entityTickAfterBlocks(t EntityType) bool {
+	phase, ok := t.(interface{ TickAfterBlocks() bool })
+	return ok && phase.TickAfterBlocks()
 }
 
 func (s *entityState) entity(tx *Tx, handle *EntityHandle) Entity {
@@ -160,6 +169,8 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 		lastProcessedTick: currentTick,
 		firstTickPending:  true,
 		isItem:            handle.typeID == "minecraft:item",
+		isPlayer:          handle.typeID == "minecraft:player",
+		tickAfterBlocks:   entityTickAfterBlocks(handle.t),
 	}
 	if _, ok := w.entities[handle]; !ok {
 		w.entityCount.Add(1)

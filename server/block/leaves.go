@@ -58,7 +58,7 @@ func leavesNearLog(pos cube.Pos, tx *world.Tx) bool {
 				continue
 			}
 			visited[next] = struct{}{}
-			if javaBlockTag(tx, next, "minecraft:prevents_nearby_leaf_decay") {
+			if hasBlockTag(tx, next, "minecraft:prevents_nearby_leaf_decay") {
 				return true
 			}
 			if _, leaves := tx.Block(next).(Leaves); leaves && n.distance+1 < 6 {

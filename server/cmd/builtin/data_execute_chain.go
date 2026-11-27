@@ -496,7 +496,7 @@ func conditionBiome(t executeTest) (int, int, error) {
 		return 0, 0, err
 	}
 	want := strings.TrimPrefix(t.words[4], "minecraft:")
-	return boolCount(world.JavaBiomeName(t.tx.Biome(pos)) == want), 5, nil
+	return boolCount(world.CanonicalBiomeName(t.tx.Biome(pos)) == want), 5, nil
 }
 
 // conditionBlocks is `blocks <start> <end> <destination> (all|masked)`: the

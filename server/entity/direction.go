@@ -32,7 +32,7 @@ func ExplosionImpulse(e world.Entity, src world.ExplosionSource, impact float64)
 
 // javaNormalize ports Vec3.normalize: a vector of length one, or none if it
 // is too short.
-func javaNormalize(v mgl64.Vec3) mgl64.Vec3 {
+func normalizeVec3(v mgl64.Vec3) mgl64.Vec3 {
 	l := v.Len()
 	if l < float64(float32(1e-5)) {
 		return mgl64.Vec3{}

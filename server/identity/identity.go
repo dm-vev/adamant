@@ -65,7 +65,7 @@ type Key struct {
 // the keys of Java Edition accounts.
 const (
 	xuidPrefix = "xuid:"
-	javaPrefix = "java:"
+	reservedKeyPrefix = "java:"
 )
 
 var (
@@ -73,7 +73,7 @@ var (
 	ErrEmptyName = errors.New("player name must not be empty")
 	// ErrJavaKey is returned for a key of a Java Edition account, which no
 	// adapter makes yet.
-	ErrJavaKey = errors.New("java: keys are not supported: no Java Edition account can join")
+	ErrReservedKey = errors.New("java: keys are not supported: no Java Edition account can join")
 )
 
 // OfXUID returns the key of an XUID, given in decimal: 1 to 20 digits of a
@@ -110,8 +110,8 @@ func Parse(s string) (Key, error) {
 			return k, nil
 		}
 	}
-	if len(t) >= len(javaPrefix) && strings.EqualFold(t[:len(javaPrefix)], javaPrefix) {
-		return Key{}, ErrJavaKey
+	if len(t) >= len(reservedKeyPrefix) && strings.EqualFold(t[:len(reservedKeyPrefix)], reservedKeyPrefix) {
+		return Key{}, ErrReservedKey
 	}
 	return OfName(t)
 }

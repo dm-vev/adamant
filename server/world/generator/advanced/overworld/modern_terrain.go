@@ -20,6 +20,7 @@ type modernTerrainScratch struct {
 	biomeChunks     [3][3]*chunkBiomes
 	biomePos        world.ChunkPos
 	quartBiomeFn    vanilla.QuartBiomes
+	densities       [4096]float32
 	blocks          [24][4096]uint32
 	subUniformBlock [24]uint32
 	subMixedBlock   [24]bool
@@ -130,14 +131,14 @@ func (g *Overworld) buildTerrainColumn(pos world.ChunkPos, raw bool) *previewCac
 	work := g.acquireTerrainScratch()
 	defer g.releaseTerrainScratch(work)
 	baseX, baseZ := pos[0]*16, pos[1]*16
-	var biomes vanilla.QuartBiomes
 	if !raw {
 		g.loadQuartBiomes(pos, &work.biomeChunks)
 		work.biomePos = pos
-		biomes = work.quartBiomeFn
 		computeSubUniformBiomes(work)
+		work.lattice.Prepare(g.noise, g.zoomSeed, baseX, baseZ, work.quartBiomeFn)
+	} else {
+		work.lattice.PrepareRaw(g.noise, baseX, baseZ)
 	}
-	work.lattice.Prepare(g.noise, g.zoomSeed, baseX, baseZ, biomes)
 	work.aquifer.Prepare(g.noise, baseX, baseZ)
 	c := chunk.New(world.DefaultBlockRegistry, cube.Range{int(modernMinY), int(modernMaxY)})
 	entry := &previewCacheEntry{pos: pos, c: c}
@@ -184,6 +185,7 @@ func (g *Overworld) fillBaseTerrain(work *modernTerrainScratch, c *chunk.Chunk, 
 		subMinY := int32(modernMinY) + int32(subIdx)*16
 		subMaxY := subMinY + 15
 		subBeard := hasBeard && subMaxY >= beardMinY && subMinY <= beardMaxY
+		work.lattice.FillSubChunkDensities(subIdx, &work.densities)
 		blkBuf := &work.blocks[subIdx]
 		var firstRID uint32
 		mixed, nonAir := false, false
@@ -195,12 +197,19 @@ func (g *Overworld) fillBaseTerrain(work *modernTerrainScratch, c *chunk.Chunk, 
 				colH := work.heights[x+1][z+1]
 				for ly := int32(15); ly >= 0; ly-- {
 					y := subMinY + ly
-					density := work.lattice.Sample(x, y, z)
+					density := work.densities[colOff|int(ly)]
 					if subBeard && y >= beardMinY && y <= beardMaxY {
 						density += structures.AdjustDensity(worldX, y, worldZ)
 					}
-					material, schedule := work.aquifer.Substance(worldX, y, worldZ, float64(density))
-					rid := materials[material]
+					var rid uint32
+					var material vanilla.AquiferMaterial
+					var schedule bool
+					if density > 0 {
+						rid = g.stoneRID
+					} else {
+						material, schedule = work.aquifer.Substance(worldX, y, worldZ, float64(density))
+						rid = materials[material]
+					}
 					blkBuf[colOff|int(ly)] = rid
 					if rid != g.airRID {
 						nonAir = true

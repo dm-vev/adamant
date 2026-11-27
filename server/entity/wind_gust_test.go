@@ -14,7 +14,7 @@ import (
 // explosion of radius 1.2 and knockback 1.22 of WindCharge.explode: it
 // pushes what is within twice its radius away from it, hurts nothing, and
 // leaves what is further away be.
-func TestWindChargeBurstsAsJavaExplosions(t *testing.T) {
+func TestWindChargeBurstsAsParityExplosions(t *testing.T) {
 	t.Parallel()
 	w := world.Config{Entities: DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })

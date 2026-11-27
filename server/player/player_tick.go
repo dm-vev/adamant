@@ -15,8 +15,8 @@ import (
 
 // javaRuntime is what the player keeps of Java's server player, and what its
 // ticks send.
-type javaRuntime struct {
-	javaState          map[string]any
+type sessionState struct {
+	extraState          map[string]any
 	wardenSpawnTracker *world.WardenSpawnTracker
 	// tickCount is Entity.tickCount, the ticks the player has existed in
 	// this session.

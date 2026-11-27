@@ -112,7 +112,7 @@ func decodeNether(k netherKind, n map[string]any, d *world.EntityData) {
 			c.health = a.Current
 		}
 	}
-	if j := readNativeMobJavaState(n); j != nil {
+	if j := readNativeMobExtraState(n); j != nil {
 		c.size = int(nbtconv.Int32(j, "Size"))
 		c.explosionPower = int(nbtconv.Int32(j, "Charge"))
 		c.jump = int(nbtconv.Int32(j, "JumpDelay"))
@@ -145,7 +145,7 @@ func encodeNether(k netherKind, d *world.EntityData) map[string]any {
 	case magmaKind:
 		n["Size"] = uint8(s.size - 1)
 	}
-	return mergeNativeMobJavaState(mergeNativeMobNBT(d.NativeNBT, n), map[string]any{"Size": int32(s.size), "Charge": int32(s.explosionPower), "JumpDelay": int32(s.cubeAI.move.jumpDelay)})
+	return mergeNativeMobExtraState(mergeNativeMobNBT(d.NativeNBT, n), map[string]any{"Size": int32(s.size), "Charge": int32(s.explosionPower), "JumpDelay": int32(s.cubeAI.move.jumpDelay)})
 }
 func speciesIDNether(k netherKind) string {
 	switch k {

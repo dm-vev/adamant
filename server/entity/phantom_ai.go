@@ -146,7 +146,7 @@ func (g *phantomAttackStrategyGoal) Stop(m *Mob) {
 		return
 	}
 	anchor := cube.PosFromVec3(s.anchor)
-	anchor[1] = m.tx.JavaMotionBlockingHeight(anchor[0], anchor[2], false) + 10 + int(m.Random().NextInt(20))
+	anchor[1] = m.tx.MotionBlockingHeight(anchor[0], anchor[2], false) + 10 + int(m.Random().NextInt(20))
 	s.anchor = anchor.Vec3()
 }
 

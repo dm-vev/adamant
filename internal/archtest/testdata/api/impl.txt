@@ -269,7 +269,7 @@ server/block.Bed	server/world.Item	value
 server/block.Bed	server/world.LiquidDisplacer	value
 server/block.Bed	server/world.NBTer	value
 server/block.Bed	server/world.NeighbourUpdateTicker	value
-server/block.Bed	server/world.javaCanonicalStater	value
+server/block.Bed	server/world.canonicalStater	value
 server/block.Bed	server/world.lightDiffuser	value
 server/block.Bedrock	server/item.endCrystalSupport	value
 server/block.Bedrock	server/world.Block	value
@@ -629,7 +629,7 @@ server/block.Chest	server/world.Block	value
 server/block.Chest	server/world.Item	value
 server/block.Chest	server/world.LiquidDisplacer	value
 server/block.Chest	server/world.NBTer	value
-server/block.Chest	server/world.javaChestState	value
+server/block.Chest	server/world.chestStater	value
 server/block.Chest	server/world.lightDiffuser	value
 server/block.ChiseledBookshelf	server/block.Breakable	value
 server/block.ChiseledBookshelf	server/block.HasFacing	value
@@ -828,7 +828,7 @@ server/block.CopperChest	server/world.Item	value
 server/block.CopperChest	server/world.LiquidDisplacer	value
 server/block.CopperChest	server/world.NBTer	value
 server/block.CopperChest	server/world.RandomTicker	value
-server/block.CopperChest	server/world.javaChestState	value
+server/block.CopperChest	server/world.chestStater	value
 server/block.CopperChest	server/world.lightDiffuser	value
 server/block.CopperDoor	server/block.Activatable	value
 server/block.CopperDoor	server/block.Breakable	value
@@ -2992,7 +2992,7 @@ server/block.TrappedChest	server/world.LiquidDisplacer	value
 server/block.TrappedChest	server/world.NBTer	value
 server/block.TrappedChest	server/world.RedstonePowerSource	value
 server/block.TrappedChest	server/world.RedstoneStrongPowerSource	value
-server/block.TrappedChest	server/world.javaChestState	value
+server/block.TrappedChest	server/world.chestStater	value
 server/block.TrappedChest	server/world.lightDiffuser	value
 server/block.TreeSapling	server/block.Breakable	value
 server/block.TreeSapling	server/block.Flammable	value
@@ -6518,6 +6518,7 @@ server/entity.breezeType	server/world.EntityType	value
 server/entity.breezeWindChargeType	server/world.EntityType	value
 server/entity.camelLookControl	server/entity.mobMoveControl	value
 server/entity.camelMoveControl	server/entity.mobMoveControl	value
+server/entity.canonicalNBTConfig	server/world.EntityConfig	value
 server/entity.catBehaviour	protocol/bedrock/session.baby	*
 server/entity.catBehaviour	protocol/bedrock/session.soundVariantMeta	*
 server/entity.catBehaviour	protocol/bedrock/session.variable	*
@@ -7827,7 +7828,6 @@ server/entity.isInWaterSensor	server/entity.sensor	value
 server/entity.itemBehaviourConfig	server/world.EntityConfig	value
 server/entity.itemType	protocol/bedrock/session.OffsetEntity	value
 server/entity.itemType	server/world.EntityType	value
-server/entity.javaNBTConfig	server/world.EntityConfig	value
 server/entity.jumpControl	server/entity.mobMoveControl	*
 server/entity.landOnOwnersShoulderGoal	server/entity.Goal	*
 server/entity.landOnOwnersShoulderGoal	server/entity.goalInterruptable	*
@@ -10091,6 +10091,7 @@ server/entity/effect.wither	server/entity/effect.LastingType	value
 server/entity/effect.wither	server/entity/effect.Type	value
 server/event.Cancellable	server/event.cancellable	*
 server/event.Context	server/event.cancellable	*
+server/internal/vanilla.OverworldChunk	server/world.BiomeAtProvider	*
 server/internal/vanilla.OverworldChunk	server/world/generator/advanced/overworld.modernSurfaceSource	*
 server/item.AmethystShard	server/item.ArmourTrimMaterial	value
 server/item.AmethystShard	server/world.Item	value
@@ -11220,11 +11221,13 @@ server/world/chunk.blockPaletteMigrationEncoding	server/world/chunk.paletteEncod
 server/world/chunk.diskEncoding	server/world/chunk.Encoding	value
 server/world/chunk.skyLight	server/world/chunk.light	value
 server/world/generator.Flat	server/world.Generator	value
+server/world/generator/advanced/end.End	server/world.BiomeAtProvider	*
 server/world/generator/advanced/end.End	server/world.Generator	*
 server/world/generator/advanced/end.End	server/world.StructureAtFinder	*
 server/world/generator/advanced/end.End	server/world.StructureLocator	*
 server/world/generator/advanced/end.endShapeAccess	server/world.ChorusGenerationAccess	value
 server/world/generator/advanced/end.endShapeAccess	server/world.GenerationShapeAccess	value
+server/world/generator/advanced/nether.Nether	server/world.BiomeAtProvider	*
 server/world/generator/advanced/nether.Nether	server/world.Generator	*
 server/world/generator/advanced/nether.Nether	server/world.PersistentGenerator	*
 server/world/generator/advanced/nether.Nether	server/world.ReleasingGenerator	*
@@ -11247,8 +11250,10 @@ server/world/generator/advanced/nether.netherBridgeNetherStalkRoom	server/world/
 server/world/generator/advanced/nether.netherBridgeStairs	server/world/generator/advanced/nether.bridgePiece	*
 server/world/generator/advanced/nether.netherBridgeStraight	server/world/generator/advanced/nether.bridgePiece	*
 server/world/generator/advanced/nether.netherBridgeThrone	server/world/generator/advanced/nether.bridgePiece	*
+server/world/generator/advanced/nether.netherFeatureSource	server/world.BiomeAtProvider	*
 server/world/generator/advanced/nether.netherFeatureSource	server/world/generator/advanced/overworld.ModernFeatureSource	*
 server/world/generator/advanced/nether.netherFeatureSource	server/world/generator/advanced/overworld.baseTopSource	*
+server/world/generator/advanced/overworld.Overworld	server/world.BiomeAtProvider	*
 server/world/generator/advanced/overworld.Overworld	server/world.Generator	*
 server/world/generator/advanced/overworld.Overworld	server/world.PersistentGenerator	*
 server/world/generator/advanced/overworld.Overworld	server/world.ReleasingGenerator	*
@@ -11258,6 +11263,7 @@ server/world/generator/advanced/overworld.Overworld	server/world.StructureLocato
 server/world/generator/advanced/overworld.Overworld	server/world.TunableGenerator	*
 server/world/generator/advanced/overworld.featureRegion	server/world.ChorusGenerationAccess	*
 server/world/generator/advanced/overworld.featureRegion	server/world.GenerationShapeAccess	*
+server/world/generator/advanced/overworld.liveFeatureSource	server/world.BiomeAtProvider	value
 server/world/generator/advanced/overworld.liveFeatureSource	server/world/generator/advanced/overworld.ModernFeatureSource	value
 server/world/generator/advanced/overworld.minePiece	server/world/generator/advanced/overworld.modernStructurePiece	value
 server/world/generator/advanced/overworld.modernBuriedTreasurePiece	server/world/generator/advanced/overworld.modernStructurePiece	value
@@ -11273,6 +11279,7 @@ server/world/generator/advanced/overworld.modernRuinedPortal	server/world/genera
 server/world/generator/advanced/overworld.modernShipwreckPiece	server/world/generator/advanced/overworld.modernStructurePiece	value
 server/world/generator/advanced/overworld.modernStructureBlockSource	server/world.BlockSource	value
 server/world/generator/advanced/overworld.modernSwampHutPiece	server/world/generator/advanced/overworld.modernStructurePiece	value
+server/world/generator/advanced/overworld.modernTerrainSource	server/world.BiomeAtProvider	value
 server/world/generator/advanced/overworld.modernTerrainSource	server/world/generator/advanced/overworld.ModernFeatureSource	value
 server/world/generator/advanced/overworld.runtimeFeatures	server/world.RuntimeFeatures	*
 server/world/generator/advanced/overworld.strongholdPiece	server/world/generator/advanced/overworld.modernStructurePiece	value

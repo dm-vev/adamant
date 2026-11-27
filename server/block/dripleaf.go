@@ -94,7 +94,7 @@ func bigDripleafHeadSurvives(tx *world.Tx, pos cube.Pos) bool {
 	if _, ok := tx.Block(below).(BigDripleaf); ok {
 		return true
 	}
-	return javaBlockTag(tx, below, "supports_big_dripleaf")
+	return hasBlockTag(tx, below, "supports_big_dripleaf")
 }
 
 // bigDripleafStemSurvives ports BigDripleafStemBlock.canSurvive: a stem needs
@@ -334,11 +334,11 @@ func (SmallDripleaf) FlammabilityInfo() FlammabilityInfo {
 // half: clay or moss below, or soil below with a water source at the plant.
 func smallDripleafSurvives(tx *world.Tx, pos cube.Pos) bool {
 	below := pos.Side(cube.FaceDown)
-	if javaBlockTag(tx, below, "supports_small_dripleaf") {
+	if hasBlockTag(tx, below, "supports_small_dripleaf") {
 		return true
 	}
 	water, ok := tx.Liquid(pos)
-	return ok && water.LiquidType() == "water" && water.LiquidDepth() == 8 && !water.LiquidFalling() && javaBlockTag(tx, below, "supports_vegetation")
+	return ok && water.LiquidType() == "water" && water.LiquidDepth() == 8 && !water.LiquidFalling() && hasBlockTag(tx, below, "supports_vegetation")
 }
 
 // UseOnBlock places both halves facing the placer.

@@ -26,7 +26,7 @@ func (r *goatSoundRecorder) HandleSound(_ *world.Context, s world.Sound, _ mgl64
 // TestGoatsEatWithTheirJavaSound checks Goat.playEatingSound: a goat fed
 // wheat plays entity.goat.eat, and a screaming goat
 // entity.goat.screaming.eat.
-func TestGoatsEatWithTheirJavaSound(t *testing.T) {
+func TestGoatsEatWithCanonicalSound(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
 		screaming byte

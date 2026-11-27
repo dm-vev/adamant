@@ -6,12 +6,173 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"reflect"
 	"slices"
+	"sync"
+	"sync/atomic"
 
 	"github.com/df-mc/worldupgrader/blockupgrader"
 	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/dm-vev/adamant/server/internal/gamedata"
 )
+
+const diskDecodeCacheMask = 8191
+
+type diskDecodeEntry struct {
+	raw string
+	rid uint32
+}
+
+type diskCodecCache struct {
+	blockCount int
+	enc        []atomic.Pointer[[]byte]
+	dec        [diskDecodeCacheMask + 1]atomic.Pointer[diskDecodeEntry]
+}
+
+var diskCodecCaches sync.Map
+
+func diskCodecCacheFor(br BlockRegistry) *diskCodecCache {
+	if br == nil {
+		return nil
+	}
+	rt := reflect.TypeOf(br)
+	if rt == nil || !rt.Comparable() {
+		return nil
+	}
+	count := br.BlockCount()
+	if v, ok := diskCodecCaches.Load(br); ok {
+		c := v.(*diskCodecCache)
+		if c.blockCount == count {
+			return c
+		}
+	}
+	c := &diskCodecCache{
+		blockCount: count,
+		enc:        make([]atomic.Pointer[[]byte], count),
+	}
+	if count == 0 {
+		diskCodecCaches.Store(br, c)
+		return c
+	}
+	actual, _ := diskCodecCaches.LoadOrStore(br, c)
+	existing := actual.(*diskCodecCache)
+	if existing.blockCount != count {
+		diskCodecCaches.Store(br, c)
+		return c
+	}
+	return existing
+}
+
+func fnv64a(b []byte) uint64 {
+	var h uint64 = 14695981039346656037
+	for _, c := range b {
+		h ^= uint64(c)
+		h *= 1099511628211
+	}
+	return h
+}
+
+func skipFastNBTCompound(data []byte) (int, bool) {
+	if len(data) < 4 || data[0] != nbtTagStruct {
+		return 0, false
+	}
+	_, pos, ok := readFastNBTStringBytes(data, 1)
+	if !ok {
+		return 0, false
+	}
+	return skipFastNBTFields(data, pos, 0)
+}
+
+func skipFastNBTFields(data []byte, pos, depth int) (int, bool) {
+	for {
+		if pos >= len(data) {
+			return 0, false
+		}
+		tag := data[pos]
+		pos++
+		if tag == nbtTagEnd {
+			return pos, true
+		}
+		_, nextPos, ok := readFastNBTStringBytes(data, pos)
+		if !ok {
+			return 0, false
+		}
+		pos = nextPos
+		switch tag {
+		case nbtTagByte:
+			pos++
+		case nbtTagInt16:
+			pos += 2
+		case nbtTagInt32:
+			pos += 4
+		case nbtTagInt64:
+			pos += 8
+		case nbtTagString:
+			_, pos, ok = readFastNBTStringBytes(data, pos)
+			if !ok {
+				return 0, false
+			}
+		case nbtTagStruct:
+			if depth >= 4 {
+				return 0, false
+			}
+			pos, ok = skipFastNBTFields(data, pos, depth+1)
+			if !ok {
+				return 0, false
+			}
+		default:
+			return 0, false
+		}
+		if pos > len(data) {
+			return 0, false
+		}
+	}
+}
+
+func writeCachedBlockEntry(buf *bytes.Buffer, blocks BlockRegistry, cache *diskCodecCache, v uint32) {
+	if cache != nil && v < uint32(len(cache.enc)) {
+		if cached := cache.enc[v].Load(); cached != nil {
+			_, _ = buf.Write(*cached)
+			return
+		}
+		name, props, _ := blocks.RuntimeIDToState(v)
+		entry := blockEntry{Name: name, State: props, Version: CurrentBlockVersion}
+		var tmp bytes.Buffer
+		tmp.Grow(64)
+		if !writeFastBlockEntry(&tmp, entry) {
+			_ = nbt.NewEncoderWithEncoding(&tmp, nbt.LittleEndian).Encode(entry)
+		}
+		encoded := slices.Clone(tmp.Bytes())
+		cache.enc[v].Store(&encoded)
+		_, _ = buf.Write(encoded)
+		return
+	}
+	name, props, _ := blocks.RuntimeIDToState(v)
+	entry := blockEntry{Name: name, State: props, Version: CurrentBlockVersion}
+	if !writeFastBlockEntry(buf, entry) {
+		_ = nbt.NewEncoderWithEncoding(buf, nbt.LittleEndian).Encode(entry)
+	}
+}
+
+func tryDecodeCachedBlockEntry(buf *bytes.Buffer, blocks BlockRegistry, cache *diskCodecCache, scratch map[string]any) (uint32, map[string]any, bool) {
+	if cache != nil {
+		data := buf.Bytes()
+		if end, ok := skipFastNBTCompound(data); ok {
+			raw := data[:end]
+			slot := fnv64a(raw) & diskDecodeCacheMask
+			if entry := cache.dec[slot].Load(); entry != nil && entry.raw == string(raw) {
+				buf.Next(end)
+				return entry.rid, scratch, true
+			}
+			rid, nextScratch, decoded := tryDecodeFastBlockEntry(buf, blocks, scratch)
+			if decoded {
+				cache.dec[slot].Store(&diskDecodeEntry{raw: string(raw), rid: rid})
+			}
+			return rid, nextScratch, decoded
+		}
+	}
+	return tryDecodeFastBlockEntry(buf, blocks, scratch)
+}
 
 const (
 	nbtTagEnd    byte = 0
@@ -83,28 +244,25 @@ type missingStateEntry struct {
 type paletteStateMigration struct {
 	index        uint16
 	entries      map[uint16]missingStateEntry
-	javaStateIDs map[uint16]uint32
-	decodeJava   bool
+	stateIDs map[uint16]uint32
+	decodeCanonical   bool
 	dec          *nbt.Decoder
 	enc          *nbt.Encoder
 	scratchProps map[string]any
+	cache        *diskCodecCache
 }
 
 type blockPaletteMigrationEncoding struct {
 	BlockPaletteEncoding
 	migration *paletteStateMigration
-	javaIDs   map[uint16]uint32
+	stateIDs   map[uint16]uint32
 }
 
 func (bpe BlockPaletteEncoding) encode(buf *bytes.Buffer, v uint32) {
-	entry := bpe.EncodeBlockState(v)
-	if writeFastBlockEntry(buf, entry) {
-		return
-	}
-	_ = nbt.NewEncoderWithEncoding(buf, nbt.LittleEndian).Encode(entry)
+	writeCachedBlockEntry(buf, bpe.Blocks, diskCodecCacheFor(bpe.Blocks), v)
 }
 func (bpe BlockPaletteEncoding) decode(buf *bytes.Buffer) (uint32, error) {
-	if rid, _, ok := tryDecodeFastBlockEntry(buf, bpe.Blocks, nil); ok {
+	if rid, _, ok := tryDecodeCachedBlockEntry(buf, bpe.Blocks, diskCodecCacheFor(bpe.Blocks), nil); ok {
 		return rid, nil
 	}
 	var m map[string]any
@@ -118,19 +276,24 @@ func (bpe BlockPaletteEncoding) decode(buf *bytes.Buffer) (uint32, error) {
 func (bpe blockPaletteMigrationEncoding) encode(buf *bytes.Buffer, v uint32) {
 	index := bpe.migration.index
 	entry, ok := bpe.migration.entries[index]
+	if !ok && bpe.stateIDs[index] == 0 {
+		writeCachedBlockEntry(buf, bpe.Blocks, bpe.migration.cache, v)
+		bpe.migration.index++
+		return
+	}
 	if !ok {
 		entry = missingStateEntry{state: bpe.EncodeBlockState(v)}
 	}
-	if bpe.javaIDs[index] == 0 && writeFastBlockEntry(buf, entry.state) {
+	if bpe.stateIDs[index] == 0 && writeFastBlockEntry(buf, entry.state) {
 		bpe.migration.index++
 		return
 	}
 	native := map[string]any{
 		"name": entry.state.Name, "states": entry.state.State, "version": entry.state.Version,
 	}
-	if id := bpe.javaIDs[index]; id != 0 {
+	if id := bpe.stateIDs[index]; id != 0 {
 		if name, properties, found := gamedata.BlockStateFromID(id); found {
-			native["adamant:java"] = map[string]any{"name": name, "properties": properties}
+			native["adamant:state"] = map[string]any{"name": name, "properties": properties}
 		}
 	}
 	if bpe.migration.enc == nil {
@@ -141,7 +304,7 @@ func (bpe blockPaletteMigrationEncoding) encode(buf *bytes.Buffer, v uint32) {
 }
 
 func (bpe blockPaletteMigrationEncoding) decode(buf *bytes.Buffer) (uint32, error) {
-	if rid, scratch, ok := tryDecodeFastBlockEntry(buf, bpe.Blocks, bpe.migration.scratchProps); ok {
+	if rid, scratch, ok := tryDecodeCachedBlockEntry(buf, bpe.Blocks, bpe.migration.cache, bpe.migration.scratchProps); ok {
 		bpe.migration.scratchProps = scratch
 		bpe.migration.index++
 		return rid, nil
@@ -154,26 +317,33 @@ func (bpe blockPaletteMigrationEncoding) decode(buf *bytes.Buffer) (uint32, erro
 	if err := bpe.migration.dec.Decode(&m); err != nil {
 		return 0, fmt.Errorf("error decoding block palette entry %d: %w", index, err)
 	}
-	var javaID uint32
-	if bpe.migration.decodeJava {
-		if extension, exists := m["adamant:java"]; exists {
-			javaState, ok := extension.(map[string]any)
+	var canonicalID uint32
+	if bpe.migration.decodeCanonical {
+		extKey := "adamant:state"
+		extension, exists := m[extKey]
+		if !exists {
+			extKey = "adamant:java"
+			extension, exists = m[extKey]
+		}
+		if exists {
+			state, ok := extension.(map[string]any)
 			if !ok {
-				return 0, fmt.Errorf("invalid adamant:java metadata in block palette entry %d: expected compound", index)
+				return 0, fmt.Errorf("invalid %s metadata in block palette entry %d: expected compound", extKey, index)
 			}
-			name, ok := javaState["name"].(string)
+			name, ok := state["name"].(string)
 			if !ok {
-				return 0, fmt.Errorf("invalid adamant:java metadata in block palette entry %d: missing string name", index)
+				return 0, fmt.Errorf("invalid %s metadata in block palette entry %d: missing string name", extKey, index)
 			}
-			properties, ok := javaState["properties"].(map[string]any)
+			properties, ok := state["properties"].(map[string]any)
 			if !ok {
-				return 0, fmt.Errorf("invalid adamant:java metadata in block palette entry %d: missing properties compound", index)
+				return 0, fmt.Errorf("invalid %s metadata in block palette entry %d: missing properties compound", extKey, index)
 			}
 			var err error
-			javaID, err = gamedata.BlockStateID(name, properties)
+			canonicalID, err = gamedata.BlockStateID(name, properties)
 			if err != nil {
-				return 0, fmt.Errorf("invalid adamant:java metadata in block palette entry %d: %w", index, err)
+				return 0, fmt.Errorf("invalid %s metadata in block palette entry %d: %w", extKey, index, err)
 			}
+			delete(m, "adamant:state")
 			delete(m, "adamant:java")
 		}
 	}
@@ -187,11 +357,11 @@ func (bpe blockPaletteMigrationEncoding) decode(buf *bytes.Buffer) (uint32, erro
 		}
 		bpe.migration.entries[index] = missingStateEntry{properties: missing, state: entry}
 	}
-	if javaID != 0 {
-		if bpe.migration.javaStateIDs == nil {
-			bpe.migration.javaStateIDs = make(map[uint16]uint32)
+	if canonicalID != 0 {
+		if bpe.migration.stateIDs == nil {
+			bpe.migration.stateIDs = make(map[uint16]uint32)
 		}
-		bpe.migration.javaStateIDs[index] = javaID
+		bpe.migration.stateIDs[index] = canonicalID
 	}
 	bpe.migration.index++
 	return rid, nil
@@ -279,16 +449,9 @@ func (diskEncoding) encodePalette(buf *bytes.Buffer, p *Palette, e paletteEncodi
 		_, _ = buf.Write(b[:])
 	}
 	if bpe, ok := e.(BlockPaletteEncoding); ok {
-		var enc *nbt.Encoder
+		cache := diskCodecCacheFor(bpe.Blocks)
 		for _, v := range p.values {
-			entry := bpe.EncodeBlockState(v)
-			if writeFastBlockEntry(buf, entry) {
-				continue
-			}
-			if enc == nil {
-				enc = nbt.NewEncoderWithEncoding(buf, nbt.LittleEndian)
-			}
-			_ = enc.Encode(entry)
+			writeCachedBlockEntry(buf, bpe.Blocks, cache, v)
 		}
 		return
 	}

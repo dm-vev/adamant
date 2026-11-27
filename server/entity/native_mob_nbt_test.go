@@ -45,16 +45,16 @@ func TestMergeNativeMobNBTPreservesUnknownActorState(t *testing.T) {
 	}
 }
 
-func TestNativeMobJavaStateUsesSeparateNamespace(t *testing.T) {
+func TestNativeMobExtraStateUsesSeparateNamespace(t *testing.T) {
 	t.Parallel()
 	native := map[string]any{"UniqueID": int64(4), "OwnerNew": int64(-1)}
-	java := mergeNativeMobJavaState(native, map[string]any{"AngerTime": int32(17), "AngryAt": "java-player-uuid"})
-	if _, ok := java["AngerTime"]; ok {
+	extra := mergeNativeMobExtraState(native, map[string]any{"AngerTime": int32(17), "AngryAt": "java-player-uuid"})
+	if _, ok := extra["AngerTime"]; ok {
 		t.Fatal("Java anger leaked into native actor fields")
 	}
-	state := readNativeMobJavaState(java)
-	if state["AngerTime"] != int32(17) || state["AngryAt"] != "java-player-uuid" || java["OwnerNew"] != int64(-1) {
-		t.Fatalf("Java-only state did not round-trip independently: native=%#v java=%#v", java, state)
+	state := readNativeMobExtraState(extra)
+	if state["AngerTime"] != int32(17) || state["AngryAt"] != "java-player-uuid" || extra["OwnerNew"] != int64(-1) {
+		t.Fatalf("Java-only state did not round-trip independently: native=%#v java=%#v", extra, state)
 	}
 }
 

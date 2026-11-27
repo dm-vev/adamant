@@ -31,7 +31,7 @@ const Minecraft = "1.26.60"
 //
 // Java names no content and no world format of the server: those are of
 // Minecraft. It has no effect on what Bedrock clients are sent.
-const Java = "26.3"
+const Reference = "26.3"
 
 // MinecraftNumbers returns the numbers of Minecraft, followed by two zeros for
 // the revision and the beta numbers, as the world format stores versions.

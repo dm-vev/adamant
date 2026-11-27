@@ -13,8 +13,8 @@ import (
 // Java's interaction ranges, which Menu adds its buffer to: blocks, and
 // entities, in survival and in game modes with the creative inventory.
 const (
-	javaBlockRange, javaCreativeBlockRange   = 4.5, 5.0
-	javaEntityRange, javaCreativeEntityRange = 3.0, 5.0
+	menuBlockRange, menuCreativeBlockRange   = 4.5, 5.0
+	menuEntityRange, menuCreativeEntityRange = 3.0, 5.0
 )
 
 // errMenuFlood is what the operations of a batch beyond the operations a
@@ -54,16 +54,16 @@ func (p *Player) checkMenuReach() {
 			return
 		}
 		dist = distanceToBox(eyes, e.H().Type().BBox(e).Translate(e.Position()))
-		reach = javaEntityRange
+		reach = menuEntityRange
 		if creative {
-			reach = javaCreativeEntityRange
+			reach = menuCreativeEntityRange
 		}
 		reach = p.menuReach(reach, anticheat.EntityReach, ac.conf.EntityReach)
 	} else {
 		dist = distanceToBox(eyes, cube.Box(0, 0, 0, 1, 1, 1).Translate(m.Pos().Vec3()))
-		reach = javaBlockRange
+		reach = menuBlockRange
 		if creative {
-			reach = javaCreativeBlockRange
+			reach = menuCreativeBlockRange
 		}
 		reach = p.menuReach(reach, anticheat.BlockReach, ac.conf.BlockReach)
 	}
@@ -79,9 +79,9 @@ func (p *Player) checkMenuReach() {
 // open: java, the reach of Java for what the menu is open for, and the
 // Buffer of Menu; or, with the check passed on for the player, the reach
 // of its settings, if more.
-func (p *Player) menuReach(java float64, check anticheat.Check, s anticheat.ReachSettings) float64 {
+func (p *Player) menuReach(base float64, check anticheat.Check, s anticheat.ReachSettings) float64 {
 	ac := p.anticheat()
-	reach := java + ac.conf.Menu.Buffer
+	reach := base + ac.conf.Menu.Buffer
 	if p.checks(ac, check) {
 		reach = max(reach, p.reachOf(s))
 	}

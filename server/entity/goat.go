@@ -43,7 +43,7 @@ func (goatType) BBox(e world.Entity) cube.BBox {
 	return cube.Box(-w, 0, -w, w, h, w)
 }
 func (goatType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	s := readNativeMobJavaState(m)
+	s := readNativeMobExtraState(m)
 	if s == nil {
 		s = m
 	}
@@ -64,7 +64,7 @@ func (goatType) DecodeNBT(m map[string]any, d *world.EntityData) {
 func (goatType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*goatBehaviour)
 	a := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
-	return mergeNativeMobJavaState(map[string]any{"Attributes": a}, mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "IsScreamingGoat": byte(boolByte(b.screaming)), "HasLeftHorn": byte(boolByte(b.leftHorn)), "HasRightHorn": byte(boolByte(b.rightHorn))})))
+	return mergeNativeMobExtraState(map[string]any{"Attributes": a}, mergeNativeMobNBT(readNativeMobExtraState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "IsScreamingGoat": byte(boolByte(b.screaming)), "HasLeftHorn": byte(boolByte(b.leftHorn)), "HasRightHorn": byte(boolByte(b.rightHorn))})))
 }
 
 // GoatConfig configures source goat state.

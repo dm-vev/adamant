@@ -69,7 +69,7 @@ func patrolSpawnTick(tx *world.Tx, random *vanilla.Random) {
 		}
 		// The MOTION_BLOCKING_NO_LEAVES height map: under leaves and on
 		// top of grass.
-		pos[1] = tx.JavaMotionBlockingHeight(pos[0], pos[2], true)
+		pos[1] = tx.MotionBlockingHeight(pos[0], pos[2], true)
 		if !spawnPatrolMember(tx, pos, i == 0, random) && i == 0 {
 			break
 		}
@@ -81,7 +81,7 @@ func patrolSpawnTick(tx *world.Tx, random *vanilla.Random) {
 // patrolBiomeAllowed reports Java's CAN_PILLAGER_PATROL_SPAWN biome
 // attribute, which is off only in mushroom fields.
 func patrolBiomeAllowed(tx *world.Tx, pos cube.Pos) bool {
-	return world.JavaBiomeName(tx.Biome(pos)) != "mushroom_fields"
+	return world.CanonicalBiomeName(tx.Biome(pos)) != "mushroom_fields"
 }
 
 // spawnPatrolMember ports PatrolSpawner.spawnPatrolMember: a pillager spawns

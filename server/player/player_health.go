@@ -624,7 +624,7 @@ func (p *Player) attackDamage(i item.Stack, living entity.Living, smash maceSmas
 		p.magicCrit(living)
 	}
 	target := living.H().Type().EncodeEntity()
-	dmg += java26MobDamageBonus(i, target)
+	dmg += mobDamageBonus(i, target)
 	if imp, ok := i.Enchantment(enchantment.Impaling); ok {
 		if bonus := enchantment.Impaling.Damage(imp.Level(), living, p.tx); bonus > 0 {
 			dmg += bonus

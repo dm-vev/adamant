@@ -89,7 +89,7 @@ func (f *dragonFight) findExitPortal(tx *world.Tx) (endPortalPattern, bool) {
 			return accept(pattern)
 		}
 	}
-	for y := tx.JavaMotionBlockingHeight(0, 0, false); y >= tx.Range().Min(); y-- {
+	for y := tx.MotionBlockingHeight(0, 0, false); y >= tx.Range().Min(); y-- {
 		if pattern, found := findEndPortalPattern(tx, cube.Pos{0, y, 0}, bedrock); found {
 			return accept(pattern)
 		}
@@ -99,7 +99,7 @@ func (f *dragonFight) findExitPortal(tx *world.Tx) (endPortalPattern, bool) {
 
 func (f *dragonFight) spawnExitPortal(tx *world.Tx, active bool) {
 	if f.data.ExitPortal == nil {
-		pos := cube.Pos{0, tx.JavaMotionBlockingHeight(0, 0, true) - 1, 0}
+		pos := cube.Pos{0, tx.MotionBlockingHeight(0, 0, true) - 1, 0}
 		for pos[1] > 63 {
 			if _, bedrock := tx.Block(pos).(block.Bedrock); !bedrock {
 				break

@@ -43,6 +43,7 @@ armadillo.go passive
 armour_stand.go object
 armour_stand_behaviour.go object
 arrow.go projectile
+attribute.go core
 axolotl_ai.go aquatic
 baby.go passive
 base_behaviour.go object
@@ -56,6 +57,7 @@ breeze.go hostile
 breeze_ai.go hostile
 breeze_wind_charge.go projectile
 camel_ai.go passive
+canonical_nbt.go spawn
 cat.go passive
 chicken.go passive
 chunk_spawn.go spawn
@@ -130,9 +132,6 @@ item.go object
 item_behaviour.go object
 item_escape.go object
 item_escape_flags_native.go object
-java_attribute.go core
-java_nbt.go spawn
-java_rest.go core
 leash.go core
 leash_knot.go object
 level.go core
@@ -200,6 +199,7 @@ raider_mobs_ai.go villager
 random.go ai
 random_pos.go ai
 register.go registry
+rest.go core
 rider_seat.go core
 shear_equipment.go passive
 sheep.go passive

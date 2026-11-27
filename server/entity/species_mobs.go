@@ -190,7 +190,7 @@ func decodeSpecies(k speciesKind, n map[string]any, d *world.EntityData) {
 			c.health = float64(nbtconv.Float32(n, "Health"))
 		}
 	}
-	if j := readNativeMobJavaState(n); j != nil {
+	if j := readNativeMobExtraState(n); j != nil {
 		c.fuse = int(nbtconv.Int32(j, "Fuse"))
 		c.swell = int(nbtconv.Int32(j, "Swell"))
 		c.attackCooldown = int(nbtconv.Int32(j, "AttackCooldown"))
@@ -265,7 +265,7 @@ func encodeSpecies(k speciesKind, d *world.EntityData) map[string]any {
 	if k == slimeSpecies {
 		m["Size"] = int32(s.size - 1)
 	}
-	return mergeNativeMobJavaState(m, j)
+	return mergeNativeMobExtraState(m, j)
 }
 func (spiderType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	decodeSpecies(spiderSpecies, n, d)

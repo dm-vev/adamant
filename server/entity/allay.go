@@ -30,10 +30,10 @@ func (allayType) EncodeEntity() string        { return "minecraft:allay" }
 func (allayType) BBox(world.Entity) cube.BBox { return cube.Box(-.35, 0, -.35, .35, .6, .35) }
 func (allayType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	c := allayBehaviourConfig{}
-	javaState := readNativeMobJavaState(m)
+	extraState := readNativeMobExtraState(m)
 	source := m
-	if javaState != nil {
-		source = javaState
+	if extraState != nil {
+		source = extraState
 	}
 	if _, ok := source["Health"]; ok {
 		c.Health = float64(nbtconv.Float32(source, "Health"))
@@ -110,8 +110,8 @@ func (allayType) EncodeNBT(d *world.EntityData) map[string]any {
 	if v, ok := b.br.get(memLikedPlayer); ok {
 		liked = v.(uuid.UUID).String()
 	}
-	java := mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), map[string]any{"Health": float32(b.health.Health()), "MaxHealth": float32(b.health.MaxHealth()), "LikedPlayer": liked, "DuplicationCooldown": int64(b.duplicationCooldown), "Dancing": byte(catBool(b.dancing)), "Inventory": inv, "HandItems": []any{allayWriteStack(b.held), map[string]any{}}})
-	return mergeNativeMobJavaState(native, java)
+	extra := mergeNativeMobNBT(readNativeMobExtraState(d.NativeNBT), map[string]any{"Health": float32(b.health.Health()), "MaxHealth": float32(b.health.MaxHealth()), "LikedPlayer": liked, "DuplicationCooldown": int64(b.duplicationCooldown), "Dancing": byte(catBool(b.dancing)), "Inventory": inv, "HandItems": []any{allayWriteStack(b.held), map[string]any{}}})
+	return mergeNativeMobExtraState(native, extra)
 }
 func allayNativeItem(s item.Stack, previous nativeMobItem) nativeMobItem {
 	out := nativeMobItem{Raw: previous.Raw}

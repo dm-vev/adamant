@@ -10,7 +10,10 @@ import (
 
 // handleEnchant handles the enchantment of an item using the CraftRecipe stack request action.
 func (h *ItemStackRequestHandler) handleEnchant(a *mc.CraftRecipeStackRequestAction) error {
-	return h.batchOp(func() error { return h.batch.Enchant(int(a.RecipeNetworkID)) })
+	from := len(h.batch.Changes())
+	err := h.batch.Enchant(int(a.RecipeNetworkID))
+	h.recordBatchChanges(from)
+	return err
 }
 
 // ViewEnchantmentOptions shows the client the three options of the

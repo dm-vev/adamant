@@ -13,7 +13,7 @@ import (
 // suffocation reads one, instead of panicking: a full cube suffocates, the
 // rest does not, and a block holding water Java cannot waterlog it with is
 // read as the block alone.
-func TestStrawBedObstructionReadsBlocksWithoutJavaState(t *testing.T) {
+func TestStrawBedObstructionReadsBlocksWithoutExtraState(t *testing.T) {
 	native := func(name string, properties map[string]any) world.Block {
 		b, ok := world.BlockByName(name, properties)
 		if !ok {

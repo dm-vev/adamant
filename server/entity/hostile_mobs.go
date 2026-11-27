@@ -92,41 +92,41 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 		}
 	}
 	c.baby, c.canBreakDoors, c.canPickupLoot = nbtconv.Bool(n, "IsBaby"), nbtconv.Bool(n, "CanBreakDoors"), nbtconv.Bool(n, "CanPickUpLoot")
-	if java := readNativeMobJavaState(n); java != nil {
-		c.conversionTime = int(nbtconv.Int32(java, "InWaterTime"))
-		if _, ok := java["DrownedConversionTime"]; ok {
-			if n := nbtconv.Int32(java, "DrownedConversionTime"); n != -1 {
+	if extra := readNativeMobExtraState(n); extra != nil {
+		c.conversionTime = int(nbtconv.Int32(extra, "InWaterTime"))
+		if _, ok := extra["DrownedConversionTime"]; ok {
+			if n := nbtconv.Int32(extra, "DrownedConversionTime"); n != -1 {
 				c.drownedConversionTime, c.drownedConverting = int(n), true
 			}
 		}
-		c.raidID, c.raidWave, c.raidLeader = nbtconv.Int64(java, "RaidID"), int(nbtconv.Int32(java, "RaidWave")), nbtconv.Bool(java, "RaidLeader")
-		c.headDropGuaranteed = nbtconv.Bool(java, "RaidBannerDrop")
-		c.patrolLeader, c.patrolling = nbtconv.Bool(java, "PatrolLeader"), nbtconv.Bool(java, "Patrolling")
-		c.freezingTime = int(nbtconv.Int32(java, "FreezingTime"))
-		if _, ok := java["StrayConversionTime"]; ok {
-			if n := nbtconv.Int32(java, "StrayConversionTime"); n != -1 {
+		c.raidID, c.raidWave, c.raidLeader = nbtconv.Int64(extra, "RaidID"), int(nbtconv.Int32(extra, "RaidWave")), nbtconv.Bool(extra, "RaidLeader")
+		c.headDropGuaranteed = nbtconv.Bool(extra, "RaidBannerDrop")
+		c.patrolLeader, c.patrolling = nbtconv.Bool(extra, "PatrolLeader"), nbtconv.Bool(extra, "Patrolling")
+		c.freezingTime = int(nbtconv.Int32(extra, "FreezingTime"))
+		if _, ok := extra["StrayConversionTime"]; ok {
+			if n := nbtconv.Int32(extra, "StrayConversionTime"); n != -1 {
 				c.strayConversionTime, c.strayConverting = int(n), true
 			}
 		}
-		c.johnny = nbtconv.Bool(java, "Johnny")
-		c.spellTicks = int(nbtconv.Int32(java, "SpellTicks"))
-		c.ravagerAttack, c.ravagerStun, c.ravagerRoar = int(nbtconv.Int32(java, "AttackTick")), int(nbtconv.Int32(java, "StunTick")), int(nbtconv.Int32(java, "RoarTick"))
-		if _, ok := java["life_ticks"]; ok {
-			c.vexLimitedLife, c.vexLifeTicks = true, int(nbtconv.Int32(java, "life_ticks"))
+		c.johnny = nbtconv.Bool(extra, "Johnny")
+		c.spellTicks = int(nbtconv.Int32(extra, "SpellTicks"))
+		c.ravagerAttack, c.ravagerStun, c.ravagerRoar = int(nbtconv.Int32(extra, "AttackTick")), int(nbtconv.Int32(extra, "StunTick")), int(nbtconv.Int32(extra, "RoarTick"))
+		if _, ok := extra["life_ticks"]; ok {
+			c.vexLimitedLife, c.vexLifeTicks = true, int(nbtconv.Int32(extra, "life_ticks"))
 		}
-		if bound, ok := java["bound_pos"].([]int32); ok && len(bound) == 3 {
+		if bound, ok := extra["bound_pos"].([]int32); ok && len(bound) == 3 {
 			c.vexBound, c.vexHasBound = cube.Pos{int(bound[0]), int(bound[1]), int(bound[2])}, true
 		}
-		if target, ok := java["patrol_target"].([]int32); ok && len(target) == 3 {
+		if target, ok := extra["patrol_target"].([]int32); ok && len(target) == 3 {
 			c.patrolTarget, c.hasPatrolTarget = cube.Pos{int(target[0]), int(target[1]), int(target[2])}, true
 		}
-		if data, ok := java["SpawnData"].(map[string]any); ok {
+		if data, ok := extra["SpawnData"].(map[string]any); ok {
 			c.spawnData = cloneNativeMobNBT(data)
 		}
 	}
 	c.cureTicks = int(nbtconv.Int32(n, "ConversionTime"))
-	if java := readNativeMobJavaState(n); java != nil {
-		c.cureStarter = nbtconv.String(java, "ConversionPlayer")
+	if extra := readNativeMobExtraState(n); extra != nil {
+		c.cureStarter = nbtconv.String(extra, "ConversionPlayer")
 	}
 	if source, ok := n["equipment"].(map[string]any); ok {
 		for slot, name := range equipmentSlotNames {
@@ -167,12 +167,12 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 		}
 	}
 	c.dropChances = readDropChances(n)
-	c.attrs = decodeJavaAttributes(n["attributes"])
-	if java := readNativeMobJavaState(n); java != nil && c.attrs == nil {
-		c.attrs = decodeJavaAttributes(java["attributes"])
+	c.attrs = decodeMobAttributes(n["attributes"])
+	if extra := readNativeMobExtraState(n); extra != nil && c.attrs == nil {
+		c.attrs = decodeMobAttributes(extra["attributes"])
 	}
-	if java := readNativeMobJavaState(n); java != nil && c.dropChances == nil {
-		c.dropChances = readDropChances(java)
+	if extra := readNativeMobExtraState(n); extra != nil && c.dropChances == nil {
+		c.dropChances = readDropChances(extra)
 	}
 	if c.raidLeader && !c.head.Empty() {
 		c.headDropGuaranteed = true
@@ -217,47 +217,47 @@ func (hostileMobType) EncodeNBT(d *world.EntityData) map[string]any {
 	for key, value := range encodeNativeMobEquipment(equipment) {
 		native[key] = value
 	}
-	javaState := map[string]any{"InWaterTime": int32(b.conversionTime), "RaidID": b.raidID, "RaidWave": int32(b.raidWave), "RaidLeader": b.raidLeader, "RaidBannerDrop": b.headDropGuaranteed,
+	extraState := map[string]any{"InWaterTime": int32(b.conversionTime), "RaidID": b.raidID, "RaidWave": int32(b.raidWave), "RaidLeader": b.raidLeader, "RaidBannerDrop": b.headDropGuaranteed,
 		"PatrolLeader": b.patrolLeader, "Patrolling": b.patrolling, "FreezingTime": int32(b.freezingTime), "StrayConversionTime": int32(-1), "DrownedConversionTime": int32(-1)}
 	if b.drownedConverting {
-		javaState["DrownedConversionTime"] = int32(b.drownedConversionTime)
+		extraState["DrownedConversionTime"] = int32(b.drownedConversionTime)
 	}
 	if b.cureStarter != "" {
-		javaState["ConversionPlayer"] = b.cureStarter
+		extraState["ConversionPlayer"] = b.cureStarter
 	}
 	if b.strayConverting {
-		javaState["StrayConversionTime"] = int32(b.strayConversionTime)
+		extraState["StrayConversionTime"] = int32(b.strayConversionTime)
 	}
 	if len(b.dropChances) != 0 {
-		javaState["drop_chances"] = encodeDropChances(b.dropChances)
+		extraState["drop_chances"] = encodeDropChances(b.dropChances)
 	}
 	if len(b.attrs) != 0 {
-		javaState["attributes"] = b.attrs.encode()
+		extraState["attributes"] = b.attrs.encode()
 	}
 	if b.hasPatrolTarget {
-		javaState["patrol_target"] = []int32{int32(b.patrolTarget[0]), int32(b.patrolTarget[1]), int32(b.patrolTarget[2])}
+		extraState["patrol_target"] = []int32{int32(b.patrolTarget[0]), int32(b.patrolTarget[1]), int32(b.patrolTarget[2])}
 	}
 	if b.spawnData != nil {
-		javaState["SpawnData"] = cloneNativeMobNBT(b.spawnData)
+		extraState["SpawnData"] = cloneNativeMobNBT(b.spawnData)
 	}
 	switch b.kind {
 	case "minecraft:vindicator":
 		if b.johnny {
-			javaState["Johnny"] = true
+			extraState["Johnny"] = true
 		}
 	case "minecraft:evoker":
-		javaState["SpellTicks"] = int32(b.spellTicks)
+		extraState["SpellTicks"] = int32(b.spellTicks)
 	case "minecraft:ravager":
-		javaState["AttackTick"], javaState["StunTick"], javaState["RoarTick"] = int32(b.ravagerAttack), int32(b.ravagerStun), int32(b.ravagerRoar)
+		extraState["AttackTick"], extraState["StunTick"], extraState["RoarTick"] = int32(b.ravagerAttack), int32(b.ravagerStun), int32(b.ravagerRoar)
 	case "minecraft:vex":
 		if b.vexLimitedLife {
-			javaState["life_ticks"] = int32(b.vexLifeTicks)
+			extraState["life_ticks"] = int32(b.vexLifeTicks)
 		}
 		if b.vexHasBound {
-			javaState["bound_pos"] = []int32{int32(b.vexBound[0]), int32(b.vexBound[1]), int32(b.vexBound[2])}
+			extraState["bound_pos"] = []int32{int32(b.vexBound[0]), int32(b.vexBound[1]), int32(b.vexBound[2])}
 		}
 	}
-	native = mergeNativeMobJavaState(native, javaState)
+	native = mergeNativeMobExtraState(native, extraState)
 	if b.kind == "minecraft:zombie_villager" {
 		native["ConversionTime"] = int32(b.cureTicks)
 	}
@@ -274,7 +274,7 @@ type hostileConfig struct {
 	drownedConverting                                       bool
 	main, off, feet, legs, chest, head                      item.Stack
 	dropChances                                             map[int]float32
-	attrs                                                   javaAttributes
+	attrs                                                   mobAttributes
 	profession, villagerType                                string
 	villagerLevel, villagerXP, villagerAge                  int
 	offers                                                  []MerchantOffer
@@ -395,7 +395,7 @@ type hostileState struct {
 	drownedConverting                      bool
 	main, off, feet, legs, chest, head     item.Stack
 	dropChances                            map[int]float32
-	attrs                                  javaAttributes
+	attrs                                  mobAttributes
 	profession, villagerType               string
 	villagerLevel, villagerXP, villagerAge int
 	offers                                 []MerchantOffer

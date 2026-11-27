@@ -103,11 +103,11 @@ func TestBanFieldsAndExpiry(t *testing.T) {
 
 // TestBansReadJavaFields checks that an entry pasted from Java's
 // banned-players.json reads: its date format, and "forever".
-func TestBansReadJavaFields(t *testing.T) {
+func TestBansReadLegacyFields(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "banned-players.json")
-	java := `{"players":[{"name":"Notch","created":"2026-11-04 14:20:31 +0100","source":"Server","expires":"forever","reason":"Banned by an operator."}],"ips":[]}`
-	if err := os.WriteFile(path, []byte(java), 0644); err != nil {
+	legacy := `{"players":[{"name":"Notch","created":"2026-11-04 14:20:31 +0100","source":"Server","expires":"forever","reason":"Banned by an operator."}],"ips":[]}`
+	if err := os.WriteFile(path, []byte(legacy), 0644); err != nil {
 		t.Fatal(err)
 	}
 	b, err := loadBans(path)

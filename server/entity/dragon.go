@@ -408,9 +408,9 @@ func (b *enderDragonBehaviour) fly(e *Ent, tx *world.Tx, prevRot cube.Rotation) 
 	}
 	vel[1] += ydd * .01
 	yaw := wrapDegrees32(float32(e.data.Rot[0]))
-	aim := javaNormalize(target.pos.Sub(pos))
+	aim := normalizeVec3(target.pos.Sub(pos))
 	yawRad := yaw * float32(math.Pi/180)
-	dir := javaNormalize(mgl64.Vec3{float64(vanilla.Sin(float64(yawRad))), vel[1], -float64(vanilla.Cos(float64(yawRad)))})
+	dir := normalizeVec3(mgl64.Vec3{float64(vanilla.Sin(float64(yawRad))), vel[1], -float64(vanilla.Cos(float64(yawRad)))})
 	dot := max((float32(dir.Dot(aim))+.5)/1.5, 0)
 	if math.Abs(xdd) > 1e-5 || math.Abs(zdd) > 1e-5 {
 		yRotD := mgl64.Clamp(float64(wrapDegrees32(180-float32(vanilla.Atan2(xdd, zdd))*(180/float32(math.Pi))-yaw)), -50, 50)
@@ -428,7 +428,7 @@ func (b *enderDragonBehaviour) fly(e *Ent, tx *world.Tx, prevRot cube.Rotation) 
 	}
 	rot := cube.Rotation{float64(yaw), e.data.Rot[1]}
 	m := b.movement.TickMovement(e, pos, move, rot, prevRot, tx)
-	actual := javaNormalize(vel)
+	actual := normalizeVec3(vel)
 	slide := .8 + .15*(actual.Dot(dir)+1)/2
 	vel = mgl64.Vec3{vel[0] * slide, vel[1] * float64(float32(.91)), vel[2] * slide}
 	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), vel, m.Rotation()
@@ -678,7 +678,7 @@ func (d *enderDragon) Explode(src world.ExplosionSource, impact float64) {
 	explosion := ExplosionDamageSource{Source: src}
 	if impact > 0 {
 		d.HurtPart("body", (impact*impact+impact)/2*7*diameter+1, explosion)
-		push := javaNormalize(mgl64.Vec3{d.Position()[0] - center[0], d.Position()[1] + dragonEyeHeight - center[1], d.Position()[2] - center[2]})
+		push := normalizeVec3(mgl64.Vec3{d.Position()[0] - center[0], d.Position()[1] + dragonEyeHeight - center[1], d.Position()[2] - center[2]})
 		d.data.Vel = d.data.Vel.Add(push.Mul(impact))
 	}
 	for i := range b.parts {

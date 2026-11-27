@@ -148,10 +148,10 @@ func (v Vault) DecodeNBT(m map[string]any) any {
 	if config, ok := m["config"].(map[string]any); ok {
 		d.key = readActorItem(config["key_item"])
 		if table, _ := config["loot_table"].(string); table != "" {
-			d.lootTable = loot.JavaTableKey(table)
+			d.lootTable = loot.TableKey(table)
 		}
 		d.displayLootTable, _ = config["override_loot_table_to_display"].(string)
-		d.displayLootTable = loot.JavaTableKey(d.displayLootTable)
+		d.displayLootTable = loot.TableKey(d.displayLootTable)
 		if r, ok := trialNumber(config["activation_range"]); ok {
 			d.activationRange = r
 		}

@@ -20,10 +20,10 @@ var bedrockTablePaths = map[string]string{
 }
 
 // javaTableKeys is the inverse of bedrockTablePaths.
-var javaTableKeys = func() map[string]string {
+var canonicalTableKeys = func() map[string]string {
 	m := make(map[string]string, len(bedrockTablePaths))
-	for java, bedrock := range bedrockTablePaths {
-		m[bedrock] = java
+	for tableKey, bedrock := range bedrockTablePaths {
+		m[bedrock] = tableKey
 	}
 	return m
 }()
@@ -45,7 +45,7 @@ func BedrockTablePath(key string) string {
 // JavaTableKey returns the key of the Java loot table that a BDS path such as
 // loot_tables/chests/buriedtreasure.json names. A Java key is returned as it
 // is, with the minecraft namespace if it had none.
-func JavaTableKey(name string) string {
+func TableKey(name string) string {
 	path, ok := strings.CutPrefix(name, "loot_tables/")
 	if !ok {
 		if name != "" && !strings.Contains(name, ":") {
@@ -54,8 +54,8 @@ func JavaTableKey(name string) string {
 		return name
 	}
 	path = strings.TrimSuffix(path, ".json")
-	if java, ok := javaTableKeys[path]; ok {
-		path = java
+	if tableKey, ok := canonicalTableKeys[path]; ok {
+		path = tableKey
 	}
 	return "minecraft:" + path
 }

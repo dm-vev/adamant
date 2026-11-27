@@ -21,7 +21,7 @@ func (piglinBruteType) Open(tx *world.Tx, h *world.EntityHandle, d *world.Entity
 }
 func (piglinBruteType) BBox(world.Entity) cube.BBox { return cube.Box(-.3, 0, -.3, .3, 1.95, .3) }
 func (piglinBruteType) DecodeNBT(n map[string]any, d *world.EntityData) {
-	j := readNativeMobJavaState(n)
+	j := readNativeMobExtraState(n)
 	if j == nil {
 		j = n
 	}

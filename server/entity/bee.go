@@ -39,7 +39,7 @@ func (beeType) DecodeNBT(n map[string]any, d *world.EntityData) {
 			c.Health = a.Current
 		}
 	}
-	j := readNativeMobJavaState(n)
+	j := readNativeMobExtraState(n)
 	if j != nil {
 		c.HasNectar = nbtconv.Bool(j, "HasNectar")
 		c.HasStung = nbtconv.Bool(j, "HasStung")
@@ -71,7 +71,7 @@ func (beeType) EncodeNBT(d *world.EntityData) map[string]any {
 	if b.flower != nil {
 		j["flower_pos"] = encodeBeePos(*b.flower)
 	}
-	return mergeNativeMobJavaState(m, j)
+	return mergeNativeMobExtraState(m, j)
 }
 
 // decodeBeePos reads a block position saved as a compound, or nil if there

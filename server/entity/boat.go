@@ -661,7 +661,7 @@ func (b *Boat) base() *boatBehaviour {
 
 // JavaEntityID returns the Java entity type of the boat, which names its wood
 // like the boat item does.
-func (b *Boat) JavaEntityID() string {
+func (b *Boat) CanonicalEntityID() string {
 	id, _ := item.Boat{Variant: item.BoatVariantFromInt(int(b.base().Variant()))}.EncodeItem()
 	return id
 }
@@ -887,7 +887,7 @@ func (b *ChestBoat) chest() *ChestBoatBehaviour {
 
 // JavaEntityID returns the Java entity type of the chest boat, which names its
 // wood like the chest boat item does.
-func (b *ChestBoat) JavaEntityID() string {
+func (b *ChestBoat) CanonicalEntityID() string {
 	id, _ := item.ChestBoat{Variant: item.BoatVariantFromInt(int(b.base().Variant()))}.EncodeItem()
 	return id
 }

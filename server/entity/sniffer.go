@@ -47,7 +47,7 @@ func (snifferType) BBox(e world.Entity) cube.BBox {
 	return cube.Box(-w/2, 0, -w/2, w/2, h, w/2)
 }
 func (snifferType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	s := readNativeMobJavaState(m)
+	s := readNativeMobExtraState(m)
 	if s == nil {
 		s = m
 	}
@@ -71,7 +71,7 @@ func (snifferType) EncodeNBT(d *world.EntityData) map[string]any {
 	for _, p := range explored {
 		positions = append(positions, int32(p[0]), int32(p[1]), int32(p[2]))
 	}
-	return mergeNativeMobJavaState(map[string]any{"Attributes": a}, mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "ExploredPositions": positions})))
+	return mergeNativeMobExtraState(map[string]any{"Attributes": a}, mergeNativeMobNBT(readNativeMobExtraState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "ExploredPositions": positions})))
 }
 
 // SnifferConfig restores the age and explored positions of a sniffer.

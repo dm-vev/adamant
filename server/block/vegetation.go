@@ -12,7 +12,7 @@ import (
 // onVegetationSoil ports VegetationBlock.mayPlaceOn: the block below pos is in
 // #supports_vegetation.
 func onVegetationSoil(tx *world.Tx, pos cube.Pos) bool {
-	return javaBlockTag(tx, pos.Side(cube.FaceDown), "supports_vegetation")
+	return hasBlockTag(tx, pos.Side(cube.FaceDown), "supports_vegetation")
 }
 
 // spreadToNeighbour ports the bone meal of BushBlock and FireflyBushBlock:

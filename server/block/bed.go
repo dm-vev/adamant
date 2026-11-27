@@ -231,12 +231,12 @@ func (b Bed) EncodeBlock() (name string, properties map[string]interface{}) {
 
 // JavaCanonicalState returns the Java state of the bed, whose colour Java
 // keeps in its block ID and Bedrock in its block actor.
-func (b Bed) JavaCanonicalState() world.BlockState {
+func (b Bed) CanonicalState() world.BlockState {
 	part := "foot"
 	if b.Head {
 		part = "head"
 	}
-	return world.BlockState{Name: "minecraft:" + javaColourNames[b.Colour.Uint8()%16] + "_bed", Properties: map[string]any{
+	return world.BlockState{Name: "minecraft:" + colourNames[b.Colour.Uint8()%16] + "_bed", Properties: map[string]any{
 		"facing": b.Facing.String(), "occupied": b.Occupied, "part": part,
 	}}
 }
@@ -248,23 +248,23 @@ func (b Bed) WithCanonicalState(name string, properties map[string]any) (world.B
 	if !strings.HasSuffix(name, "_bed") {
 		return nil, fmt.Errorf("java bed: incompatible state %q", name)
 	}
-	colour, ok := javaActorColour(strings.TrimSuffix(name, "_bed"))
+	colour, ok := actorColour(strings.TrimSuffix(name, "_bed"))
 	if !ok {
 		return nil, fmt.Errorf("java bed: unsupported colour in %q", name)
 	}
-	facing, err := javaActorString(properties, "facing", "north")
+	facing, err := actorString(properties, "facing", "north")
 	if err != nil {
 		return nil, fmt.Errorf("java bed: %w", err)
 	}
-	b.Facing, err = javaActorFacing(facing)
+	b.Facing, err = actorFacing(facing)
 	if err != nil {
 		return nil, fmt.Errorf("java bed: %w", err)
 	}
-	part, err := javaActorString(properties, "part", "foot")
+	part, err := actorString(properties, "part", "foot")
 	if err != nil || part != "foot" && part != "head" {
 		return nil, fmt.Errorf("java bed: invalid part %v", properties["part"])
 	}
-	b.Occupied, err = javaActorBool(properties, "occupied")
+	b.Occupied, err = actorBool(properties, "occupied")
 	if err != nil {
 		return nil, fmt.Errorf("java bed: %w", err)
 	}

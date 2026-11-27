@@ -156,7 +156,7 @@ func (p parser) int(line *Line, v reflect.Value) error {
 		return line.UsageError()
 	}
 	value, err := strconv.ParseInt(arg, 10, v.Type().Bits())
-	if err != nil || !javaNumber(arg) {
+	if err != nil || !commandNumber(arg) {
 		return MessageNumberInvalid.F(arg)
 	}
 	v.SetInt(value)
@@ -170,7 +170,7 @@ func (p parser) uint(line *Line, v reflect.Value) error {
 		return line.UsageError()
 	}
 	value, err := strconv.ParseUint(arg, 10, v.Type().Bits())
-	if err != nil || !javaNumber(arg) {
+	if err != nil || !commandNumber(arg) {
 		return MessageNumberInvalid.F(arg)
 	}
 	v.SetUint(value)
@@ -220,7 +220,7 @@ func (p parser) bool(line *Line, v reflect.Value) error {
 // make up the number, so signs, exponents, hex, NaN and infinities are
 // rejected. bitSize is 32 or 64, as for strconv.ParseFloat.
 func ParseNumber(s string, bitSize int) (float64, error) {
-	if !javaNumber(s) {
+	if !commandNumber(s) {
 		return 0, fmt.Errorf("invalid number %q", s)
 	}
 	v, err := strconv.ParseFloat(s, bitSize)
@@ -232,7 +232,7 @@ func ParseNumber(s string, bitSize int) (float64, error) {
 
 // javaNumber reports whether s is non-empty and consists only of the
 // characters of StringReader.isAllowedNumber.
-func javaNumber(s string) bool {
+func commandNumber(s string) bool {
 	if s == "" {
 		return false
 	}

@@ -35,7 +35,7 @@ func nativeOnlyBlock(t *testing.T, name string, properties map[string]any) world
 // reads any block, instead of panicking on the missing state: the owner's
 // server crashed waking from a bed next to one. The player stands up where
 // Java stands it up next to the same block.
-func TestNightSkipWakesBesideBlocksWithoutJavaState(t *testing.T) {
+func TestNightSkipWakesBesideBlocksWithoutExtraState(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		// place puts the blocks at the first stand-up candidate.

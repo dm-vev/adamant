@@ -26,7 +26,7 @@ func (g *locateStructureGenerator) FindNearestMapFeature(_ string, _ cube.Pos, _
 func (g *locateStructureGenerator) FindStructureAt(_ string, _ cube.Pos) (world.StructureLocation, bool, error) {
 	return g.location, true, nil
 }
-func (g *locateStructureGenerator) JavaBiomeAt(int32, int32, int32) string {
+func (g *locateStructureGenerator) BiomeAt(int32, int32, int32) string {
 	g.biomeCalls++
 	return "minecraft:plains"
 }

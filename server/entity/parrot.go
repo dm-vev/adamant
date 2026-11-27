@@ -28,7 +28,7 @@ func (parrotType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData)
 func (parrotType) EncodeEntity() string        { return "minecraft:parrot" }
 func (parrotType) BBox(world.Entity) cube.BBox { return cube.Box(-.25, 0, -.25, .25, .9, .25) }
 func (parrotType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	s := readNativeMobJavaState(m)
+	s := readNativeMobExtraState(m)
 	if s == nil {
 		s = m
 	}
@@ -48,13 +48,13 @@ func (parrotType) EncodeNBT(d *world.EntityData) map[string]any {
 	h := b.health
 	attrs := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: h.MaxHealth(), Current: h.Health(), DefaultMin: 0, DefaultMax: 6, Min: 0, Max: 6}, {Name: "minecraft:movement", Base: .2, Current: .2, DefaultMin: 0, DefaultMax: .2, Min: 0, Max: .2}, {Name: "minecraft:flying_speed", Base: .4, Current: .4, DefaultMin: 0, DefaultMax: .4, Min: 0, Max: .4}, {Name: "minecraft:attack_damage", Base: 3, Current: 3, DefaultMin: 0, DefaultMax: 3, Min: 0, Max: 3}})
 	m := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs, "Variant": int32(b.variant)})
-	extra := mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), map[string]any{"Health": float32(h.Health()), "MaxHealth": float32(h.MaxHealth()), "Tame": byte(catBool(b.tamed)), "Sitting": byte(catBool(b.orderedToSit))})
+	extra := mergeNativeMobNBT(readNativeMobExtraState(d.NativeNBT), map[string]any{"Health": float32(h.Health()), "MaxHealth": float32(h.MaxHealth()), "Tame": byte(catBool(b.tamed)), "Sitting": byte(catBool(b.orderedToSit))})
 	if owner := catOwnerNBT(b.ownerUUID); owner != nil {
 		extra["Owner"] = owner
 	} else {
 		delete(extra, "Owner")
 	}
-	return mergeNativeMobJavaState(m, extra)
+	return mergeNativeMobExtraState(m, extra)
 }
 
 // ParrotConfig is the configuration of a parrot: its health, variant and

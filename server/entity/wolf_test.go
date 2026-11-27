@@ -13,7 +13,7 @@ func TestWolfNBTPreservesTamableAndArmorState(t *testing.T) {
 	data := &world.EntityData{}
 	entityWolfType.DecodeNBT(map[string]any{
 		"Health": float32(40), "MaxHealth": float32(40),
-		"Owner": javaUUIDIntArray(ownerUUID), "CollarColor": int32(14), "variant": "minecraft:rusty",
+		"Owner": uuidIntArray(ownerUUID), "CollarColor": int32(14), "variant": "minecraft:rusty",
 		"sound_variant": "minecraft:puglin", "Sitting": byte(1), "Age": int32(-1200),
 		"equipment": map[string]any{"body": map[string]any{
 			"id": "minecraft:wolf_armor", "count": int32(1),
@@ -21,9 +21,9 @@ func TestWolfNBTPreservesTamableAndArmorState(t *testing.T) {
 		}},
 	}, data)
 	nbt := entityWolfType.EncodeNBT(data)
-	javaState := readNativeMobJavaState(nbt)
-	if javaState["Tame"] != byte(1) || javaUUIDString(javaState["Owner"]) != ownerUUID || javaState["variant"] != "minecraft:rusty" || javaState["sound_variant"] != "minecraft:puglin" || javaState["CollarColor"] != byte(14) || javaState["Sitting"] != byte(1) || javaState["Age"] != int32(-1200) {
-		t.Fatalf("wolf Java state did not persist: %#v", javaState)
+	extraState := readNativeMobExtraState(nbt)
+	if extraState["Tame"] != byte(1) || uuidString(extraState["Owner"]) != ownerUUID || extraState["variant"] != "minecraft:rusty" || extraState["sound_variant"] != "minecraft:puglin" || extraState["CollarColor"] != byte(14) || extraState["Sitting"] != byte(1) || extraState["Age"] != int32(-1200) {
+		t.Fatalf("wolf Java state did not persist: %#v", extraState)
 	}
 	if nbt["IsTamed"] != byte(1) || nbt["Sitting"] != byte(1) {
 		t.Fatalf("native wolf state did not persist: %#v", nbt)
@@ -45,13 +45,13 @@ func TestWolfNBTPreservesTamableAndArmorState(t *testing.T) {
 	if _, ok := restoredArmor.Item().(item.WolfArmor); !ok || restoredArmor.Count() != 1 || restoredArmor.Durability() != item.NewStack(item.WolfArmor{}, 1).Durability()-7 {
 		t.Fatalf("native wolf body armor did not restore its item/count/durability: %v", restoredArmor)
 	}
-	javaEquipment, ok := javaState["equipment"].(map[string]any)
+	canonicalEquipment, ok := extraState["equipment"].(map[string]any)
 	if !ok {
-		t.Fatalf("wolf Java equipment state did not persist: %#v", javaState["equipment"])
+		t.Fatalf("wolf Java equipment state did not persist: %#v", extraState["equipment"])
 	}
-	body, ok := javaEquipment["body"].(map[string]any)
+	body, ok := canonicalEquipment["body"].(map[string]any)
 	if !ok || body["id"] != "minecraft:wolf_armor" {
-		t.Fatalf("wolf Java body armor did not persist: %#v", javaEquipment["body"])
+		t.Fatalf("wolf Java body armor did not persist: %#v", canonicalEquipment["body"])
 	}
 	components, ok := body["components"].(map[string]any)
 	if !ok || components["minecraft:damage"] != int32(7) {
@@ -61,7 +61,7 @@ func TestWolfNBTPreservesTamableAndArmorState(t *testing.T) {
 		t.Fatalf("restored armor item = %T", data.Data.(*wolfBehaviour).bodyArmor.Item())
 	}
 }
-func TestNewFromJavaNBTRejectsUnknownWolfEquipment(t *testing.T) {
+func TestNewFromCanonicalNBTRejectsUnknownWolfEquipment(t *testing.T) {
 	t.Parallel()
 	_, err := NewFromStructureNBT(map[string]any{
 		"id": "minecraft:wolf",

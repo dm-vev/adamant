@@ -13,12 +13,12 @@ import (
 // Loot returns source fishing-table output. The lure level affects hook wait
 // time, not the Java fishing-table weights.
 func Loot(luckLevel, _ int) (item.Stack, error) {
-	return LootJava(luckLevel, false, rand.Int64())
+	return LootWithSeed(luckLevel, false, rand.Int64())
 }
 
 // LootJava evaluates the builtin fishing table using a Java random stream and
 // the source hook's open-water predicate.
-func LootJava(luckLevel int, openWater bool, seed int64) (item.Stack, error) {
+func LootWithSeed(luckLevel int, openWater bool, seed int64) (item.Stack, error) {
 	random := vanilla.NewXoroshiroRandom(seed)
 	stacks, err := loot.Generate("minecraft:gameplay/fishing", seed, loot.Context{
 		Random:    &random,

@@ -208,8 +208,8 @@ func (r *Recorder) SetHandlingInput(handling bool) {
 	r.Answers.HandlingInput = handling
 }
 
-func (r *Recorder) ViewRecipesUnlocked(javaIDs []string) {
-	r.record("ViewRecipesUnlocked", javaIDs)
+func (r *Recorder) ViewRecipesUnlocked(stateIDs []string) {
+	r.record("ViewRecipesUnlocked", stateIDs)
 }
 
 func (r *Recorder) ViewMapData(data world.MapData) error {

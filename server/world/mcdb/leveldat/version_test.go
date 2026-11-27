@@ -45,4 +45,24 @@ func TestDefaultVersionsRoundTrip(t *testing.T) {
 
 // defaultLevelDatSHA256 is the SHA-256 of the level.dat written for the data of
 // FillDefault.
-const defaultLevelDatSHA256 = "69692d77743909da7cde6fe962bb91f177daba4b5e5cb48eb7dfbb28dce4fbe6"
+const defaultLevelDatSHA256 = "3b21ef25d176e7b3c2c97ca1cca608ebeacf8851c97df8add56242144fd7540f"
+
+func TestLegacyExtraStateFallsBackAndMigrates(t *testing.T) {
+	t.Parallel()
+	d := Data{
+		LegacyExtraState: map[string]any{
+			"spawn_monsters":          byte(0),
+			"spawn_wardens":           byte(0),
+			"water_source_conversion": byte(0),
+			"lava_source_conversion":  byte(1),
+		},
+	}
+	s := d.Settings()
+	if s.SpawnMonsters || s.SpawnWardens || s.WaterSourceConversion || !s.LavaSourceConversion {
+		t.Fatalf("Settings() failed to read LegacyExtraState: %+v", s)
+	}
+	d.PutSettings(s)
+	if d.LegacyExtraState != nil || d.ExtraState == nil {
+		t.Fatalf("PutSettings() did not migrate LegacyExtraState to ExtraState")
+	}
+}

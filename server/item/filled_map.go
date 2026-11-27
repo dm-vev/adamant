@@ -51,7 +51,7 @@ var filledMapItemIDs = [...]string{
 func (v FilledMapVariant) Valid() bool { return int(v) < len(filledMapItemIDs) }
 
 // JavaItemID returns the Java item identifier for the map variant.
-func (v FilledMapVariant) JavaItemID() string {
+func (v FilledMapVariant) CanonicalItemID() string {
 	if !v.Valid() {
 		panic("invalid filled map variant")
 	}
@@ -59,7 +59,7 @@ func (v FilledMapVariant) JavaItemID() string {
 }
 
 // FilledMapVariantFromJavaItemID resolves a Java map item identifier.
-func FilledMapVariantFromJavaItemID(id string) (FilledMapVariant, bool) {
+func FilledMapVariantFromID(id string) (FilledMapVariant, bool) {
 	id = strings.TrimPrefix(id, "minecraft:")
 	for variant, itemID := range filledMapItemIDs {
 		if id == itemID {
@@ -72,8 +72,8 @@ func FilledMapVariantFromJavaItemID(id string) (FilledMapVariant, bool) {
 // FilledMap is a Bedrock filled map referencing persisted world data by its
 // native signed map UUID. JavaID is a separate Java map registry ID.
 type FilledMap struct {
-	JavaID      int32
-	HasJavaID   bool
+	CanonicalID      int32
+	HasCanonicalID   bool
 	NativeID    int64
 	HasNativeID bool
 	Variant     FilledMapVariant
@@ -96,8 +96,8 @@ func (m FilledMap) EncodeNBT() map[string]any {
 	if m.HasNativeID {
 		data["map_uuid"] = m.NativeID
 	}
-	if m.HasJavaID {
-		data["adamant:java_map_id"] = m.JavaID
+	if m.HasCanonicalID {
+		data["adamant:map_id"] = m.CanonicalID
 	}
 	if len(data) == 0 {
 		return nil
@@ -105,7 +105,7 @@ func (m FilledMap) EncodeNBT() map[string]any {
 	return data
 }
 
-// DecodeNBT restores native Bedrock map UUIDs and the distinct Java map ID.
+// DecodeNBT restores native Bedrock map UUIDs and the distinct canonical map ID.
 func (m FilledMap) DecodeNBT(data map[string]any) any {
 	switch id := data["map_uuid"].(type) {
 	case int64:
@@ -115,13 +115,17 @@ func (m FilledMap) DecodeNBT(data map[string]any) any {
 	case int:
 		m.NativeID, m.HasNativeID = int64(id), true
 	}
-	switch id := data["adamant:java_map_id"].(type) {
+	rawID, exists := data["adamant:map_id"]
+	if !exists {
+		rawID = data["adamant:java_map_id"]
+	}
+	switch id := rawID.(type) {
 	case int32:
-		m.JavaID, m.HasJavaID = id, true
+		m.CanonicalID, m.HasCanonicalID = id, true
 	case int16:
-		m.JavaID, m.HasJavaID = int32(id), true
+		m.CanonicalID, m.HasCanonicalID = int32(id), true
 	case int:
-		m.JavaID, m.HasJavaID = int32(id), true
+		m.CanonicalID, m.HasCanonicalID = int32(id), true
 	}
 	return m
 }

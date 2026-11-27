@@ -149,7 +149,7 @@ func TestFlyOffAndExempt(t *testing.T) {
 		}
 	}
 	tr = hoverTrace("creative", 120)
-	tr.setup = func(_ *world.Tx, p *Player, _ *javaMover) { p.SetGameMode(world.GameModeCreative) }
+	tr.setup = func(_ *world.Tx, p *Player, _ *simMover) { p.SetGameMode(world.GameModeCreative) }
 	for _, v := range runTrace(t, w, tr).violations {
 		if v.Check == anticheat.Fly {
 			t.Fatalf("a player who may fly: %+v", v)
@@ -162,7 +162,7 @@ func TestFlyAllowsGliding(t *testing.T) {
 	w := traceWorld(t)
 	start := laneStart(laneStone).Add(mgl64.Vec3{0, 40, 0})
 	tr := acTrace{name: "gliding", start: start,
-		setup: func(_ *world.Tx, p *Player, _ *javaMover) {
+		setup: func(_ *world.Tx, p *Player, _ *simMover) {
 			p.Armour().SetChestplate(item.NewStack(item.Elytra{}, 1))
 			p.StartGliding()
 		},

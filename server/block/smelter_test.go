@@ -7,16 +7,16 @@ import (
 )
 
 // javaStack returns a stack of the Java item passed.
-func javaStack(t *testing.T, id string, count int) item.Stack {
+func canonicalStack(t *testing.T, id string, count int) item.Stack {
 	t.Helper()
-	it, ok := item.JavaItem(id)
+	it, ok := item.CanonicalItem(id)
 	if !ok {
 		t.Fatalf("no item for %v", id)
 	}
 	return item.NewStack(it, count)
 }
 
-func javaItemName(s item.Stack) string {
+func canonicalItemName(s item.Stack) string {
 	if s.Empty() {
 		return ""
 	}
@@ -26,7 +26,7 @@ func javaItemName(s item.Stack) string {
 
 // TestCookingRecipesFollowJava checks recipes from the Java 26.3 recipe data
 // that the hand-written Bedrock recipes lacked or got wrong.
-func TestCookingRecipesFollowJava(t *testing.T) {
+func TestCookingRecipesParity(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
 		kind       item.CookingKind
@@ -46,16 +46,16 @@ func TestCookingRecipesFollowJava(t *testing.T) {
 		{item.Smelting, "minecraft:crimson_stem", "", 0, false},
 		{item.Smoking, "minecraft:raw_iron", "", 0, false},
 	} {
-		r, ok := item.CookingRecipeFor(c.kind, javaStack(t, c.input, 1).Item())
-		if ok != c.ok || javaItemName(r.Product) != c.product || r.Experience != c.experience {
-			t.Errorf("%v recipe for %v = %v %v %v, want %v %v %v", c.kind, c.input, javaItemName(r.Product), r.Experience, ok, c.product, c.experience, c.ok)
+		r, ok := item.CookingRecipeFor(c.kind, canonicalStack(t, c.input, 1).Item())
+		if ok != c.ok || canonicalItemName(r.Product) != c.product || r.Experience != c.experience {
+			t.Errorf("%v recipe for %v = %v %v %v, want %v %v %v", c.kind, c.input, canonicalItemName(r.Product), r.Experience, ok, c.product, c.experience, c.ok)
 		}
 	}
 }
 
 // TestCookingFuelFollowsJava checks burn times from Java's cooking_fuel
 // components, halved in smokers and blast furnaces.
-func TestCookingFuelFollowsJava(t *testing.T) {
+func TestCookingFuelParity(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
 		id        string
@@ -72,13 +72,13 @@ func TestCookingFuelFollowsJava(t *testing.T) {
 		{"minecraft:lava_bucket", 20000, 10000},
 		{"minecraft:copper_chest", 0, 0},
 	} {
-		it := javaStack(t, c.id, 1).Item()
+		it := canonicalStack(t, c.id, 1).Item()
 		if got, fast := item.CookingBurnTime(it, false), item.CookingBurnTime(it, true); got != c.ticks || fast != c.fastTicks {
 			t.Errorf("burn time of %v = %v/%v, want %v/%v", c.id, got, fast, c.ticks, c.fastTicks)
 		}
 	}
-	if r, ok := item.CookingFuelRemainder(javaStack(t, "minecraft:lava_bucket", 1).Item()); !ok || javaItemName(r) != "minecraft:bucket" {
-		t.Errorf("lava bucket leaves %v, want a bucket", javaItemName(r))
+	if r, ok := item.CookingFuelRemainder(canonicalStack(t, "minecraft:lava_bucket", 1).Item()); !ok || canonicalItemName(r) != "minecraft:bucket" {
+		t.Errorf("lava bucket leaves %v, want a bucket", canonicalItemName(r))
 	}
 }
 
@@ -86,7 +86,7 @@ func TestCookingFuelFollowsJava(t *testing.T) {
 // furnace cooks raw iron in 200 ticks on coal that burns 1600, a blast
 // furnace in 100 on coal that burns 800. The fuel lit in the first tick
 // burns down from the second.
-func TestSmelterCooksLikeJava(t *testing.T) {
+func TestSmelterCooksParity(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
 		kind       item.CookingKind
@@ -97,8 +97,8 @@ func TestSmelterCooksLikeJava(t *testing.T) {
 		{item.Blasting, true, 100, 800},
 	} {
 		s := newSmelter()
-		_ = s.inventory.SetItem(0, javaStack(t, "minecraft:raw_iron", 2))
-		_ = s.inventory.SetItem(1, javaStack(t, "minecraft:coal", 1))
+		_ = s.inventory.SetItem(0, canonicalStack(t, "minecraft:raw_iron", 2))
+		_ = s.inventory.SetItem(1, canonicalStack(t, "minecraft:coal", 1))
 		for range c.cook - 1 {
 			s.tickSmelting(c.kind, c.fast)
 		}
@@ -108,8 +108,8 @@ func TestSmelterCooksLikeJava(t *testing.T) {
 		lit, _ := s.tickSmelting(c.kind, c.fast)
 		out, _ := s.inventory.Item(2)
 		fuel, _ := s.inventory.Item(1)
-		if !lit || javaItemName(out) != "minecraft:iron_ingot" || out.Count() != 1 || !fuel.Empty() || s.litDuration != c.burn || s.litTime != c.burn-c.cook+1 {
-			t.Fatalf("fast=%v after %v ticks: lit %v, output %v x%v, fuel %v, burn %v/%v", c.fast, c.cook, lit, javaItemName(out), out.Count(), fuel.Count(), s.litTime, s.litDuration)
+		if !lit || canonicalItemName(out) != "minecraft:iron_ingot" || out.Count() != 1 || !fuel.Empty() || s.litDuration != c.burn || s.litTime != c.burn-c.cook+1 {
+			t.Fatalf("fast=%v after %v ticks: lit %v, output %v x%v, fuel %v, burn %v/%v", c.fast, c.cook, lit, canonicalItemName(out), out.Count(), fuel.Count(), s.litTime, s.litDuration)
 		}
 	}
 }
@@ -119,9 +119,9 @@ func TestSmelterCooksLikeJava(t *testing.T) {
 func TestSmelterProgressDecaysWithoutFuel(t *testing.T) {
 	t.Parallel()
 	s := newSmelter()
-	_ = s.inventory.SetItem(0, javaStack(t, "minecraft:raw_iron", 1))
+	_ = s.inventory.SetItem(0, canonicalStack(t, "minecraft:raw_iron", 1))
 	// A stick burns for 100 ticks, half the time raw iron takes.
-	_ = s.inventory.SetItem(1, javaStack(t, "minecraft:stick", 1))
+	_ = s.inventory.SetItem(1, canonicalStack(t, "minecraft:stick", 1))
 	for range 100 {
 		s.tickSmelting(item.Smelting, false)
 	}
@@ -134,7 +134,7 @@ func TestSmelterProgressDecaysWithoutFuel(t *testing.T) {
 	if s.cookingTimer != 90 {
 		t.Fatalf("cooking progress 5 ticks after the fuel ran out = %v, want 90", s.cookingTimer)
 	}
-	_ = s.inventory.SetItem(0, javaStack(t, "minecraft:raw_gold", 1))
+	_ = s.inventory.SetItem(0, canonicalStack(t, "minecraft:raw_gold", 1))
 	if s.cookingTimer != 0 {
 		t.Fatalf("cooking progress after swapping the input = %v, want 0", s.cookingTimer)
 	}
@@ -146,8 +146,8 @@ func TestSmelterProgressDecaysWithoutFuel(t *testing.T) {
 func TestSmelterExperienceFromRecipes(t *testing.T) {
 	t.Parallel()
 	f := NewFurnace(0)
-	_ = f.inventory.SetItem(0, javaStack(t, "minecraft:raw_iron", 10))
-	_ = f.inventory.SetItem(1, javaStack(t, "minecraft:coal", 2))
+	_ = f.inventory.SetItem(0, canonicalStack(t, "minecraft:raw_iron", 10))
+	_ = f.inventory.SetItem(1, canonicalStack(t, "minecraft:coal", 2))
 	for range 2000 {
 		f.tickSmelting(item.Smelting, false)
 	}
@@ -172,7 +172,7 @@ func TestSmelterDriesWetSpongeIntoBucket(t *testing.T) {
 	t.Parallel()
 	s := newSmelter()
 	_ = s.inventory.SetItem(0, item.NewStack(Sponge{Wet: true}, 1))
-	_ = s.inventory.SetItem(1, javaStack(t, "minecraft:coal", 1))
+	_ = s.inventory.SetItem(1, canonicalStack(t, "minecraft:coal", 1))
 	s.tickSmelting(item.Smelting, false)
 	_ = s.inventory.SetItem(1, item.NewStack(item.Bucket{}, 1))
 	for range 199 {
@@ -180,7 +180,7 @@ func TestSmelterDriesWetSpongeIntoBucket(t *testing.T) {
 	}
 	fuel, _ := s.inventory.Item(1)
 	out, _ := s.inventory.Item(2)
-	if b, ok := fuel.Item().(item.Bucket); !ok || b.Empty() || javaItemName(out) != "minecraft:sponge" {
-		t.Fatalf("fuel slot %v, output %v; want a water bucket and a sponge", javaItemName(fuel), javaItemName(out))
+	if b, ok := fuel.Item().(item.Bucket); !ok || b.Empty() || canonicalItemName(out) != "minecraft:sponge" {
+		t.Fatalf("fuel slot %v, output %v; want a water bucket and a sponge", canonicalItemName(fuel), canonicalItemName(out))
 	}
 }

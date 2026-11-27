@@ -17,8 +17,8 @@ import (
 // Bedrock's exact RGBA byte array for lossless storage and packet delivery.
 type MapData struct {
 	ID                                                 int64
-	JavaID                                             int32
-	HasJavaID                                          bool
+	CanonicalID                                             int32
+	HasCanonicalID                                          bool
 	ParentID                                           int64
 	Dimension                                          int32
 	CenterX, CenterZ                                   int32
@@ -63,8 +63,8 @@ type MapPixelPatch struct {
 type MapFrameInfo struct {
 	NativeID    int64
 	HasNativeID bool
-	JavaID      int32
-	HasJavaID   bool
+	CanonicalID      int32
+	HasCanonicalID   bool
 }
 
 type mapFrameProvider interface {
@@ -106,8 +106,8 @@ type MapDataProvider interface {
 	LoadMap(id int64) (MapData, error)
 	StoreMap(MapData) error
 	AllocateMapID() (int64, error)
-	JavaMapID(nativeID int64) (int32, error)
-	NativeMapID(javaID int32) (int64, error)
+	CanonicalMapID(nativeID int64) (int32, error)
+	NativeMapID(canonicalID int32) (int64, error)
 }
 
 var ErrMapDataUnavailable = errors.New("world provider does not support map data")
@@ -130,7 +130,7 @@ func (w *World) StoreMapData(data MapData) error {
 		return fmt.Errorf("%w: map scale %d", ErrInvalidMapData, data.Scale)
 	}
 	if len(data.Colors) != mapPixelCount && len(data.NativeColors) == mapPixelCount*4 {
-		data.Colors = javaColoursFromNative(data.NativeColors)
+		data.Colors = mapColoursFromNative(data.NativeColors)
 	}
 	if len(data.Colors) != mapPixelCount {
 		return fmt.Errorf("%w: map %d has %d Java pixels", ErrInvalidMapData, data.ID, len(data.Colors))
@@ -148,7 +148,7 @@ func (w *World) StoreMapData(data MapData) error {
 	return nil
 }
 
-func javaColoursFromNative(native []byte) []byte {
+func mapColoursFromNative(native []byte) []byte {
 	colors := make([]byte, mapPixelCount)
 	converted := make(map[uint32]byte, 256)
 	for i := range colors {
@@ -163,7 +163,7 @@ func javaColoursFromNative(native []byte) []byte {
 		}
 		bestDistance := uint64(^uint64(0))
 		var best byte
-		for id := 1; id < len(javaMapColours); id++ {
+		for id := 1; id < len(mapColours); id++ {
 			for brightness := byte(0); brightness < 4; brightness++ {
 				c := MapColourRGBA(byte(id<<2) | brightness)
 				dr, dg, db := int64(r)-int64(c.R), int64(g)-int64(c.G), int64(b)-int64(c.B)
@@ -181,16 +181,16 @@ func javaColoursFromNative(native []byte) []byte {
 // MapColourRGBA expands a Java packed map color to the RGBA color used by map packets.
 func MapColourRGBA(packed byte) color.RGBA {
 	id, brightness := packed>>2, packed&3
-	if id == 0 || int(id) >= len(javaMapColours) {
+	if id == 0 || int(id) >= len(mapColours) {
 		return color.RGBA{}
 	}
-	base := javaMapColours[id]
+	base := mapColours[id]
 	modifier := [...]uint32{180, 220, 255, 135}[brightness]
 	return color.RGBA{R: uint8((base >> 16 & 0xff) * modifier / 255), G: uint8((base >> 8 & 0xff) * modifier / 255), B: uint8((base & 0xff) * modifier / 255), A: 0xff}
 }
 
 // Java MapColor IDs/RGB values from the mapped Java 26.3 MapColor registry.
-var javaMapColours = [...]uint32{
+var mapColours = [...]uint32{
 	0, 8368696, 16247203, 13092807, 16711680, 10526975, 10987431, 31744,
 	16777215, 10791096, 9923917, 7368816, 4210943, 9402184, 16776437,
 	14188339, 11685080, 6724056, 15066419, 8375321, 15892389, 5000268,
@@ -218,18 +218,18 @@ func (w *World) MapData(id int64) (MapData, error) {
 			return MapData{}, err
 		}
 	}
-	if !staged || !data.HasJavaID {
-		javaID, err := p.JavaMapID(id)
+	if !staged || !data.HasCanonicalID {
+		canonicalID, err := p.CanonicalMapID(id)
 		if err != nil {
 			return MapData{}, err
 		}
-		data.JavaID, data.HasJavaID = javaID, true
+		data.CanonicalID, data.HasCanonicalID = canonicalID, true
 	}
 	if data.ID != id || (len(data.Colors) != mapPixelCount && len(data.NativeColors) != mapPixelCount*4) {
 		return MapData{}, fmt.Errorf("%w: map %d has invalid ID or pixel buffers", ErrInvalidMapData, id)
 	}
 	if len(data.Colors) != mapPixelCount {
-		data.Colors = javaColoursFromNative(data.NativeColors)
+		data.Colors = mapColoursFromNative(data.NativeColors)
 	}
 	if len(data.NativeColors) != mapPixelCount*4 {
 		data.NativeColors = make([]byte, mapPixelCount*4)
@@ -245,7 +245,7 @@ func (w *World) MapData(id int64) (MapData, error) {
 }
 
 // MapIDByJavaID resolves Java's item map_id to its persistent Bedrock map ID.
-func (w *World) MapIDByJavaID(javaID int32) (int64, error) {
+func (w *World) MapIDByCanonicalID(canonicalID int32) (int64, error) {
 	if w == nil || w.conf.Provider == nil {
 		return 0, ErrMapDataUnavailable
 	}
@@ -253,12 +253,12 @@ func (w *World) MapIDByJavaID(javaID int32) (int64, error) {
 	if !ok {
 		return 0, ErrMapDataUnavailable
 	}
-	return p.NativeMapID(javaID)
+	return p.NativeMapID(canonicalID)
 }
 
 // MapDataByJavaID resolves and loads a map referenced by Java's int32 map_id.
-func (w *World) MapDataByJavaID(javaID int32) (MapData, error) {
-	id, err := w.MapIDByJavaID(javaID)
+func (w *World) MapDataByCanonicalID(canonicalID int32) (MapData, error) {
+	id, err := w.MapIDByCanonicalID(canonicalID)
 	if err != nil {
 		return MapData{}, err
 	}
@@ -315,11 +315,11 @@ func (w *World) storeNewMap(data MapData) (MapData, error) {
 		return MapData{}, err
 	}
 	data.ID = id
-	data.JavaID, err = p.JavaMapID(id)
+	data.CanonicalID, err = p.CanonicalMapID(id)
 	if err != nil {
 		return MapData{}, err
 	}
-	data.HasJavaID = true
+	data.HasCanonicalID = true
 	if err := w.StoreMapData(data); err != nil {
 		return MapData{}, err
 	}
@@ -707,7 +707,7 @@ func sampleMapPixelShaded(tx *Tx, x, z, scale, imgX, imgZ int, previousHeight fl
 			columnY = min(columnY-1, tx.Range().Max())
 			for ; columnY >= tx.Range().Min(); columnY-- {
 				block := tx.Block(cube.Pos{sampleX, columnY, sampleZ})
-				colorID, ok := javaMapColorID(block)
+				colorID, ok := mapColorID(block)
 				if !ok {
 					return 0, 0, fmt.Errorf("map renderer has no mapped Java color for %T (%s)", block, blockName(block))
 				}
@@ -763,14 +763,14 @@ func sampleMapPixelShaded(tx *Tx, x, z, scale, imgX, imgZ int, previousHeight fl
 	return best<<2 | byte(brightness), averageHeight, nil
 }
 
-func javaMapColorID(block Block) (byte, bool) {
+func mapColorID(block Block) (byte, bool) {
 	if mapped, ok := block.(mapColourBlock); ok {
 		if packed, found := mapped.MapColourIndex(); found {
 			return packed >> 2, true
 		}
 	}
 	name, properties := block.EncodeBlock()
-	definition, ok := javaMapColorsByBlock[name]
+	definition, ok := mapColorsByBlock[name]
 	if !ok {
 		return 0, false
 	}
@@ -852,9 +852,9 @@ func (tx *Tx) previewBiome(pos cube.Pos) string {
 	if tx.region == nil || tx.region.column(tx.w, chunkPosFromBlockPos(pos)) != nil {
 		return tx.Biome(pos).String()
 	}
-	provider, ok := tx.w.conf.Generator.(JavaBiomeAtProvider)
+	provider, ok := tx.w.conf.Generator.(BiomeAtProvider)
 	if !ok {
 		return ""
 	}
-	return strings.TrimPrefix(provider.JavaBiomeAt(int32(pos[0]), int32(pos[1]), int32(pos[2])), "minecraft:")
+	return strings.TrimPrefix(provider.BiomeAt(int32(pos[0]), int32(pos[1]), int32(pos[2])), "minecraft:")
 }

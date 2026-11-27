@@ -5,7 +5,7 @@ import "testing"
 // TestJavaEntityTypeIDs holds the Java entity type of every Bedrock
 // identifier whose Java type differs, and of some that do not, to the
 // table loot predicates matched by when it was in the loot package.
-func TestJavaEntityTypeIDs(t *testing.T) {
+func TestCanonicalEntityTypeIDs(t *testing.T) {
 	for id, want := range map[string]string{
 		"minecraft:zombie_pigman":          "minecraft:zombified_piglin",
 		"minecraft:ender_crystal":          "minecraft:end_crystal",
@@ -30,11 +30,11 @@ func TestJavaEntityTypeIDs(t *testing.T) {
 		"minecraft:zombie": "minecraft:zombie",
 		"minecraft:pig":    "minecraft:pig",
 	} {
-		if got := JavaEntityTypeID(id); got != want {
+		if got := CanonicalEntityTypeID(id); got != want {
 			t.Errorf("JavaEntityTypeID(%q) = %q, want %q", id, got, want)
 		}
 	}
-	if len(bedrockToJavaEntity) != 19 {
-		t.Errorf("bedrockToJavaEntity has %d entries, want 19", len(bedrockToJavaEntity))
+	if len(bedrockToCanonicalEntity) != 19 {
+		t.Errorf("bedrockToJavaEntity has %d entries, want 19", len(bedrockToCanonicalEntity))
 	}
 }

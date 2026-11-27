@@ -52,7 +52,7 @@ func addTestDragon(tx *world.Tx, pos mgl64.Vec3, phase entity.DragonPhase, fight
 
 // TestDragonPartsAreJavaSized checks the parts are as wide as deep and stand
 // on their positions, as EnderDragonParts do.
-func TestDragonPartsAreJavaSized(t *testing.T) {
+func TestDragonPartsMatchSizes(t *testing.T) {
 	t.Parallel()
 	w := dragonTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {

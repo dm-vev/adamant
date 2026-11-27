@@ -37,7 +37,7 @@ func (i ItemFrame) MapFrameData() (world.MapFrameInfo, bool) {
 	}
 	return world.MapFrameInfo{
 		NativeID: mapItem.NativeID, HasNativeID: mapItem.HasNativeID,
-		JavaID: mapItem.JavaID, HasJavaID: mapItem.HasJavaID,
+		CanonicalID: mapItem.CanonicalID, HasCanonicalID: mapItem.HasCanonicalID,
 	}, true
 }
 

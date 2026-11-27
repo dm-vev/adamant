@@ -1,6 +1,7 @@
 package leveldat
 
 import (
+	"maps"
 	"math"
 
 	"github.com/dm-vev/adamant/server/block/cube"
@@ -13,8 +14,9 @@ import (
 // world. The data held here is usually saved in a level.dat file of the world.
 // Data may be used in LevelDat.Unmarshal to collect the data of the level.dat.
 type Data struct {
-	// Java retains source-only rules without inventing native Bedrock tags.
-	Java                           map[string]any `nbt:"adamant:java"`
+	// ExtraState retains extended server rules without inventing native Bedrock tags.
+	ExtraState       map[string]any `nbt:"adamant:state,omitempty"`
+	LegacyExtraState map[string]any `nbt:"adamant:java,omitempty"`
 	BaseGameVersion                string         `nbt:"baseGameVersion"`
 	BiomeOverride                  string
 	ConfirmedPlatformLockedContent bool
@@ -234,20 +236,24 @@ func (d *Data) Settings() *world.Settings {
 	d.WorldStartCount += 1
 	difficulty, _ := world.DifficultyByID(int(d.Difficulty))
 	mode, _ := world.GameModeByID(int(d.GameType))
+	extra := d.ExtraState
+	if len(extra) == 0 {
+		extra = d.LegacyExtraState
+	}
 	spawnMonsters := true
-	if value, present := d.Java["spawn_monsters"].(byte); present {
+	if value, present := extra["spawn_monsters"].(byte); present {
 		spawnMonsters = value != 0
 	}
 	spawnWardens := true
-	if value, present := d.Java["spawn_wardens"].(byte); present {
+	if value, present := extra["spawn_wardens"].(byte); present {
 		spawnWardens = value != 0
 	}
 	waterSourceConversion := true
-	if value, present := d.Java["water_source_conversion"].(byte); present {
+	if value, present := extra["water_source_conversion"].(byte); present {
 		waterSourceConversion = value != 0
 	}
 	lavaSourceConversion := false
-	if value, present := d.Java["lava_source_conversion"].(byte); present {
+	if value, present := extra["lava_source_conversion"].(byte); present {
 		lavaSourceConversion = value != 0
 	}
 	return &world.Settings{
@@ -299,24 +305,29 @@ func (d *Data) PutSettings(s *world.Settings) {
 	d.ServerChunkTickRange = s.TickRange
 	d.FallDamage = s.FallDamage
 	d.DoMobSpawning = s.SpawnMobs
-	if d.Java == nil {
-		d.Java = make(map[string]any)
+	if d.ExtraState == nil {
+		if len(d.LegacyExtraState) != 0 {
+			d.ExtraState = maps.Clone(d.LegacyExtraState)
+		} else {
+			d.ExtraState = make(map[string]any)
+		}
 	}
-	d.Java["spawn_monsters"] = byte(0)
+	d.LegacyExtraState = nil
+	d.ExtraState["spawn_monsters"] = byte(0)
 	if s.SpawnMonsters {
-		d.Java["spawn_monsters"] = byte(1)
+		d.ExtraState["spawn_monsters"] = byte(1)
 	}
-	d.Java["spawn_wardens"] = byte(0)
+	d.ExtraState["spawn_wardens"] = byte(0)
 	if s.SpawnWardens {
-		d.Java["spawn_wardens"] = byte(1)
+		d.ExtraState["spawn_wardens"] = byte(1)
 	}
-	d.Java["water_source_conversion"] = byte(0)
+	d.ExtraState["water_source_conversion"] = byte(0)
 	if s.WaterSourceConversion {
-		d.Java["water_source_conversion"] = byte(1)
+		d.ExtraState["water_source_conversion"] = byte(1)
 	}
-	d.Java["lava_source_conversion"] = byte(0)
+	d.ExtraState["lava_source_conversion"] = byte(0)
 	if s.LavaSourceConversion {
-		d.Java["lava_source_conversion"] = byte(1)
+		d.ExtraState["lava_source_conversion"] = byte(1)
 	}
 	d.PlayersSleepingPercentage = s.PlayersSleepingPercentage
 	mode, _ := world.GameModeID(s.DefaultGameMode)

@@ -118,7 +118,7 @@ func (p spawnParticleCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 // is, for particles clients may know from their resources; and "" for a
 // name of neither form.
 func particleName(name string) string {
-	if short := strings.TrimPrefix(name, "minecraft:"); slices.Contains(javaParticleNames, short) {
+	if short := strings.TrimPrefix(name, "minecraft:"); slices.Contains(particleNameAliases, short) {
 		return "minecraft:" + short
 	}
 	if strings.Contains(name, ":") {
@@ -129,7 +129,7 @@ func particleName(name string) string {
 
 // javaParticleNames are the particle types of Java Edition, without their
 // namespace, that /particle takes by name.
-var javaParticleNames = []string{
+var particleNameAliases = []string{
 	"angry_villager", "cloud", "end_rod", "explosion", "explosion_emitter", "flame", "happy_villager",
 	"heart", "large_smoke", "poof", "portal", "smoke", "soul_fire_flame", "totem_of_undying",
 }

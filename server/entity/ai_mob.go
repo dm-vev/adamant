@@ -86,7 +86,7 @@ type MobAI struct {
 	capsSelf    world.Entity
 	capsLiving  Living
 	capsEffect  mobEffectHolder
-	javaID      string
+	canonicalID      string
 	despawnDist float64
 
 	tickCount    int
@@ -326,8 +326,8 @@ func (ai *MobAI) initCaps(m *Mob) {
 		caps |= mobCapPersister
 	}
 	if m.Self != nil {
-		id := world.JavaEntityID(m.Self)
-		ai.javaID = id
+		id := world.CanonicalEntityID(m.Self)
+		ai.canonicalID = id
 		ai.despawnDist = despawnDistance(id)
 		if notInPeaceful[id] {
 			caps |= mobCapNotInPeaceful

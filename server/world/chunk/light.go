@@ -10,11 +10,36 @@ import (
 // insertBlockLightNodes iterates over the chunk and looks for blocks that have a light level of at least 1.
 // If one is found, a node is added for it to the node queue.
 func (a *lightArea) insertBlockLightNodes(queue *levelQueue) {
-	a.iterSubChunks(a.anyLightBlocks, func(pos cube.Pos) {
-		if level := a.props(pos).Emission; level > 0 {
-			queue.push(node(pos, level, BlockLight))
+	c := a.c[0]
+	for index, sub := range c.sub {
+		if !a.anyLightBlocks(sub) {
+			continue
 		}
-	})
+		baseY := int(c.SubY(int16(index)))
+		s0 := sub.storages[0]
+		if len(sub.storages) == 1 {
+			for x := range 16 {
+				for z := range 16 {
+					for y := range 16 {
+						if level := a.cell(0, s0.At(byte(x), byte(y), byte(z)), a.airRID).Emission; level > 0 {
+							queue.push(lightNode{x: int32(a.baseX + x), y: int32(baseY + y), z: int32(a.baseZ + z), level: level})
+						}
+					}
+				}
+			}
+			continue
+		}
+		s1 := sub.storages[1]
+		for x := range 16 {
+			for z := range 16 {
+				for y := range 16 {
+					if level := a.cell(0, s0.At(byte(x), byte(y), byte(z)), s1.At(byte(x), byte(y), byte(z))).Emission; level > 0 {
+						queue.push(lightNode{x: int32(a.baseX + x), y: int32(baseY + y), z: int32(a.baseZ + z), level: level})
+					}
+				}
+			}
+		}
+	}
 }
 
 // anyLightBlocks checks if there are any blocks in the SubChunk passed that emit light.
@@ -42,31 +67,60 @@ func (a *lightArea) insertSkyLightNodes(queue *levelQueue) {
 		}
 	}
 	var sources [256]int
-	for x := 0; x < 16; x++ {
-		for z := 0; z < 16; z++ {
-			sources[x<<4|z] = a.skySource(a.baseX+x, a.baseZ+z, highestY)
+	for x := range 16 {
+		for z := range 16 {
+			sources[x<<4|z] = a.skySourceInChunk(c, byte(x), byte(z), highestY)
 		}
 	}
-	for x := 0; x < 16; x++ {
-		for z := 0; z < 16; z++ {
+	topSub := int(c.SubIndex(int16(min(highestY, a.r.Max()))))
+	for x := range 16 {
+		for z := range 16 {
 			source := sources[x<<4|z]
 			highestNeighbour := source
 			for _, n := range [4][2]int{{x - 1, z}, {x + 1, z}, {x, z - 1}, {x, z + 1}} {
-				if n[0] >= 0 && n[0] < 16 && n[1] >= 0 && n[1] < 16 {
+				if uint(n[0]) < 16 && uint(n[1]) < 16 {
 					highestNeighbour = max(highestNeighbour, sources[n[0]<<4|n[1]])
 				}
 			}
-			for y := source; y <= highestY; y++ {
-				pos := cube.Pos{a.baseX + x, y, a.baseZ + z}
-				// The lowest source lights what lies below it, and sources
-				// next to lower columns light those.
-				if y == source || y < highestNeighbour {
-					queue.push(node(pos, 15, SkyLight))
-					continue
+			endQueue := min(highestNeighbour, highestY+1)
+			if source <= highestY {
+				queue.push(lightNode{x: int32(a.baseX + x), y: int32(source), z: int32(a.baseZ + z), level: 15, sky: true})
+				for y := source + 1; y < endQueue; y++ {
+					queue.push(lightNode{x: int32(a.baseX + x), y: int32(y), z: int32(a.baseZ + z), level: 15, sky: true})
 				}
-				a.setLight(pos, SkyLight, 15)
+			}
+			fillStart := max(source+1, highestNeighbour)
+			if fillStart <= highestY {
+				startSub := int(c.SubIndex(int16(fillStart)))
+				for idx := startSub; idx <= topSub; idx++ {
+					sub := c.sub[idx]
+					subBase := int(c.SubY(int16(idx)))
+					y0 := max(fillStart-subBase, 0)
+					y1 := min(highestY-subBase, 15)
+					setSkyLightColumnRange(sub, byte(x), byte(z), y0, y1)
+				}
 			}
 		}
+	}
+}
+
+func setSkyLightColumnRange(sub *SubChunk, x, z byte, y0, y1 int) {
+	if y0 > y1 {
+		return
+	}
+	if len(sub.skyLight) == 0 || &sub.skyLight[0] == noLightPtr {
+		sub.skyLight = make([]uint8, 2048)
+	} else if &sub.skyLight[0] == fullLightPtr {
+		return
+	}
+	baseByte := (int(x) << 7) | (int(z) << 3)
+	for y := y0; y <= y1; y++ {
+		if y&1 == 0 && y+1 <= y1 {
+			sub.skyLight[baseByte|(y>>1)] = 0xff
+			y++
+			continue
+		}
+		sub.skyLight[baseByte|(y>>1)] |= 0xf << ((uint(y) & 1) << 2)
 	}
 }
 
@@ -74,15 +128,64 @@ func (a *lightArea) insertSkyLightNodes(queue *levelQueue) {
 // that skylight reaches undimmed. Skylight falls from above the highest
 // block until it meets a block that dampens it or a face that occludes it.
 func (a *lightArea) skySource(x, z, highestY int) int {
-	above := a.air
-	for y := min(highestY, a.r.Max()); y >= a.r.Min(); y-- {
-		below := a.props(cube.Pos{x, y, z})
-		if skyEdgeOccluded(above, below) {
-			return y + 1
-		}
-		above = below
+	return a.skySourceInChunk(a.chunk(cube.Pos{x, 0, z}), byte(x&15), byte(z&15), highestY)
+}
+
+func (a *lightArea) skySourceInChunk(c *Chunk, lx, lz byte, highestY int) int {
+	topY := min(highestY, a.r.Max())
+	minY := a.r.Min()
+	if topY < minY {
+		return minY
 	}
-	return a.r.Min()
+	above := a.air
+	topSub := int(c.SubIndex(int16(topY)))
+	for idx := topSub; idx >= 0; idx-- {
+		sub := c.sub[idx]
+		subBase := int(c.SubY(int16(idx)))
+		yStart := min(topY, subBase+15)
+		yEnd := max(minY, subBase)
+		if yStart < yEnd {
+			break
+		}
+		if len(sub.storages) == 0 || (len(sub.storages) == 1 && sub.storages[0].bitsPerIndex == 0) {
+			rid := a.airRID
+			if len(sub.storages) == 1 {
+				rid = sub.storages[0].palette.values[0]
+			}
+			below := a.air
+			if rid != a.airRID {
+				below = a.cell(0, rid, a.airRID)
+			}
+			if skyEdgeOccluded(above, below) {
+				return yStart + 1
+			}
+			if yStart > yEnd && below != a.air && skyEdgeOccluded(below, below) {
+				return yStart
+			}
+			above = below
+			continue
+		}
+		s0 := sub.storages[0]
+		if len(sub.storages) == 1 {
+			for y := yStart; y >= yEnd; y-- {
+				below := a.cell(0, s0.At(lx, byte(y&15), lz), a.airRID)
+				if skyEdgeOccluded(above, below) {
+					return y + 1
+				}
+				above = below
+			}
+		} else {
+			s1 := sub.storages[1]
+			for y := yStart; y >= yEnd; y-- {
+				below := a.cell(0, s0.At(lx, byte(y&15), lz), s1.At(lx, byte(y&15), lz))
+				if skyEdgeOccluded(above, below) {
+					return y + 1
+				}
+				above = below
+			}
+		}
+	}
+	return minY
 }
 
 // skyEdgeOccluded ports ChunkSkyLightSources.isEdgeOccluded.
@@ -266,13 +369,23 @@ func (a *lightArea) propagate(queue *levelQueue) {
 	if !ok {
 		return
 	}
-	pos, lt := n.pos(), n.lightType()
-	if a.light(pos, lt) >= n.level {
-		return
+	cIdx := a.chunkIndex((int(n.x)-a.baseX)>>4, (int(n.z)-a.baseZ)>>4)
+	c := a.c[cIdx]
+	sub := c.sub[c.SubIndex(int16(n.y))]
+	lx, ly, lz := byte(n.x&0xf), byte(n.y&0xf), byte(n.z&0xf)
+	if n.sky {
+		if sub.SkyLight(lx, ly, lz) >= n.level {
+			return
+		}
+		sub.SetSkyLight(lx, ly, lz, n.level)
+	} else {
+		if sub.BlockLight(lx, ly, lz) >= n.level {
+			return
+		}
+		sub.SetBlockLight(lx, ly, lz, n.level)
 	}
-	a.setLight(pos, lt, n.level)
-	a.changed |= 1 << a.chunkIndex((pos[0]-a.baseX)>>4, (pos[2]-a.baseZ)>>4)
-	a.spreadFrom(queue, pos, lt, n.level)
+	a.changed |= 1 << cIdx
+	a.spreadFromSub(queue, cube.Pos{int(n.x), int(n.y), int(n.z)}, sub, n.sky, n.level)
 }
 
 // spreadFrom queues the neighbours of pos that the light of the level passed
@@ -281,31 +394,50 @@ func (a *lightArea) spreadFrom(queue *levelQueue, pos cube.Pos, lt light, level 
 	if level <= 1 {
 		return
 	}
+	a.spreadFromSub(queue, pos, a.sub(pos), lt == SkyLight, level)
+}
+
+var lightFaceOffsets = [6]cube.Pos{{0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}, {-1, 0, 0}, {1, 0, 0}}
+
+func (a *lightArea) spreadFromSub(queue *levelQueue, pos cube.Pos, centerSub *SubChunk, sky bool, level uint8) {
+	if level <= 1 {
+		return
+	}
+	lx0, ly0, lz0 := pos[0]&0xf, pos[1]&0xf, pos[2]&0xf
 	var from LightProperties
 	fromRead := false
-	for _, face := range cube.Faces() {
-		to := pos.Side(face)
-		if !a.inside(to) {
+	for face := cube.Face(0); face < 6; face++ {
+		d := lightFaceOffsets[face]
+		nx, ny, nz := pos[0]+d[0], pos[1]+d[1], pos[2]+d[2]
+		if ny < a.r.Min() || ny > a.r.Max() || nx < a.baseX || nz < a.baseZ || nx >= a.baseX+a.w*16 || nz >= a.baseZ+a.w*16 {
 			continue
 		}
-		// Light loses at least a level entering a block, so a block lit as
-		// bright already needs nothing read of it.
-		current := a.light(to, lt)
+		nlx, nly, nlz := lx0+d[0], ly0+d[1], lz0+d[2]
+		toSub := centerSub
+		if uint(nlx|nly|nlz) >= 16 {
+			toSub = a.sub(cube.Pos{nx, ny, nz})
+		}
+		var current uint8
+		if sky {
+			current = toSub.SkyLight(byte(nx&0xf), byte(ny&0xf), byte(nz&0xf))
+		} else {
+			current = toSub.BlockLight(byte(nx&0xf), byte(ny&0xf), byte(nz&0xf))
+		}
 		if current >= level-1 {
 			continue
 		}
-		toProps := a.props(to)
+		toProps := a.propsFromSub(toSub, byte(nx&0xf), byte(ny&0xf), byte(nz&0xf))
 		opacity := max(1, toProps.Dampening)
 		if level <= opacity || current >= level-opacity {
 			continue
 		}
 		if !fromRead {
-			from, fromRead = a.props(pos), true
+			from, fromRead = a.propsFromSub(centerSub, byte(lx0), byte(ly0), byte(lz0)), true
 		}
 		if facesOcclude(from, toProps, face) {
 			continue
 		}
-		queue.push(node(to, level-opacity, lt))
+		queue.push(lightNode{x: int32(nx), y: int32(ny), z: int32(nz), level: level - opacity, sky: sky})
 	}
 }
 
@@ -318,13 +450,6 @@ type lightNode struct {
 
 func (n lightNode) pos() cube.Pos {
 	return cube.Pos{int(n.x), int(n.y), int(n.z)}
-}
-
-func (n lightNode) lightType() light {
-	if n.sky {
-		return SkyLight
-	}
-	return BlockLight
 }
 
 // node creates a new lightNode using the position, level and light type passed.

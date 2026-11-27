@@ -195,7 +195,7 @@ func (s *entitySelector) typeFilter(opts *selectorOptions, value string, negate 
 		return selectorInapplicable("type")
 	}
 	if !isTag {
-		if _, ok := javaEntityTypes[id]; !ok {
+		if _, ok := validEntityTypes[id]; !ok {
 			return selectorError(fmt.Sprintf("Invalid or unknown entity type '%s'", id))
 		}
 		set.markElement(negate)
@@ -209,10 +209,10 @@ func (s *entitySelector) typeFilter(opts *selectorOptions, value string, negate 
 			return false
 		}
 		if isTag {
-			in, err := gamedata.EntityTypeTagContains(id, world.JavaEntityID(e))
+			in, err := gamedata.EntityTypeTagContains(id, world.CanonicalEntityID(e))
 			return err == nil && in
 		}
-		return e.H().Type().EncodeEntity() == id || world.JavaEntityID(e) == id
+		return e.H().Type().EncodeEntity() == id || world.CanonicalEntityID(e) == id
 	})
 	return nil
 }

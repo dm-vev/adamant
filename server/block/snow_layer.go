@@ -95,10 +95,10 @@ func (s SnowLayer) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 // needs a full face below.
 func snowLayerSurvives(tx *world.Tx, pos cube.Pos) bool {
 	below := pos.Side(cube.FaceDown)
-	if javaBlockTag(tx, below, "minecraft:cannot_support_snow_layer") {
+	if hasBlockTag(tx, below, "minecraft:cannot_support_snow_layer") {
 		return false
 	}
-	if javaBlockTag(tx, below, "minecraft:support_override_snow_layer") {
+	if hasBlockTag(tx, below, "minecraft:support_override_snow_layer") {
 		return true
 	}
 	return tx.Block(below).Model().FaceSolid(below, cube.FaceUp, tx)

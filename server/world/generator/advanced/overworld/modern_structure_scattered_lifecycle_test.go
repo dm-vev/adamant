@@ -186,7 +186,7 @@ func TestScatteredStateSurvivesNativeMCDBRestart(t *testing.T) {
 					t.Fatalf("saved hut mob count=%d, want2", len(column.Entities))
 				}
 				for _, saved := range column.Entities {
-					state, _ := saved.Data["adamant:java"].(map[string]any)
+					state, _ := saved.Data["adamant:state"].(map[string]any)
 					if state == nil || state["attributes"] == nil || state["LeftHanded"] == nil {
 						_ = db.Close()
 						t.Fatalf("saved mob lost source finalization state: %v", saved.Data)
@@ -257,7 +257,7 @@ func TestScatteredStateSurvivesNativeMCDBRestart(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, saved := range column.Entities {
-				state, _ := saved.Data["adamant:java"].(map[string]any)
+				state, _ := saved.Data["adamant:state"].(map[string]any)
 				id, _ := state["id"].(string)
 				got := map[string]any{}
 				for _, key := range []string{"attributes", "LeftHanded", "variant", "sound_variant", "PersistenceRequired"} {

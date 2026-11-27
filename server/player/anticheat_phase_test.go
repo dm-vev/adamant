@@ -44,7 +44,7 @@ func TestPhaseOffAndExempt(t *testing.T) {
 		t.Fatalf("Phase off: %d violations", n)
 	}
 	creative := throughWall(nil)
-	creative.setup = func(_ *world.Tx, p *Player, _ *javaMover) { p.SetGameMode(world.GameModeCreative) }
+	creative.setup = func(_ *world.Tx, p *Player, _ *simMover) { p.SetGameMode(world.GameModeCreative) }
 	if n, _ := runTrace(t, w, creative).count(anticheat.Phase); n != 0 {
 		t.Fatalf("a creative player: %d violations", n)
 	}

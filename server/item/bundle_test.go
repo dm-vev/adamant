@@ -40,7 +40,7 @@ func (h testHive) HasBees() bool             { return h.bees }
 
 // TestBundleWeightsFollowJava follows BundleContents: shulker boxes cannot go
 // in a bundle, a hive with bees fills it and an empty hive weighs 1/64.
-func TestBundleWeightsFollowJava(t *testing.T) {
+func TestBundleWeightsParity(t *testing.T) {
 	bundle := Bundle{}
 	if _, left := bundle.Insert(NewStack(bundle, 1), NewStack(testShulkerBox{}, 1), 1); left.Count() != 1 {
 		t.Fatal("a shulker box went into a bundle")

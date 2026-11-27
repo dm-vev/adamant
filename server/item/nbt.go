@@ -140,7 +140,7 @@ type mapValue struct {
 // its level as a short, as the compounds of ench hold a Bedrock ID and a
 // level. BDS keeps the key as it is in the items it loads, saves and sends,
 // and when it enchants one, as it does not know it.
-const javaOnlyEnchantmentsKey = "adamant:ench"
+const serverOnlyEnchantmentsKey = "adamant:ench"
 
 // writeEnchantments writes the enchantments of an item to a map for NBT
 // encoding: those with an ID under ench, the Java-only ones under
@@ -148,7 +148,7 @@ const javaOnlyEnchantmentsKey = "adamant:ench"
 // that is not Java-only, empty if none of them has an ID; a stack of
 // Java-only enchantments alone has none.
 func writeEnchantments(m map[string]any, s Stack) {
-	var enchantments, javaOnly []map[string]any
+	var enchantments, serverOnly []map[string]any
 	other := false
 	for _, e := range s.Enchantments() {
 		if eType, ok := EnchantmentID(e.Type()); ok {
@@ -156,9 +156,9 @@ func writeEnchantments(m map[string]any, s Stack) {
 				"id":  int16(eType),
 				"lvl": int16(e.Level()),
 			})
-		} else if IsJavaOnlyEnchantment(e.Type()) {
-			javaOnly = append(javaOnly, map[string]any{
-				"id":  JavaEnchantmentID(e.Type()),
+		} else if IsServerOnlyEnchantment(e.Type()) {
+			serverOnly = append(serverOnly, map[string]any{
+				"id":  CanonicalEnchantmentID(e.Type()),
 				"lvl": int16(e.Level()),
 			})
 		} else {
@@ -168,8 +168,8 @@ func writeEnchantments(m map[string]any, s Stack) {
 	if len(enchantments) != 0 || other {
 		m["ench"] = enchantments
 	}
-	if len(javaOnly) != 0 {
-		m[javaOnlyEnchantmentsKey] = javaOnly
+	if len(serverOnly) != 0 {
+		m[serverOnlyEnchantmentsKey] = serverOnly
 	}
 }
 
@@ -263,10 +263,10 @@ func readEnchantments(m map[string]any, s *Stack) {
 			*s = s.WithForcedEnchantments(NewEnchantment(t, int(max(nbtInt16(ench, "lvl"), 1))))
 		}
 	}
-	for _, ench := range nbtCompounds(m, javaOnlyEnchantmentsKey) {
+	for _, ench := range nbtCompounds(m, serverOnlyEnchantmentsKey) {
 		// The Java ID of the enchantment names it even once Bedrock gives
 		// it an ID and it is registered with that.
-		if t, ok := enchantmentByJavaID(nbtString(ench, "id")); ok {
+		if t, ok := enchantmentByCanonicalID(nbtString(ench, "id")); ok {
 			*s = s.WithForcedEnchantments(NewEnchantment(t, int(max(nbtInt16(ench, "lvl"), 1))))
 		}
 	}

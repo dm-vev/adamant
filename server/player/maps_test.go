@@ -40,7 +40,7 @@ func (m *mapProvider) AllocateMapID() (int64, error) {
 	return int64(len(m.maps) + 1), nil
 }
 
-func (m *mapProvider) JavaMapID(id int64) (int32, error)   { return int32(id), nil }
+func (m *mapProvider) CanonicalMapID(id int64) (int32, error)   { return int32(id), nil }
 func (m *mapProvider) NativeMapID(id int32) (int64, error) { return int64(id), nil }
 
 func TestPlayerExploreMap(t *testing.T) {

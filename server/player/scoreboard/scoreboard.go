@@ -30,8 +30,11 @@ const maxScoreboardLines = 15
 // automatically: Player.SendScoreboard() must be called again to update it.
 func New(name ...any) *Scoreboard {
 	if len(name) == 1 {
-		if t, ok := name[0].(text.Text); ok {
-			return &Scoreboard{name: t, padding: true}
+		switch v := name[0].(type) {
+		case text.Text:
+			return &Scoreboard{name: v, padding: true}
+		case string:
+			return &Scoreboard{name: text.ParseLegacy(strings.TrimSuffix(v, "\n")), padding: true}
 		}
 	}
 	return &Scoreboard{name: text.ParseLegacy(strings.TrimSuffix(fmt.Sprintln(name...), "\n")), padding: true}
@@ -80,8 +83,17 @@ func (board *Scoreboard) Set(index int, line any) {
 	}
 	board.mu.Lock()
 	defer board.mu.Unlock()
-	if diff := index - (len(board.lines) - 1); diff > 0 {
-		board.lines = append(board.lines, make([]text.Text, diff)...)
+	if index >= len(board.lines) {
+		oldLen, need := len(board.lines), index+1
+		if cap(board.lines) < need {
+			c := min(max(cap(board.lines)*2, max(need, 8)), maxScoreboardLines)
+			buf := make([]text.Text, need, c)
+			copy(buf, board.lines)
+			board.lines = buf
+		} else {
+			board.lines = board.lines[:need]
+			clear(board.lines[oldLen:need])
+		}
 	}
 	board.lines[index] = lineText(line)
 }

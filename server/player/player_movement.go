@@ -481,7 +481,7 @@ func (p *Player) onClimbableSlow(pos cube.Pos) bool {
 	if bedStateTag(name, "minecraft:climbable") {
 		return true
 	}
-	if !strings.HasSuffix(name, "_trapdoor") || !javaStateFlag(state.Properties["open"]) {
+	if !strings.HasSuffix(name, "_trapdoor") || !statePropertyFlag(state.Properties["open"]) {
 		return false
 	}
 	below, loaded := p.tx.BlockLoaded(pos.Side(cube.FaceDown))
@@ -495,7 +495,7 @@ func (p *Player) onClimbableSlow(pos cube.Pos) bool {
 // javaStateFlag reports if a boolean property of a canonical Java block state
 // is set. The codec gives booleans as bool, but a state read from NBT may
 // still carry them as the strings Java writes.
-func javaStateFlag(v any) bool {
+func statePropertyFlag(v any) bool {
 	switch v := v.(type) {
 	case bool:
 		return v

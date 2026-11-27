@@ -168,7 +168,7 @@ func (b Barrel) DecodeNBT(data map[string]any) any {
 	// Preserve the block state bits so the decoded block matches the stored runtime ID.
 	b.Open = open
 	b.CustomName = nbtconv.String(data, "CustomName")
-	b.lootTable = loot.JavaTableKey(nbtconv.String(data, "LootTable"))
+	b.lootTable = loot.TableKey(nbtconv.String(data, "LootTable"))
 	b.lootSeed = nbtconv.Int64(data, "LootTableSeed")
 	nbtconv.InvFromNBT(b.inventory, nbtconv.Slice(data, "Items"), data)
 	return b

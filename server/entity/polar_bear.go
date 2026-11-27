@@ -61,7 +61,7 @@ func (c polarBearConfig) New() *polarBearState {
 	return &polarBearState{health: NewHealthManager(h, m), effects: NewEffectManager(), age: c.Age, cooldown: c.AttackCooldown, standing: c.Standing, speed: .25}
 }
 func (polarBearType) DecodeNBT(n map[string]any, d *world.EntityData) {
-	s := readNativeMobJavaState(n)
+	s := readNativeMobExtraState(n)
 	if s == nil {
 		s = n
 	}
@@ -75,7 +75,7 @@ func (polarBearType) EncodeNBT(d *world.EntityData) map[string]any {
 	s := d.Data.(*polarBearState)
 	m := s.health.MaxHealth()
 	a := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: m, Current: s.health.Health(), DefaultMin: 0, DefaultMax: m, Min: 0, Max: m}})
-	return mergeNativeMobJavaState(map[string]any{"Attributes": a}, mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), map[string]any{"Age": int32(s.age), "Standing": s.standing, "AttackCooldown": int32(s.cooldown)}))
+	return mergeNativeMobExtraState(map[string]any{"Attributes": a}, mergeNativeMobNBT(readNativeMobExtraState(d.NativeNBT), map[string]any{"Age": int32(s.age), "Standing": s.standing, "AttackCooldown": int32(s.cooldown)}))
 }
 func (p *PolarBear) b() *polarBearState         { return p.Behaviour().(*polarBearState) }
 func (p *PolarBear) Tick(tx *world.Tx, n int64) { p.b().effects.Tick(p, tx); p.Ent.Tick(tx, n) }

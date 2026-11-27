@@ -253,7 +253,7 @@ func TestMonsterRoomMatchesSource(t *testing.T) {
 				decoded := native.(world.NBTer).DecodeNBT(got.Data).(world.NBTer).EncodeNBT()
 				if want.Type == "chest" {
 					table, _ := decoded["LootTable"].(string)
-					if decoded["id"] != "Chest" || loot.JavaTableKey(table) != want.LootTable || decoded["LootTableSeed"] != want.LootSeed {
+					if decoded["id"] != "Chest" || loot.TableKey(table) != want.LootTable || decoded["LootTableSeed"] != want.LootSeed {
 						t.Errorf("decoded chest actor at %v=%v; Source loot=%s seed=%d", pos, decoded, want.LootTable, want.LootSeed)
 					}
 				} else {

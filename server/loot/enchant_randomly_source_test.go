@@ -13,7 +13,7 @@ import (
 // Fixtures execute Java 26.3 EnchantRandomlyFunction.run with real registries.
 // Complete components and the next draw catch book replacement, holder order,
 // compatibility filtering, level upgrades and degenerate random bounds.
-func TestEnchantRandomlyJava263Source(t *testing.T) {
+func TestEnchantRandomlySource(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_enchant_randomly.json")
 	if err != nil {
 		t.Fatal(err)

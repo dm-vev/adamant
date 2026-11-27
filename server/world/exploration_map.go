@@ -9,7 +9,7 @@ import (
 
 // MapDecorationTypeFromJava returns the Bedrock map decoration type of a Java
 // map decoration type used by exploration maps.
-func MapDecorationTypeFromJava(name string) (byte, bool) {
+func MapDecorationTypeFromName(name string) (byte, bool) {
 	switch strings.TrimPrefix(name, "minecraft:") {
 	case "red_x":
 		return 4, true

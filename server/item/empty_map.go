@@ -22,7 +22,7 @@ func (m EmptyMap) Use(tx *world.Tx, user User, ctx *UseContext) bool {
 		return false
 	}
 	ctx.SubtractFromCount(1)
-	ctx.NewItem = NewStack(FilledMap{NativeID: data.ID, HasNativeID: true, JavaID: data.JavaID, HasJavaID: data.HasJavaID}, 1)
+	ctx.NewItem = NewStack(FilledMap{NativeID: data.ID, HasNativeID: true, CanonicalID: data.CanonicalID, HasCanonicalID: data.HasCanonicalID}, 1)
 	ctx.NewItemSurvivalOnly = false
 	tx.PlaySound(user.Position(), sound.Custom{Name: "ui.cartography_table.take_result", Volume: 1, Pitch: 1})
 	return true

@@ -100,9 +100,9 @@ func (s PotentSulfur) withSurroundings(pos cube.Pos, tx *world.Tx) PotentSulfur 
 		sourceIfFluid = l.LiquidDepth() == 8 && !l.LiquidFalling()
 	}
 	switch {
-	case sourceIfFluid && javaBlockTag(tx, below, "causes_continuous_geyser_eruptions"):
+	case sourceIfFluid && hasBlockTag(tx, below, "causes_continuous_geyser_eruptions"):
 		s.State = PotentSulfurContinuous
-	case sourceIfFluid && javaBlockTag(tx, below, "causes_periodic_geyser_eruptions"):
+	case sourceIfFluid && hasBlockTag(tx, below, "causes_periodic_geyser_eruptions"):
 		if !s.State.geyser() {
 			s.Countdown = -1
 		}

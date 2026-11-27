@@ -59,7 +59,7 @@ func dispenseVehicle(t *testing.T, facing cube.Face, stack item.Stack, set func(
 // centre of the dispenser (0.5625 plus half the width of 1.375), 1.125 blocks
 // up or down for a vertical dispenser, and a block higher over water than over
 // the air above it; it faces the way the dispenser does, and starts at rest.
-func TestDispenserPlacesBoatsAsJavaDoes(t *testing.T) {
+func TestDispenserPlacesBoatsParity(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
 		name   string

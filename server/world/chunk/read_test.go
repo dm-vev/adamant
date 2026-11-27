@@ -49,7 +49,7 @@ func TestBulkReadsMatchSingleReads(t *testing.T) {
 			case 0:
 				c.SetBlock(x, y, z, 1, rids[2])
 			case 1:
-				c.SetJavaStateID(x, y, z, ids[r.IntN(len(ids))])
+				c.SetStateID(x, y, z, ids[r.IntN(len(ids))])
 			case 2:
 				c.SetBlock(x, y, z, 0, reg.AirRuntimeID())
 			}

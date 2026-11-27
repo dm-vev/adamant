@@ -11,28 +11,28 @@ import (
 func (s *Session) sendRecipes() {
 	d := s.tables().recipeData()
 	s.recipes = maps.Clone(d.recipes)
-	s.javaRecipeIDs = maps.Clone(d.javaIDs)
+	s.javaRecipeIDs = maps.Clone(d.stateIDs)
 	s.writePacket(d.packet)
 }
 
 // ViewRecipesUnlocked sends newly unlocked Java recipes that have a
 // corresponding recipe in the current Bedrock crafting data.
-func (s *Session) ViewRecipesUnlocked(javaIDs []string) {
-	s.unlockRecipes(javaIDs, mc.UnlockedRecipesTypeNewlyUnlocked)
+func (s *Session) ViewRecipesUnlocked(stateIDs []string) {
+	s.unlockRecipes(stateIDs, mc.UnlockedRecipesTypeNewlyUnlocked)
 }
 
 // SendInitiallyUnlockedRecipes sends persisted recipe unlocks after the player
 // has joined and the crafting data has been sent.
-func (s *Session) SendInitiallyUnlockedRecipes(javaIDs []string) {
-	s.unlockRecipes(javaIDs, mc.UnlockedRecipesTypeInitiallyUnlocked)
+func (s *Session) SendInitiallyUnlockedRecipes(stateIDs []string) {
+	s.unlockRecipes(stateIDs, mc.UnlockedRecipesTypeInitiallyUnlocked)
 }
 
 // unlockRecipes sends the Bedrock recipes of the Java IDs passed, unlocked
 // as unlockType says, if there are any.
-func (s *Session) unlockRecipes(javaIDs []string, unlockType uint32) {
-	packetIDs := make([]string, 0, len(javaIDs))
-	seenPacketIDs := make(map[string]struct{}, len(javaIDs))
-	for _, javaID := range javaIDs {
+func (s *Session) unlockRecipes(stateIDs []string, unlockType uint32) {
+	packetIDs := make([]string, 0, len(stateIDs))
+	seenPacketIDs := make(map[string]struct{}, len(stateIDs))
+	for _, javaID := range stateIDs {
 		ids, ok := s.javaRecipeIDs[javaID]
 		if !ok {
 			continue

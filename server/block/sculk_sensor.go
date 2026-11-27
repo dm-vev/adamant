@@ -265,7 +265,7 @@ func (s SculkSensor) EncodeNBT() map[string]any {
 	return d.putNativeListener(map[string]any{
 		"id":                 "SculkSensor",
 		"BlockEntityVersion": int32(0),
-		"adamant:java": map[string]any{
+		"adamant:state": map[string]any{
 			"power":                    int32(d.power),
 			"last_vibration_frequency": int32(d.lastVibrationFrequency),
 			"listener":                 d.listener.EncodeNBT(),
@@ -277,14 +277,18 @@ func (s SculkSensor) DecodeNBT(m map[string]any) any {
 	if native, ok := m["VibrationListener"].(map[string]any); ok {
 		d.nativeVibrationListener = native
 	}
-	if java, ok := m["adamant:java"].(map[string]any); ok {
-		if n, ok := java["power"].(int32); ok {
+	extra, ok := m["adamant:state"].(map[string]any)
+	if !ok {
+		extra, ok = m["adamant:java"].(map[string]any)
+	}
+	if ok {
+		if n, ok := extra["power"].(int32); ok {
 			d.power = clampSensorPower(int(n))
 		}
-		if n, ok := java["last_vibration_frequency"].(int32); ok {
+		if n, ok := extra["last_vibration_frequency"].(int32); ok {
 			d.lastVibrationFrequency = clampSensorFrequency(int(n))
 		}
-		if listener, ok := java["listener"].(map[string]any); ok {
+		if listener, ok := extra["listener"].(map[string]any); ok {
 			d.listener = world.DecodeVibrationData(listener)
 		}
 	}
@@ -407,7 +411,7 @@ func (s CalibratedSculkSensor) EncodeNBT() map[string]any {
 	return d.putNativeListener(map[string]any{
 		"id":                 "CalibratedSculkSensor",
 		"BlockEntityVersion": int32(0),
-		"adamant:java": map[string]any{
+		"adamant:state": map[string]any{
 			"power":                    int32(d.power),
 			"last_vibration_frequency": int32(d.lastVibrationFrequency),
 			"listener":                 d.listener.EncodeNBT(),

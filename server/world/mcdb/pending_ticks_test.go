@@ -64,7 +64,7 @@ func TestNativePendingTicksRestorePausedDelays(t *testing.T) {
 	}
 }
 
-func TestJavaTickMetadataRetainsNativePendingFormat(t *testing.T) {
+func TestCanonicalTickMetadataRetainsNativePendingFormat(t *testing.T) {
 	dir := t.TempDir()
 	db, err := Open(dir)
 	if err != nil {

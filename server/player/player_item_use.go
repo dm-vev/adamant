@@ -668,18 +668,19 @@ func (p *Player) tickItemUse(current int64) {
 	}
 }
 
+func callInventorySlotHandler(ctx *inventory.Context, slot int, it item.Stack, f func(ctx *inventory.Context, slot int, it item.Stack)) error {
+	if ctx.Cancelled() {
+		return fmt.Errorf("action was cancelled")
+	}
+	f(ctx, slot, it)
+	if ctx.Cancelled() {
+		return fmt.Errorf("action was cancelled")
+	}
+	return nil
+}
+
 // useContext returns an item.UseContext initialised for a Player.
 func (p *Player) useContext() *item.UseContext {
-	call := func(ctx *inventory.Context, slot int, it item.Stack, f func(ctx *inventory.Context, slot int, it item.Stack)) error {
-		if ctx.Cancelled() {
-			return fmt.Errorf("action was cancelled")
-		}
-		f(ctx, slot, it)
-		if ctx.Cancelled() {
-			return fmt.Errorf("action was cancelled")
-		}
-		return nil
-	}
 	return &item.UseContext{
 		SwapHeldWithArmour: func(i int) {
 			src, dst, srcInv, dstInv := int(atomic.LoadUint32(p.heldSlot)), i, p.inv, p.armour.Inventory()
@@ -690,10 +691,10 @@ func (p *Player) useContext() *item.UseContext {
 			}
 
 			ctx := event.C(inventory.Holder(p))
-			_ = call(ctx, src, srcIt, srcInv.Handler().HandleTake)
-			_ = call(ctx, src, dstIt, srcInv.Handler().HandlePlace)
-			_ = call(ctx, dst, dstIt, dstInv.Handler().HandleTake)
-			if err := call(ctx, dst, srcIt, dstInv.Handler().HandlePlace); err == nil {
+			_ = callInventorySlotHandler(ctx, src, srcIt, srcInv.Handler().HandleTake)
+			_ = callInventorySlotHandler(ctx, src, dstIt, srcInv.Handler().HandlePlace)
+			_ = callInventorySlotHandler(ctx, dst, dstIt, dstInv.Handler().HandleTake)
+			if err := callInventorySlotHandler(ctx, dst, srcIt, dstInv.Handler().HandlePlace); err == nil {
 				_ = srcInv.SetItem(src, dstIt)
 				_ = dstInv.SetItem(dst, srcIt)
 				p.PlaySound(sound.EquipItem{Item: srcIt.Item()})

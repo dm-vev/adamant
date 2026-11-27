@@ -101,10 +101,10 @@ func shulkerProgressBox(dir cube.Face, from, to float64) cube.BBox {
 
 func (shulkerType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf := ShulkerBehaviourConfig{}
-	javaState := readNativeMobJavaState(m)
+	extraState := readNativeMobExtraState(m)
 	source := m
-	if javaState != nil {
-		source = javaState
+	if extraState != nil {
+		source = extraState
 	}
 	if value, ok := source["AttachFace"]; ok {
 		conf.AttachFace = shulkerFace(value)
@@ -140,10 +140,10 @@ func (shulkerType) EncodeNBT(data *world.EntityData) map[string]any {
 		DefaultMin: 0, DefaultMax: b.health.MaxHealth(), Min: 0, Max: b.health.MaxHealth(),
 	}})
 	native := map[string]any{"Attributes": attributes, "Variant": int32(b.color)}
-	javaState := mergeNativeMobNBT(readNativeMobJavaState(data.NativeNBT), map[string]any{
+	extraState := mergeNativeMobNBT(readNativeMobExtraState(data.NativeNBT), map[string]any{
 		"AttachFace": b.attachFace.String(), "Peek": b.peek, "Color": shulkerColourSwap(b.color),
 	})
-	return mergeNativeMobJavaState(native, javaState)
+	return mergeNativeMobExtraState(native, extraState)
 }
 
 // ShulkerBehaviourConfig configures shulker health and persisted shell state.

@@ -137,7 +137,7 @@ func changeRecipes(targets []cmd.Target, id string, give bool, o *cmd.Output) {
 	if id == "*" {
 		ids = ids[:0]
 		for _, r := range recipe.Recipes() {
-			ids = append(ids, recipe.JavaRecipeIDs(r)...)
+			ids = append(ids, recipe.RecipeIDs(r)...)
 		}
 	}
 	if id != "*" && !validRecipeID(id) {
@@ -161,5 +161,5 @@ func changeRecipes(targets []cmd.Target, id string, give bool, o *cmd.Output) {
 	o.Printf("%s %d recipes for %s.", verb, changed, joinNames(ps))
 }
 func validRecipeID(id string) bool {
-	return recipe.KnownJavaID(id)
+	return recipe.KnownID(id)
 }

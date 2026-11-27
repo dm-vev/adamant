@@ -166,7 +166,7 @@ func (m *minecartContainer) generateLoot(tx *world.Tx, user item.User) {
 		panic(err)
 	}
 	random := tx.LootRandomSequence(sequence, b.lootSeed)
-	ctx := loot.Context{Random: random, RandomSequence: tx.LootRandomSequence, Origin: m.Position(), Biome: world.JavaBiomeName(tx.Biome(cube.PosFromVec3(m.Position())))}
+	ctx := loot.Context{Random: random, RandomSequence: tx.LootRandomSequence, Origin: m.Position(), Biome: world.CanonicalBiomeName(tx.Biome(cube.PosFromVec3(m.Position())))}
 	if entity, ok := user.(world.Entity); ok {
 		ctx.ThisEntity, ctx.Player = entity, entity
 		if luck, ok := user.(interface{ Luck() float64 }); ok {
@@ -320,7 +320,7 @@ func (chestMinecartType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf := chestMinecartConf
 	beh := conf.New()
 	readMinecartDisplayNBT(beh.minecartBehaviour, m)
-	beh.lootTable = loot.JavaTableKey(nbtconv.String(m, "LootTable"))
+	beh.lootTable = loot.TableKey(nbtconv.String(m, "LootTable"))
 	beh.lootSeed = nbtconv.Int64(m, "LootTableSeed")
 	if beh.lootTable == "" {
 		nbtconv.InvFromNBT(beh.inv, nbtconv.Slice(m, "Items"), m)

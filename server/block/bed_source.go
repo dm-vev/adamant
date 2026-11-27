@@ -13,7 +13,7 @@ import (
 // default, BlockBehaviour.Properties.isSuffocating, has a block suffocate:
 // by a full collision cube.
 func bedBlockSuffocates(pos cube.Pos, tx *world.Tx) bool {
-	id, ok := tx.JavaBlockState(pos)
+	id, ok := tx.CanonicalBlockState(pos)
 	if !ok {
 		return fullCollisionBlock(tx, pos)
 	}

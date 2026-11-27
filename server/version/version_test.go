@@ -16,8 +16,8 @@ func TestMinecraftNumbers(t *testing.T) {
 
 // TestJavaFormat checks that the Java release is written as major and minor
 // numbers, the form Java Edition names its releases by since 26.1.
-func TestJavaFormat(t *testing.T) {
-	if !regexp.MustCompile(`^[1-9][0-9]*\.[0-9]+$`).MatchString(Java) {
-		t.Fatalf("Java = %q, want major.minor", Java)
+func TestReferenceFormat(t *testing.T) {
+	if !regexp.MustCompile(`^[1-9][0-9]*\.[0-9]+$`).MatchString(Reference) {
+		t.Fatalf("Java = %q, want major.minor", Reference)
 	}
 }

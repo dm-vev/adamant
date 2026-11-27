@@ -78,7 +78,7 @@ func (c foxConfig) New() *foxState {
 	return &foxState{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), age: c.Age, variant: max(0, min(c.Variant, 1)), sleeping: c.Sleeping, crouching: c.Crouching, sitting: c.Sitting, trusted: append([]string(nil), c.Trusted...), speed: .3}
 }
 func (foxType) DecodeNBT(n map[string]any, d *world.EntityData) {
-	s := readNativeMobJavaState(n)
+	s := readNativeMobExtraState(n)
 	if s == nil {
 		s = n
 	}
@@ -108,7 +108,7 @@ func (foxType) EncodeNBT(d *world.EntityData) map[string]any {
 			canonical[key] = value
 		}
 	}
-	return mergeNativeMobJavaState(canonical, mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), s.breeding.encodeNBT(map[string]any{"Age": int32(s.age), "Type": int32(s.variant), "Sleeping": s.sleeping, "Crouching": s.crouching, "Sitting": s.sitting, "Trusted": append([]string(nil), s.trusted...)})))
+	return mergeNativeMobExtraState(canonical, mergeNativeMobNBT(readNativeMobExtraState(d.NativeNBT), s.breeding.encodeNBT(map[string]any{"Age": int32(s.age), "Type": int32(s.variant), "Sleeping": s.sleeping, "Crouching": s.crouching, "Sitting": s.sitting, "Trusted": append([]string(nil), s.trusted...)})))
 }
 func (f *Fox) b() *foxState { return f.Behaviour().(*foxState) }
 
@@ -301,7 +301,7 @@ func (f *Fox) FinalizeSpawn(_ string, r *vanilla.Random) {
 	}
 	s := f.b()
 	variant := 0
-	biome := world.JavaBiomeName(f.tx.Biome(cube.PosFromVec3(f.Position())))
+	biome := world.CanonicalBiomeName(f.tx.Biome(cube.PosFromVec3(f.Position())))
 	if strings.Contains(biome, "snowy_taiga") || strings.Contains(biome, "grove") {
 		variant = 1
 	}

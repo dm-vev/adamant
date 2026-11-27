@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dm-vev/adamant/server/internal/javanbt"
+	"github.com/dm-vev/adamant/server/internal/snbt"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -239,7 +239,7 @@ func parseSelectorTeam(o selectorOption) error {
 
 // parseSelectorNBT is nbt, a compound that the NBT of the entity contains.
 func parseSelectorNBT(o selectorOption) error {
-	expected, end, err := javanbt.ParseCompoundArgument(o.value, 0)
+	expected, end, err := snbt.ParseCompoundArgument(o.value, 0)
 	if err != nil || strings.TrimSpace(o.value[end:]) != "" {
 		return selectorFinal{MessageParameterInvalid.F(o.option)}
 	}

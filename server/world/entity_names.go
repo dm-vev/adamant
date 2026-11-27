@@ -3,7 +3,7 @@ package world
 // javaEntityNames maps the Java identifiers of entity types to the names the
 // types are registered by where the two differ, so that Java NBT and spawners
 // find them. bedrockToJavaEntity goes the other way.
-var javaEntityNames = map[string]string{
+var canonicalEntityNames = map[string]string{
 	"minecraft:zombified_piglin": "minecraft:zombie_pigman",
 	"minecraft:end_crystal":      "minecraft:ender_crystal",
 	"minecraft:experience_orb":   "minecraft:xp_orb",
@@ -46,7 +46,7 @@ func BedrockEntityIdentifier(name string) string {
 
 // bedrockToJavaEntity maps the Bedrock identifiers of entity types, as the
 // world format saves them, to their Java identifiers where the two differ.
-var bedrockToJavaEntity = map[string]string{
+var bedrockToCanonicalEntity = map[string]string{
 	"minecraft:zombie_pigman":          "minecraft:zombified_piglin",
 	"minecraft:ender_crystal":          "minecraft:end_crystal",
 	"minecraft:fireworks_rocket":       "minecraft:firework_rocket",
@@ -71,19 +71,19 @@ var bedrockToJavaEntity = map[string]string{
 // JavaEntityID returns the Java entity type identifier of an entity. Entities
 // whose Java type depends on their state, like boats of each wood, report it
 // through a JavaEntityID method.
-func JavaEntityID(e Entity) string {
-	if typed, ok := e.(interface{ JavaEntityID() string }); ok {
-		return typed.JavaEntityID()
+func CanonicalEntityID(e Entity) string {
+	if typed, ok := e.(interface{ CanonicalEntityID() string }); ok {
+		return typed.CanonicalEntityID()
 	}
-	return JavaEntityTypeID(e.H().Type().EncodeEntity())
+	return CanonicalEntityTypeID(e.H().Type().EncodeEntity())
 }
 
 // JavaEntityTypeID returns the Java entity type identifier of the entities
 // of the Bedrock type identifier passed whose Java type does not depend on
 // their state.
-func JavaEntityTypeID(id string) string {
-	if java, ok := bedrockToJavaEntity[id]; ok {
-		return java
+func CanonicalEntityTypeID(id string) string {
+	if canonical, ok := bedrockToCanonicalEntity[id]; ok {
+		return canonical
 	}
 	return id
 }

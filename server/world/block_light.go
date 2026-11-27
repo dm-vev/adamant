@@ -35,7 +35,7 @@ func (br *BasicBlockRegistry) LightProperties(state, fg, bg uint32) chunk.LightP
 		if v, ok := br.light.state.Load(state); ok {
 			return unpackLight(v.(uint64))
 		}
-		p := br.javaLightProperties(state, fg, bg)
+		p := br.canonicalLightProperties(state, fg, bg)
 		br.light.state.Store(state, packLight(p))
 		return p
 	}
@@ -51,7 +51,7 @@ func (br *BasicBlockRegistry) LightProperties(state, fg, bg uint32) chunk.LightP
 			if v := slot.Load(); v != 0 {
 				return unpackLight(v)
 			}
-			p := br.javaLightProperties(nativeJavaStateID(br, NativeState{Block: fg, Liquid: bg}), fg, bg)
+			p := br.canonicalLightProperties(nativeCanonicalStateID(br, NativeState{Block: fg, Liquid: bg}), fg, bg)
 			slot.Store(packLight(p))
 			return p
 		}
@@ -60,7 +60,7 @@ func (br *BasicBlockRegistry) LightProperties(state, fg, bg uint32) chunk.LightP
 	if v, ok := br.light.wet.Load(key); ok {
 		return unpackLight(v.(uint64))
 	}
-	p := br.javaLightProperties(nativeJavaStateID(br, NativeState{Block: fg, Liquid: bg}), fg, bg)
+	p := br.canonicalLightProperties(nativeCanonicalStateID(br, NativeState{Block: fg, Liquid: bg}), fg, bg)
 	br.light.wet.Store(key, packLight(p))
 	return p
 }
@@ -80,7 +80,7 @@ func (br *BasicBlockRegistry) DryLightProperties() []chunk.LightProperties {
 
 // javaLightProperties returns the light properties of the Java state passed,
 // falling back on the light values of the Bedrock blocks if there is none.
-func (br *BasicBlockRegistry) javaLightProperties(state, fg, bg uint32) chunk.LightProperties {
+func (br *BasicBlockRegistry) canonicalLightProperties(state, fg, bg uint32) chunk.LightProperties {
 	if state != 0 {
 		if shape, err := gamedata.BlockGenerationShapeID(state); err == nil {
 			p := chunk.LightProperties{Emission: shape.LightEmission, Dampening: shape.LightDampening}

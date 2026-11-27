@@ -40,7 +40,7 @@ func (happyGhastType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityD
 }
 func (happyGhastType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	c := happyGhastConfig{}
-	s := readNativeMobJavaState(n)
+	s := readNativeMobExtraState(n)
 	if s == nil {
 		s = n
 	}
@@ -75,7 +75,7 @@ func (happyGhastType) EncodeNBT(d *world.EntityData) map[string]any {
 	if home.set() {
 		state["HomeX"], state["HomeY"], state["HomeZ"], state["HomeRadius"] = int32(home.pos[0]), int32(home.pos[1]), int32(home.pos[2]), int32(home.radius)
 	}
-	return mergeNativeMobJavaState(m, b.breeding.encodeNBT(state))
+	return mergeNativeMobExtraState(m, b.breeding.encodeNBT(state))
 }
 
 type happyGhastConfig struct {

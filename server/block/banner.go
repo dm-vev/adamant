@@ -91,16 +91,16 @@ func (b Banner) WithCanonicalState(name string, properties map[string]any) (worl
 	if wall {
 		colourName = strings.TrimSuffix(colourName, "_wall")
 	}
-	colour, ok := javaActorColour(colourName)
+	colour, ok := actorColour(colourName)
 	if !ok {
 		return nil, fmt.Errorf("java banner: unsupported state %q", name)
 	}
 	if wall {
-		facing, err := javaActorString(properties, "facing", "north")
+		facing, err := actorString(properties, "facing", "north")
 		if err != nil {
 			return nil, fmt.Errorf("java banner: %w", err)
 		}
-		direction, err := javaActorFacing(facing)
+		direction, err := actorFacing(facing)
 		if err != nil {
 			return nil, fmt.Errorf("java banner: %w", err)
 		}
@@ -109,7 +109,7 @@ func (b Banner) WithCanonicalState(name string, properties map[string]any) (worl
 		rotation := int64(0)
 		if raw, exists := properties["rotation"]; exists {
 			var valid bool
-			rotation, valid = javaActorInteger(raw)
+			rotation, valid = actorInteger(raw)
 			if !valid || rotation < 0 || rotation > 15 {
 				return nil, fmt.Errorf("java banner: invalid rotation %v", raw)
 			}

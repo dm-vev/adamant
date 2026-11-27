@@ -280,7 +280,7 @@ func babyAt(a breeder) world.EntitySpawnOpts {
 func (b *breeding) encodeNBT(m map[string]any) map[string]any {
 	m["InLove"], m["ForcedAge"], m["AgeLocked"] = int32(b.inLove), int32(b.forcedAge), boolByte(b.ageLocked)
 	if b.loveCause != uuid.Nil {
-		m["LoveCause"] = javaUUIDIntArray(b.loveCause.String())
+		m["LoveCause"] = uuidIntArray(b.loveCause.String())
 	}
 	return m
 }
@@ -289,7 +289,7 @@ func (b *breeding) encodeNBT(m map[string]any) map[string]any {
 func (b *breeding) decodeNBT(m map[string]any) {
 	b.inLove, b.forcedAge = int(nbtconv.Int32(m, "InLove")), int(nbtconv.Int32(m, "ForcedAge"))
 	b.ageLocked = nbtconv.Bool(m, "AgeLocked")
-	if id, err := uuid.Parse(javaUUIDString(m["LoveCause"])); err == nil {
+	if id, err := uuid.Parse(uuidString(m["LoveCause"])); err == nil {
 		b.loveCause = id
 	}
 }

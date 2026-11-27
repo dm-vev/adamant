@@ -70,7 +70,9 @@ type pushScratch struct {
 	spatial      []pushSpatial
 	meta         []pushMeta
 	cellSpans    []pushCellSpan
-	cells        map[world.ChunkPos]int32
+	cellKeys     []uint64
+	cellVals     []int32
+	cellMask     uint64
 	others       []int32
 	actOthers    []int32
 	spans        []overlapSpan
@@ -86,13 +88,72 @@ type pushScratch struct {
 var pushScratchPool = sync.Pool{
 	New: func() any {
 		s := &pushScratch{
-			cells: make(map[world.ChunkPos]int32, 64),
+			cellKeys: make([]uint64, 256),
+			cellVals: make([]int32, 256),
+			cellMask: 255,
 		}
 		s.actFn = func() {
 			s.pushEntities(s.actTx, s.actIdx, s.actMaxCramming)
 		}
 		return s
 	},
+}
+
+func pushCellKey(c world.ChunkPos) uint64 {
+	return (uint64(uint32(c[0])) << 32) | uint64(uint32(c[1]))
+}
+
+func (s *pushScratch) lookupCell(key uint64) (int32, bool) {
+	mask := s.cellMask
+	idx := int(((key*0x9e3779b97f4a7c15)>>32 ^ key) & mask)
+	vals, keys := s.cellVals, s.cellKeys
+	for {
+		v := vals[idx]
+		if v == 0 {
+			return 0, false
+		}
+		if keys[idx] == key {
+			return v - 1, true
+		}
+		idx = (idx + 1) & int(mask)
+	}
+}
+
+func (s *pushScratch) insertCell(key uint64, cid int32) {
+	if (len(s.cellSpans)+1)*2 > len(s.cellVals) {
+		s.growCellTable()
+	}
+	mask := s.cellMask
+	idx := int(((key*0x9e3779b97f4a7c15)>>32 ^ key) & mask)
+	for s.cellVals[idx] != 0 {
+		idx = (idx + 1) & int(mask)
+	}
+	s.cellKeys[idx] = key
+	s.cellVals[idx] = cid + 1
+}
+
+func (s *pushScratch) growCellTable() {
+	oldKeys, oldVals := s.cellKeys, s.cellVals
+	newLen := len(oldVals) * 2
+	if newLen < 256 {
+		newLen = 256
+	}
+	s.cellKeys = make([]uint64, newLen)
+	s.cellVals = make([]int32, newLen)
+	newMask := uint64(newLen - 1)
+	s.cellMask = newMask
+	for i, v := range oldVals {
+		if v == 0 {
+			continue
+		}
+		key := oldKeys[i]
+		idx := int(((key*0x9e3779b97f4a7c15)>>32 ^ key) & newMask)
+		for s.cellVals[idx] != 0 {
+			idx = (idx + 1) & int(newMask)
+		}
+		s.cellKeys[idx] = key
+		s.cellVals[idx] = v
+	}
 }
 
 // TickEntityCollisions ports LivingEntity.pushEntities for every living
@@ -119,14 +180,14 @@ func tickEntityCollisions(tx *world.Tx) {
 }
 
 func (s *pushScratch) release() {
-	oversized := cap(s.meta) > pushScratchMaxEntities || len(s.cellSpans) > pushScratchMaxCells
+	oversized := cap(s.meta) > pushScratchMaxEntities || len(s.cellSpans) > pushScratchMaxCells || len(s.cellVals) > pushScratchMaxCells*2
 	clear(s.meta)
 	s.meta = s.meta[:0]
 	s.spatial = s.spatial[:0]
-	s.cellSpans = s.cellSpans[:0]
-	if len(s.cells) > 0 {
-		clear(s.cells)
+	if len(s.cellSpans) > 0 {
+		clear(s.cellVals)
 	}
+	s.cellSpans = s.cellSpans[:0]
 	s.others = s.others[:0]
 	s.actOthers = nil
 	s.spans = s.spans[:0]
@@ -178,16 +239,18 @@ func (s *pushScratch) collect(tx *world.Tx) {
 			span := &s.cellSpans[cellIdx]
 			s.spatial[span.tail].next = index
 			span.tail = index
-		} else if cid, exists := s.cells[cell]; exists {
-			cellIdx = cid
-			span := &s.cellSpans[cellIdx]
-			s.spatial[span.tail].next = index
-			span.tail = index
-			lastCell, lastCellIdx = cell, cellIdx
 		} else {
-			cellIdx = int32(len(s.cellSpans))
-			s.cells[cell] = cellIdx
-			s.cellSpans = append(s.cellSpans, pushCellSpan{head: index, tail: index})
+			key := pushCellKey(cell)
+			if cid, exists := s.lookupCell(key); exists {
+				cellIdx = cid
+				span := &s.cellSpans[cellIdx]
+				s.spatial[span.tail].next = index
+				span.tail = index
+			} else {
+				cellIdx = int32(len(s.cellSpans))
+				s.insertCell(key, cellIdx)
+				s.cellSpans = append(s.cellSpans, pushCellSpan{head: index, tail: index})
+			}
 			lastCell, lastCellIdx = cell, cellIdx
 		}
 
@@ -306,14 +369,17 @@ func (s *pushScratch) appendOverlaps(i int, dst []int32) []int32 {
 	sp := &spatial[i]
 	box := sp.box
 	near := box.Grow(2)
-	low, high := pushCell(near.Min()), pushCell(near.Max())
+	nearMin, nearMax := near.Min(), near.Max()
+	boxMin, boxMax := box.Min(), box.Max()
+	low, high := pushCell(nearMin), pushCell(nearMax)
 	i32 := int32(i)
+	const eps = 1e-5
 
 	if low == high {
 		cid := sp.cellIdx
 		if low != sp.cell {
 			var ok bool
-			cid, ok = s.cells[low]
+			cid, ok = s.lookupCell(pushCellKey(low))
 			if !ok {
 				return dst
 			}
@@ -327,8 +393,16 @@ func (s *pushScratch) appendOverlaps(i int, dst []int32) []int32 {
 				continue
 			}
 			other := &spatial[j]
-			if near.Vec3Within(other.pos) && other.box.IntersectsWith(box) {
-				dst = append(dst, j)
+			opos := other.pos
+			if opos[0] > nearMin[0] && opos[0] < nearMax[0] &&
+				opos[2] > nearMin[2] && opos[2] < nearMax[2] &&
+				opos[1] > nearMin[1] && opos[1] < nearMax[1] {
+				oMin, oMax := other.box.Min(), other.box.Max()
+				if boxMax[0]-oMin[0] > eps && oMax[0]-boxMin[0] > eps &&
+					boxMax[2]-oMin[2] > eps && oMax[2]-boxMin[2] > eps &&
+					boxMax[1]-oMin[1] > eps && oMax[1]-boxMin[1] > eps {
+					dst = append(dst, j)
+				}
 			}
 		}
 		return dst
@@ -341,7 +415,7 @@ func (s *pushScratch) appendOverlaps(i int, dst []int32) []int32 {
 				cid = sp.cellIdx
 			} else {
 				var ok bool
-				cid, ok = s.cells[world.ChunkPos{x, z}]
+				cid, ok = s.lookupCell(pushCellKey(world.ChunkPos{x, z}))
 				if !ok {
 					continue
 				}
@@ -351,8 +425,16 @@ func (s *pushScratch) appendOverlaps(i int, dst []int32) []int32 {
 					continue
 				}
 				other := &spatial[j]
-				if near.Vec3Within(other.pos) && other.box.IntersectsWith(box) {
-					dst = append(dst, j)
+				opos := other.pos
+				if opos[0] > nearMin[0] && opos[0] < nearMax[0] &&
+					opos[2] > nearMin[2] && opos[2] < nearMax[2] &&
+					opos[1] > nearMin[1] && opos[1] < nearMax[1] {
+					oMin, oMax := other.box.Min(), other.box.Max()
+					if boxMax[0]-oMin[0] > eps && oMax[0]-boxMin[0] > eps &&
+						boxMax[2]-oMin[2] > eps && oMax[2]-boxMin[2] > eps &&
+						boxMax[1]-oMin[1] > eps && oMax[1]-boxMin[1] > eps {
+						dst = append(dst, j)
+					}
 				}
 			}
 		}

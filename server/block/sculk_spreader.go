@@ -389,7 +389,7 @@ func (v SculkVein) attemptPlaceSculk(tx *world.Tx, pos cube.Pos) bool {
 			continue
 		}
 		supportPos := pos.Side(support)
-		if !javaBlockTag(tx, supportPos, "minecraft:sculk_replaceable") {
+		if !hasBlockTag(tx, supportPos, "minecraft:sculk_replaceable") {
 			continue
 		}
 		old := tx.Block(supportPos)
@@ -445,7 +445,7 @@ func sculkVeinHasSubstrateAccess(tx *world.Tx, b world.Block, pos cube.Pos) bool
 		return false
 	}
 	for _, face := range vein.Faces.Faces() {
-		if javaBlockTag(tx, pos.Side(face), "minecraft:sculk_replaceable") {
+		if hasBlockTag(tx, pos.Side(face), "minecraft:sculk_replaceable") {
 			return true
 		}
 	}
@@ -524,7 +524,7 @@ func pushEntitiesUp(tx *world.Tx, pos cube.Pos, old world.Block) {
 
 // javaBlockTag reports whether the Java state of the block at pos is in the
 // vanilla block tag. Native-only blocks without a Java state are in no tag.
-func javaBlockTag(tx *world.Tx, pos cube.Pos, tag string) bool {
+func hasBlockTag(tx *world.Tx, pos cube.Pos, tag string) bool {
 	id, err := tx.BlockStateID(pos)
 	if err != nil {
 		return false

@@ -11,7 +11,9 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/nbt"
+	"github.com/dm-vev/adamant/server/block"
 	"github.com/dm-vev/adamant/server/block/cube"
+	"github.com/dm-vev/adamant/server/entity/effect"
 	"github.com/dm-vev/adamant/server/world"
 	"github.com/dm-vev/adamant/server/world/chunk"
 )
@@ -501,12 +503,102 @@ func clientBlockActor(b world.Block) (world.NBTer, bool) {
 }
 
 func appendBlockEntityNBT(b []byte, pos cube.Pos, nbtBlock world.NBTer) []byte {
+	if out, ok := appendKnownBlockEntityNBT(b, pos, nbtBlock); ok {
+		return out
+	}
 	data := nbtBlock.EncodeNBT()
 	if _, actor := data["id"]; !actor {
 		// A placeholder state without block actor data.
 		return b
 	}
 	return appendClientActorNetworkNBT(b, data, pos)
+}
+
+var (
+	enderChestNBTParentPrefix = []byte{
+		10, 0,
+		8, 2, 'i', 'd', 10, 'E', 'n', 'd', 'e', 'r', 'C', 'h', 'e', 's', 't',
+		9, 5, 'I', 't', 'e', 'm', 's', 0, 0,
+		1, 8, 'F', 'i', 'n', 'd', 'a', 'b', 'l', 'e', 0,
+	}
+	enchantTableNBTParentPrefix = []byte{
+		10, 0,
+		8, 2, 'i', 'd', 12, 'E', 'n', 'c', 'h', 'a', 'n', 't', 'T', 'a', 'b', 'l', 'e',
+		5, 4, 'r', 'o', 't', 't', 0, 0, 0, 0,
+	}
+	daylightDetectorNBTParentPrefix = []byte{
+		10, 0,
+		8, 2, 'i', 'd', 16, 'D', 'a', 'y', 'l', 'i', 'g', 'h', 't', 'D', 'e', 't', 'e', 'c', 't', 'o', 'r',
+	}
+	endPortalNBTParentPrefix = []byte{
+		10, 0,
+		8, 2, 'i', 'd', 9, 'E', 'n', 'd', 'P', 'o', 'r', 't', 'a', 'l',
+	}
+	beaconNBTParentHeader = []byte{
+		10, 0,
+		8, 2, 'i', 'd', 6, 'B', 'e', 'a', 'c', 'o', 'n',
+		3, 6, 'L', 'e', 'v', 'e', 'l', 's',
+	}
+	bedNBTParentPrefix = []byte{
+		10, 0,
+		8, 2, 'i', 'd', 3, 'B', 'e', 'd',
+		1, 5, 'c', 'o', 'l', 'o', 'r',
+	}
+	noteNBTParentPrefix = []byte{
+		10, 0,
+		8, 2, 'i', 'd', 5, 'M', 'u', 's', 'i', 'c',
+		1, 4, 'n', 'o', 't', 'e',
+	}
+)
+
+// appendKnownBlockEntityNBT encodes common block actors whose wire fields are
+// exposed directly into NetworkLittleEndian NBT without building a map[string]any.
+func appendKnownBlockEntityNBT(b []byte, pos cube.Pos, blk world.NBTer) ([]byte, bool) {
+	switch v := blk.(type) {
+	case block.Beacon:
+		b = append(b, beaconNBTParentHeader...)
+		b = appendVarint32(b, int32(v.Level()))
+		var primary, secondary int32
+		if id, ok := effect.ID(v.Primary); ok {
+			primary = int32(id)
+		}
+		if id, ok := effect.ID(v.Secondary); ok {
+			secondary = int32(id)
+		}
+		b = append(b, 3, 7, 'p', 'r', 'i', 'm', 'a', 'r', 'y')
+		b = appendVarint32(b, primary)
+		b = append(b, 3, 9, 's', 'e', 'c', 'o', 'n', 'd', 'a', 'r', 'y')
+		b = appendVarint32(b, secondary)
+		return appendBlockActorTail(b, pos), true
+	case block.Bed:
+		b = append(b, bedNBTParentPrefix...)
+		b = append(b, v.Colour.Uint8())
+		return appendBlockActorTail(b, pos), true
+	case block.EnderChest:
+		return appendBlockActorTail(append(b, enderChestNBTParentPrefix...), pos), true
+	case block.EnchantingTable:
+		return appendBlockActorTail(append(b, enchantTableNBTParentPrefix...), pos), true
+	case block.DaylightDetector:
+		return appendBlockActorTail(append(b, daylightDetectorNBTParentPrefix...), pos), true
+	case block.Note:
+		b = append(b, noteNBTParentPrefix...)
+		b = append(b, byte(v.Pitch))
+		return appendBlockActorTail(b, pos), true
+	case block.EndPortal:
+		return appendBlockActorTail(append(b, endPortalNBTParentPrefix...), pos), true
+	}
+	return b, false
+}
+
+func appendBlockActorTail(b []byte, pos cube.Pos) []byte {
+	b = append(b, blockEntityVersionZeroTag...)
+	b = append(b, 3, 1, 'x')
+	b = appendVarint32(b, int32(pos[0]))
+	b = append(b, 3, 1, 'y')
+	b = appendVarint32(b, int32(pos[1]))
+	b = append(b, 3, 1, 'z')
+	b = appendVarint32(b, int32(pos[2]))
+	return append(b, 0)
 }
 
 // appendClientActorNetworkNBT encodes a block actor compound directly in

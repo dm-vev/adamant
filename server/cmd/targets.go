@@ -121,7 +121,7 @@ func targetDisplayName(t Target) string {
 		return tagged.NameTag()
 	}
 	if e, ok := t.(world.Entity); ok {
-		return displayTypeName(world.JavaEntityTypeID(e.H().Type().EncodeEntity()))
+		return displayTypeName(world.CanonicalEntityTypeID(e.H().Type().EncodeEntity()))
 	}
 	return ""
 }

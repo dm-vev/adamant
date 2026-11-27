@@ -111,13 +111,13 @@ type StructureBlock struct {
 	Strict, ShowAir bool
 	// javaFields records which Java settings were present, so that they are
 	// written back as they were read.
-	javaFields uint8
+	extraFields uint8
 }
 
 const (
-	structureJavaAuthor = 1 << iota
-	structureJavaStrict
-	structureJavaShowAir
+	structureExtraAuthor = 1 << iota
+	structureExtraStrict
+	structureExtraShowAir
 )
 
 // NewStructureBlock returns a structure block in a mode with the settings
@@ -289,18 +289,18 @@ func (b StructureBlock) EncodeNBT() map[string]any {
 		"isPowered":           boolByte(b.Powered),
 		"lastTouchedPlayerId": b.LastTouchedPlayerID,
 	}
-	java := map[string]any{}
-	if b.javaFields&structureJavaAuthor != 0 || b.Author != "" {
-		java["author"] = b.Author
+	stateMap := map[string]any{}
+	if b.extraFields&structureExtraAuthor != 0 || b.Author != "" {
+		stateMap["author"] = b.Author
 	}
-	if b.javaFields&structureJavaStrict != 0 || b.Strict {
-		java["strict"] = boolByte(b.Strict)
+	if b.extraFields&structureExtraStrict != 0 || b.Strict {
+		stateMap["strict"] = boolByte(b.Strict)
 	}
-	if b.javaFields&structureJavaShowAir != 0 || b.ShowAir {
-		java["showair"] = boolByte(b.ShowAir)
+	if b.extraFields&structureExtraShowAir != 0 || b.ShowAir {
+		stateMap["showair"] = boolByte(b.ShowAir)
 	}
-	if len(java) != 0 {
-		m["adamant:java"] = java
+	if len(stateMap) != 0 {
+		m["adamant:state"] = stateMap
 	}
 	return m
 }
@@ -340,15 +340,19 @@ func (b StructureBlock) DecodeNBT(m map[string]any) any {
 	if _, ok := m["lastTouchedPlayerId"]; ok {
 		d.LastTouchedPlayerID = nbtconv.Int64(m, "lastTouchedPlayerId")
 	}
-	if java, ok := m["adamant:java"].(map[string]any); ok {
-		if author, ok := java["author"].(string); ok {
-			d.Author, d.javaFields = author, d.javaFields|structureJavaAuthor
+	extra, ok := m["adamant:state"].(map[string]any)
+	if !ok {
+		extra, ok = m["adamant:java"].(map[string]any)
+	}
+	if ok {
+		if author, ok := extra["author"].(string); ok {
+			d.Author, d.extraFields = author, d.extraFields|structureExtraAuthor
 		}
-		if _, ok := java["strict"]; ok {
-			d.Strict, d.javaFields = nbtconv.Bool(java, "strict"), d.javaFields|structureJavaStrict
+		if _, ok := extra["strict"]; ok {
+			d.Strict, d.extraFields = nbtconv.Bool(extra, "strict"), d.extraFields|structureExtraStrict
 		}
-		if _, ok := java["showair"]; ok {
-			d.ShowAir, d.javaFields = nbtconv.Bool(java, "showair"), d.javaFields|structureJavaShowAir
+		if _, ok := extra["showair"]; ok {
+			d.ShowAir, d.extraFields = nbtconv.Bool(extra, "showair"), d.extraFields|structureExtraShowAir
 		}
 	}
 	return d

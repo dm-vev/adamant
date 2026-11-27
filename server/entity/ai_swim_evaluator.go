@@ -114,7 +114,7 @@ func (w *swimNodeEvaluator) findAcceptedNode(x, y, z int) *pathNodeData {
 	n.costMalus = max(n.costMalus, float32(cost))
 	if t == PathBreach {
 		// PathWater guarantees water at (x, y, z); only PathBreach may lack liquid there.
-		if _, liquid := w.m.tx.Liquid(cube.Pos{x, y, z}); !liquid {
+		if _, liquid := w.m.tx.LiquidRID(cube.Pos{x, y, z}); !liquid {
 			n.costMalus += 8
 		}
 	}
@@ -131,29 +131,53 @@ func (w *swimNodeEvaluator) cachedType(x, y, z int) PathType {
 	return t
 }
 
+func (w *swimNodeEvaluator) isAirAt(tx *world.Tx, airRID uint32, pos cube.Pos) bool {
+	if pos[1] < w.minY || pos[1] > w.maxY {
+		return true
+	}
+	rid, ok := tx.BlockRID(pos)
+	return !ok || rid == airRID
+}
+
 // pathTypeOfMob ports SwimNodeEvaluator.getPathTypeOfMob: water the whole
 // mob fits in, the air above water a mob may breach into, or blocked.
 func (w *swimNodeEvaluator) pathTypeOfMob(x, y, z int) PathType {
 	tx := w.m.tx
+	reg := tx.World().BlockRegistry()
+	airRID := reg.AirRuntimeID()
 	var last cube.Pos
 	for xx := x; xx < x+w.entityWidth; xx++ {
 		for yy := y; yy < y+w.entityHeight; yy++ {
 			for zz := z; zz < z+w.entityDepth; zz++ {
 				last = cube.Pos{xx, yy, zz}
-				l, liquid := tx.Liquid(last)
+				lrid, liquid := tx.LiquidRID(last)
 				if !liquid {
-					if pathfindableWater(w.m, cube.Pos{xx, yy - 1, zz}) && isAir(w.blockAt(last)) {
+					if pathfindableWater(w.m, cube.Pos{xx, yy - 1, zz}) && w.isAirAt(tx, airRID, last) {
 						return PathBreach
 					}
 					return PathBlocked
 				}
-				if l.LiquidType() != "water" {
+				if kind, _, _ := reg.LiquidInfo(lrid); kind != liquidKindWater {
 					return PathBlocked
 				}
 			}
 		}
 	}
 	// Every cell in the box including last is confirmed water; only collision clearance remains.
+	if last[1] < w.minY || last[1] > w.maxY {
+		return PathWater
+	}
+	rid, ok := tx.BlockRID(last)
+	if !ok {
+		return PathWater
+	}
+	flags := reg.BlockFlags(rid)
+	if flags.EmptyCollision() {
+		return PathWater
+	}
+	if flags.FullCubeCollision() {
+		return PathBlocked
+	}
 	if len(w.blockAt(last).Model().BBox(last, tx)) == 0 {
 		return PathWater
 	}
@@ -164,8 +188,20 @@ func (w *swimNodeEvaluator) pathTypeOfMob(x, y, z int) PathType {
 // PathComputationType.WATER: water a mob swims through without bumping into
 // a block.
 func pathfindableWater(m *Mob, pos cube.Pos) bool {
-	if !pathWater(m.tx, pos) {
+	tx := m.tx
+	if !pathWater(tx, pos) {
 		return false
 	}
-	return len(pathBlockAt(m.tx, pos).Model().BBox(pos, m.tx)) == 0
+	rid, ok := tx.BlockRID(pos)
+	if !ok {
+		return true
+	}
+	flags := tx.World().BlockRegistry().BlockFlags(rid)
+	if flags.EmptyCollision() {
+		return true
+	}
+	if flags.FullCubeCollision() {
+		return false
+	}
+	return len(pathBlockAt(tx, pos).Model().BBox(pos, tx)) == 0
 }

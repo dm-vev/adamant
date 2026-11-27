@@ -156,7 +156,7 @@ func hasFlowersAround(tx *world.Tx, pos cube.Pos) bool {
 	for x := -2; x <= 2; x++ {
 		for y := -1; y <= 1; y++ {
 			for z := -2; z <= 2; z++ {
-				if javaBlockTag(tx, pos.Add(cube.Pos{x, y, z}), "minecraft:flowers") {
+				if hasBlockTag(tx, pos.Add(cube.Pos{x, y, z}), "minecraft:flowers") {
 					return true
 				}
 			}
@@ -318,7 +318,7 @@ func growFeaturePlant(tx *world.Tx, pos cube.Pos, feature string, random *vanill
 // mushrooms grow in any light, or in raw light below 13 on a full block.
 func mushroomCanSurvive(tx *world.Tx, pos cube.Pos) bool {
 	below := pos.Side(cube.FaceDown)
-	if javaBlockTag(tx, below, "minecraft:overrides_mushroom_light_requirement") {
+	if hasBlockTag(tx, below, "minecraft:overrides_mushroom_light_requirement") {
 		return true
 	}
 	return tx.Light(pos) < 13 && tx.Block(below).Model().FaceSolid(below, cube.FaceUp, tx)

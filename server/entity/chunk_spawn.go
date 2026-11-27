@@ -18,8 +18,8 @@ func spawnOriginalMobs(tx *world.Tx, chunk world.ChunkPos) {
 		return
 	}
 	xo, zo := int(chunk[0])*16, int(chunk[1])*16
-	biome := world.JavaBiomeName(tx.Biome(cube.Pos{xo, tx.Range()[1], zo}))
-	all, err := world.JavaBiomeNaturalSpawns(biome)
+	biome := world.CanonicalBiomeName(tx.Biome(cube.Pos{xo, tx.Range()[1], zo}))
+	all, err := world.BiomeNaturalSpawns(biome)
 	if err != nil {
 		return
 	}
@@ -34,7 +34,7 @@ func spawnOriginalMobs(tx *world.Tx, chunk world.ChunkPos) {
 	if total <= 0 {
 		return
 	}
-	probability := world.JavaBiomeAttribute(biome, "minecraft:gameplay/creature_world_gen_spawn_probability", .1)
+	probability := world.BiomeAttribute(biome, "minecraft:gameplay/creature_world_gen_spawn_probability", .1)
 	r := vanilla.NewWorldgenLegacyRandom(0)
 	r.SetDecorationSeed(w.Seed(), int32(xo), int32(zo))
 	// WorldGenRegion.getRandom, which the spawn rules draw from.
@@ -99,7 +99,7 @@ func spawnOriginalMobs(tx *world.Tx, chunk world.ChunkPos) {
 // Nether, adjusted for how the mob spawns.
 func topNonCollidingPos(tx *world.Tx, id string, x, z int) cube.Pos {
 	_, leaves := spawnPlacementOf(id)
-	pos := cube.Pos{x, tx.JavaMotionBlockingHeight(x, z, !leaves), z}
+	pos := cube.Pos{x, tx.MotionBlockingHeight(x, z, !leaves), z}
 	if tx.World().Dimension() == world.Nether {
 		for {
 			pos = pos.Side(cube.FaceDown)

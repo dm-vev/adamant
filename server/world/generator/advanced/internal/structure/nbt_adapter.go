@@ -171,7 +171,7 @@ func BlockEntityPayload(state world.BlockState, pos [3]int32, nbt map[string]any
 	case "lectern":
 		actor := block.Lectern{}
 		if raw, exists := data["Book"]; exists {
-			stack := javaStackOrEmpty(raw)
+			stack := canonicalStackOrEmpty(raw)
 			actor.Book = stack
 			if pages, ok := stack.Item().(interface{ TotalPages() int }); ok {
 				page := int64(0)
@@ -189,7 +189,7 @@ func BlockEntityPayload(state world.BlockState, pos [3]int32, nbt map[string]any
 		data["x"], data["y"], data["z"] = pos[0], pos[1], pos[2]
 	case "creaking_heart":
 		if link, exists := data["creaking"]; exists {
-			data["adamant:java"] = map[string]any{"creaking": link}
+			data["adamant:state"] = map[string]any{"creaking": link}
 		}
 		actor := (block.CreakingHeart{}).DecodeNBT(data).(block.CreakingHeart)
 		data = actor.EncodeNBT()
@@ -208,7 +208,7 @@ func BlockEntityPayload(state world.BlockState, pos [3]int32, nbt map[string]any
 		}
 		source := data
 		data = actor.(world.NBTer).EncodeNBT()
-		canonical := data["adamant:java"].(map[string]any)
+		canonical := data["adamant:state"].(map[string]any)
 		for _, key := range [...]string{"last_vibration_frequency", "listener"} {
 			if value, exists := source[key]; exists {
 				canonical[key] = value
@@ -261,7 +261,7 @@ func convertChiseledBookshelfItems(raw any) ([]any, error) {
 			"Name": "", "Count": byte(0), "Damage": int16(0), "WasPickedUp": byte(0),
 		}
 	}
-	for _, entry := range javaContainerItems(raw) {
+	for _, entry := range canonicalContainerItems(raw) {
 		if entry.slot >= len(out) {
 			continue
 		}
@@ -273,7 +273,7 @@ func convertChiseledBookshelfItems(raw any) ([]any, error) {
 }
 
 func convertItems(raw any) ([]any, error) {
-	entries := javaContainerItems(raw)
+	entries := canonicalContainerItems(raw)
 	out := make([]any, 0, len(entries))
 	for _, entry := range entries {
 		encoded := item.WriteNBT(entry.stack)
@@ -285,7 +285,7 @@ func convertItems(raw any) ([]any, error) {
 
 // javaContainerItem is a stack of the Items of a Java container and its
 // slot.
-type javaContainerItem struct {
+type canonicalContainerItem struct {
 	slot  int
 	stack item.Stack
 }
@@ -298,12 +298,12 @@ type javaContainerItem struct {
 // that is no number, or is a stack ItemStack.MAP_CODEC refuses: an unknown
 // ID, a count outside 1..99 or another component it cannot read. A Slot is
 // an unsigned byte (ExtraCodecs.UNSIGNED_BYTE), 0 if it is missing.
-func javaContainerItems(raw any) []javaContainerItem {
+func canonicalContainerItems(raw any) []canonicalContainerItem {
 	count, ok := templateListLen(raw)
 	if !ok {
 		return nil
 	}
-	out := make([]javaContainerItem, 0, count)
+	out := make([]canonicalContainerItem, 0, count)
 	for i := range count {
 		value, _ := templateListValue(raw, i)
 		entry, ok := value.(map[string]any)
@@ -320,7 +320,7 @@ func javaContainerItems(raw any) []javaContainerItem {
 		if err != nil || stack.Empty() {
 			continue
 		}
-		out = append(out, javaContainerItem{slot: int(uint8(slot)), stack: stack})
+		out = append(out, canonicalContainerItem{slot: int(uint8(slot)), stack: stack})
 	}
 	return out
 }
@@ -329,7 +329,7 @@ func javaContainerItems(raw any) []javaContainerItem {
 // ItemStack.CODEC refuses it, as Java's input.read(key, ItemStack.CODEC).
 // orElse(ItemStack.EMPTY) loads the book of a lectern, the item of a
 // decorated pot, of a brushable block and of an item frame.
-func javaStackOrEmpty(data any) item.Stack {
+func canonicalStackOrEmpty(data any) item.Stack {
 	m, ok := data.(map[string]any)
 	if !ok {
 		return item.Stack{}
@@ -551,7 +551,7 @@ func convertBeehive(data map[string]any) error {
 			"ActorIdentifier": entityID,
 			"SaveData":        entityData,
 			"TicksLeftToStay": int32(max(int64(0), min(int64(2147483647), minimum-ticks+2))),
-			"adamant:java": map[string]any{
+			"adamant:state": map[string]any{
 				"ticks_in_hive": int32(ticks), "min_ticks_in_hive": int32(minimum),
 			},
 		})
@@ -569,7 +569,7 @@ func convertBrushable(data map[string]any) error {
 		data["LootTableSeed"] = seed
 	}
 	if itemData, ok := data["item"].(map[string]any); ok {
-		if stack := javaStackOrEmpty(itemData); !stack.Empty() {
+		if stack := canonicalStackOrEmpty(itemData); !stack.Empty() {
 			data["Item"] = item.WriteNBT(stack)
 		}
 	}
@@ -578,7 +578,7 @@ func convertBrushable(data map[string]any) error {
 
 func convertDecoratedPot(data map[string]any) error {
 	if itemData, ok := data["item"].(map[string]any); ok {
-		if stack := javaStackOrEmpty(itemData); !stack.Empty() {
+		if stack := canonicalStackOrEmpty(itemData); !stack.Empty() {
 			data["item"] = item.WriteNBT(stack)
 		} else {
 			delete(data, "item")

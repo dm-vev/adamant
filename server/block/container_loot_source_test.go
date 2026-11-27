@@ -10,7 +10,7 @@ import (
 	"github.com/dm-vev/adamant/server/world"
 )
 
-func TestContainerLootFillMatchesJava263Source(t *testing.T) {
+func TestContainerLootFillMatchesSource(t *testing.T) {
 	t.Parallel()
 	type slot struct {
 		Slot  int    `json:"slot"`

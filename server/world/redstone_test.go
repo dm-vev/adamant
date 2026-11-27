@@ -1022,7 +1022,7 @@ func TestScheduledTickQueueCanRescheduleFromScheduledCallback(t *testing.T) {
 	}
 }
 
-func TestScheduledTickCancelledWhenNativePropertyChangesJavaBlockType(t *testing.T) {
+func TestScheduledTickCancelledWhenNativePropertyChangesCanonicalBlockType(t *testing.T) {
 	t.Parallel()
 	registry := NewBlockRegistry()
 	head := scheduledTickTypeVariant{head: true}

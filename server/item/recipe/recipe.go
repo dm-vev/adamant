@@ -65,12 +65,12 @@ func NewUserDataShapeless(input []Item, output item.Stack, block string) UserDat
 type Multi struct {
 	recipe
 	id      uuid.UUID
-	javaIDs []string
+	stateIDs []string
 }
 
 // NewMulti creates a client-defined multi recipe.
 func NewMulti(id uuid.UUID) Multi {
-	return Multi{id: id, javaIDs: java26MultiRecipeIDsByUUID(id.String()), recipe: recipe{block: "crafting_table"}}
+	return Multi{id: id, stateIDs: multiRecipeIDsByUUID(id.String()), recipe: recipe{block: "crafting_table"}}
 }
 
 // UUID returns the identifier of the client-defined recipe.
@@ -80,7 +80,7 @@ func (m Multi) UUID() uuid.UUID {
 
 // JavaIDs returns source-backed Java recipe keys associated with this multi
 // recipe.
-func (m Multi) JavaIDs() []string { return slices.Clone(m.javaIDs) }
+func (m Multi) CanonicalIDs() []string { return slices.Clone(m.stateIDs) }
 
 // SmithingTransform represents a recipe only craftable on a smithing table.
 type SmithingTransform struct {

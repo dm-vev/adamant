@@ -89,6 +89,7 @@ type inventoryState struct {
 	inv, offHand, enderChest, ui *inventory.Inventory
 	armour                       *inventory.Armour
 	heldSlot                     *uint32
+	menuDone                     func()
 	// carriedMaps tracks how many slots across inv, offHand and armour hold a
 	// FilledMap, avoiding a 41-slot scan every tick when none are carried.
 	carriedMaps atomic.Int32
@@ -418,6 +419,10 @@ var _ menu.Owner = (*Player)(nil)
 // or Rollback.
 func (p *Player) BeginMenu(n menu.Namer) *menu.Tx {
 	p.menuTx.Store(true)
+	if p.menuDone == nil {
+		d := p.playerData
+		p.menuDone = func() { d.menuTx.Store(false) }
+	}
 	return menu.Begin(menu.Opts{
 		Tx:     p.tx,
 		Owner:  p,
@@ -426,7 +431,7 @@ func (p *Player) BeginMenu(n menu.Namer) *menu.Tx {
 		Viewer: p.client(),
 		Name:   n,
 		Log:    p.log,
-		Done:   func() { p.menuTx.Store(false) },
+		Done:   p.menuDone,
 		Refuse: p.menuRefusal(),
 	})
 }

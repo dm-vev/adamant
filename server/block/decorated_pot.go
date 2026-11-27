@@ -255,7 +255,7 @@ func (p DecoratedPot) EncodeNBT() map[string]any {
 // DecodeNBT ...
 func (p DecoratedPot) DecodeNBT(data map[string]any) any {
 	p.Item = item.MapNBT(data, "item")
-	p.lootTable = loot.JavaTableKey(nbtconv.String(data, "LootTable"))
+	p.lootTable = loot.TableKey(nbtconv.String(data, "LootTable"))
 	p.lootSeed, _ = nbtconv.Integer(data, "LootTableSeed")
 	p.Decorations = [4]PotDecoration{}
 	if sherds := nbtconv.Slice(data, "sherds"); sherds != nil {

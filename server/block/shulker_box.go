@@ -305,13 +305,13 @@ func (s ShulkerBox) WithCanonicalState(name string, properties map[string]any) (
 	if colourName == "" {
 		s.Type = NormalShulkerBox()
 	} else {
-		colourID, ok := javaActorColourIDs[colourName]
+		colourID, ok := actorColourIDs[colourName]
 		if !ok {
 			return nil, fmt.Errorf("java shulker box: unsupported colour in %q", name)
 		}
 		s.Type = ShulkerBoxTypes()[int(colourID)+1]
 	}
-	facing, err := javaActorString(properties, "facing", "up")
+	facing, err := actorString(properties, "facing", "up")
 	if err != nil {
 		return nil, fmt.Errorf("java shulker box: %w", err)
 	}

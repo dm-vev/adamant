@@ -100,7 +100,7 @@ func run(out io.Writer) error {
 	enchantmentEntries := make([]enchantmentEntry, 0, len(enchantments))
 	for _, enchantment := range enchantments {
 		id, ok := item.EnchantmentID(enchantment)
-		if !ok && item.IsJavaOnlyEnchantment(enchantment) {
+		if !ok && item.IsServerOnlyEnchantment(enchantment) {
 			// Bedrock has no ID of it, so its registry does not list it.
 			continue
 		}

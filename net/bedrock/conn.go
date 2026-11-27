@@ -338,6 +338,8 @@ func (c *Conn) flush() error {
 			if err = c.flushSegmented(fl); err != nil {
 				return err
 			}
+		} else if isSnappy(c.alg) && c.cfg.Cache != nil && len(c.segments) >= 1 {
+			c.flushSegmentedSnappy()
 		} else if c.cfg.Cache != nil {
 			if c.out, err = c.cfg.Cache.compress(c.out[:0], c.alg, c.body); err != nil {
 				return err
@@ -391,6 +393,25 @@ func (c *Conn) flushSegmented(fl Flate) error {
 	return nil
 }
 
+func (c *Conn) flushSegmentedSnappy() {
+	bc := c.cfg.Cache
+	if out, ok := bc.lookup(c.out[:0], AlgorithmSnappy, c.body); ok {
+		c.out = out
+		return
+	}
+	out := append(c.out[:0], byte(AlgorithmSnappy))
+	out = binary.AppendUvarint(out, uint64(len(c.body)))
+	prev := 0
+	for _, end := range c.segments {
+		out = bc.compressSnappySegment(out, c.body[prev:end])
+		prev = end
+	}
+	if prev < len(c.body) {
+		out = bc.compressSnappySegment(out, c.body[prev:])
+	}
+	c.out = out
+}
+
 func asFlate(comp Compression) (Flate, bool) {
 	switch c := comp.(type) {
 	case Flate:
@@ -401,6 +422,16 @@ func asFlate(comp Compression) (Flate, bool) {
 		}
 	}
 	return Flate{}, false
+}
+
+func isSnappy(comp Compression) bool {
+	switch c := comp.(type) {
+	case Snappy:
+		return true
+	case *Snappy:
+		return c != nil
+	}
+	return false
 }
 
 func allSegmentsBelow(segments []int, bodyLen, limit int) bool {

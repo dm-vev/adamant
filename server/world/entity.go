@@ -85,7 +85,7 @@ type EntityHandle struct {
 	spawnSeed      int64
 	spawnRandom    *vanilla.Random
 	spawnGroup     *EntitySpawnGroup
-	javaRandom     *vanilla.Random
+	vanillaRandom     *vanilla.Random
 	pendingVehicle uuid.UUID
 
 	// TODO Handler? Handle world change here?
@@ -196,7 +196,7 @@ func (opts EntitySpawnOpts) New(t EntityType, conf EntityConfig) *EntityHandle {
 	}
 	if opts.EntityRandom != nil {
 		random := *opts.EntityRandom
-		handle.javaRandom = &random
+		handle.vanillaRandom = &random
 	}
 	return handle
 }
@@ -691,9 +691,13 @@ func (e *EntityHandle) decodeNBT(m map[string]any) {
 			e.data.AlwaysShowNameTag = visible != 0
 		}
 	}
-	if javaData, ok := m["adamant:java"].(map[string]any); ok {
-		e.data.SpawnReason, _ = javaData["SpawnReason"].(string)
-		if words, ok := javaData["UUID"].([]int32); ok && len(words) == 4 {
+	extraData, ok := m["adamant:state"].(map[string]any)
+	if !ok {
+		extraData, ok = m["adamant:java"].(map[string]any)
+	}
+	if ok {
+		e.data.SpawnReason, _ = extraData["SpawnReason"].(string)
+		if words, ok := extraData["UUID"].([]int32); ok && len(words) == 4 {
 			var id uuid.UUID
 			for i, word := range words {
 				binary.BigEndian.PutUint32(id[i*4:], uint32(word))
@@ -702,7 +706,7 @@ func (e *EntityHandle) decodeNBT(m map[string]any) {
 				e.id = id
 			}
 		}
-		if words, ok := javaData["VehicleUUID"].([]int32); ok && len(words) == 4 {
+		if words, ok := extraData["VehicleUUID"].([]int32); ok && len(words) == 4 {
 			for i, word := range words {
 				binary.BigEndian.PutUint32(e.pendingVehicle[i*4:], uint32(word))
 			}
@@ -764,23 +768,26 @@ func (e *EntityHandle) encodeNBT() map[string]any {
 			data["CustomNameVisible"] = uint8(1)
 		}
 	}
-	if e.data.SpawnReason != "" || binary.BigEndian.Uint64(e.id[:8]) != 0 || e.data.Riding != nil || e.pendingVehicle != uuid.Nil || data["adamant:java"] != nil {
-		javaData, _ := data["adamant:java"].(map[string]any)
-		javaData = CloneNativeEntityNBT(javaData)
-		if javaData == nil {
-			javaData = make(map[string]any)
+	if e.data.SpawnReason != "" || binary.BigEndian.Uint64(e.id[:8]) != 0 || e.data.Riding != nil || e.pendingVehicle != uuid.Nil || data["adamant:state"] != nil || data["adamant:java"] != nil {
+		extraData, ok := data["adamant:state"].(map[string]any)
+		if !ok {
+			extraData, _ = data["adamant:java"].(map[string]any)
+		}
+		extraData = CloneNativeEntityNBT(extraData)
+		if extraData == nil {
+			extraData = make(map[string]any)
 		}
 		if e.data.SpawnReason != "" {
-			javaData["SpawnReason"] = e.data.SpawnReason
+			extraData["SpawnReason"] = e.data.SpawnReason
 		}
 		if binary.BigEndian.Uint64(e.id[:8]) != 0 {
 			words := make([]int32, 4)
 			for i := range words {
 				words[i] = int32(binary.BigEndian.Uint32(e.id[i*4:]))
 			}
-			javaData["UUID"] = words
+			extraData["UUID"] = words
 		}
-		delete(javaData, "VehicleUUID")
+		delete(extraData, "VehicleUUID")
 		vehicle := e.pendingVehicle
 		if e.data.Riding != nil {
 			vehicle = e.data.Riding.id
@@ -790,9 +797,10 @@ func (e *EntityHandle) encodeNBT() map[string]any {
 			for i := range words {
 				words[i] = int32(binary.BigEndian.Uint32(vehicle[i*4:]))
 			}
-			javaData["VehicleUUID"] = words
+			extraData["VehicleUUID"] = words
 		}
-		data["adamant:java"] = javaData
+		delete(data, "adamant:java")
+		data["adamant:state"] = extraData
 	}
 	if ecsNBT := e.data.Components.EncodeNBT(); len(ecsNBT) > 0 {
 		data["adamant:ecs"] = ecsNBT
@@ -1095,7 +1103,7 @@ func (reg EntityRegistry) Lookup(name string) (EntityType, bool) {
 	if !ok {
 		if registered, alias := registeredEntityNames[name]; alias {
 			t, ok = reg.ent[registered]
-		} else if registered, alias := javaEntityNames[name]; alias {
+		} else if registered, alias := canonicalEntityNames[name]; alias {
 			t, ok = reg.ent[registered]
 		}
 	}

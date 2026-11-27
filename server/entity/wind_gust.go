@@ -36,7 +36,7 @@ func windGust(tx *world.Tx, source *world.EntityHandle, center mgl64.Vec3, radiu
 		if e.H().Type().EncodeEntity() == "minecraft:tnt" {
 			origin = e.Position()
 		}
-		direction := javaNormalize(origin.Sub(center))
+		direction := normalizeVec3(origin.Sub(center))
 		multiplier := knockback
 		if creativeFlying(e) {
 			multiplier = 0
@@ -141,7 +141,7 @@ func MaceSmashKnockback(tx *world.Tx, attacker, target world.Entity, fallDistanc
 		if power <= 0 {
 			continue
 		}
-		v := javaNormalize(direction).Mul(power)
+		v := normalizeVec3(direction).Mul(power)
 		pushEntity(e, mgl64.Vec3{v[0], float64(float32(.7)), v[2]})
 	}
 }

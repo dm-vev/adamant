@@ -14,7 +14,10 @@ type posIndex struct {
 	pages map[uint64]*indexPage
 	// slots caches the most recently accessed section pages in an 8-slot
 	// direct-mapped table to avoid map lookups across chunk/section borders.
-	slots [8]posIndexSlot
+	slots     [8]posIndexSlot
+	lastKey   uint64
+	lastPage  *indexPage
+	lastValid bool
 }
 
 type posIndexSlot struct {
@@ -74,17 +77,26 @@ func posIndexSlotIndex(key uint64) uint64 {
 }
 
 func (x *posIndex) page(key uint64) *indexPage {
-	slot := &x.slots[posIndexSlotIndex(key)]
-	if slot.valid && slot.key == key {
-		return slot.page
+	if x.lastValid && x.lastKey == key {
+		return x.lastPage
 	}
-	page := x.pages[key]
-	slot.key, slot.page, slot.valid = key, page, true
+	slot := &x.slots[posIndexSlotIndex(key)]
+	var page *indexPage
+	if slot.valid && slot.key == key {
+		page = slot.page
+	} else {
+		page = x.pages[key]
+		slot.key, slot.page, slot.valid = key, page, true
+	}
+	x.lastKey, x.lastPage, x.lastValid = key, page, true
 	return page
 }
 
 // get returns the index plus one of p, zero if p has none.
 func (x *posIndex) get(p featurePos) uint32 {
+	if len(x.pages) == 0 {
+		return 0
+	}
 	if page := x.page(indexSectionKey(p)); page != nil {
 		return page[indexInPage(p)]
 	}
@@ -94,23 +106,29 @@ func (x *posIndex) get(p featurePos) uint32 {
 // slot returns the index plus one of p for writing.
 func (x *posIndex) slot(p featurePos) *uint32 {
 	key := indexSectionKey(p)
-	slot := &x.slots[posIndexSlotIndex(key)]
 	var page *indexPage
-	if slot.valid && slot.key == key {
-		page = slot.page
-	} else {
-		page = x.pages[key]
-		if page != nil {
-			slot.key, slot.page, slot.valid = key, page, true
-		}
+	if x.lastValid && x.lastKey == key {
+		page = x.lastPage
 	}
 	if page == nil {
-		page = newIndexPage()
-		if x.pages == nil {
-			x.pages = make(map[uint64]*indexPage)
+		slot := &x.slots[posIndexSlotIndex(key)]
+		if slot.valid && slot.key == key {
+			page = slot.page
+		} else {
+			page = x.pages[key]
+			if page != nil {
+				slot.key, slot.page, slot.valid = key, page, true
+			}
 		}
-		x.pages[key] = page
-		slot.key, slot.page, slot.valid = key, page, true
+		if page == nil {
+			page = newIndexPage()
+			if x.pages == nil {
+				x.pages = make(map[uint64]*indexPage)
+			}
+			x.pages[key] = page
+			slot.key, slot.page, slot.valid = key, page, true
+		}
+		x.lastKey, x.lastPage, x.lastValid = key, page, true
 	}
 	return &page[indexInPage(p)]
 }

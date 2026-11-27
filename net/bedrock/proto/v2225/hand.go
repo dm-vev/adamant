@@ -207,7 +207,11 @@ const (
 // buttons of an NPC, only show in that order. A value of another type is
 // a bug of the caller.
 func writeMetadata(w *wire.Writer, x *Metadata) {
-	keys := make([]uint32, 0, len(*x))
+	var stackKeys [64]uint32
+	keys := stackKeys[:0]
+	if len(*x) > len(stackKeys) {
+		keys = make([]uint32, 0, len(*x))
+	}
 	for k := range *x {
 		keys = append(keys, k)
 	}

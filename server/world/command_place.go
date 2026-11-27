@@ -23,7 +23,7 @@ func (tx *Tx) SetBlockFromCommand(pos cube.Pos, b Block, source BlockState) {
 		tx.updateNeighboursOf(pos)
 		return
 	}
-	shaped := tx.javaShapeFromNeighbours(pos, id)
+	shaped := tx.canonicalShapeFromNeighbours(pos, id)
 	for property, value := range source.Properties {
 		if defined, err := gamedata.BlockStateWithProperty(shaped, property, value); err == nil {
 			shaped = defined
@@ -58,14 +58,14 @@ func (tx *Tx) SetBlockKnownShape(pos cube.Pos, b Block) {
 // javaShapeFromNeighbours ports Block.updateFromNeighbourShapes as
 // BlockInput.place uses it: state is returned unchanged if shaping it would
 // leave air, or if a neighbour has no Java state to shape it by.
-func (tx *Tx) javaShapeFromNeighbours(pos cube.Pos, state uint32) uint32 {
+func (tx *Tx) canonicalShapeFromNeighbours(pos cube.Pos, state uint32) uint32 {
 	for _, face := range cube.Faces() {
-		if _, ok := gamedata.BlockStateName(tx.javaBlockStateID(pos.Side(face))); !ok {
+		if _, ok := gamedata.BlockStateName(tx.canonicalBlockStateID(pos.Side(face))); !ok {
 			return state
 		}
 	}
-	context := javaShapeContext{tx: tx, pos: pos}
-	if shaped := context.updateFromNeighbourShapes(state); !javaIsAir(shaped) {
+	context := shapeContext{tx: tx, pos: pos}
+	if shaped := context.updateFromNeighbourShapes(state); !stateIsAir(shaped) {
 		return shaped
 	}
 	return state

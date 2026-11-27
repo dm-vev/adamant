@@ -72,7 +72,7 @@ func TestIceMeltsByBlockLight(t *testing.T) {
 // TestGrassFollowsJava checks SpreadingSnowyDirtBlock: grass under a block
 // that lets no light through turns into dirt, while grass in the dark under
 // open air stays, and lit grass spreads to the dirt around it.
-func TestGrassFollowsJava(t *testing.T) {
+func TestGrassParity(t *testing.T) {
 	t.Parallel()
 	w := randomTickWorld(t)
 	w.SetTime(6000)

@@ -50,10 +50,10 @@ func (customEnchantment) CompatibleWithItem(world.Item) bool                  { 
 // registered, and that the slice it returns is the caller's. The
 // enchantments registered cost more than any table offers and suit no item.
 func TestEnchantmentsOrder(t *testing.T) {
-	javaOnly := []item.EnchantmentType{enchantment.SweepingEdge}
+	serverOnly := []item.EnchantmentType{enchantment.SweepingEdge}
 	check := func(what string) {
 		t.Helper()
-		got, want := item.Enchantments(), append(oldEnchantments(), javaOnly...)
+		got, want := item.Enchantments(), append(oldEnchantments(), serverOnly...)
 		if !slices.Equal(got, want) {
 			t.Fatalf("%s: Enchantments() = %v, sorted as before %v", what, got, want)
 		}
@@ -84,18 +84,18 @@ func TestEnchantmentsOrder(t *testing.T) {
 		t.Fatalf("the enchantments registered are last but the Java-only ones as %v", e[len(e)-5:])
 	}
 
-	item.RegisterJavaOnlyEnchantment(customEnchantment{"test java d"})
-	item.RegisterJavaOnlyEnchantment(customEnchantment{"test java d"})
-	javaOnly = append(javaOnly, customEnchantment{"test java d"})
+	item.RegisterServerOnlyEnchantment(customEnchantment{"test java d"})
+	item.RegisterServerOnlyEnchantment(customEnchantment{"test java d"})
+	serverOnly = append(serverOnly, customEnchantment{"test java d"})
 	check("Java-only d, twice")
-	if !item.IsJavaOnlyEnchantment(customEnchantment{"test java d"}) || item.IsJavaOnlyEnchantment(customEnchantment{"test a"}) {
+	if !item.IsServerOnlyEnchantment(customEnchantment{"test java d"}) || item.IsServerOnlyEnchantment(customEnchantment{"test a"}) {
 		t.Fatal("IsJavaOnlyEnchantment does not tell d from a")
 	}
 	// Once Bedrock has an ID of an enchantment, it has the ID.
-	item.RegisterJavaOnlyEnchantment(customEnchantment{"test java e"})
+	item.RegisterServerOnlyEnchantment(customEnchantment{"test java e"})
 	item.RegisterEnchantment(7003, customEnchantment{"test java e"})
 	check("Java-only e at 7003")
-	if item.IsJavaOnlyEnchantment(customEnchantment{"test java e"}) {
+	if item.IsServerOnlyEnchantment(customEnchantment{"test java e"}) {
 		t.Fatal("e registered with an ID is Java-only")
 	}
 

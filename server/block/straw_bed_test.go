@@ -13,7 +13,7 @@ import (
 	"github.com/dm-vev/adamant/server/world/mcdb"
 )
 
-func TestStrawBedCollisionMatchesJava263Source(t *testing.T) {
+func TestStrawBedCollisionMatchesSource(t *testing.T) {
 	t.Parallel()
 	var fixture struct {
 		Cases []struct {

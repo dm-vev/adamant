@@ -122,11 +122,21 @@ type RedstoneNonConductive interface {
 }
 
 // redstoneEngine evaluates the immediate-power network and owns transient
+type redstoneEdgeSpan struct {
+	start, end int
+}
+
+type redstoneDirtyEntry struct {
+	pos cube.Pos
+	d   redstoneDirty
+}
+
 // Bedrock circuit components. Stateful capacitors cache inputs and advance on
 // a shared clock; other consumers use neighbor updates and scheduled ticks.
 type redstoneEngine struct {
 	currentTick           int64
 	dirty                 map[cube.Pos]redstoneDirty
+	dirtyScratch          map[cube.Pos]redstoneDirty
 	power                 map[cube.Pos]int
 	output                map[cube.Pos]int
 	evaluating            map[cube.Pos]struct{}
@@ -142,6 +152,22 @@ type redstoneEngine struct {
 	circuitOutputCauses   map[cube.Pos]redstoneDirty
 	producers             map[cube.Pos]redstoneProducer
 	pendingProducers      map[cube.Pos]redstoneProducer
+
+	scratchCandidates   []cube.Pos
+	scratchDirtyList    []redstoneDirtyEntry
+	scratchNodes        []redstoneNode
+	scratchSeen         map[cube.Pos]struct{}
+	scratchQueue        []cube.Pos
+	scratchIndex        map[cube.Pos]int
+	scratchEdges        []redstoneEdge
+	scratchPowers       []int
+	scratchSources      []RedstonePowerSource
+	scratchRelayers     []RedstonePowerRelayer
+	scratchEdgeSpans    []redstoneEdgeSpan
+	scratchGraphQueue   []int
+	scratchGroupCached  map[cube.Pos]bool
+	scratchRelayersPos  []cube.Pos
+	scratchOutPositions []cube.Pos
 }
 
 // redstoneDirty records why a position needs redstone evaluation.
@@ -304,6 +330,24 @@ func (e *redstoneEngine) dropDirty() {
 	}
 }
 
+// swapDirty exchanges e.dirty with the reusable scratch map so each tick
+// evaluates a stable snapshot while new invalidations write to e.dirty.
+func (e *redstoneEngine) swapDirty() map[cube.Pos]redstoneDirty {
+	dirty := e.dirty
+	if e.dirtyScratch != nil {
+		e.dirty = e.dirtyScratch
+		e.dirtyScratch = nil
+	} else {
+		e.dirty = make(map[cube.Pos]redstoneDirty, len(dirty))
+	}
+	return dirty
+}
+
+func (e *redstoneEngine) releaseDirty(dirty map[cube.Pos]redstoneDirty) {
+	clear(dirty)
+	e.dirtyScratch = dirty
+}
+
 // tick evaluates all dirty redstone positions for the current world tick.
 func (e *redstoneEngine) tick(tx *Tx, tick int64) {
 	if e == nil {
@@ -314,18 +358,22 @@ func (e *redstoneEngine) tick(tx *Tx, tick int64) {
 	if len(e.dirty) == 0 {
 		return
 	}
-	dirty := maps.Clone(e.dirty)
-	clear(e.dirty)
+	dirty := e.swapDirty()
+	defer e.releaseDirty(dirty)
 
-	candidates := slices.Collect(maps.Keys(dirty))
-	slices.SortFunc(candidates, compareBlockPos)
-	candidates = slices.DeleteFunc(candidates, func(pos cube.Pos) bool {
+	candidates := e.scratchCandidates[:0]
+	for pos, d := range dirty {
 		if _, ok := tx.World().blockLoaded(pos); ok {
-			return false
+			candidates = append(candidates, pos)
+		} else {
+			e.invalidate(pos, d, tx.Range())
 		}
-		e.invalidate(pos, dirty[pos], tx.Range())
-		return true
-	})
+	}
+	e.scratchCandidates = candidates
+	if len(candidates) == 0 {
+		return
+	}
+	slices.SortFunc(candidates, compareBlockPos)
 
 	graph := e.compile(tx, candidates)
 	cancelledSources, checkedSources := e.updateGraphSources(tx, graph, dirty)
@@ -335,9 +383,19 @@ func (e *redstoneEngine) tick(tx *Tx, tick int64) {
 		e.suppressedSources = previousSuppressed
 	}()
 
+	dirtyList := e.scratchDirtyList[:0]
+	for pos, d := range dirty {
+		dirtyList = append(dirtyList, redstoneDirtyEntry{pos: pos, d: d})
+	}
+	e.scratchDirtyList = dirtyList
+	defer func() {
+		clear(dirtyList)
+		e.scratchDirtyList = dirtyList[:0]
+	}()
+
 	powers := e.graphPower(tx, graph)
 	for i, node := range graph.nodes {
-		d := redstoneDirtyContext(dirty, node.pos)
+		d := redstoneDirtyContextSlice(dirty, dirtyList, node.pos)
 		if node.sink {
 			e.update(tx, node.pos, d, powers[i])
 		}
@@ -346,11 +404,36 @@ func (e *redstoneEngine) tick(tx *Tx, tick int64) {
 		if _, ok := checkedSources[node.pos]; ok {
 			continue
 		}
-		d := redstoneDirtyContext(dirty, node.pos)
+		d := redstoneDirtyContextSlice(dirty, dirtyList, node.pos)
 		if node.source {
 			e.updateSource(tx, node.pos, d)
 		}
 	}
+}
+
+func redstoneDirtyContextSlice(dirty map[cube.Pos]redstoneDirty, list []redstoneDirtyEntry, pos cube.Pos) redstoneDirty {
+	if d, ok := dirty[pos]; ok {
+		return d
+	}
+	if len(list) == 1 {
+		return list[0].d
+	}
+	var (
+		bestPos  cube.Pos
+		best     redstoneDirty
+		bestDist int
+		ok       bool
+	)
+	for i := range list {
+		dist := redstoneManhattanDistance(pos, list[i].pos)
+		if !ok || dist < bestDist || (dist == bestDist && compareBlockPos(list[i].pos, bestPos) < 0) {
+			bestPos, best, bestDist, ok = list[i].pos, list[i].d, dist, true
+		}
+	}
+	if !ok {
+		return redstoneDirty{changed: pos, hasChanged: true, source: pos, hasSource: true, cause: RedstoneUpdateCauseCompilerRebuild}
+	}
+	return best
 }
 
 // redstoneDirtyContext returns the direct dirty context for pos, or the nearest dirty context that pulled pos into
@@ -358,6 +441,11 @@ func (e *redstoneEngine) tick(tx *Tx, tick int64) {
 func redstoneDirtyContext(dirty map[cube.Pos]redstoneDirty, pos cube.Pos) redstoneDirty {
 	if d, ok := dirty[pos]; ok {
 		return d
+	}
+	if len(dirty) == 1 {
+		for _, d := range dirty {
+			return d
+		}
 	}
 	var (
 		bestPos  cube.Pos
@@ -416,8 +504,14 @@ func abs(v int) int {
 
 // compile builds a deterministic graph around the candidate positions.
 func (e *redstoneEngine) compile(tx *Tx, candidates []cube.Pos) redstoneGraph {
-	nodes := make([]redstoneNode, 0, len(candidates))
-	seen := make(map[cube.Pos]struct{}, len(candidates)*2)
+	nodes := e.scratchNodes[:0]
+	seen := e.scratchSeen
+	if seen == nil {
+		seen = make(map[cube.Pos]struct{}, len(candidates)*2)
+		e.scratchSeen = seen
+	} else {
+		clear(seen)
+	}
 	for _, pos := range candidates {
 		nodeCount := len(nodes)
 		e.compileRegion(tx, pos, seen, &nodes)
@@ -428,9 +522,11 @@ func (e *redstoneEngine) compile(tx *Tx, candidates []cube.Pos) redstoneGraph {
 	for i := 0; i < len(nodes); i++ {
 		e.compileAdjacentRedstone(tx, nodes[i].pos, seen, &nodes)
 	}
+	clear(seen)
 	slices.SortFunc(nodes, func(a, b redstoneNode) int {
 		return compareBlockPos(a.pos, b.pos)
 	})
+	e.scratchNodes = nodes
 	edges := e.compileEdges(tx, nodes)
 	return redstoneGraph{nodes: nodes, edges: edges}
 }
@@ -477,10 +573,10 @@ func (e *redstoneEngine) compileRegion(tx *Tx, pos cube.Pos, seen map[cube.Pos]s
 	if _, ok := seen[pos]; ok || pos.OutOfBounds(tx.Range()) {
 		return
 	}
-	queue := []cube.Pos{pos}
-	for len(queue) != 0 {
-		p := queue[0]
-		queue = queue[1:]
+	queue := append(e.scratchQueue[:0], pos)
+	var connBuf [32]cube.Pos
+	for head := 0; head < len(queue); head++ {
+		p := queue[head]
 		if _, ok := seen[p]; ok || p.OutOfBounds(tx.Range()) {
 			continue
 		}
@@ -502,12 +598,16 @@ func (e *redstoneEngine) compileRegion(tx *Tx, pos cube.Pos, seen map[cube.Pos]s
 		if !relayer {
 			continue
 		}
-		for _, neighbour := range e.redstoneRelayerConnectedPositions(tx, p, b) {
-			if b, ok := tx.World().blockLoaded(neighbour); ok && isRedstoneRelevant(b) {
+		for _, neighbour := range e.appendRelayerConnectedPositions(connBuf[:0], tx, p, b) {
+			if _, visited := seen[neighbour]; visited {
+				continue
+			}
+			if nb, ok := tx.World().blockLoaded(neighbour); ok && isRedstoneRelevant(nb) {
 				queue = append(queue, neighbour)
 			}
 		}
 	}
+	e.scratchQueue = queue[:0]
 }
 
 // update applies a computed input power to a consumer or action block.
@@ -817,15 +917,33 @@ func (e *redstoneEngine) sourcePower(pos cube.Pos, tx *Tx) int {
 
 // graphPower computes propagated graph power for every graph node.
 func (e *redstoneEngine) graphPower(tx *Tx, graph redstoneGraph) []int {
-	powers := make([]int, len(graph.nodes))
-	if len(graph.nodes) == 0 {
+	n := len(graph.nodes)
+	powers := e.scratchPowers[:0]
+	if cap(powers) < n {
+		powers = make([]int, n)
+	} else {
+		powers = powers[:n]
+		clear(powers)
+	}
+	e.scratchPowers = powers
+	if n == 0 {
 		return powers
 	}
 
-	index := make(map[cube.Pos]int, len(graph.nodes))
-	sources := make([]RedstonePowerSource, len(graph.nodes))
-	relayers := make([]RedstonePowerRelayer, len(graph.nodes))
-	edges := make([][]redstoneEdge, len(graph.nodes))
+	index := e.scratchIndex
+	if index == nil {
+		index = make(map[cube.Pos]int, n)
+		e.scratchIndex = index
+	} else {
+		clear(index)
+	}
+	sources := growAndClearSlice(e.scratchSources, n)
+	e.scratchSources = sources
+	relayers := growAndClearSlice(e.scratchRelayers, n)
+	e.scratchRelayers = relayers
+	spans := growAndClearSlice(e.scratchEdgeSpans, n)
+	e.scratchEdgeSpans = spans
+
 	for i, node := range graph.nodes {
 		index[node.pos] = i
 		if b, ok := tx.World().blockLoaded(node.pos); ok {
@@ -833,11 +951,17 @@ func (e *redstoneEngine) graphPower(tx *Tx, graph redstoneGraph) []int {
 			relayers[i], _ = b.(RedstonePowerRelayer)
 		}
 	}
-	for _, edge := range graph.edges {
-		edges[edge.from] = append(edges[edge.from], edge)
+	for k := 0; k < len(graph.edges); {
+		from := graph.edges[k].from
+		end := k + 1
+		for end < len(graph.edges) && graph.edges[end].from == from {
+			end++
+		}
+		spans[from] = redstoneEdgeSpan{start: k, end: end}
+		k = end
 	}
 
-	queue := make([]int, 0, len(graph.nodes))
+	queue := e.scratchGraphQueue[:0]
 	push := func(i, power int) {
 		power = ClampRedstonePower(power)
 		if power <= powers[i] {
@@ -856,8 +980,6 @@ func (e *redstoneEngine) graphPower(tx *Tx, graph redstoneGraph) []int {
 	}
 
 	for i, source := range sources {
-		// Relayers such as redstone wire store their previous output as RedstonePower.
-		// They must be recomputed from real sources, not used as seeds themselves.
 		if source == nil || relayers[i] != nil {
 			continue
 		}
@@ -867,8 +989,7 @@ func (e *redstoneEngine) graphPower(tx *Tx, graph redstoneGraph) []int {
 			if !ok {
 				continue
 			}
-			power := ClampRedstonePower(e.redstonePower(source, pos, tx, face))
-			push(j, power)
+			push(j, ClampRedstonePower(e.redstonePower(source, pos, tx, face)))
 		}
 	}
 
@@ -877,11 +998,25 @@ func (e *redstoneEngine) graphPower(tx *Tx, graph redstoneGraph) []int {
 		if relayers[i] == nil {
 			continue
 		}
-		for _, edge := range edges[i] {
+		sp := spans[i]
+		for _, edge := range graph.edges[sp.start:sp.end] {
 			push(edge.to, powers[i]-edge.weight)
 		}
 	}
+	e.scratchGraphQueue = queue[:0]
+	clear(sources)
+	clear(relayers)
+	clear(index)
 	return powers
+}
+
+func growAndClearSlice[T any](s []T, n int) []T {
+	if cap(s) < n {
+		return make([]T, n)
+	}
+	s = s[:n]
+	clear(s)
+	return s
 }
 
 // powerTo returns the strongest redstone power currently reaching pos.
@@ -913,21 +1048,49 @@ func (e *redstoneEngine) powerFrom(pos cube.Pos, tx *Tx, face cube.Face) int {
 		loss  int
 		depth int
 	}
-	queue := []step{{pos: pos.Side(face), from: face.Opposite(), loss: 0, depth: 0}}
-	seen := make(map[cube.Pos]int, 16)
-	for len(queue) != 0 {
-		s := queue[0]
-		queue = queue[1:]
-		if s.pos.OutOfBounds(tx.Range()) || s.loss >= 15 || s.depth >= 15 {
+	type seenEntry struct {
+		pos  cube.Pos
+		loss int
+	}
+	var queueBuf [32]step
+	queue := append(queueBuf[:0], step{pos: pos.Side(face), from: face.Opposite(), loss: 0, depth: 0})
+	var seenBuf [32]seenEntry
+	seenList := seenBuf[:0]
+	var seenMap map[cube.Pos]int
+	var nbrBuf [26]cube.Pos
+	for head := 0; head < len(queue); head++ {
+		s := queue[head]
+		if s.pos.OutOfBounds(tx.Range()) || s.loss >= 15 || s.depth >= 15 || s.pos == pos {
 			continue
 		}
-		if s.pos == pos {
-			continue
+		if seenMap != nil {
+			if loss, ok := seenMap[s.pos]; ok && loss <= s.loss {
+				continue
+			}
+			seenMap[s.pos] = s.loss
+		} else {
+			found := -1
+			for idx := range seenList {
+				if seenList[idx].pos == s.pos {
+					found = idx
+					break
+				}
+			}
+			if found >= 0 {
+				if seenList[found].loss <= s.loss {
+					continue
+				}
+				seenList[found].loss = s.loss
+			} else if len(seenList) < len(seenBuf) {
+				seenList = append(seenList, seenEntry{pos: s.pos, loss: s.loss})
+			} else {
+				seenMap = make(map[cube.Pos]int, 64)
+				for _, entry := range seenList {
+					seenMap[entry.pos] = entry.loss
+				}
+				seenMap[s.pos] = s.loss
+			}
 		}
-		if loss, ok := seen[s.pos]; ok && loss <= s.loss {
-			continue
-		}
-		seen[s.pos] = s.loss
 
 		b, ok := tx.World().blockLoaded(s.pos)
 		if !ok {
@@ -942,7 +1105,7 @@ func (e *redstoneEngine) powerFrom(pos cube.Pos, tx *Tx, face cube.Face) int {
 		if !isRelayer {
 			continue
 		}
-		for _, next := range e.redstoneRelayerNeighbourPositions(tx, s.pos, b) {
+		for _, next := range e.appendRelayerNeighbourPositions(nbrBuf[:0], tx, s.pos, b) {
 			to := redstoneStepFace(s.pos, next)
 			if to == s.from {
 				continue
@@ -1018,11 +1181,18 @@ func RedstoneFullPowerConductor(pos cube.Pos, b Block, tx *Tx) bool {
 
 // compileEdges builds deterministic weighted edges between relayer-connected nodes.
 func (e *redstoneEngine) compileEdges(tx *Tx, nodes []redstoneNode) []redstoneEdge {
-	index := make(map[cube.Pos]int, len(nodes))
+	index := e.scratchIndex
+	if index == nil {
+		index = make(map[cube.Pos]int, len(nodes))
+		e.scratchIndex = index
+	} else {
+		clear(index)
+	}
 	for i, node := range nodes {
 		index[node.pos] = i
 	}
-	edges := make([]redstoneEdge, 0, len(nodes))
+	edges := e.scratchEdges[:0]
+	var nbrBuf [26]cube.Pos
 	for i, node := range nodes {
 		b, loaded := tx.World().blockLoaded(node.pos)
 		if !loaded {
@@ -1032,7 +1202,7 @@ func (e *redstoneEngine) compileEdges(tx *Tx, nodes []redstoneNode) []redstoneEd
 		if !ok {
 			continue
 		}
-		for _, neighbour := range e.redstoneRelayerNeighbourPositions(tx, node.pos, b) {
+		for _, neighbour := range e.appendRelayerNeighbourPositions(nbrBuf[:0], tx, node.pos, b) {
 			j, ok := index[neighbour]
 			if !ok {
 				continue
@@ -1046,35 +1216,43 @@ func (e *redstoneEngine) compileEdges(tx *Tx, nodes []redstoneNode) []redstoneEd
 			edges = append(edges, redstoneEdge{from: i, to: j, weight: weight})
 		}
 	}
+	clear(index)
 	slices.SortFunc(edges, compareRedstoneEdge)
+	e.scratchEdges = edges
 	return edges
 }
 
-// redstoneRelayerNeighbourPositions returns sorted relayer neighbours for b at pos.
 func (e *redstoneEngine) redstoneRelayerNeighbourPositions(tx *Tx, pos cube.Pos, b Block) []cube.Pos {
-	if neighbourer, ok := b.(RedstonePowerRelayerNeighbourer); ok {
-		neighbours := slices.Clone(neighbourer.RedstoneRelayerNeighbours(pos, tx))
-		slices.SortFunc(neighbours, compareBlockPos)
-		return neighbours
-	}
-	neighbours := make([]cube.Pos, 0, len(cube.Faces()))
-	e.redstoneRelayerNeighbours(tx, pos, func(neighbour cube.Pos) {
-		neighbours = append(neighbours, neighbour)
-	})
-	slices.SortFunc(neighbours, compareBlockPos)
-	return neighbours
+	return e.appendRelayerNeighbourPositions(nil, tx, pos, b)
 }
 
-// redstoneRelayerConnectedPositions returns relayers connected to pos in either direction. Graph membership must be
-// weakly connected so a one-way relayer, such as dust climbing glowstone, still compiles with its lower input path.
-func (e *redstoneEngine) redstoneRelayerConnectedPositions(tx *Tx, pos cube.Pos, b Block) []cube.Pos {
-	neighbours := e.redstoneRelayerNeighbourPositions(tx, pos, b)
-	seen := make(map[cube.Pos]struct{}, len(neighbours)+8)
-	for _, neighbour := range neighbours {
-		seen[neighbour] = struct{}{}
+// appendRelayerNeighbourPositions appends sorted relayer neighbours for b at pos into dst.
+func (e *redstoneEngine) appendRelayerNeighbourPositions(dst []cube.Pos, tx *Tx, pos cube.Pos, b Block) []cube.Pos {
+	if neighbourer, ok := b.(RedstonePowerRelayerNeighbourer); ok {
+		dst = append(dst, neighbourer.RedstoneRelayerNeighbours(pos, tx)...)
+		slices.SortFunc(dst, compareBlockPos)
+		return dst
 	}
-	for _, candidate := range redstoneRelayerIncomingCandidates(pos, tx.Range()) {
-		if _, ok := seen[candidate]; ok {
+	for _, face := range cube.Faces() {
+		neighbour := pos.Side(face)
+		if !neighbour.OutOfBounds(tx.Range()) {
+			dst = append(dst, neighbour)
+		}
+	}
+	slices.SortFunc(dst, compareBlockPos)
+	return dst
+}
+
+// appendRelayerConnectedPositions appends relayers connected to pos in either direction into dst.
+// Graph membership must be weakly connected so a one-way relayer, such as dust climbing glowstone,
+// still compiles with its lower input path.
+func (e *redstoneEngine) appendRelayerConnectedPositions(dst []cube.Pos, tx *Tx, pos cube.Pos, b Block) []cube.Pos {
+	neighbours := e.appendRelayerNeighbourPositions(dst, tx, pos, b)
+	initialLen := len(neighbours)
+	var candBuf [26]cube.Pos
+	var revBuf [26]cube.Pos
+	for _, candidate := range appendIncomingRelayerCandidates(candBuf[:0], pos, tx.Range()) {
+		if slices.Contains(neighbours[:initialLen], candidate) {
 			continue
 		}
 		candidateBlock, ok := tx.World().blockLoaded(candidate)
@@ -1084,18 +1262,16 @@ func (e *redstoneEngine) redstoneRelayerConnectedPositions(tx *Tx, pos cube.Pos,
 		if _, ok := candidateBlock.(RedstonePowerRelayer); !ok {
 			continue
 		}
-		if slices.Contains(e.redstoneRelayerNeighbourPositions(tx, candidate, candidateBlock), pos) {
+		if slices.Contains(e.appendRelayerNeighbourPositions(revBuf[:0], tx, candidate, candidateBlock), pos) {
 			neighbours = append(neighbours, candidate)
-			seen[candidate] = struct{}{}
 		}
 	}
 	slices.SortFunc(neighbours, compareBlockPos)
 	return neighbours
 }
 
-// redstoneRelayerIncomingCandidates returns nearby positions that can point at pos with the built-in relayer geometry.
-func redstoneRelayerIncomingCandidates(pos cube.Pos, r cube.Range) []cube.Pos {
-	candidates := make([]cube.Pos, 0, 26)
+// appendIncomingRelayerCandidates appends nearby positions that can point at pos with the built-in relayer geometry.
+func appendIncomingRelayerCandidates(dst []cube.Pos, pos cube.Pos, r cube.Range) []cube.Pos {
 	for x := pos[0] - 1; x <= pos[0]+1; x++ {
 		for y := pos[1] - 1; y <= pos[1]+1; y++ {
 			for z := pos[2] - 1; z <= pos[2]+1; z++ {
@@ -1103,21 +1279,11 @@ func redstoneRelayerIncomingCandidates(pos cube.Pos, r cube.Range) []cube.Pos {
 				if candidate == pos || candidate.OutOfBounds(r) {
 					continue
 				}
-				candidates = append(candidates, candidate)
+				dst = append(dst, candidate)
 			}
 		}
 	}
-	return candidates
-}
-
-// redstoneRelayerNeighbours visits the six default adjacent relayer neighbours.
-func (e *redstoneEngine) redstoneRelayerNeighbours(tx *Tx, pos cube.Pos, f func(cube.Pos)) {
-	for _, face := range cube.Faces() {
-		neighbour := pos.Side(face)
-		if !neighbour.OutOfBounds(tx.Range()) {
-			f(neighbour)
-		}
-	}
+	return dst
 }
 
 // redstoneStepFace returns the dominant face direction from one relayer position to another.

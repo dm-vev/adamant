@@ -26,7 +26,7 @@ type chunkWireCase struct {
 
 // chunkWireJavaStateID is the Java state ID the cases attach to blocks. Its
 // value does not matter: the network encoding leaves Java state IDs out.
-const chunkWireJavaStateID = 4242
+const chunkWireStateID = 4242
 
 // chunkWireCases returns the chunks of the golden world around its spawn and
 // chunks made to hold what the encoding has to handle: palettes of each bit
@@ -106,7 +106,7 @@ func chunkWireCases(t testing.TB) []chunkWireCase {
 		x, z, y := uint8(i&15), uint8(i>>4), int16(i%5)
 		java.SetBlock(x, y, z, 0, stone)
 		if i%3 == 0 {
-			java.SetJavaStateID(x, y, z, chunkWireJavaStateID)
+			java.SetStateID(x, y, z, chunkWireStateID)
 		}
 	}
 	cases = append(cases, chunkWireCase{"Java state IDs", java})
@@ -180,11 +180,11 @@ func TestChunkWireOmitsJavaMetadata(t *testing.T) {
 	for _, c := range []*chunk.Chunk{with, without} {
 		c.SetBlock(1, 2, 3, 0, stone)
 	}
-	with.SetJavaStateID(1, 2, 3, chunkWireJavaStateID)
+	with.SetStateID(1, 2, 3, chunkWireStateID)
 	for _, c := range []*chunk.Chunk{with, without} {
 		c.Compact()
 	}
-	if with.StateID(1, 2, 3) != chunkWireJavaStateID {
+	if with.StateID(1, 2, 3) != chunkWireStateID {
 		t.Fatal("the chunk lost the Java state ID set")
 	}
 	if got, want := session.EncodeSubChunk(with, 0), session.EncodeSubChunk(without, 0); !bytes.Equal(got, want) {

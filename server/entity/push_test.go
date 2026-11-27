@@ -436,9 +436,9 @@ func TestTickEntityCollisionsConcurrentWorldsAndPoolReset(t *testing.T) {
 	// Verify pooled scratch clears all entity/transaction pointers before reuse.
 	s := pushScratchPool.Get().(*pushScratch)
 	defer pushScratchPool.Put(s)
-	if len(s.meta) != 0 || len(s.spatial) != 0 || len(s.cells) != 0 || s.actTx != nil {
-		t.Fatalf("pooled scratch not reset: meta=%d spatial=%d cells=%d actTx=%v",
-			len(s.meta), len(s.spatial), len(s.cells), s.actTx)
+	if len(s.meta) != 0 || len(s.spatial) != 0 || len(s.cellSpans) != 0 || s.actTx != nil {
+		t.Fatalf("pooled scratch not reset: meta=%d spatial=%d cellSpans=%d actTx=%v",
+			len(s.meta), len(s.spatial), len(s.cellSpans), s.actTx)
 	}
 	backing := s.meta[:cap(s.meta)]
 	for i, m := range backing {

@@ -124,7 +124,7 @@ func TestFallenTreeFeatureMatchesSource(t *testing.T) {
 				for i, raw := range bees {
 					source := raw.(map[string]any)
 					occupant := occupants[i].(map[string]any)
-					canonical := occupant["adamant:java"].(map[string]any)
+					canonical := occupant["adamant:state"].(map[string]any)
 					for _, key := range [...]string{"ticks_in_hive", "min_ticks_in_hive"} {
 						if canonical[key] != int32(featureNumber(source[key])) {
 							t.Errorf("bee[%d] %s=%v Source=%v", i, key, canonical[key], source[key])

@@ -68,12 +68,25 @@ func (c Chest) ContainerSize() int {
 // Inventory returns the inventory of the chest. The size of the inventory will be 27 or 54, depending on
 // whether the chest is single or double.
 func (c Chest) Inventory(tx *world.Tx, pos cube.Pos) *inventory.Inventory {
+	inv, changed := c.tryPair(tx, pos)
+	if changed {
+		if owner, ok := tx.Block(pos).(chestBlock); ok {
+			c = owner.chestData()
+		}
+	}
 	if c.lootTable != "" {
 		if err := c.GenerateLoot(tx, pos); err != nil {
 			panic(err)
 		}
 	}
-	inv, _ := c.tryPair(tx, pos)
+	if c.paired {
+		pairPos := c.pairPos(pos)
+		if other, ok := tx.Block(pairPos).(chestBlock); ok && other.chestData().lootTable != "" {
+			if err := other.chestData().GenerateLoot(tx, pairPos); err != nil {
+				panic(err)
+			}
+		}
+	}
 	return inv
 }
 
@@ -104,11 +117,11 @@ func (Chest) canPairChest(other world.Block) bool   { _, ok := other.(Chest); re
 
 // WithJavaChestState retains the actor while projecting source pairing into the
 // native block-actor fields, which are not part of the Bedrock block palette.
-func (c Chest) WithJavaChestState(previous world.Block, pos cube.Pos, kind string) world.Block {
-	return c.withJavaChestState(previous, pos, kind)
+func (c Chest) WithChestState(previous world.Block, pos cube.Pos, kind string) world.Block {
+	return c.withChestState(previous, pos, kind)
 }
 
-func (c Chest) withJavaChestState(previous world.Block, pos cube.Pos, kind string) Chest {
+func (c Chest) withChestState(previous world.Block, pos cube.Pos, kind string) Chest {
 	facing := c.Facing
 	if old, ok := previous.(chestBlock); ok {
 		c = old.chestData()
@@ -137,11 +150,34 @@ func (c Chest) GenerateLoot(tx *world.Tx, pos cube.Pos) error {
 	if c.lootTable == "" {
 		return nil
 	}
+	owner, exists := tx.Block(pos).(chestBlock)
+	if exists {
+		current := owner.chestData()
+		if current.lootTable == "" {
+			return nil
+		}
+		// Adopt the live paired inventory if the caller held a pre-pair copy,
+		// while preserving an intentionally unpaired copy from dropContents.
+		if c.paired && current.pairInv != nil {
+			c = current
+		}
+	}
 	if err := fillContainerLoot(tx, pos, c.inventory, c.lootTable, c.lootSeed, "minecraft:chest"); err != nil {
 		return err
 	}
+	if c.pairInv != nil {
+		offset := 0
+		if c.paired && pos.Side(c.Facing.RotateRight().Face()) == c.pairPos(pos) {
+			offset = 27
+		}
+		for slot, stack := range c.inventory.Slots() {
+			if !stack.Empty() {
+				_ = c.pairInv.SetItem(offset+slot, stack)
+			}
+		}
+	}
 	c.lootTable, c.lootSeed = "", 0
-	if owner, ok := tx.Block(pos).(chestBlock); ok {
+	if exists {
 		tx.SetBlockEntity(pos, owner.withChestData(c))
 	}
 	return nil
@@ -409,7 +445,7 @@ func (c Chest) DecodeNBT(data map[string]any) any {
 	c = NewChest()
 	c.Facing = facing
 	c.CustomName = nbtconv.String(data, "CustomName")
-	c.lootTable = loot.JavaTableKey(nbtconv.String(data, "LootTable"))
+	c.lootTable = loot.TableKey(nbtconv.String(data, "LootTable"))
 	c.lootSeed = nbtconv.Int64(data, "LootTableSeed")
 
 	pairX, ok := data["pairx"]

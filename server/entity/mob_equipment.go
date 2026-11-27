@@ -405,11 +405,11 @@ func decodeGear(n map[string]any) mobGear {
 		}
 	}
 	g.dropChances = readDropChances(n)
-	if java := readNativeMobJavaState(n); java != nil {
+	if extra := readNativeMobExtraState(n); extra != nil {
 		if g.dropChances == nil {
-			g.dropChances = readDropChances(java)
+			g.dropChances = readDropChances(extra)
 		}
-		g.pickUpLoot = nbtconv.Bool(java, "CanPickUpLoot")
+		g.pickUpLoot = nbtconv.Bool(extra, "CanPickUpLoot")
 	}
 	g.pickUpLoot = g.pickUpLoot || nbtconv.Bool(n, "CanPickUpLoot")
 	return g
@@ -445,11 +445,11 @@ func (g *mobGear) encodeGear(previous, out map[string]any) map[string]any {
 		out[k] = v
 	}
 	out["CanPickUpLoot"] = byte(boolByte(g.pickUpLoot))
-	java := map[string]any{}
+	extra := map[string]any{}
 	if len(g.dropChances) != 0 {
-		java["drop_chances"] = encodeDropChances(g.dropChances)
+		extra["drop_chances"] = encodeDropChances(g.dropChances)
 	}
-	return java
+	return extra
 }
 
 // wornArmour returns the armour pieces e wears.

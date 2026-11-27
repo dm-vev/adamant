@@ -52,7 +52,7 @@ func TestWaterBottlesTurnDirtIntoMud(t *testing.T) {
 // TestJavaItemsResolveToBedrockItems checks Java item identifiers that name
 // Bedrock items differently, and explorer maps, which Java keeps as their own
 // items and Bedrock as filled maps with a variant.
-func TestJavaItemsResolveToBedrockItems(t *testing.T) {
+func TestCanonicalItemsResolveToBedrockItems(t *testing.T) {
 	for id, want := range map[string]string{
 		"minecraft:item_frame":                 "minecraft:frame",
 		"minecraft:glow_item_frame":            "minecraft:glow_frame",
@@ -60,7 +60,7 @@ func TestJavaItemsResolveToBedrockItems(t *testing.T) {
 		"minecraft:zombified_piglin_spawn_egg": "minecraft:zombie_pigman_spawn_egg",
 		"minecraft:knowledge_book":             "adamant:knowledge_book",
 	} {
-		it, ok := item.JavaItem(id)
+		it, ok := item.CanonicalItem(id)
 		if !ok {
 			t.Errorf("%s resolves to no item", id)
 			continue
@@ -69,8 +69,8 @@ func TestJavaItemsResolveToBedrockItems(t *testing.T) {
 			t.Errorf("%s resolves to %s, want %s", id, name, want)
 		}
 	}
-	it, ok := item.JavaItem("minecraft:buried_treasure_map")
-	if m, isMap := it.(item.FilledMap); !ok || !isMap || m.Variant.JavaItemID() != "minecraft:buried_treasure_map" {
+	it, ok := item.CanonicalItem("minecraft:buried_treasure_map")
+	if m, isMap := it.(item.FilledMap); !ok || !isMap || m.Variant.CanonicalItemID() != "minecraft:buried_treasure_map" {
 		t.Fatalf("buried_treasure_map resolves to %#v", it)
 	}
 }

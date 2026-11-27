@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-var gradients = [16][3]float32{
+var gradients = [16][4]float32{
 	{1, 1, 0}, {-1, 1, 0}, {1, -1, 0}, {-1, -1, 0},
 	{1, 0, 1}, {-1, 0, 1}, {1, 0, -1}, {-1, 0, -1},
 	{0, 1, 1}, {0, -1, 1}, {0, 1, -1}, {0, -1, -1},
@@ -63,17 +63,18 @@ func (p *Perlin) sampleSmeared(x, y, z, smear float64) float32 {
 }
 
 func (p *Perlin) sampleAndLerp(x, y, z int, rx, ry, rz, originalY float32) float32 {
-	x0, x1 := p.permute(x), p.permute(x+1)
-	xy00, xy01 := p.permute(x0+y), p.permute(x0+y+1)
-	xy10, xy11 := p.permute(x1+y), p.permute(x1+y+1)
-	d000 := gradientDot(p.permute(xy00+z), rx, ry, rz)
-	d100 := gradientDot(p.permute(xy10+z), rx-1, ry, rz)
-	d010 := gradientDot(p.permute(xy01+z), rx, ry-1, rz)
-	d110 := gradientDot(p.permute(xy11+z), rx-1, ry-1, rz)
-	d001 := gradientDot(p.permute(xy00+z+1), rx, ry, rz-1)
-	d101 := gradientDot(p.permute(xy10+z+1), rx-1, ry, rz-1)
-	d011 := gradientDot(p.permute(xy01+z+1), rx, ry-1, rz-1)
-	d111 := gradientDot(p.permute(xy11+z+1), rx-1, ry-1, rz-1)
+	x0, x1 := int(p.perm[uint8(x)]), int(p.perm[uint8(x+1)])
+	xy00, xy01 := int(p.perm[uint8(x0+y)]), int(p.perm[uint8(x0+y+1)])
+	xy10, xy11 := int(p.perm[uint8(x1+y)]), int(p.perm[uint8(x1+y+1)])
+	rx1, ry1, rz1 := rx-1, ry-1, rz-1
+	d000 := gradientDot(int(p.perm[uint8(xy00+z)]), rx, ry, rz)
+	d100 := gradientDot(int(p.perm[uint8(xy10+z)]), rx1, ry, rz)
+	d010 := gradientDot(int(p.perm[uint8(xy01+z)]), rx, ry1, rz)
+	d110 := gradientDot(int(p.perm[uint8(xy11+z)]), rx1, ry1, rz)
+	d001 := gradientDot(int(p.perm[uint8(xy00+z+1)]), rx, ry, rz1)
+	d101 := gradientDot(int(p.perm[uint8(xy10+z+1)]), rx1, ry, rz1)
+	d011 := gradientDot(int(p.perm[uint8(xy01+z+1)]), rx, ry1, rz1)
+	d111 := gradientDot(int(p.perm[uint8(xy11+z+1)]), rx1, ry1, rz1)
 	ax, ay, az := smoothstep(rx), smoothstep(originalY), smoothstep(rz)
 	low := noiseLerp(ay, noiseLerp(ax, d000, d100), noiseLerp(ax, d010, d110))
 	high := noiseLerp(ay, noiseLerp(ax, d001, d101), noiseLerp(ax, d011, d111))

@@ -12,7 +12,7 @@ import (
 // collision over as many blocks, is dropped, the position is clamped, and
 // an entity with a position that is not a number or a rotation that is not
 // finite is not loaded.
-func TestEntityLoadsWithinJavaBounds(t *testing.T) {
+func TestEntityLoadsWithinBounds(t *testing.T) {
 	t.Parallel()
 	nan, inf := float32(math.NaN()), float32(math.Inf(1))
 	h := entityFromData(testEntityType{}, 1, map[string]any{

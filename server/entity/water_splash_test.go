@@ -82,7 +82,7 @@ func TestSplashPotionScalesByBoxDistance(t *testing.T) {
 // it, and the cloud shrinks away; dragon's breath ends 600 ticks after its
 // wait. A creeper with an effect
 // leaves a cloud of it when it explodes, and lingering water none.
-func TestLingeringCloudFollowsJava(t *testing.T) {
+func TestLingeringCloudParity(t *testing.T) {
 	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()

@@ -1092,8 +1092,7 @@ func (t ticker) tickEntitiesInPhase(tx *Tx, tick int64, afterBlocks bool) {
 				if afterBlocks {
 					needed := false
 					for _, handle := range col.Entities {
-						phase, phased := handle.Type().(interface{ TickAfterBlocks() bool })
-						if phased && phase.TickAfterBlocks() || handle.state != nil && handle.state.postBlockTicker != nil {
+						if s := handle.state; (s != nil && (s.tickAfterBlocks || s.postBlockTicker != nil)) || (s == nil && entityTickAfterBlocks(handle.Type())) {
 							needed = true
 							break
 						}
@@ -1278,12 +1277,17 @@ func (t ticker) tickEntityColumnFrom(tx *Tx, tick int64, pos ChunkPos, col *Colu
 	ref := entityChunkRef{col: col, pos: pos, waiting: active && !tx.World().entityTickingReady(pos)}
 	for index < len(col.Entities) {
 		handle = col.Entities[index]
-		phase, phased := handle.Type().(interface{ TickAfterBlocks() bool })
-		if (phased && phase.TickAfterBlocks()) != afterBlocks {
+		state := handle.state
+		tab := false
+		if state != nil {
+			tab = state.tickAfterBlocks
+		} else {
+			tab = entityTickAfterBlocks(handle.Type())
+		}
+		if tab != afterBlocks {
 			// Native normal-tick contacts can precede the block/circuit pass
 			// even when the entity's ECS movement runs afterwards.
 			if !afterBlocks && active && !ref.waiting {
-				state := handle.state
 				if state != nil && !state.quarantined && state.lastPreBlockTick != tick {
 					state.entity(tx, handle)
 					state.lastPreBlockTick = tick
@@ -1299,7 +1303,6 @@ func (t ticker) tickEntityColumnFrom(tx *Tx, tick int64, pos ChunkPos, col *Colu
 			// Pre-block entities can sample the completed block/circuit phase
 			// without repeating their movement, ageing or normal entity tick.
 			if afterBlocks && active && !ref.waiting {
-				state := handle.state
 				if state != nil && !state.quarantined && state.lastTick == tick && state.lastProcessedTick == tick && state.lastPostBlockTick != tick && state.postBlockTicker != nil {
 					state.lastPostBlockTick = tick
 					state.entity(tx, handle)
@@ -1410,7 +1413,7 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 	if chunkPos != ref.pos {
 		waiting = active && !w.entityTickingReady(chunkPos)
 	}
-	if waiting && handle.t.EncodeEntity() != "minecraft:player" {
+	if waiting && !state.isPlayer {
 		// Java ticks the entities of a chunk only once the chunks within two
 		// chunks of it are generated: until then they keep still and do not
 		// age, and never stall the tick reading a chunk still generating.
@@ -1561,18 +1564,22 @@ func (w *World) moveEntityChunk(tx *Tx, handle *EntityHandle, state *entityState
 // scheduledTickQueue stores one Java tick registry's scheduled updates.
 type scheduledTickQueue struct {
 	// chunks holds the ticks of each chunk in the order they were scheduled.
-	chunks         map[ChunkPos]*scheduledChunkTicks
-	dispatch       []scheduledTick
-	run            []scheduledTick
-	selected       []scheduledTick
-	groups         []scheduledTickGroup
-	groupHeap      []int
-	scheduledTicks map[scheduledTickIndex]int64
-	pendingTicks   []scheduledTick
-	deferredChunks map[ChunkPos]int
-	saveTicks      []scheduledTick
-	processing     bool
-	fluid          bool
+	chunks            map[ChunkPos]*scheduledChunkTicks
+	freeChunkTicks    []*scheduledChunkTicks
+	circuitBlockTypes map[string]bool
+	tickTypeReg       BlockRegistry
+	tickTypeByRID     []string
+	dispatch          []scheduledTick
+	run               []scheduledTick
+	selected          []scheduledTick
+	groups            []scheduledTickGroup
+	groupHeap         []int
+	scheduledTicks    map[scheduledTickIndex]int64
+	pendingTicks      []scheduledTick
+	deferredChunks    map[ChunkPos]int
+	saveTicks         []scheduledTick
+	processing        bool
+	fluid             bool
 	// faults, if not nil, holds the blocks of the world whose ticks
 	// panicked: those quarantined get no ticks.
 	faults        *blockFaults
@@ -1604,7 +1611,15 @@ func (queue *scheduledTickQueue) push(t scheduledTick) {
 	pos := chunkPosFromBlockPos(t.pos)
 	list := queue.chunks[pos]
 	if list == nil {
-		list = &scheduledChunkTicks{due: math.MaxInt64}
+		if n := len(queue.freeChunkTicks); n > 0 {
+			list = queue.freeChunkTicks[n-1]
+			queue.freeChunkTicks[n-1] = nil
+			queue.freeChunkTicks = queue.freeChunkTicks[:n-1]
+			list.due = math.MaxInt64
+			list.ticks = list.ticks[:0]
+		} else {
+			list = &scheduledChunkTicks{due: math.MaxInt64, ticks: make([]scheduledTick, 0, 8)}
+		}
 		if queue.chunks == nil {
 			queue.chunks = make(map[ChunkPos]*scheduledChunkTicks)
 		}
@@ -1613,6 +1628,15 @@ func (queue *scheduledTickQueue) push(t scheduledTick) {
 	list.ticks = append(list.ticks, t)
 	if !t.deferred {
 		list.due = min(list.due, t.t)
+	}
+}
+
+func (queue *scheduledTickQueue) releaseChunkTicks(pos ChunkPos, list *scheduledChunkTicks) {
+	delete(queue.chunks, pos)
+	if list != nil && len(queue.freeChunkTicks) < 256 && cap(list.ticks) <= 16384 {
+		list.ticks = list.ticks[:0]
+		list.due = math.MaxInt64
+		queue.freeChunkTicks = append(queue.freeChunkTicks, list)
 	}
 }
 
@@ -1702,54 +1726,14 @@ func (queue *scheduledTickQueue) tickPhase(tx *Tx, tick int64, circuitPhase bool
 	// Preserve scratch capacity when the phase finishes.
 	// Collect due ticks from chunks eligible under the precomputed area set.
 	queue.dispatch = queue.dispatch[:0]
-	collect := func(pos ChunkPos, list *scheduledChunkTicks) {
-		if list == nil || list.due > tick || circuitChunk == nil && !w.scheduledTickChunkEligibleInSet(pos, areaSet) {
-			return
-		}
-		for i, t := range list.ticks {
-			if t.deferred || t.t > tick {
-				continue
-			}
-			if circuitPhase {
-				// StateToRuntimeID supplies native default properties; a bare
-				// BlockByName lookup would miss stateful blocks such as crafters.
-				rid, found := w.conf.Blocks.StateToRuntimeID(t.btype, nil)
-				var b Block
-				if found {
-					b, _ = w.conf.Blocks.BlockByRuntimeID(rid)
-				}
-				_, circuit := b.(RedstoneCircuitComponent)
-				if circuit != (circuitChunk != nil) {
-					continue
-				}
-			}
-			t.queueIndex = i
-			queue.dispatch = append(queue.dispatch, t)
-		}
-	}
 	if circuitChunk != nil {
-		collect(*circuitChunk, queue.chunks[*circuitChunk])
+		queue.collectChunk(w, tick, circuitPhase, circuitChunk, areaSet, *circuitChunk, queue.chunks[*circuitChunk])
 	} else {
 		for pos, list := range queue.chunks {
-			collect(pos, list)
+			queue.collectChunk(w, tick, circuitPhase, nil, areaSet, pos, list)
 		}
 	}
-	slices.SortFunc(queue.dispatch, func(a, b scheduledTick) int {
-		aPos, bPos := chunkPosFromBlockPos(a.pos), chunkPosFromBlockPos(b.pos)
-		if aPos[0] < bPos[0] {
-			return -1
-		}
-		if aPos[0] > bPos[0] {
-			return 1
-		}
-		if aPos[1] < bPos[1] {
-			return -1
-		}
-		if aPos[1] > bPos[1] {
-			return 1
-		}
-		return compareScheduledTickDrainOrder(a, b)
-	})
+	slices.SortFunc(queue.dispatch, compareScheduledTickDispatch)
 
 	queue.groups = queue.groups[:0]
 	queue.groupHeap = queue.groupHeap[:0]
@@ -1834,9 +1818,9 @@ func (queue *scheduledTickQueue) dispatchFrom(tx *Tx, w *World, tick int64, i in
 			}
 			switch t.btype {
 			case "minecraft:water", "minecraft:flowing_water", "minecraft:lava", "minecraft:flowing_lava":
-				context := javaShapeContext{tx: tx, pos: t.pos}
-				state, fluid := javaFluidStateAt(&context, t.pos)
-				javaTickFluid(&context, state, fluid)
+				context := shapeContext{tx: tx, pos: t.pos}
+				state, fluid := fluidStateAt(&context, t.pos)
+				tickFluid(&context, state, fluid)
 				continue
 			}
 			if ticker, ok := liquid.(ScheduledTicker); ok {
@@ -1846,20 +1830,20 @@ func (queue *scheduledTickQueue) dispatchFrom(tx *Tx, w *World, tick int64, i in
 		}
 		switch t.btype {
 		case "minecraft:water", "minecraft:lava", "minecraft:bubble_column":
-			context := javaShapeContext{tx: tx, pos: t.pos}
-			state := tx.javaBlockStateID(t.pos)
-			if state != 0 && javaName(state) == t.btype[len("minecraft:"):] {
-				if javaName(state) == "bubble_column" {
-					javaTickBubbleColumn(&context, state)
+			context := shapeContext{tx: tx, pos: t.pos}
+			state := tx.canonicalBlockStateID(t.pos)
+			if state != 0 && stateName(state) == t.btype[len("minecraft:"):] {
+				if stateName(state) == "bubble_column" {
+					tickBubbleColumn(&context, state)
 				} else {
-					javaTickLiquidBlock(&context, state)
+					tickLiquidBlock(&context, state)
 				}
 			}
 			continue
 		}
 		b := tx.Block(t.pos)
-		if state := tx.javaBlockStateID(t.pos); state != 0 {
-			if javaName(state) != strings.TrimPrefix(t.btype, "minecraft:") {
+		if state := tx.canonicalBlockStateID(t.pos); state != 0 {
+			if stateName(state) != strings.TrimPrefix(t.btype, "minecraft:") {
 				continue
 			}
 		} else if scheduledTickType(w.conf.Blocks, b) != t.btype {
@@ -1896,7 +1880,7 @@ func (queue *scheduledTickQueue) cancel(index scheduledTickIndex) bool {
 	if list := queue.chunks[chunkPos]; list != nil {
 		list.ticks = slices.DeleteFunc(list.ticks, drop)
 		if len(list.ticks) == 0 {
-			delete(queue.chunks, chunkPos)
+			queue.releaseChunkTicks(chunkPos, list)
 		} else {
 			list.updateDue()
 		}
@@ -1917,10 +1901,7 @@ func (queue *scheduledTickQueue) cancel(index scheduledTickIndex) bool {
 // keeping the order of the others.
 func (queue *scheduledTickQueue) removeSelected() {
 	queue.selected = append(queue.selected[:0], queue.run...)
-	slices.SortFunc(queue.selected, func(a, b scheduledTick) int {
-		aPos, bPos := chunkPosFromBlockPos(a.pos), chunkPosFromBlockPos(b.pos)
-		return cmp.Or(cmp.Compare(aPos[0], bPos[0]), cmp.Compare(aPos[1], bPos[1]), cmp.Compare(a.queueIndex, b.queueIndex))
-	})
+	slices.SortFunc(queue.selected, compareScheduledTickSelected)
 	for start := 0; start < len(queue.selected); {
 		pos := chunkPosFromBlockPos(queue.selected[start].pos)
 		list := queue.chunks[pos]
@@ -1936,7 +1917,7 @@ func (queue *scheduledTickQueue) removeSelected() {
 		clear(list.ticks[dst:])
 		list.ticks = list.ticks[:dst]
 		if dst == 0 {
-			delete(queue.chunks, pos)
+			queue.releaseChunkTicks(pos, list)
 		} else {
 			list.updateDue()
 		}
@@ -1944,6 +1925,57 @@ func (queue *scheduledTickQueue) removeSelected() {
 	}
 	clear(queue.selected)
 	queue.selected = queue.selected[:0]
+}
+
+func (queue *scheduledTickQueue) isCircuitBlockType(w *World, btype string) bool {
+	if circuit, ok := queue.circuitBlockTypes[btype]; ok {
+		return circuit
+	}
+	// StateToRuntimeID supplies native default properties; a bare
+	// BlockByName lookup would miss stateful blocks such as crafters.
+	rid, found := w.conf.Blocks.StateToRuntimeID(btype, nil)
+	var b Block
+	if found {
+		b, _ = w.conf.Blocks.BlockByRuntimeID(rid)
+	}
+	_, circuit := b.(RedstoneCircuitComponent)
+	if queue.circuitBlockTypes == nil {
+		queue.circuitBlockTypes = make(map[string]bool, 16)
+	}
+	queue.circuitBlockTypes[btype] = circuit
+	return circuit
+}
+
+func (queue *scheduledTickQueue) collectChunk(w *World, tick int64, circuitPhase bool, circuitChunk *ChunkPos, areaSet *blockAreaSet, pos ChunkPos, list *scheduledChunkTicks) {
+	if list == nil || list.due > tick || (circuitChunk == nil && !w.scheduledTickChunkEligibleInSet(pos, areaSet)) {
+		return
+	}
+	for i, t := range list.ticks {
+		if t.deferred || t.t > tick {
+			continue
+		}
+		if circuitPhase && queue.isCircuitBlockType(w, t.btype) != (circuitChunk != nil) {
+			continue
+		}
+		t.queueIndex = i
+		queue.dispatch = append(queue.dispatch, t)
+	}
+}
+
+func compareScheduledTickDispatch(a, b scheduledTick) int {
+	aPos, bPos := chunkPosFromBlockPos(a.pos), chunkPosFromBlockPos(b.pos)
+	if aPos[0] != bPos[0] {
+		return cmp.Compare(aPos[0], bPos[0])
+	}
+	if aPos[1] != bPos[1] {
+		return cmp.Compare(aPos[1], bPos[1])
+	}
+	return compareScheduledTickDrainOrder(a, b)
+}
+
+func compareScheduledTickSelected(a, b scheduledTick) int {
+	aPos, bPos := chunkPosFromBlockPos(a.pos), chunkPosFromBlockPos(b.pos)
+	return cmp.Or(cmp.Compare(aPos[0], bPos[0]), cmp.Compare(aPos[1], bPos[1]), cmp.Compare(a.queueIndex, b.queueIndex))
 }
 
 func (w *World) appendSimulationAreas(areas []loaderActiveArea, simulationRadius int32, loaders []*Loader) []loaderActiveArea {
@@ -2077,7 +2109,24 @@ func (queue *scheduledTickQueue) insertTick(br BlockRegistry, pos cube.Pos, b Bl
 		}
 		typeName = scheduledFluidTickType(liquid)
 	} else {
-		typeName = scheduledTickType(br, b)
+		rid := br.BlockRuntimeID(b)
+		if br != queue.tickTypeReg {
+			queue.tickTypeReg = br
+			clear(queue.tickTypeByRID)
+		}
+		if int(rid) < len(queue.tickTypeByRID) && queue.tickTypeByRID[rid] != "" {
+			typeName = queue.tickTypeByRID[rid]
+		} else {
+			typeName = scheduledTickType(br, b)
+			if int(rid) < 65536 {
+				if int(rid) >= len(queue.tickTypeByRID) {
+					grown := make([]string, int(rid)+256)
+					copy(grown, queue.tickTypeByRID)
+					queue.tickTypeByRID = grown
+				}
+				queue.tickTypeByRID[rid] = typeName
+			}
+		}
 	}
 	return queue.insertTypeTick(pos, typeName, due, priority, deferred)
 }
@@ -2151,7 +2200,7 @@ func scheduledTickType(registry BlockRegistry, b Block) string {
 	if !ok {
 		panic("scheduled tick: registry cannot resolve block runtime ID")
 	}
-	return javaBlockOfNative(name, properties)
+	return canonicalBlockOfNative(name, properties)
 }
 
 func scheduledFluidTickType(liquid Liquid) string {
@@ -2261,7 +2310,7 @@ func (queue *scheduledTickQueue) removeChunk(pos ChunkPos) {
 		for _, tick := range list.ticks {
 			delete(queue.scheduledTicks, scheduledTickIndex{pos: tick.pos, typeName: tick.btype})
 		}
-		delete(queue.chunks, pos)
+		queue.releaseChunkTicks(pos, list)
 	}
 	queue.pendingTicks = slices.DeleteFunc(queue.pendingTicks, func(tick scheduledTick) bool {
 		if chunkPosFromBlockPos(tick.pos) != pos {

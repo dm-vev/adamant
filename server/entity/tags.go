@@ -39,8 +39,8 @@ func inItemTag(stack item.Stack, tag string) bool { return loot.StackInItemTag(s
 // type tag.
 func entityTypeInTag(e world.Entity, tag string) bool {
 	id := e.H().Type().EncodeEntity()
-	if java, ok := bedrockOnlyEntityIDs[id]; ok {
-		id = java
+	if extra, ok := bedrockOnlyEntityIDs[id]; ok {
+		id = extra
 	}
 	in, _ := gamedata.EntityTypeTagContains(tag, id)
 	return in

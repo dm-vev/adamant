@@ -37,7 +37,7 @@ func wire(sides string) RedstoneWire {
 // with a corner and a step up onto a block, and wire alone. Each connects
 // as Java's RedstoneWireBlock computes it, which is how BDS 1.26.61 left
 // the same scene saved by 1.26.52 once it loaded it.
-func TestRedstoneWireConnectsAsJava(t *testing.T) {
+func TestRedstoneWireConnectsParity(t *testing.T) {
 	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
@@ -150,7 +150,7 @@ func TestFireBurnsOnTheSidesOfBlocksThatBurn(t *testing.T) {
 // capture of BDS: a stem on end stone and a branch. Each connects to the
 // plants beside it and the stem to the end stone below, as Java's
 // ChorusPlantBlock does, and as BDS 1.26.61 sends them.
-func TestChorusPlantConnectsAsJava(t *testing.T) {
+func TestChorusPlantConnectsParity(t *testing.T) {
 	t.Parallel()
 	w := world.Config{Dim: world.End, Synchronous: true}.New()
 	defer w.Close()

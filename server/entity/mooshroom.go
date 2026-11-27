@@ -38,7 +38,7 @@ func (mooshroomType) BBox(e world.Entity) cube.BBox {
 	return cube.Box(-.45, 0, -.45, .45, 1.4, .45)
 }
 func (mooshroomType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	s := readNativeMobJavaState(m)
+	s := readNativeMobExtraState(m)
 	if s == nil {
 		s = m
 	}
@@ -59,7 +59,7 @@ func (mooshroomType) EncodeNBT(d *world.EntityData) map[string]any {
 	if b.variant == 1 {
 		variant = "brown"
 	}
-	return mergeNativeMobJavaState(map[string]any{"Attributes": a}, mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "Type": variant, "LastLightningBolt": b.lastLightningBolt})))
+	return mergeNativeMobExtraState(map[string]any{"Attributes": a}, mergeNativeMobNBT(readNativeMobExtraState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "Type": variant, "LastLightningBolt": b.lastLightningBolt})))
 }
 
 // MooshroomConfig configures variant and age.

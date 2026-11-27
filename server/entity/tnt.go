@@ -128,11 +128,15 @@ func (t tntType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	if owner, ok := m["OwnerNew"].(int64); ok {
 		config.nativeOwnerID = owner
 	}
-	if java, ok := m["adamant:java"].(map[string]any); ok {
-		if _, ok := java["fuse"].(int16); ok {
-			remaining = nbtconv.TickDuration[int16](java, "fuse")
+	extra, ok := m["adamant:state"].(map[string]any)
+	if !ok {
+		extra, ok = m["adamant:java"].(map[string]any)
+	}
+	if ok {
+		if _, ok := extra["fuse"].(int16); ok {
+			remaining = nbtconv.TickDuration[int16](extra, "fuse")
 		}
-		if words, ok := java["owner"].([]int32); ok && len(words) == 4 {
+		if words, ok := extra["owner"].([]int32); ok && len(words) == 4 {
 			for i, word := range words {
 				binary.BigEndian.PutUint32(config.owner[i*4:], uint32(word))
 			}
@@ -153,11 +157,11 @@ func (tntType) EncodeNBT(data *world.EntityData) map[string]any {
 		}
 	}
 	result := map[string]any{
-		"Fuse":         uint8(min(max(ticks, 0), 255)),
-		"IsFuseLit":    uint8(1),
-		"OwnerNew":     ownerID,
-		"definitions":  []any{"+minecraft:tnt"},
-		"adamant:java": map[string]any{"owner": words, "fuse": int16(ticks)},
+		"Fuse":          uint8(min(max(ticks, 0), 255)),
+		"IsFuseLit":     uint8(1),
+		"OwnerNew":      ownerID,
+		"definitions":   []any{"+minecraft:tnt"},
+		"adamant:state": map[string]any{"owner": words, "fuse": int16(ticks)},
 	}
 	return result
 }

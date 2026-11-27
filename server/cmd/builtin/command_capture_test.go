@@ -129,7 +129,7 @@ func (c *captureWorlds) seed(tx *world.Tx) world.Entity {
 	_ = m.SetScore("other", "Fake", 7)
 	_ = m.SetScore("obj", cow.H().UUID().String(), 3)
 	_ = m.AddBossBar(scoreboard.BossBar{ID: "bar", Name: "bar", Value: 10, Max: 100, Color: "white", Visible: true})
-	_ = tx.World().SaveWorldData("java:storage:st", []byte(`{"a":{"b":1},"s":"text","l":[1,2,3]}`))
+	_ = tx.World().SaveWorldData("cmd:storage:st", []byte(`{"a":{"b":1},"s":"text","l":[1,2,3]}`))
 	return cow
 }
 
@@ -171,7 +171,7 @@ func (c *captureWorlds) snapshot(tx *world.Tx) []string {
 		lines = append(lines, fmt.Sprintf("bossbar bar value=%v max=%v", bar.Value, bar.Max))
 	}
 	for _, key := range []string{"st", "new"} {
-		if data, err := tx.World().LoadWorldData("java:storage:" + key); err == nil {
+		if data, err := tx.World().LoadWorldData("cmd:storage:" + key); err == nil {
 			lines = append(lines, fmt.Sprintf("storage %s %s", key, data))
 		}
 	}

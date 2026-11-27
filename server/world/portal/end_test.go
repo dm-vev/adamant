@@ -146,7 +146,7 @@ func TestEnderEyeCompletesRing(t *testing.T) {
 	})
 }
 
-func TestEndSpawnPositionMatchesJavaEntityTransitions(t *testing.T) {
+func TestEndSpawnPositionMatchesEntityTransitions(t *testing.T) {
 	for _, test := range []struct {
 		player bool
 		want   mgl64.Vec3

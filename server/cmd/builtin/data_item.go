@@ -31,7 +31,7 @@ func (c itemReplaceEntityCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) 
 		o.Errort(cmd.MessageParameterInvalid, c.Slot)
 		return
 	}
-	it, ok := javaItemArgument(string(c.Item))
+	it, ok := canonicalItemArgument(string(c.Item))
 	if !ok {
 		o.Errort(cmd.MessageParameterInvalid, c.Item)
 		return

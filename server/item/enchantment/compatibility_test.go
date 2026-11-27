@@ -192,7 +192,7 @@ func TestSweepingEdge(t *testing.T) {
 			t.Errorf("level %d: ratio %v, want %v", level, got, want)
 		}
 	}
-	if id := item.JavaEnchantmentID(enchantment.SweepingEdge); id != "minecraft:sweeping_edge" {
+	if id := item.CanonicalEnchantmentID(enchantment.SweepingEdge); id != "minecraft:sweeping_edge" {
 		t.Errorf("Java ID %s", id)
 	}
 }

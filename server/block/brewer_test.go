@@ -37,7 +37,7 @@ func brewTicks(w *world.World, b *brewer, n int) {
 // TestBrewingFollowsJava follows BrewingStandBlockEntity.serverTick: blaze
 // powder gives 20 brews, a brew takes one as it starts in the first tick and
 // finishes 400 ticks after.
-func TestBrewingFollowsJava(t *testing.T) {
+func TestBrewingParity(t *testing.T) {
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	b := brewingTestStand(t)

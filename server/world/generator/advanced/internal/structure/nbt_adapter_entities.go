@@ -48,7 +48,7 @@ func (p Placement) AdaptItemFrameEntities() (Placement, error) {
 			frame.DropChance = chance
 		}
 		if rawItem, ok := data["Item"].(map[string]any); ok {
-			frame.Item = javaStackOrEmpty(rawItem)
+			frame.Item = canonicalStackOrEmpty(rawItem)
 		}
 		blockNBT := frame.EncodeNBT()
 		out.Blocks = append(out.Blocks, Block{

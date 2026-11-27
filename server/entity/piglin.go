@@ -94,7 +94,7 @@ func (c piglinConfig) Apply(d *world.EntityData) {
 	d.Data = s
 }
 func (piglinType) DecodeNBT(n map[string]any, d *world.EntityData) {
-	j := readNativeMobJavaState(n)
+	j := readNativeMobExtraState(n)
 	if j == nil {
 		j = n
 	}
@@ -162,7 +162,7 @@ func encodePiglinNBT(d *world.EntityData) map[string]any {
 		native[k] = v
 	}
 	out := mergeNativeMobNBT(d.NativeNBT, native)
-	j := readNativeMobJavaState(d.NativeNBT)
+	j := readNativeMobExtraState(d.NativeNBT)
 	if j == nil {
 		j = make(map[string]any)
 	}
@@ -209,7 +209,7 @@ func encodePiglinNBT(d *world.EntityData) map[string]any {
 		p := v.(globalPos)
 		j["Brain"] = map[string]any{"memories": map[string]any{"minecraft:home": map[string]any{"value": map[string]any{"dimension": dimensionName(p.dim), "pos": []int32{int32(p.pos[0]), int32(p.pos[1]), int32(p.pos[2])}}}}}
 	}
-	return mergeNativeMobJavaState(out, j)
+	return mergeNativeMobExtraState(out, j)
 }
 
 // dimensionName returns the Java identifier of a dimension.

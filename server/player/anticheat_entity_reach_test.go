@@ -30,7 +30,7 @@ func withAttacker(t *testing.T, conf *anticheat.Config, x float64, f func(tx *wo
 // TestEntityReachIsJavas checks Java's reach, from the eyes to the box of
 // the target within 3 blocks and a buffer of 3: a cow 5.9 blocks to its box
 // is hit, one 7.3 blocks is not, and the miss is a violation.
-func TestEntityReachIsJavas(t *testing.T) {
+func TestEntityReachParity(t *testing.T) {
 	// The box of a cow is 0.9 wide: its position 0.45 beyond its box.
 	withAttacker(t, anticheat.Default(), 0.5+5.9+0.45, func(tx *world.Tx, p *Player, cow world.Entity, h *violationRecorder) {
 		if !p.AttackEntity(cow) || len(h.violations) != 0 {

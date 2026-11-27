@@ -120,9 +120,9 @@ func (c fluidCurrent) apply(vel mgl64.Vec3, scale float64) mgl64.Vec3 {
 	if c.count == 0 || c.sum.LenSqr() < float64(float32(1e-5)) {
 		return vel
 	}
-	impulse := javaNormalize(c.sum).Mul(scale)
+	impulse := normalizeVec3(c.sum).Mul(scale)
 	if math.Abs(vel[0]) < .003 && math.Abs(vel[2]) < .003 && impulse.Len() < .0045000000000000005 {
-		impulse = javaNormalize(impulse).Mul(.0045000000000000005)
+		impulse = normalizeVec3(impulse).Mul(.0045000000000000005)
 	}
 	return vel.Add(impulse)
 }
@@ -215,12 +215,12 @@ func fluidFlowInfoWithRID(tx blockReader, reg world.BlockRegistry, pos cube.Pos,
 		for _, dir := range horizontalFlowDirs {
 			side := cube.Pos{pos[0] + dir.dx, pos[1], pos[2] + dir.dz}
 			if liquidSolidFaceInfo(tx, reg, side, dir.face, kind) || liquidSolidFaceInfo(tx, reg, cube.Pos{side[0], side[1] + 1, side[2]}, dir.face, kind) {
-				flow = javaNormalize(flow).Add(mgl64.Vec3{0, -6, 0})
+				flow = normalizeVec3(flow).Add(mgl64.Vec3{0, -6, 0})
 				break
 			}
 		}
 	}
-	return javaNormalize(flow)
+	return normalizeVec3(flow)
 }
 
 func fluidFlowFallback(tx blockReader, pos cube.Pos, l world.Liquid) mgl64.Vec3 {
@@ -262,12 +262,12 @@ func fluidFlowFallback(tx blockReader, pos cube.Pos, l world.Liquid) mgl64.Vec3 
 		for _, face := range cube.HorizontalFaces() {
 			side := pos.Side(face)
 			if liquidSolidFace(tx, side, face, l) || liquidSolidFace(tx, side.Side(cube.FaceUp), face, l) {
-				flow = javaNormalize(flow).Add(mgl64.Vec3{0, -6, 0})
+				flow = normalizeVec3(flow).Add(mgl64.Vec3{0, -6, 0})
 				break
 			}
 		}
 	}
-	return javaNormalize(flow)
+	return normalizeVec3(flow)
 }
 
 // liquidOwnHeightInfo ports FlowingFluid.getOwnHeight for precomputed liquid metadata.

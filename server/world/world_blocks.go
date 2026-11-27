@@ -15,7 +15,7 @@ type blockState struct {
 	blockUpdates blockUpdateQueue
 	// gameEventBlocks caches the game event flags of block runtime IDs.
 	gameEventBlocks   ridCache[uint8]
-	javaHeightmapTags [2]ridCache[bool]
+	heightmapTags [2]ridCache[bool]
 }
 
 // blockLoaded reads a block from a position only if its chunk is already loaded.
@@ -111,7 +111,7 @@ func (w *World) reconcileMissingBlockStates(pos ChunkPos) {
 			continue
 		}
 		source := &loadedWorldSource{w: w, complete: true, order: candidate.order}
-		updated, retained := w.retainedJavaBlock(candidate.column, candidate.pos, current)
+		updated, retained := w.retainedCanonicalBlock(candidate.column, candidate.pos, current)
 		if !retained {
 			updated = reconstructor.ReconstructMissingState(candidate.pos, candidate.properties, source)
 		}
@@ -157,7 +157,7 @@ func (w *World) blockInChunk(c *Column, pos cube.Pos) Block {
 		// Despite being a block with NBT, the block didn't actually have any
 		// stored NBT yet. We add it here and update the block.
 		nbtB := DecodeNBT(w.conf.Blocks.BlockByRuntimeIDOrAir(rid).(NBTer), map[string]any{}, w.conf.Blocks).(Block)
-		nbtB = restoreJavaBlockActor(c.Chunk, pos, nbtB)
+		nbtB = restoreCanonicalBlockActor(c.Chunk, pos, nbtB)
 		c.updateBlockEntity(pos, nbtB)
 		c.invalidateBlockEntityPayloads()
 		w.viewBlockUpdate(c, pos, nbtB, 0)
@@ -192,14 +192,21 @@ func (w *World) replacePositionTrackingBlock(tx *Tx, pos cube.Pos, old, replacem
 // liquidRIDInColumn returns the runtime ID of the liquid at pos in layer 0 or
 // layer 1 of column c, or (0, false) if neither layer holds a liquid.
 func (w *World) liquidRIDInColumn(c *Column, pos cube.Pos) (uint32, bool) {
-	x, y, z := uint8(pos[0]), int16(pos[1]), uint8(pos[2])
-	id := c.Block(x, y, z, 0)
+	sub := c.Sub()[c.SubIndex(int16(pos[1]))]
+	layers := sub.Layers()
+	if len(layers) == 0 {
+		return 0, false
+	}
+	x, y, z := uint8(pos[0]), uint8(pos[1]), uint8(pos[2])
+	id := layers[0].At(x, y, z)
 	if w.conf.Blocks.LiquidBlock(id) {
 		return id, true
 	}
-	id = c.Block(x, y, z, 1)
-	if w.conf.Blocks.LiquidBlock(id) {
-		return id, true
+	if len(layers) > 1 {
+		id = layers[1].At(x, y, z)
+		if w.conf.Blocks.LiquidBlock(id) {
+			return id, true
+		}
 	}
 	return 0, false
 }

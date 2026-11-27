@@ -160,7 +160,7 @@ func TestLightFollowsBuiltStructures(t *testing.T) {
 // TestLightFollowsJavaRules checks light follows Java's light engine: water
 // and leaves dim skylight a level a block, a roof of bottom slabs shuts it
 // out with the faces it occludes, and glass lets it through undimmed.
-func TestLightFollowsJavaRules(t *testing.T) {
+func TestLightFollowsParityRules(t *testing.T) {
 	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })

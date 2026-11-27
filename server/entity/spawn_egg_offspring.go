@@ -70,7 +70,7 @@ func spawnEggBabyNBT(tx *world.Tx, parent world.Entity, id string) map[string]an
 // eggOffspring ports Villager.getBreedOffspring with itself as the partner:
 // the baby takes the biome's type half of the time, otherwise the parent's.
 func (v *Villager) eggOffspring(tx *world.Tx) *world.EntityHandle {
-	variant := villagerTypeForBiome(world.JavaBiomeName(tx.Biome(cube.PosFromVec3(v.Position()))))
+	variant := villagerTypeForBiome(world.CanonicalBiomeName(tx.Biome(cube.PosFromVec3(v.Position()))))
 	if tx.RegionRandom().NextDouble() >= 0.5 {
 		variant = v.Variant()
 	}

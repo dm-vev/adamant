@@ -25,12 +25,12 @@ func EnchantmentOptions(tx *world.Tx, seed int64, pos cube.Pos, input item.Stack
 	if !ok || len(input.Enchantments()) > 0 {
 		return options, false
 	}
-	javaSeed := int32(seed)
+	enchantSeed := int32(seed)
 	bookshelves := searchBookshelves(tx, pos)
 
 	// The costs come from one stream of the seed, then each enchantment
 	// list from a stream of the seed plus its slot.
-	random := vanilla.NewLegacyRandom(int64(javaSeed))
+	random := vanilla.NewLegacyRandom(int64(enchantSeed))
 	for i := range options {
 		if cost := enchantmentCost(&random, i, bookshelves); cost >= i+1 {
 			options[i].Cost = cost
@@ -39,7 +39,7 @@ func EnchantmentOptions(tx *world.Tx, seed int64, pos cube.Pos, input item.Stack
 	table := tableEnchantments()
 	for i := range options {
 		if options[i].Cost > 0 {
-			random = vanilla.NewLegacyRandom(int64(javaSeed + int32(i)))
+			random = vanilla.NewLegacyRandom(int64(enchantSeed + int32(i)))
 			options[i].Enchantments = enchantmentList(&random, input, enchantable.EnchantmentValue(), options[i].Cost, table)
 		}
 	}
@@ -81,7 +81,7 @@ func tableEnchantments() []item.EnchantmentType {
 	registered := item.Enchantments()
 	byID := make(map[string]item.EnchantmentType, len(registered))
 	for _, e := range registered {
-		byID[strings.TrimPrefix(item.JavaEnchantmentID(e), "minecraft:")] = e
+		byID[strings.TrimPrefix(item.CanonicalEnchantmentID(e), "minecraft:")] = e
 	}
 	table := make([]item.EnchantmentType, 0, len(registered))
 	for _, id := range inEnchantingTable {
@@ -91,7 +91,7 @@ func tableEnchantments() []item.EnchantmentType {
 		}
 	}
 	for _, e := range registered {
-		if _, other := byID[strings.TrimPrefix(item.JavaEnchantmentID(e), "minecraft:")]; other && !treasure(e) {
+		if _, other := byID[strings.TrimPrefix(item.CanonicalEnchantmentID(e), "minecraft:")]; other && !treasure(e) {
 			table = append(table, e)
 		}
 	}

@@ -534,7 +534,7 @@ func (g *endermanLeaveBlockGoal) Tick(m *Mob) {
 	if err != nil {
 		return
 	}
-	placed, survives := m.tx.JavaPlacement(id, pos)
+	placed, survives := m.tx.BlockPlacement(id, pos)
 	if !survives {
 		return
 	}
@@ -543,7 +543,7 @@ func (g *endermanLeaveBlockGoal) Tick(m *Mob) {
 			return
 		}
 	}
-	m.tx.SetJavaBlockState(pos, placed)
+	m.tx.SetBlockState(pos, placed)
 	m.tx.EmitGameEvent(world.GameEventBlockPlace, pos.Vec3Centre(), world.GameEventContext{Source: m.Self, AffectedState: s.carried})
 	s.setCarried(m, nil)
 }

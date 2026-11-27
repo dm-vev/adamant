@@ -88,10 +88,10 @@
     | 795f6e616d65080576616c75650e4b6e6f776c6564676520426f6f6b000000
 >> BiomeDefinitionList id=122 len=7667
     sha256 24159753c6f89d7b663e41f4ef5fc33d2ff323ee32982b43c04c44bf94adafa7
->> CreativeContent id=145 len=72584
-    sha256 5d278efb0fa589e49c3b56a1b5e3d7b15e5c820a29c659406a3197cc1d47025e
->> CraftingData id=52 len=913887 normalised
-    sha256 738f3cb4521b43dfd872e9df59d0d81c934c17b1a59af42e307d36526742fdaa
+>> CreativeContent id=145 len=72587
+    sha256 6a869eb6e42600f5944a0ae72db23e971d7bd69b2b91a6116a6e2ada7355f420
+>> CraftingData id=52 len=913888 normalised
+    sha256 d57ec2462f589af2866e34cbf93749f4a98b5eb376e46ac3c54fda80dc79cf8a
 >> TrimData id=302 len=1269
     TrimDataPacket
       Patterns: []v2193.TrimPattern (18)

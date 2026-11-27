@@ -135,7 +135,7 @@ func (c clearEffectCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
 func enchantmentType(name string) item.EnchantmentType {
 	name = "minecraft:" + strings.TrimPrefix(strings.ToLower(name), "minecraft:")
 	for _, e := range item.Enchantments() {
-		if item.JavaEnchantmentID(e) == name {
+		if item.CanonicalEnchantmentID(e) == name {
 			return e
 		}
 	}
@@ -261,7 +261,7 @@ func commandTargetDisplayName(target cmd.Target) string {
 	if named, ok := target.(interface{ NameTag() string }); ok && named.NameTag() != "" {
 		return named.NameTag()
 	}
-	return wordsOf(world.JavaEntityTypeID(commandTargetName(target)))
+	return wordsOf(world.CanonicalEntityTypeID(commandTargetName(target)))
 }
 
 // stackDisplayName is ItemStack.getHoverName: the custom name of a stack, or

@@ -31,7 +31,7 @@ type recipeData struct {
 	count   int
 	packet  *staticPacket
 	recipes map[uint32]recipe.Recipe
-	javaIDs map[string][]string
+	stateIDs map[string][]string
 }
 
 // recipeData returns the recipe data of the tables, made again once more
@@ -48,7 +48,7 @@ func (w *wireTables) recipeData() *recipeData {
 }
 
 func newRecipeData(w *wireTables, all []recipe.Recipe) *recipeData {
-	d := &recipeData{count: len(all), recipes: make(map[uint32]recipe.Recipe, len(all)), javaIDs: make(map[string][]string)}
+	d := &recipeData{count: len(all), recipes: make(map[uint32]recipe.Recipe, len(all)), stateIDs: make(map[string][]string)}
 	var (
 		shapedRecipes            []mc.ShapedRecipe
 		shapelessRecipes         []mc.ShapelessRecipe
@@ -166,13 +166,13 @@ func newRecipeData(w *wireTables, all []recipe.Recipe) *recipeData {
 // registerJavaID returns the ID a recipe goes by: its Java ID when it has
 // one, else a new UUID; each of its Java IDs names it.
 func (d *recipeData) registerJavaID(r recipe.Recipe) string {
-	javaIDs := recipe.JavaRecipeIDs(r)
+	stateIDs := recipe.RecipeIDs(r)
 	id := uuid.New().String()
-	if len(javaIDs) == 1 {
-		id = javaIDs[0]
+	if len(stateIDs) == 1 {
+		id = stateIDs[0]
 	}
-	for _, javaID := range javaIDs {
-		d.javaIDs[javaID] = append(d.javaIDs[javaID], id)
+	for _, javaID := range stateIDs {
+		d.stateIDs[javaID] = append(d.stateIDs[javaID], id)
 	}
 	return id
 }
@@ -181,8 +181,8 @@ func (d *recipeData) registerJavaID(r recipe.Recipe) string {
 // each of its Java IDs.
 func (d *recipeData) registerJavaMultiID(r recipe.Multi) {
 	packetID := r.UUID().String()
-	for _, javaID := range recipe.JavaRecipeIDs(r) {
-		d.javaIDs[javaID] = append(d.javaIDs[javaID], packetID)
+	for _, javaID := range recipe.RecipeIDs(r) {
+		d.stateIDs[javaID] = append(d.stateIDs[javaID], packetID)
 	}
 }
 

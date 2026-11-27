@@ -59,13 +59,13 @@ func (c zombifiedPiglinConfig) Apply(d *world.EntityData) {
 		neutralAnger: neutralAnger{angerTicks: c.anger, angerTarget: target}, baby: c.baby, mobGear: c.gear, speed: .23}
 }
 func (zombifiedPiglinType) DecodeNBT(n map[string]any, d *world.EntityData) {
-	j := readNativeMobJavaState(n)
+	j := readNativeMobExtraState(n)
 	if j == nil {
 		j = n
 	}
 	c := zombifiedPiglinConfig{angry: nbtconv.Bool(j, "Angry"), anger: int(nbtconv.Int32(j, "AngerTime")), target: nbtconv.String(j, "AngerTarget"), attackCooldown: int(nbtconv.Int32(j, "AttackCooldown")), baby: nbtconv.Bool(j, "IsBaby"), gear: decodeGear(n)}
 	_, native := n["Mainhand"]
-	if _, java := n["equipment"]; !native && !java {
+	if _, extra := n["equipment"]; !native && !extra {
 		// Saves that know nothing of its hands hold the golden sword it
 		// spawns with.
 		c.gear.items[slotMainhand] = item.NewStack(item.Sword{Tier: item.ToolTierGold}, 1)
@@ -78,17 +78,17 @@ func (zombifiedPiglinType) DecodeNBT(n map[string]any, d *world.EntityData) {
 func (zombifiedPiglinType) EncodeNBT(d *world.EntityData) map[string]any {
 	s := d.Data.(*zombifiedPiglinState)
 	n := map[string]any{"Attributes": encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: 20, Current: s.health.Health(), DefaultMin: 0, DefaultMax: 20, Min: 0, Max: 20}})}
-	javaGear := s.encodeGear(d.NativeNBT, n)
+	extraGear := s.encodeGear(d.NativeNBT, n)
 	out := mergeNativeMobNBT(d.NativeNBT, n)
 	target := ""
 	if s.angerTarget != uuid.Nil {
 		target = s.angerTarget.String()
 	}
 	j := map[string]any{"Angry": byte(boolByte(s.angry())), "AngerTime": int32(s.angerTicks), "AngerTarget": target, "IsBaby": byte(boolByte(s.baby))}
-	for k, v := range javaGear {
+	for k, v := range extraGear {
 		j[k] = v
 	}
-	return mergeNativeMobJavaState(out, j)
+	return mergeNativeMobExtraState(out, j)
 }
 func NewZombifiedPiglin(o world.EntitySpawnOpts) *world.EntityHandle {
 	return o.New(zombifiedPiglinType{}, newZombifiedPiglinConfig())

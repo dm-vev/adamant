@@ -4,7 +4,7 @@ package item
 
 // javaCookingRecipes are Java's smelting, blasting, smoking and campfire
 // recipes, one per ingredient item.
-var javaCookingRecipes = []javaCookingRecipe{
+var cookingRecipesList = []cookingRecipeEntry{
 	{Smelting, "minecraft:potato", "minecraft:baked_potato", "minecraft:baked_potato", 1, 0.35, 200},
 	{CampfireCooking, "minecraft:potato", "minecraft:baked_potato_from_campfire_cooking", "minecraft:baked_potato", 1, 0.35, 600},
 	{Smoking, "minecraft:potato", "minecraft:baked_potato_from_smoking", "minecraft:baked_potato", 1, 0.35, 200},
@@ -253,7 +253,7 @@ var javaCookingRecipes = []javaCookingRecipe{
 // javaCookingFuel holds the burn time in ticks of each Java item with the
 // cooking_fuel component in a furnace; smokers and blast furnaces divide it
 // by two.
-var javaCookingFuel = map[string]int{
+var cookingFuelItem = map[string]int{
 	"minecraft:acacia_boat":             1200,
 	"minecraft:acacia_button":           100,
 	"minecraft:acacia_chest_boat":       1200,

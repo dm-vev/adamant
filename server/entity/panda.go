@@ -96,10 +96,10 @@ func (pandaType) EncodeNBT(d *world.EntityData) map[string]any {
 	m := s.health.MaxHealth()
 	a := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: m, Current: s.health.Health(), DefaultMin: 0, DefaultMax: m, Min: 0, Max: m}})
 	state := s.breeding.encodeNBT(map[string]any{"Age": int32(s.age), "Variant": int32(s.variant), "MainGene": int32(s.gene), "HiddenGene": int32(s.hiddenGene), "SneezeTicks": int32(s.sneezeCounter), "UnhappyTicks": int32(s.unhappy), "Rolling": s.rolling, "Sitting": s.sitting, "LyingOnBack": s.lying})
-	return mergeNativeMobJavaState(map[string]any{"Attributes": a}, mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), state))
+	return mergeNativeMobExtraState(map[string]any{"Attributes": a}, mergeNativeMobNBT(readNativeMobExtraState(d.NativeNBT), state))
 }
 func (pandaType) DecodeNBT(n map[string]any, d *world.EntityData) {
-	s := readNativeMobJavaState(n)
+	s := readNativeMobExtraState(n)
 	if s == nil {
 		s = n
 	}

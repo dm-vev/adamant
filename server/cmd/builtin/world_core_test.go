@@ -159,7 +159,7 @@ func TestSetBlockAndFillCreateBlockEntities(t *testing.T) {
 // BlockInput.place does: shaped by their neighbours, as a wall connecting to
 // the stone beside it, but kept where shaping would leave air, so a lone
 // door half or a torch in the air stays after the next ticks.
-func TestSetBlockShapesLikeJava(t *testing.T) {
+func TestSetBlockShapesParity(t *testing.T) {
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	setblock := worldTestCommand("setblock", setBlockCommand{})

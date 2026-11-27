@@ -203,7 +203,7 @@ func (w *World) generatedBlockEntities(pos ChunkPos, c *chunk.Chunk) map[cube.Po
 						continue
 					}
 					nbtB := DecodeNBT(w.conf.Blocks.BlockByRuntimeIDOrAir(rid).(NBTer), map[string]any{}, w.conf.Blocks).(Block)
-					nbtB = restoreJavaBlockActor(c, worldPos, nbtB)
+					nbtB = restoreCanonicalBlockActor(c, worldPos, nbtB)
 					if blockEntities == nil {
 						blockEntities = make(map[cube.Pos]Block, 8)
 					}

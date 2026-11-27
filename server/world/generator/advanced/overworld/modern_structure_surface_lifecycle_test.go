@@ -86,7 +86,7 @@ func TestMutableSurfaceBoundsAndActorsSurviveNativeMCDBRestart(t *testing.T) {
 			tables := map[string]int{}
 			for _, actor := range column.BlockEntities {
 				if table, ok := actor.Data["LootTable"].(string); ok {
-					tables[loot.JavaTableKey(table)]++
+					tables[loot.TableKey(table)]++
 				}
 			}
 			if kind == "desert_pyramid" && tables["minecraft:chests/desert_pyramid"] != 4 {

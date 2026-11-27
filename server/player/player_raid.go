@@ -31,7 +31,7 @@ func (p *Player) unlockedRecipeIDs() []string {
 // unlocked.
 func (p *Player) UnlockRecipes(ids []string) {
 	for _, id := range ids {
-		if recipe.KnownJavaID(id) {
+		if recipe.KnownID(id) {
 			p.unlockedRecipes[id] = struct{}{}
 		}
 	}

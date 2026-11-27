@@ -41,7 +41,7 @@ func (villagerType) BBox(e world.Entity) cube.BBox {
 	return cube.Box(-.3, 0, -.3, .3, 1.95, .3)
 }
 func (villagerType) DecodeNBT(nbt map[string]any, data *world.EntityData) {
-	source := readNativeMobJavaState(nbt)
+	source := readNativeMobExtraState(nbt)
 	if source == nil {
 		source = nbt
 	}
@@ -158,14 +158,14 @@ func (villagerType) EncodeNBT(data *world.EntityData) map[string]any {
 		{Name: "minecraft:health", Base: maxHealth, Current: health.Health(), DefaultMin: 0, DefaultMax: maxHealth, Min: 0, Max: maxHealth},
 	})
 	native := mergeNativeMobNBT(data.NativeNBT, map[string]any{"Health": float32(health.Health()), "Attributes": attributes})
-	javaState := mergeNativeMobNBT(readNativeMobJavaState(data.NativeNBT), result)
+	extraState := mergeNativeMobNBT(readNativeMobExtraState(data.NativeNBT), result)
 	for key, has := range map[string]bool{"VillagerJobSite": mem.hasJobSite, "VillagerHome": mem.hasHome,
 		"VillagerPotentialJobSite": mem.hasPotentialJobSite, "VillagerMeetingPoint": mem.hasMeetingPoint} {
 		if !has {
-			delete(javaState, key)
+			delete(extraState, key)
 		}
 	}
-	return mergeNativeMobJavaState(native, javaState)
+	return mergeNativeMobExtraState(native, extraState)
 }
 
 // savedMemories returns the memories of the villager to save: those of its
@@ -275,7 +275,11 @@ func villagerStack(raw any) (item.Stack, error) {
 	}
 	stack := item.ReadNBT(m)
 	if mapItem, ok := stack.Item().(item.FilledMap); ok {
-		if raw, exists := stack.Value("adamant:java_map_variant"); exists {
+		raw, exists := stack.Value("adamant:map_variant")
+		if !exists {
+			raw, exists = stack.Value("adamant:java_map_variant")
+		}
+		if exists {
 			switch variant := raw.(type) {
 			case int32:
 				mapItem.Variant = item.FilledMapVariant(variant)
@@ -291,7 +295,7 @@ func villagerStack(raw any) (item.Stack, error) {
 }
 func villagerWriteStack(s item.Stack) map[string]any {
 	if mapItem, ok := s.Item().(item.FilledMap); ok {
-		s = s.WithValue("adamant:java_map_variant", int32(mapItem.Variant))
+		s = s.WithValue("adamant:map_variant", int32(mapItem.Variant))
 	}
 	return item.WriteNBT(s)
 }
@@ -676,7 +680,7 @@ func (v *Villager) BreedWith(tx *world.Tx, partner *Villager, random *vanilla.Ra
 	}
 	v.behaviour().age = 6000
 	partner.behaviour().age = 6000
-	variant := villagerTypeForBiome(world.JavaBiomeName(tx.Biome(cube.PosFromVec3(v.Position()))))
+	variant := villagerTypeForBiome(world.CanonicalBiomeName(tx.Biome(cube.PosFromVec3(v.Position()))))
 	roll := random.NextDouble()
 	if roll >= .5 {
 		variant = v.Variant()
@@ -700,7 +704,7 @@ func (v *Villager) FinalizeSpawn(reason string, _ *vanilla.Random) {
 		b.xp = 0
 		b.offers = nil
 	}
-	b.villagerType = villagerTypeForBiome(world.JavaBiomeName(v.tx.Biome(cube.PosFromVec3(v.Position()))))
+	b.villagerType = villagerTypeForBiome(world.CanonicalBiomeName(v.tx.Biome(cube.PosFromVec3(v.Position()))))
 	b.finalized = true
 }
 func villagerTypeForBiome(name string) string {

@@ -9,8 +9,8 @@ import (
 )
 
 // JavaBiomeAtProvider exposes the generator's Java biome source without loading or generating chunks.
-type JavaBiomeAtProvider interface {
-	JavaBiomeAt(x, y, z int32) string
+type BiomeAtProvider interface {
+	BiomeAt(x, y, z int32) string
 }
 
 // FindNearestBiome samples generator biomes on Java's locate-biome 32x64 grid.
@@ -19,7 +19,7 @@ func (w *World) FindNearestBiome(name string, origin cube.Pos) (cube.Pos, bool, 
 	if w == nil {
 		return cube.Pos{}, false, fmt.Errorf("locate biome: nil world")
 	}
-	provider, ok := w.conf.Generator.(JavaBiomeAtProvider)
+	provider, ok := w.conf.Generator.(BiomeAtProvider)
 	if !ok {
 		return cube.Pos{}, false, fmt.Errorf("locate biome: generator %T does not expose Java biomes", w.conf.Generator)
 	}
@@ -46,7 +46,7 @@ func (w *World) FindNearestBiome(name string, origin cube.Pos) (cube.Pos, bool, 
 						continue
 					}
 					visited = true
-					biome := provider.JavaBiomeAt(int32(x), int32(y), int32(z))
+					biome := provider.BiomeAt(int32(x), int32(y), int32(z))
 					if !strings.Contains(biome, ":") {
 						biome = "minecraft:" + biome
 					}

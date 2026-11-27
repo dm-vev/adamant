@@ -70,10 +70,10 @@ func TestConvertItemsSkipsRefusedEntries(t *testing.T) {
 // block empty, and the block loads.
 func TestRefusedSingleStacksLeaveTheBlockEmpty(t *testing.T) {
 	unknown := map[string]any{"id": "minecraft:no_such_item", "count": int32(1)}
-	if got := javaStackOrEmpty(unknown); !got.Empty() {
+	if got := canonicalStackOrEmpty(unknown); !got.Empty() {
 		t.Fatalf("an unknown item decoded to %v", got)
 	}
-	if got := javaStackOrEmpty(int32(1)); !got.Empty() {
+	if got := canonicalStackOrEmpty(int32(1)); !got.Empty() {
 		t.Fatalf("an int decoded to %v", got)
 	}
 	pot := map[string]any{"item": unknown}

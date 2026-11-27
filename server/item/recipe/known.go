@@ -14,15 +14,15 @@ var known struct {
 // recipe: one JavaRecipeIDs returns for a recipe of Recipes(), of any kind,
 // whether an edition shows recipes of the kind or not. The set is made on
 // first use, and again once more recipes were registered.
-func KnownJavaID(id string) bool {
+func KnownID(id string) bool {
 	known.Lock()
 	defer known.Unlock()
 	if n := recipeCount(); known.ids == nil || known.count != n {
 		all := Recipes()
 		ids := make(map[string]struct{}, len(all))
 		for _, r := range all {
-			for _, javaID := range JavaRecipeIDs(r) {
-				ids[javaID] = struct{}{}
+			for _, recipeID := range RecipeIDs(r) {
+				ids[recipeID] = struct{}{}
 			}
 		}
 		known.count, known.ids = len(all), ids

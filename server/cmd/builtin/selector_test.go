@@ -14,7 +14,7 @@ import (
 
 // TestSelectorJavaOptions checks the EntitySelectorOptions that filter on
 // Java state: Java entity type IDs and tags, rotation, scores, team and nbt.
-func TestSelectorJavaOptions(t *testing.T) {
+func TestSelectorExtraOptions(t *testing.T) {
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: entity.DefaultRegistry}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {

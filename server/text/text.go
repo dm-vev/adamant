@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // Text is a piece of rich text: a component with content of its own,
@@ -37,6 +38,15 @@ type node struct {
 	// never returns a node for the empty string, so the string is empty
 	// for every other text.
 	legacy string
+	// lazy indicates legacy has not yet been parsed into kind/style/text/children.
+	lazy      bool
+	parseOnce sync.Once
+}
+
+func (n *node) ensureParsed() {
+	if n != nil && n.lazy {
+		n.parseOnce.Do(n.parseLegacy)
+	}
 }
 
 // kind is the kind of the content of a text.
@@ -111,7 +121,22 @@ func (t Text) Style() Style {
 	if t.n == nil {
 		return Style{}
 	}
+	t.n.ensureParsed()
 	return t.n.style
+}
+
+func (t Text) copyNode() node {
+	if t.n == nil {
+		return node{}
+	}
+	t.n.ensureParsed()
+	return node{
+		kind:     t.n.kind,
+		style:    t.n.style,
+		text:     t.n.text,
+		tr:       t.n.tr,
+		children: t.n.children,
+	}
 }
 
 // WithStyle returns t with the style s in place of its own. Off loses the
@@ -119,11 +144,8 @@ func (t Text) Style() Style {
 // those of the package becomes NoColour. On the zero Text it returns a
 // text with no content and the style s.
 func (t Text) WithStyle(s Style) Text {
-	n := node{}
-	if t.n != nil {
-		n = *t.n
-	}
-	n.style, n.legacy = s.normalised(), ""
+	n := t.copyNode()
+	n.style = s.normalised()
 	return Text{&n}
 }
 
@@ -133,8 +155,7 @@ func (t Text) Append(children ...Text) Text {
 	if t.n == nil {
 		return Concat(children...)
 	}
-	n := *t.n
-	n.legacy = ""
+	n := t.copyNode()
 	n.children = slices.Clip(n.children)
 	for _, c := range children {
 		if !c.IsZero() {
@@ -147,7 +168,11 @@ func (t Text) Append(children ...Text) Text {
 // Literal returns the literal content of t, if t is literal text. It does
 // not include the content of the children of t.
 func (t Text) Literal() (s string, ok bool) {
-	if t.n == nil || t.n.kind != literalContent {
+	if t.n == nil {
+		return "", false
+	}
+	t.n.ensureParsed()
+	if t.n.kind != literalContent {
 		return "", false
 	}
 	return t.n.text, true
@@ -156,7 +181,11 @@ func (t Text) Literal() (s string, ok bool) {
 // Translation returns the key and the fallback of t, if t is a
 // translation.
 func (t Text) Translation() (key, fallback string, ok bool) {
-	if t.n == nil || t.n.kind != translationContent {
+	if t.n == nil {
+		return "", "", false
+	}
+	t.n.ensureParsed()
+	if t.n.kind != translationContent {
 		return "", "", false
 	}
 	return t.n.text, t.n.tr.fallback, true
@@ -165,7 +194,11 @@ func (t Text) Translation() (key, fallback string, ok bool) {
 // Args returns the arguments of t, if t is a translation.
 func (t Text) Args() iter.Seq[Text] {
 	return func(yield func(Text) bool) {
-		if t.n == nil || t.n.tr == nil {
+		if t.n == nil {
+			return
+		}
+		t.n.ensureParsed()
+		if t.n.tr == nil {
 			return
 		}
 		for _, a := range t.n.tr.args {
@@ -182,6 +215,7 @@ func (t Text) Children() iter.Seq[Text] {
 		if t.n == nil {
 			return
 		}
+		t.n.ensureParsed()
 		for _, c := range t.n.children {
 			if !yield(c) {
 				return
@@ -197,6 +231,7 @@ func (t Text) Plain() string {
 	if t.n == nil {
 		return ""
 	}
+	t.n.ensureParsed()
 	if t.n.kind == literalContent && len(t.n.children) == 0 {
 		return t.n.text
 	}
@@ -207,6 +242,7 @@ func (t Text) Plain() string {
 
 // appendPlain writes the plain text of n to b.
 func (n *node) appendPlain(b *strings.Builder) {
+	n.ensureParsed()
 	switch n.kind {
 	case literalContent:
 		b.WriteString(n.text)
@@ -334,6 +370,11 @@ func Equal(a, b Text) bool {
 	if a.n == nil || b.n == nil {
 		return false
 	}
+	if a.n.lazy && b.n.lazy && a.n.legacy == b.n.legacy {
+		return true
+	}
+	a.n.ensureParsed()
+	b.n.ensureParsed()
 	x, y := a.n, b.n
 	if x.kind != y.kind || x.style != y.style || x.text != y.text || len(x.children) != len(y.children) {
 		return false
@@ -402,6 +443,7 @@ func runsOf(t Text, inherited Style) []run {
 	var runs []run
 	var walk func(n *node, parent Style)
 	walk = func(n *node, parent Style) {
+		n.ensureParsed()
 		s := n.style.Inherit(parent)
 		switch n.kind {
 		case literalContent:
@@ -446,6 +488,7 @@ func (t Text) appendDebug(b *strings.Builder) {
 		b.WriteByte('}')
 		return
 	}
+	t.n.ensureParsed()
 	var parts []string
 	s := t.n.style
 	if s.Reset {

@@ -52,11 +52,11 @@ var oldWorldOrigin = cube.Pos{4, 65, 4}
 // 1.26.60, to no side.
 func oldWorldSubChunk(t *testing.T) []byte {
 	t.Helper()
-	javaWire, err := gamedata.BlockStateID("minecraft:redstone_wire", map[string]any{"north": "side", "south": "side", "east": "none", "west": "none", "power": int32(0)})
+	wireState, err := gamedata.BlockStateID("minecraft:redstone_wire", map[string]any{"north": "side", "south": "side", "east": "none", "west": "none", "power": int32(0)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	javaName, javaProps, _ := gamedata.BlockStateFromID(javaWire)
+	canonicalName, canonicalProps, _ := gamedata.BlockStateFromID(wireState)
 	v := chunk.CurrentBlockVersion
 	entries := []map[string]any{
 		{"name": "minecraft:air", "states": map[string]any{}, "version": v},
@@ -67,7 +67,7 @@ func oldWorldSubChunk(t *testing.T) []byte {
 		{"name": "minecraft:end_stone", "states": map[string]any{}, "version": v},
 		{"name": "minecraft:chorus_plant", "states": map[string]any{}, "version": v},
 		{"name": "minecraft:redstone_wire", "states": map[string]any{"redstone_signal": int32(0)}, "version": v,
-			"adamant:java": map[string]any{"name": javaName, "properties": javaProps}},
+			"adamant:java": map[string]any{"name": canonicalName, "properties": canonicalProps}},
 		{"name": "minecraft:redstone_wire", "states": map[string]any{"redstone_signal": int32(0), "redstone_north": "none",
 			"redstone_east": "none", "redstone_south": "none", "redstone_west": "none"}, "version": v},
 	}

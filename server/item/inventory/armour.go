@@ -119,16 +119,22 @@ func (a *Armour) DamageReduction(dmg float64, src world.DamageSource) float64 {
 	var (
 		original                 = dmg
 		defencePoints, toughness float64
-		enchantments             []item.Enchantment
+		enchBuf                  [16]item.Enchantment
+		enchantments             = enchBuf[:0]
 	)
 
-	for _, it := range a.Items() {
+	a.inv.mu.RLock()
+	for _, it := range a.inv.slots {
+		if it.Empty() {
+			continue
+		}
 		enchantments = append(enchantments, it.Enchantments()...)
 		if armour, ok := it.Item().(item.Armour); ok {
 			defencePoints += armour.DefencePoints()
 			toughness += armour.Toughness()
 		}
 	}
+	a.inv.mu.RUnlock()
 
 	dmg -= dmg * enchantment.ProtectionFactor(src, enchantments)
 	if src.ReducedByArmour() {
@@ -150,11 +156,16 @@ func (a *Armour) DamageReduction(dmg float64, src world.DamageSource) float64 {
 // have the enchantment.
 func (a *Armour) HighestEnchantmentLevel(t item.EnchantmentType) int {
 	lvl := 0
-	for _, it := range a.Items() {
+	a.inv.mu.RLock()
+	for _, it := range a.inv.slots {
+		if it.Empty() {
+			continue
+		}
 		if e, ok := it.Enchantment(t); ok && e.Level() > lvl {
 			lvl = e.Level()
 		}
 	}
+	a.inv.mu.RUnlock()
 	return lvl
 }
 
@@ -224,11 +235,16 @@ func (a *Armour) ThornsDamage(f DamageFunc) float64 {
 // all knock back is ignored.
 func (a *Armour) KnockBackResistance() float64 {
 	resistance := 0.0
-	for _, i := range a.Items() {
-		if a, ok := i.Item().(item.Armour); ok {
-			resistance += a.KnockBackResistance()
+	a.inv.mu.RLock()
+	for _, i := range a.inv.slots {
+		if i.Empty() {
+			continue
+		}
+		if ar, ok := i.Item().(item.Armour); ok {
+			resistance += ar.KnockBackResistance()
 		}
 	}
+	a.inv.mu.RUnlock()
 	return resistance
 }
 

@@ -154,8 +154,12 @@ func replayNativeNotes(t *testing.T, filename string, count int, timed, load boo
 					if !c.InitialPower {
 						t.Fatal("native loaded note input control differs")
 					}
-					note = note.DecodeNBT(map[string]any{"id": "Music", "note": byte(c.Pitch), "adamant:java": map[string]any{"powered": c.StoredPowered}}).(block.Note)
-					_, persistedPower = note.EncodeNBT()["adamant:java"]
+					note = note.DecodeNBT(map[string]any{"id": "Music", "note": byte(c.Pitch), "adamant:state": map[string]any{"powered": c.StoredPowered}}).(block.Note)
+					encodedNote := note.EncodeNBT()
+					_, persistedPower = encodedNote["adamant:state"]
+					if !persistedPower {
+						_, persistedPower = encodedNote["adamant:java"]
+					}
 				}
 				if c.InitialPower {
 					tx.SetBlock(trace.Source, block.RedstoneBlock{}, nil)

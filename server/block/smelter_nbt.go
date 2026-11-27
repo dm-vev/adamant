@@ -9,7 +9,7 @@ import (
 // smelterActorNBT writes a furnace, blast furnace or smoker actor as BDS
 // does: BurnTime is the fuel left and BurnDuration how long the burning fuel
 // lasts in all, both in ticks. The recipes cooked since a player last took
-// the result are kept under adamant:java, and StoredXPInt holds what they
+// the result are kept under adamant:state, and StoredXPInt holds what they
 // are worth at least.
 func smelterActorNBT(id string, s *smelter) map[string]any {
 	remaining, maximum, cook := s.Durations()
@@ -28,7 +28,7 @@ func smelterActorNBT(id string, s *smelter) map[string]any {
 		for id, n := range s.recipesUsed {
 			recipes[id] = int32(n)
 		}
-		data["adamant:java"] = map[string]any{"RecipesUsed": recipes, "StoredXP": int32(s.storedXP)}
+		data["adamant:state"] = map[string]any{"RecipesUsed": recipes, "StoredXP": int32(s.storedXP)}
 	}
 	return data
 }
@@ -42,13 +42,16 @@ func decodeSmelter(s *smelter, data map[string]any) {
 	s.setDurations(remaining, maximum, cook)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	java, ok := data["adamant:java"].(map[string]any)
+	extra, ok := data["adamant:state"].(map[string]any)
+	if !ok {
+		extra, ok = data["adamant:java"].(map[string]any)
+	}
 	if !ok {
 		s.storedXP = smelterStoredXP(data)
 		return
 	}
-	s.storedXP = int(nbtconv.Int32(java, "StoredXP"))
-	recipes, _ := java["RecipesUsed"].(map[string]any)
+	s.storedXP = int(nbtconv.Int32(extra, "StoredXP"))
+	recipes, _ := extra["RecipesUsed"].(map[string]any)
 	for id, n := range recipes {
 		if count, ok := n.(int32); ok && count > 0 {
 			s.recipesUsed[id] = int(count)

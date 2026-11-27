@@ -187,7 +187,7 @@ func (t *Tx) recipeLocked(r recipe.Recipe) bool {
 		return false
 	}
 	unlocked := t.o.Owner.UnlockedRecipeIDs()
-	for _, id := range recipe.JavaRecipeIDs(r) {
+	for _, id := range recipe.RecipeIDs(r) {
 		if slices.Contains(unlocked, id) {
 			return false
 		}

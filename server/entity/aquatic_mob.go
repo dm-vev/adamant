@@ -122,18 +122,18 @@ func (t aquaticMobType) DecodeNBT(nbt map[string]any, data *world.EntityData) {
 		c.Health = float64(nbtconv.Float32(nbt, "Health"))
 		c.healthSet = true
 	}
-	if java, ok := aquaticJavaState(nbt); ok {
-		if _, ok := java["Variant"]; ok {
-			c.Variant = int(nbtconv.Int32(java, "Variant"))
+	if extra, ok := aquaticExtraState(nbt); ok {
+		if _, ok := extra["Variant"]; ok {
+			c.Variant = int(nbtconv.Int32(extra, "Variant"))
 		}
-		if _, ok := java["BucketVariantTag"]; ok {
-			c.BucketVariant = int(nbtconv.Int32(java, "BucketVariantTag"))
+		if _, ok := extra["BucketVariantTag"]; ok {
+			c.BucketVariant = int(nbtconv.Int32(extra, "BucketVariantTag"))
 		}
-		if _, ok := java["PuffState"]; ok {
-			c.PuffState = int(nbtconv.Int32(java, "PuffState"))
+		if _, ok := extra["PuffState"]; ok {
+			c.PuffState = int(nbtconv.Int32(extra, "PuffState"))
 		}
 	} else {
-		c.Variant, c.PuffState = javaAquaticVariant(t.id, nbt, c.Variant)
+		c.Variant, c.PuffState = aquaticVariantFromNative(t.id, nbt, c.Variant)
 	}
 	if _, ok := nbt["Age"]; ok {
 		c.Age = int(nbtconv.Int32(nbt, "Age"))
@@ -153,7 +153,7 @@ func (aquaticMobType) EncodeNBT(data *world.EntityData) map[string]any {
 	b := data.Data.(*aquaticMobBehaviour)
 	m := map[string]any{"Health": float32(b.health.Health()), "Age": int32(b.age), "FromBucket": boolByte(b.id == "minecraft:tadpole" || b.fromBucket)}
 	maps.Copy(m, b.bedrockVariantNBT())
-	m["adamant:java"] = map[string]any{"Variant": int32(b.variant), "BucketVariantTag": int32(b.bucketVariant), "PuffState": int32(b.puffState)}
+	m["adamant:state"] = map[string]any{"Variant": int32(b.variant), "BucketVariantTag": int32(b.bucketVariant), "PuffState": int32(b.puffState)}
 	switch b.id {
 	case "minecraft:axolotl":
 		b.breeding.encodeNBT(m)
@@ -196,20 +196,20 @@ func (a *aquaticMob) BedrockVariant() (variant, mark int32, color, color2 byte) 
 // Java compound of a native save, or the top level of Java NBT and of saves
 // from before Adamant wrote the Bedrock fields, which alone have PuffState
 // at the top level.
-func aquaticJavaState(nbt map[string]any) (map[string]any, bool) {
-	if java := readNativeMobJavaState(nbt); java != nil {
-		if _, ok := java["Variant"]; ok {
-			return java, true
+func aquaticExtraState(nbt map[string]any) (map[string]any, bool) {
+	if extra := readNativeMobExtraState(nbt); extra != nil {
+		if _, ok := extra["Variant"]; ok {
+			return extra, true
 		}
 	}
-	_, javaNBT := nbt["id"].(string)
+	_, hasCanonicalID := nbt["id"].(string)
 	_, legacy := nbt["PuffState"]
-	return nbt, javaNBT || legacy
+	return nbt, hasCanonicalID || legacy
 }
 
 // javaAquaticVariant converts the variant fields BDS saves to the Java
 // variant and puff state, keeping def for mobs BDS saves no variant of.
-func javaAquaticVariant(id string, nbt map[string]any, def int) (variant, puffState int) {
+func aquaticVariantFromNative(id string, nbt map[string]any, def int) (variant, puffState int) {
 	v, _ := nativeMobVariant(nbt)
 	switch id {
 	case "minecraft:axolotl":

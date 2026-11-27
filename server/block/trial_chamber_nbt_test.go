@@ -108,8 +108,11 @@ func TestTrialSpawnerNBTMatchesBDS(t *testing.T) {
 			t.Errorf("%s = %#v, want an empty list", k, m[k])
 		}
 	}
+	if _, ok := m["adamant:state"]; ok {
+		t.Errorf("a template spawner keeps extra state %#v", m["adamant:state"])
+	}
 	if _, ok := m["adamant:java"]; ok {
-		t.Errorf("a template spawner keeps Java state %#v", m["adamant:java"])
+		t.Errorf("a template spawner keeps legacy state %#v", m["adamant:java"])
 	}
 
 	// BDS saves the mob chosen and the players and mobs by unique ID.

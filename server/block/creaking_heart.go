@@ -86,7 +86,7 @@ func (h CreakingHeart) EncodeNBT() map[string]any {
 			data["SpawnedCreakingID"] = h.data.protectorID
 			if h.data.protectorUUID != uuid.Nil {
 				id := h.data.protectorUUID
-				data["adamant:java"] = map[string]any{"creaking": []int32{int32(binary.BigEndian.Uint32(id[0:4])), int32(binary.BigEndian.Uint32(id[4:8])), int32(binary.BigEndian.Uint32(id[8:12])), int32(binary.BigEndian.Uint32(id[12:16]))}}
+				data["adamant:state"] = map[string]any{"creaking": []int32{int32(binary.BigEndian.Uint32(id[0:4])), int32(binary.BigEndian.Uint32(id[4:8])), int32(binary.BigEndian.Uint32(id[8:12])), int32(binary.BigEndian.Uint32(id[12:16]))}}
 			}
 		}
 	}
@@ -99,7 +99,11 @@ func (h CreakingHeart) DecodeNBT(data map[string]any) any {
 	if id, ok := data["SpawnedCreakingID"].(int64); ok {
 		h.data.protectorID, h.data.hasProtector = id, true
 	}
-	if source, ok := data["adamant:java"].(map[string]any); ok {
+	source, ok := data["adamant:state"].(map[string]any)
+	if !ok {
+		source, ok = data["adamant:java"].(map[string]any)
+	}
+	if ok {
 		if words, ok := source["creaking"].([]int32); ok && len(words) == 4 {
 			for i, word := range words {
 				binary.BigEndian.PutUint32(h.data.protectorUUID[i*4:], uint32(word))

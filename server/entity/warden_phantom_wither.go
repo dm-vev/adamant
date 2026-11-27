@@ -91,8 +91,8 @@ func (phantomType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData
 }
 func (phantomType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	size := int(nbtconv.Int32(n, "Size"))
-	if java := readNativeMobJavaState(n); java != nil {
-		size = int(nbtconv.Int32(java, "Size"))
+	if extra := readNativeMobExtraState(n); extra != nil {
+		size = int(nbtconv.Int32(extra, "Size"))
 	}
 	phantomConfig{health: nativeBossHealth(n, 20), size: size, attack: int(nbtconv.Int32(n, "Attack")), target: nbtconv.Int64(n, "Target")}.Apply(d)
 	d.Data.(*phantomState).speed = nativeBossMovementSpeed(n, phantomBaseMovementSpeed)
@@ -238,7 +238,7 @@ func (witherType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData)
 }
 func (witherType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	c := witherConfig{health: nativeBossHealth(n, 300), invulnerable: int(nbtconv.Int32(n, "Invul")), charge: int(nbtconv.Int32(n, "Charge")), death: int(nbtconv.Int32(n, "Death"))}
-	if j := readNativeMobJavaState(n); j != nil {
+	if j := readNativeMobExtraState(n); j != nil {
 		c.invulnerable = int(nbtconv.Int32(j, "Invulnerability"))
 		c.charge = int(nbtconv.Int32(j, "Charge"))
 		c.death = int(nbtconv.Int32(j, "Death"))
@@ -467,7 +467,7 @@ func encodeBossNBT(d *world.EntityData, attrs []nativeMobAttr, state map[string]
 		native = make(map[string]any)
 	}
 	native["Attributes"] = encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), attrs)
-	return mergeNativeMobJavaState(native, state)
+	return mergeNativeMobExtraState(native, state)
 }
 
 var _ world.EntityType = wardenType{}

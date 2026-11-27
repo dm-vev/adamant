@@ -5,6 +5,7 @@ import (
 	"math"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/internal/gamedata"
@@ -202,6 +203,7 @@ func placeMangroveRoots(region *featureRegion, root map[string]any, origin, trun
 
 	above := treeMap(root["above_root_placement"])
 	var rootSet treePositionSet
+	defer rootSet.release()
 	recordRoot := func(pos featurePos) {
 		if rootSet.add(pos) {
 			*roots = append(*roots, pos)
@@ -762,21 +764,43 @@ clipped:
 	region.treeDecorationPositions = &decorationSet
 	placeModernTreeDecorators(region, config["decorators"], trunks, leaves, roots, r)
 	region.treeDecorationPositions = previousDecorations
-	decorations := make([]featurePos, 0, decorationSet.size)
-	for _, bucket := range decorationSet.buckets {
-		decorations = append(decorations, bucket...)
-	}
+	decorations := decorationSet.appendOrdered(make([]featurePos, 0, decorationSet.size))
+	decorationSet.release()
 	updateModernLeafDistance(region, trunks, leaves, roots, decorations)
 	return true
 }
 
+type treePosNode struct {
+	pos  featurePos
+	next int32
+}
+
+type treePosArena struct {
+	heads    []int32
+	tails    []int32
+	altHeads []int32
+	altTails []int32
+	nodes    []treePosNode
+}
+
+var treePosArenaPool = sync.Pool{
+	New: func() any {
+		return &treePosArena{
+			heads: make([]int32, 16),
+			tails: make([]int32, 16),
+			nodes: make([]treePosNode, 0, 32),
+		}
+	},
+}
+
 // treePositionSet preserves Java HashSet<BlockPos> bucket iteration for the
 // updateLeaves work queues; each source pop recreates an iterator at bucket 0.
-
 type treePositionSet struct {
-	buckets   [][]featurePos
+	arena     *treePosArena
+	bucketLen int
 	size      int
 	threshold int
+	minBucket int
 }
 
 func treePositionHash(pos featurePos) uint32 {
@@ -785,18 +809,61 @@ func treePositionHash(pos featurePos) uint32 {
 	return hash ^ hash>>16
 }
 
-func (s *treePositionSet) add(pos featurePos) bool {
-	if s.buckets == nil {
-		s.buckets = make([][]featurePos, 16)
-		s.threshold = 12
+func (s *treePositionSet) initArena() {
+	a := treePosArenaPool.Get().(*treePosArena)
+	if cap(a.heads) < 16 {
+		a.heads = make([]int32, 16)
+		a.tails = make([]int32, 16)
+	} else {
+		a.heads = a.heads[:16]
+		a.tails = a.tails[:16]
 	}
-	index := treePositionHash(pos) & uint32(len(s.buckets)-1)
-	for _, existing := range s.buckets[index] {
-		if existing == pos {
+	for i := range 16 {
+		a.heads[i] = -1
+		a.tails[i] = -1
+	}
+	a.nodes = a.nodes[:0]
+	s.arena = a
+	s.bucketLen = 16
+	s.threshold = 12
+	s.minBucket = 16
+}
+
+func (s *treePositionSet) release() {
+	if s.arena == nil {
+		return
+	}
+	a := s.arena
+	a.nodes = a.nodes[:0]
+	s.arena = nil
+	s.size = 0
+	if cap(a.nodes) <= 16384 && cap(a.heads) <= 8192 {
+		treePosArenaPool.Put(a)
+	}
+}
+
+func (s *treePositionSet) add(pos featurePos) bool {
+	if s.arena == nil {
+		s.initArena()
+	}
+	a := s.arena
+	index := int(treePositionHash(pos) & uint32(s.bucketLen-1))
+	for cur := a.heads[index]; cur != -1; cur = a.nodes[cur].next {
+		if a.nodes[cur].pos == pos {
 			return false
 		}
 	}
-	s.buckets[index] = append(s.buckets[index], pos)
+	nodeIdx := int32(len(a.nodes))
+	a.nodes = append(a.nodes, treePosNode{pos: pos, next: -1})
+	if a.heads[index] == -1 {
+		a.heads[index] = nodeIdx
+	} else {
+		a.nodes[a.tails[index]].next = nodeIdx
+	}
+	a.tails[index] = nodeIdx
+	if index < s.minBucket {
+		s.minBucket = index
+	}
 	s.size++
 	if s.size > s.threshold {
 		s.resize()
@@ -805,28 +872,85 @@ func (s *treePositionSet) add(pos featurePos) bool {
 }
 
 func (s *treePositionSet) popFirst() (featurePos, bool) {
-	for index := range s.buckets {
-		if len(s.buckets[index]) == 0 {
-			continue
-		}
-		pos := s.buckets[index][0]
-		s.buckets[index] = s.buckets[index][1:]
-		s.size--
-		return pos, true
+	if s.size == 0 {
+		return featurePos{}, false
 	}
-	return featurePos{}, false
+	a := s.arena
+	heads := a.heads[:s.bucketLen]
+	for s.minBucket < s.bucketLen && heads[s.minBucket] == -1 {
+		s.minBucket++
+	}
+	if s.minBucket >= s.bucketLen {
+		return featurePos{}, false
+	}
+	nodeIdx := heads[s.minBucket]
+	next := a.nodes[nodeIdx].next
+	heads[s.minBucket] = next
+	if next == -1 {
+		a.tails[s.minBucket] = -1
+	}
+	s.size--
+	return a.nodes[nodeIdx].pos, true
 }
 
 func (s *treePositionSet) resize() {
-	previous := s.buckets
-	s.buckets = make([][]featurePos, len(previous)*2)
-	for _, bucket := range previous {
-		for _, pos := range bucket {
-			index := treePositionHash(pos) & uint32(len(s.buckets)-1)
-			s.buckets[index] = append(s.buckets[index], pos)
+	a := s.arena
+	oldLen := s.bucketLen
+	newLen := oldLen * 2
+	if cap(a.altHeads) < newLen {
+		a.altHeads = make([]int32, newLen)
+		a.altTails = make([]int32, newLen)
+	} else {
+		a.altHeads = a.altHeads[:newLen]
+		a.altTails = a.altTails[:newLen]
+	}
+	for i := range newLen {
+		a.altHeads[i] = -1
+		a.altTails[i] = -1
+	}
+	mask := uint32(newLen - 1)
+	oldHeads := a.heads[:oldLen]
+	nodes := a.nodes
+	for b := range oldLen {
+		for cur := oldHeads[b]; cur != -1; {
+			next := nodes[cur].next
+			nodes[cur].next = -1
+			idx := int(treePositionHash(nodes[cur].pos) & mask)
+			if a.altHeads[idx] == -1 {
+				a.altHeads[idx] = cur
+			} else {
+				nodes[a.altTails[idx]].next = cur
+			}
+			a.altTails[idx] = cur
+			cur = next
 		}
 	}
-	s.threshold = len(s.buckets) - len(s.buckets)/4
+	a.heads, a.altHeads = a.altHeads, a.heads
+	a.tails, a.altTails = a.altTails, a.tails
+	s.bucketLen = newLen
+	s.threshold = newLen - newLen/4
+	s.minBucket = 0
+}
+
+func (s *treePositionSet) appendOrdered(dst []featurePos) []featurePos {
+	if s.size == 0 {
+		return dst
+	}
+	a := s.arena
+	heads := a.heads[:s.bucketLen]
+	nodes := a.nodes
+	for b := range s.bucketLen {
+		for cur := heads[b]; cur != -1; cur = nodes[cur].next {
+			dst = append(dst, nodes[cur].pos)
+		}
+	}
+	return dst
+}
+
+func releaseTreePositionSets(sets *[7]treePositionSet) {
+	for i := range sets {
+		sets[i].release()
+	}
 }
 
 func updateModernLeafDistance(region *featureRegion, trunks, leaves, roots, decorations []featurePos) {
@@ -858,14 +982,14 @@ func updateModernLeafDistance(region *featureRegion, trunks, leaves, roots, deco
 	}
 
 	var buckets [7]treePositionSet
+	defer releaseTreePositionSets(&buckets)
 	logPositions := make([]featurePos, 0, len(trunks))
 	seenLogs := make(map[featurePos]struct{}, len(trunks))
 	for _, p := range trunks {
-		if _, exists := seenLogs[p]; exists {
-			continue
+		if _, exists := seenLogs[p]; !exists {
+			seenLogs[p] = struct{}{}
+			logPositions = append(logPositions, p)
 		}
-		seenLogs[p] = struct{}{}
-		logPositions = append(logPositions, p)
 	}
 	for _, p := range vegetationPatchHashSetOrder(logPositions) {
 		buckets[0].add(p)
@@ -1365,13 +1489,11 @@ func treeDecoratorPositions(positions []featurePos) []featurePos {
 		return positions
 	}
 	var set treePositionSet
+	defer set.release()
 	for _, pos := range positions {
 		set.add(pos)
 	}
-	ordered := make([]featurePos, 0, set.size)
-	for _, bucket := range set.buckets {
-		ordered = append(ordered, bucket...)
-	}
+	ordered := set.appendOrdered(make([]featurePos, 0, set.size))
 	slices.SortStableFunc(ordered, func(a, b featurePos) int {
 		return int(a.y) - int(b.y)
 	})

@@ -17,8 +17,8 @@ func decodePlayerWardenTracker(state map[string]any) *world.WardenSpawnTracker {
 	return &world.WardenSpawnTracker{}
 }
 
-func encodePlayerJavaState(p *Player) map[string]any {
-	state := world.CloneNativeEntityNBT(p.javaState)
+func encodePlayerExtraState(p *Player) map[string]any {
+	state := world.CloneNativeEntityNBT(p.extraState)
 	if state == nil {
 		state = make(map[string]any)
 	}

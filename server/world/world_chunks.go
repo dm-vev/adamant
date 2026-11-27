@@ -183,6 +183,8 @@ func (w *World) attachLoadedColumnEntities(pos ChunkPos, col *Column) {
 			lastTick:          currentTick,
 			lastProcessedTick: currentTick,
 			isItem:            e.typeID == "minecraft:item",
+			isPlayer:          e.typeID == "minecraft:player",
+			tickAfterBlocks:   entityTickAfterBlocks(e.t),
 		}
 		w.entities[e] = state
 		w.trackPlayer(e)

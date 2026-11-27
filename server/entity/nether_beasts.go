@@ -91,7 +91,7 @@ type zoglin struct{ *Ent }
 func (h *hoglin) beast() *netherBeastState { return h.Behaviour().(*netherBeastState) }
 func (z *zoglin) beast() *netherBeastState { return z.Behaviour().(*netherBeastState) }
 func (t netherBeastType) DecodeNBT(n map[string]any, d *world.EntityData) {
-	j := readNativeMobJavaState(n)
+	j := readNativeMobExtraState(n)
 	if j == nil {
 		j = n
 	}
@@ -120,7 +120,7 @@ func (t netherBeastType) EncodeNBT(d *world.EntityData) map[string]any {
 		native["TimeInOverworld"] = int32(s.conversion)
 	}
 	out := mergeNativeMobNBT(d.NativeNBT, native)
-	j := readNativeMobJavaState(d.NativeNBT)
+	j := readNativeMobExtraState(d.NativeNBT)
 	if j == nil {
 		j = make(map[string]any)
 	}
@@ -132,7 +132,7 @@ func (t netherBeastType) EncodeNBT(d *world.EntityData) map[string]any {
 	if t.kind != zoglinKind {
 		s.breeding.encodeNBT(j)
 	}
-	return mergeNativeMobJavaState(out, j)
+	return mergeNativeMobExtraState(out, j)
 }
 func (h *hoglin) SpeciesType() world.EntityType { return hoglinType }
 func (z *zoglin) SpeciesType() world.EntityType { return zoglinType }

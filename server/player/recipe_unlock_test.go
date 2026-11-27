@@ -26,7 +26,7 @@ func TestUnlockRecipesKeepsKnownIDs(t *testing.T) {
 	registerVanillaRecipes()
 	ids := []string{"minecraft:torch", "minecraft:not_a_recipe", "minecraft:stick", "minecraft:torch"}
 	for _, id := range []string{"minecraft:torch", "minecraft:stick"} {
-		if !recipe.KnownJavaID(id) {
+		if !recipe.KnownID(id) {
 			t.Fatalf("%s is not the ID of a vanilla recipe", id)
 		}
 	}

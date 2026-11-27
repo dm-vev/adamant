@@ -131,7 +131,7 @@ func TestEndFightNativeLifecycleAndMCDBRestart(t *testing.T) {
 	var eggPos cube.Pos
 	<-w.Exec(func(tx *world.Tx) {
 		killed = tx.DragonFight().Data()
-		eggPos = cube.Pos{0, tx.JavaMotionBlockingHeight(0, 0, false) - 1, 0}
+		eggPos = cube.Pos{0, tx.MotionBlockingHeight(0, 0, false) - 1, 0}
 		if len(killed.Gateways) != 19 || countDragons(tx) != 0 {
 			t.Fatalf("first kill state: gateways=%d dragons=%d", len(killed.Gateways), countDragons(tx))
 		}

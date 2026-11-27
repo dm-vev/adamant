@@ -86,6 +86,16 @@ func decodeBeehiveNBT(h Beehive, n map[string]any) Beehive {
 		h.HoneyLevel = 5
 	}
 	h.Occupants = nbtconv.Slice(n, "Occupants")
+	for _, raw := range h.Occupants {
+		if o, ok := raw.(map[string]any); ok {
+			if _, hasState := o["adamant:state"]; !hasState {
+				if legacy, hasLegacy := o["adamant:java"]; hasLegacy {
+					o["adamant:state"] = legacy
+					delete(o, "adamant:java")
+				}
+			}
+		}
+	}
 	if p, ok := n["FlowerPos"].(map[string]any); ok {
 		h.FlowerPos = p
 	}
@@ -171,7 +181,7 @@ func (h Beehive) AddBeeOccupant(n map[string]any) (world.Block, bool) {
 		duration = 2400
 	}
 	h.Occupants = append(h.Occupants, map[string]any{"ActorIdentifier": "minecraft:bee", "SaveData": n, "TicksLeftToStay": duration})
-	if state := hiveBeeJavaState(n); state != nil {
+	if state := hiveBeeState(n); state != nil {
 		if flower, ok := state["flower_pos"].(map[string]any); ok {
 			h.FlowerPos = flower
 		}
@@ -369,12 +379,19 @@ func tickBeehive(pos cube.Pos, h Beehive, tx *world.Tx, r *rand.Rand) {
 		}
 		left := int(nbtconv.Int32(o, "TicksLeftToStay")) - 1
 		ready := left <= 0
-		java, source := o["adamant:java"].(map[string]any)
+		extra, source := o["adamant:state"].(map[string]any)
+		if !source {
+			if legacy, ok := o["adamant:java"].(map[string]any); ok {
+				extra, source = legacy, true
+				o["adamant:state"] = legacy
+				delete(o, "adamant:java")
+			}
+		}
 		if source {
-			ticks, minimum := nbtconv.Int32(java, "ticks_in_hive"), nbtconv.Int32(java, "min_ticks_in_hive")
+			ticks, minimum := nbtconv.Int32(extra, "ticks_in_hive"), nbtconv.Int32(extra, "min_ticks_in_hive")
 			ready = ticks > minimum
 			ticks++
-			java["ticks_in_hive"] = ticks
+			extra["ticks_in_hive"] = ticks
 			left = int(max(int64(0), min(int64(2147483647), int64(minimum)-int64(ticks)+2)))
 		}
 		if ready {
@@ -422,7 +439,7 @@ func currentWithBeehive(current world.Block, h Beehive) world.Block {
 
 // JavaEmergencyRelease releases occupants using the emergency release rules used
 // when fire changes a Java beehive's neighbouring shape.
-func (h Beehive) JavaEmergencyRelease(pos cube.Pos, tx *world.Tx) {
+func (h Beehive) EmergencyRelease(pos cube.Pos, tx *world.Tx) {
 	remaining := h.Occupants[:0]
 	for _, raw := range h.Occupants {
 		occupant, ok := raw.(map[string]any)
@@ -436,8 +453,8 @@ func (h Beehive) JavaEmergencyRelease(pos cube.Pos, tx *world.Tx) {
 
 // JavaEmergencyRelease releases occupants using the emergency release rules used
 // when fire changes a Java beehive's neighbouring shape.
-func (h BeeNest) JavaEmergencyRelease(pos cube.Pos, tx *world.Tx) {
-	h.Beehive.JavaEmergencyRelease(pos, tx)
+func (h BeeNest) EmergencyRelease(pos cube.Pos, tx *world.Tx) {
+	h.Beehive.EmergencyRelease(pos, tx)
 }
 
 func (h Beehive) hasNearbyFire(pos cube.Pos, tx *world.Tx) bool {
@@ -453,8 +470,11 @@ func (h Beehive) hasNearbyFire(pos cube.Pos, tx *world.Tx) bool {
 	}
 	return false
 }
-func hiveBeeJavaState(data map[string]any) map[string]any {
-	state, _ := data["adamant:java"].(map[string]any)
+func hiveBeeState(data map[string]any) map[string]any {
+	state, ok := data["adamant:state"].(map[string]any)
+	if !ok {
+		state, _ = data["adamant:java"].(map[string]any)
+	}
 	return state
 }
 func hiveFlowerPos(block world.Block) map[string]any {
@@ -467,10 +487,10 @@ func hiveFlowerPos(block world.Block) map[string]any {
 	return nil
 }
 func hiveBeeHasNectar(data map[string]any) bool {
-	return nbtconv.Bool(hiveBeeJavaState(data), "HasNectar")
+	return nbtconv.Bool(hiveBeeState(data), "HasNectar")
 }
 func hiveBeeClearNectar(data map[string]any) {
-	if state := hiveBeeJavaState(data); state != nil {
+	if state := hiveBeeState(data); state != nil {
 		state["HasNectar"] = byte(0)
 		state["CropsGrownSincePollination"] = int32(0)
 	}
@@ -510,7 +530,7 @@ func releaseHiveOccupantsAt(pos cube.Pos, occupants []any, tx *world.Tx, player 
 		}
 	}
 }
-func releaseHiveOccupant(pos cube.Pos, occupant map[string]any, tx *world.Tx, emergency, javaFlowerChance bool) *world.EntityHandle {
+func releaseHiveOccupant(pos cube.Pos, occupant map[string]any, tx *world.Tx, emergency, hiveFlowerChance bool) *world.EntityHandle {
 	data, _ := occupant["SaveData"].(map[string]any)
 	id, _ := occupant["ActorIdentifier"].(string)
 	if id == "" {
@@ -535,7 +555,7 @@ func releaseHiveOccupant(pos cube.Pos, occupant map[string]any, tx *world.Tx, em
 	if !emergency && (frontBlocked || BeesStayInHive(tx)) {
 		return nil
 	}
-	if state := hiveBeeJavaState(data); state != nil {
+	if state := hiveBeeState(data); state != nil {
 		// BeehiveBlockEntity.Occupant.createEntity: the bee forgets its
 		// counters, hovers and knows this hive as its home.
 		for _, key := range [...]string{"CannotEnterHiveTicks", "TicksSincePollination", "CropsGrownSincePollination"} {
@@ -545,7 +565,7 @@ func releaseHiveOccupant(pos cube.Pos, occupant map[string]any, tx *world.Tx, em
 		state["NoGravity"] = byte(1)
 		if flower := hiveFlowerPos(tx.Block(pos)); flower != nil {
 			if _, exists := state["flower_pos"]; !exists {
-				if !javaFlowerChance || tx.RegionRandom().NextFloat() < 0.9 {
+				if !hiveFlowerChance || tx.RegionRandom().NextFloat() < 0.9 {
 					state["flower_pos"] = flower
 				}
 			}
@@ -589,10 +609,10 @@ var _ interface {
 	Carve(cube.Face) (world.Block, bool)
 } = Beehive{}
 var _ interface {
-	JavaEmergencyRelease(cube.Pos, *world.Tx)
+	EmergencyRelease(cube.Pos, *world.Tx)
 } = Beehive{}
 var _ interface {
-	JavaEmergencyRelease(cube.Pos, *world.Tx)
+	EmergencyRelease(cube.Pos, *world.Tx)
 } = BeeNest{}
 
 // ComparatorOutput ports BeehiveBlock.getAnalogOutputSignal: the honey level

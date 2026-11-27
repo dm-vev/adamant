@@ -165,7 +165,7 @@ func conduitShape(pos cube.Pos, tx *world.Tx) (int, bool) {
 					continue
 				}
 				if (x == 0 && (ay == 2 || az == 2)) || (y == 0 && (ax == 2 || az == 2)) || (z == 0 && (ax == 2 || ay == 2)) {
-					if javaBlockTag(tx, pos.Add(cube.Pos{x, y, z}), "conduit_effect_block") {
+					if hasBlockTag(tx, pos.Add(cube.Pos{x, y, z}), "conduit_effect_block") {
 						frame++
 					}
 				}

@@ -39,7 +39,7 @@ func (sheepType) BBox(e world.Entity) cube.BBox {
 	return cube.Box(-.45, 0, -.45, .45, 1.3, .45)
 }
 func (sheepType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	s := readNativeMobJavaState(m)
+	s := readNativeMobExtraState(m)
 	if s == nil {
 		s = m
 	}
@@ -60,7 +60,7 @@ func (sheepType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*sheepBehaviour)
 	attr := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
 	native := mergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attr})
-	return mergeNativeMobJavaState(native, mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.ageTicks), "Color": byte(b.color), "Sheared": byte(boolByte(b.sheared))})))
+	return mergeNativeMobExtraState(native, mergeNativeMobNBT(readNativeMobExtraState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.ageTicks), "Color": byte(b.color), "Sheared": byte(boolByte(b.sheared))})))
 }
 
 // SheepConfig configures a sheep's saved source state.

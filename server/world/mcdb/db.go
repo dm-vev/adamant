@@ -683,15 +683,19 @@ func (db *DB) scheduledUpdates(g getter, k dbKey) ([]chunk.SavedScheduledTick, e
 		case "minecraft:water", "minecraft:flowing_water", "minecraft:lava", "minecraft:flowing_lava":
 			tick.Kind = chunk.FluidTick
 		}
-		if java, ok := entry["adamant:java"].(map[string]any); ok && len(java) != 0 {
+		extra, ok := entry["adamant:state"].(map[string]any)
+		if !ok {
+			extra, ok = entry["adamant:java"].(map[string]any)
+		}
+		if ok && len(extra) != 0 {
 			var typeOK, kindOK, priorityOK bool
-			tick.Type, typeOK = java["type"].(string)
-			kind, validKind := java["kind"].(uint8)
+			tick.Type, typeOK = extra["type"].(string)
+			kind, validKind := extra["kind"].(uint8)
 			tick.Kind = chunk.ScheduledTickKind(kind)
 			kindOK = validKind && (tick.Kind == chunk.BlockTick || tick.Kind == chunk.FluidTick)
-			tick.Priority, priorityOK = java["priority"].(int32)
+			tick.Priority, priorityOK = extra["priority"].(int32)
 			if !typeOK || tick.Type == "" || !kindOK || !priorityOK {
-				return nil, fmt.Errorf("read scheduled tick at %v: invalid Java tick metadata", pos)
+				return nil, fmt.Errorf("read scheduled tick at %v: invalid tick metadata", pos)
 			}
 		}
 		updates = append(updates, chunk.SavedScheduledTick{
@@ -929,9 +933,9 @@ func (db *DB) storeScheduledUpdates(s store, k dbKey, updates []chunk.SavedSched
 		if tick.Kind != chunk.BlockTick && tick.Kind != chunk.FluidTick {
 			panic(fmt.Sprintf("store scheduled updates: invalid tick kind %d", tick.Kind))
 		}
-		var java map[string]any
+		var extra map[string]any
 		if tick.Type != "" {
-			java = map[string]any{
+			extra = map[string]any{
 				"type": tick.Type, "kind": uint8(tick.Kind), "priority": tick.Priority,
 			}
 		}
@@ -939,11 +943,11 @@ func (db *DB) storeScheduledUpdates(s store, k dbKey, updates []chunk.SavedSched
 			BlockState: palette.EncodeBlockState(tick.NativeBlock),
 			Time:       int64(tick.Delay),
 			X:          int32(tick.Pos[0]), Y: int32(tick.Pos[1]), Z: int32(tick.Pos[2]),
-			Java: java,
+			Extra: extra,
 		}
 	}
 	// BDS stores currentTick as an int and time as a long. Rebasing both to
-	// zero retains paused delays; Java-only queue identity stays outside states.
+	// zero retains paused delays; extra queue identity stays outside states.
 	data, err := nbt.MarshalEncoding(scheduledUpdatesNBT{TickList: entries}, nbt.LittleEndian)
 	if err != nil {
 		db.conf.Log.Error("store scheduled updates: encode nbt: " + err.Error())
@@ -958,7 +962,7 @@ type scheduledTickNBT struct {
 	X          int32          `nbt:"x"`
 	Y          int32          `nbt:"y"`
 	Z          int32          `nbt:"z"`
-	Java       map[string]any `nbt:"adamant:java"`
+	Extra      map[string]any `nbt:"adamant:state,omitempty"`
 }
 
 type scheduledUpdatesNBT struct {

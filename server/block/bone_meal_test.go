@@ -17,7 +17,7 @@ func boneMealWorld(t *testing.T, f func(tx *world.Tx)) {
 
 // TestBoneMealGrowsJavaBonemealables checks the blocks Java's
 // BonemealableBlock covers that took no bone meal.
-func TestBoneMealGrowsJavaBonemealables(t *testing.T) {
+func TestBoneMealGrowsParityBonemealables(t *testing.T) {
 	t.Parallel()
 	boneMealWorld(t, func(tx *world.Tx) {
 		// Kelp grows at its top into water, whatever the clicked block's age.
@@ -90,7 +90,7 @@ func TestBoneMealGrowsJavaBonemealables(t *testing.T) {
 
 // TestBoneMealSkipsNonJavaBonemealables checks flowers and sugar cane, which
 // are no BonemealableBlock in Java, take no bone meal.
-func TestBoneMealSkipsNonJavaBonemealables(t *testing.T) {
+func TestBoneMealSkipsNonParityBonemealables(t *testing.T) {
 	t.Parallel()
 	for _, b := range []world.Block{Flower{}, SugarCane{}} {
 		if _, ok := b.(item.BoneMealAffected); ok {
@@ -123,7 +123,7 @@ func TestBoneMealGrowsSeagrassUnderWater(t *testing.T) {
 // TestPaleMossCarpetFollowsJava follows MossyCarpetBlock: a carpet placed by
 // a wall grows a low side against it, and bone meal grows a topper above
 // with the sides it can attach.
-func TestPaleMossCarpetFollowsJava(t *testing.T) {
+func TestPaleMossCarpetParity(t *testing.T) {
 	t.Parallel()
 	boneMealWorld(t, func(tx *world.Tx) {
 		tx.SetBlock(cube.Pos{0, 59, 0}, Stone{}, nil)

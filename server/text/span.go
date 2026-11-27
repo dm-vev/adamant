@@ -151,6 +151,7 @@ type spanWriter struct {
 // walk writes the text n and its children. It returns false once the
 // consumer of the spans stops.
 func (w *spanWriter) walk(n *node, yield func(Span) bool) bool {
+	n.ensureParsed()
 	w.push(n.style, yield)
 	if w.stopped {
 		return false

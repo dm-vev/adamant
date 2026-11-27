@@ -98,11 +98,13 @@ func (inv *Inventory) SetItem(slot int, item item.Stack) error {
 		inv.mu.Unlock()
 		return ErrSlotOutOfRange
 	}
-	f := inv.setItem(slot, item)
+	f, before, after := inv.setItem(slot, item)
 
 	inv.mu.Unlock()
 
-	f()
+	if f != nil {
+		f(slot, before, after)
+	}
 	return nil
 }
 
@@ -168,6 +170,20 @@ func (inv *Inventory) FirstEmpty() (int, bool) {
 	return -1, false
 }
 
+type slotNotify struct {
+	f      SlotFunc
+	slot   int
+	before item.Stack
+	after  item.Stack
+}
+
+func flushSlotNotifiesReverse(notes []slotNotify) {
+	for i := len(notes) - 1; i >= 0; i-- {
+		n := notes[i]
+		n.f(n.slot, n.before, n.after)
+	}
+}
+
 // Swap swaps the items between two slots. Returns an error if either slot A or B are invalid.
 func (inv *Inventory) Swap(slotA, slotB int) error {
 	inv.mu.Lock()
@@ -178,12 +194,17 @@ func (inv *Inventory) Swap(slotA, slotB int) error {
 		return ErrSlotOutOfRange
 	}
 	a, b := inv.slots[slotA], inv.slots[slotB]
-	fa, fb := inv.setItem(slotA, b), inv.setItem(slotB, a)
+	fa, ba, aa := inv.setItem(slotA, b)
+	fb, bb, ab := inv.setItem(slotB, a)
 
 	inv.mu.Unlock()
 
-	fa()
-	fb()
+	if fa != nil {
+		fa(slotA, ba, aa)
+	}
+	if fb != nil {
+		fb(slotB, bb, ab)
+	}
 	return nil
 }
 
@@ -199,7 +220,10 @@ func (inv *Inventory) AddItem(it item.Stack) (n int, err error) {
 		return 0, nil
 	}
 	first := it.Count()
-	emptySlots := make([]int, 0, 16)
+	var stackEmpty [16]int
+	emptySlots := stackEmpty[:0]
+	var stackNotes [8]slotNotify
+	notes := stackNotes[:0]
 
 	inv.mu.Lock()
 
@@ -215,12 +239,13 @@ func (inv *Inventory) AddItem(it item.Stack) (n int, err error) {
 			// Count stayed the same, meaning this slot either wasn't equal to this stack or was max size.
 			continue
 		}
-		f := inv.setItem(slot, a)
-		//noinspection GoDeferInLoop
-		defer f()
+		if f, before, after := inv.setItem(slot, a); f != nil {
+			notes = append(notes, slotNotify{f: f, slot: slot, before: before, after: after})
+		}
 
 		if it = b; it.Empty() {
 			inv.mu.Unlock()
+			flushSlotNotifiesReverse(notes)
 			// We were able to add the entire stack to existing stacks in the inventory.
 			return first, nil
 		}
@@ -228,17 +253,19 @@ func (inv *Inventory) AddItem(it item.Stack) (n int, err error) {
 	for _, slot := range emptySlots {
 		a, b := it.Grow(-math.MaxInt32).AddStack(it)
 
-		f := inv.setItem(slot, a)
-		//noinspection GoDeferInLoop
-		defer f()
+		if f, before, after := inv.setItem(slot, a); f != nil {
+			notes = append(notes, slotNotify{f: f, slot: slot, before: before, after: after})
+		}
 
 		if it = b; it.Empty() {
 			inv.mu.Unlock()
+			flushSlotNotifiesReverse(notes)
 			// We were able to add the entire stack to empty slots.
 			return first, nil
 		}
 	}
 	inv.mu.Unlock()
+	flushSlotNotifiesReverse(notes)
 	// We were unable to clear out the entire stack to be added to the inventory: There wasn't enough space.
 	return first - it.Count(), fmt.Errorf("could not add full item stack to inventory")
 }
@@ -252,6 +279,8 @@ func (inv *Inventory) AddItemInSlotOrder(it item.Stack) (int, error) {
 		return 0, nil
 	}
 	first := it.Count()
+	var stackNotes [8]slotNotify
+	notes := stackNotes[:0]
 	inv.mu.Lock()
 	inv.check()
 	for slot, current := range inv.slots {
@@ -262,14 +291,16 @@ func (inv *Inventory) AddItemInSlotOrder(it item.Stack) (int, error) {
 		if b.Count() == it.Count() || !inv.validator(a, slot) {
 			continue
 		}
-		f := inv.setItem(slot, a)
-		defer f()
+		if f, before, after := inv.setItem(slot, a); f != nil {
+			notes = append(notes, slotNotify{f: f, slot: slot, before: before, after: after})
+		}
 		it = b
 		if it.Empty() {
 			break
 		}
 	}
 	inv.mu.Unlock()
+	flushSlotNotifiesReverse(notes)
 	if !it.Empty() {
 		return first - it.Count(), fmt.Errorf("could not add full item stack to inventory")
 	}
@@ -288,6 +319,8 @@ func (inv *Inventory) RemoveItem(it item.Stack) error {
 // visited. No items will be deducted from slots if the comparable function returns false.
 // If less than n items were removed, an error is returned.
 func (inv *Inventory) RemoveItemFunc(n int, comparable func(stack item.Stack) bool) error {
+	var stackNotes [8]slotNotify
+	notes := stackNotes[:0]
 	inv.mu.Lock()
 	inv.check()
 	for slot, slotIt := range inv.slots {
@@ -296,21 +329,23 @@ func (inv *Inventory) RemoveItemFunc(n int, comparable func(stack item.Stack) bo
 		}
 		c := slotIt.Count() - n
 
-		var f func()
+		var f SlotFunc
+		var before, after item.Stack
 		if c <= 0 {
-			f = inv.setItem(slot, item.Stack{})
+			f, before, after = inv.setItem(slot, item.Stack{})
 		} else {
-			f = inv.setItem(slot, slotIt.Grow(-n))
+			f, before, after = inv.setItem(slot, slotIt.Grow(-n))
 		}
-
-		//noinspection GoDeferInLoop
-		defer f()
+		if f != nil {
+			notes = append(notes, slotNotify{f: f, slot: slot, before: before, after: after})
+		}
 
 		if n -= slotIt.Count(); n <= 0 {
 			break
 		}
 	}
 	inv.mu.Unlock()
+	flushSlotNotifiesReverse(notes)
 
 	if n > 0 {
 		return fmt.Errorf("could not remove all items from the inventory")
@@ -387,6 +422,8 @@ func (inv *Inventory) Empty() bool {
 
 // Clear clears the entire inventory. All non-zero items are returned.
 func (inv *Inventory) Clear() []item.Stack {
+	var stackNotes [8]slotNotify
+	notes := stackNotes[:0]
 	inv.mu.Lock()
 
 	inv.check()
@@ -395,12 +432,13 @@ func (inv *Inventory) Clear() []item.Stack {
 	for slot, i := range inv.slots {
 		if !i.Empty() {
 			items = append(items, i)
-			f := inv.setItem(slot, item.Stack{})
-			//noinspection GoDeferInLoop
-			defer f()
+			if f, before, after := inv.setItem(slot, item.Stack{}); f != nil {
+				notes = append(notes, slotNotify{f: f, slot: slot, before: before, after: after})
+			}
 		}
 	}
 	inv.mu.Unlock()
+	flushSlotNotifiesReverse(notes)
 
 	return items
 }
@@ -427,22 +465,18 @@ func (inv *Inventory) Handler() Handler {
 	return inv.h
 }
 
-// setItem sets an item to a specific slot and overwrites the existing item. It calls the function which is
-// called for every item change and does so without locking the inventory.
-func (inv *Inventory) setItem(slot int, it item.Stack) func() {
+// setItem sets an item to a specific slot and overwrites the existing item. It returns the SlotFunc and
+// before/after stacks so callers can notify without closure allocations after unlocking.
+func (inv *Inventory) setItem(slot int, it item.Stack) (SlotFunc, item.Stack, item.Stack) {
 	if !inv.validator(it, slot) {
-		return func() {}
+		return nil, item.Stack{}, item.Stack{}
 	}
 	if it.Count() > it.MaxCount() {
 		it = it.Grow(it.MaxCount() - it.Count())
 	}
 	before := inv.slots[slot]
 	inv.slots[slot] = it
-	// Capture the current slot callback while the inventory is locked to avoid races if SlotFunc is swapped.
-	f := inv.f
-	return func() {
-		f(slot, before, it)
-	}
+	return inv.f, before, it
 }
 
 // Size returns the size of the inventory. It is always the same value as that passed in the call to New() and

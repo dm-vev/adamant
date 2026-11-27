@@ -102,88 +102,8 @@ func (c *chunkBiomeCache) originBiome(pos world.ChunkPos, noise *vanilla.Overwor
 	return biome
 }
 
-// climateDepthRegion partitions integer depth*10000 by the endpoints of all
-// leaf depth intervals in vanilla's Overworld climate R-tree:
-// (0,0), (2000,9000), (10000,10000), (11000,11000).
-// Within any single region, if the same R-tree leaf wins at both endpoints
-// of a sub-interval, it mathematically wins at every interior point with
-// identical tie-breaking.
-func climateDepthRegion(d int64) uint8 {
-	switch {
-	case d <= 0:
-		return 0
-	case d <= 2000:
-		return 1
-	case d <= 9000:
-		return 2
-	case d <= 10000:
-		return 3
-	case d <= 11000:
-		return 4
-	default:
-		return 5
-	}
-}
-
 func fillNoiseBiomeColumn(column vanilla.OverworldColumn, dst *[chunkBiomeQuartsY]uint8, hint *vanilla.ClimateHint) {
-	var regions [chunkBiomeQuartsY]uint8
-	for y := range int32(chunkBiomeQuartsY) {
-		regions[y] = climateDepthRegion(int64(column.Depth((y+chunkBiomeMinQuartY)*4) * 10000))
-	}
-	for start := int32(0); start < chunkBiomeQuartsY; {
-		reg := regions[start]
-		end := start
-		for end+1 < chunkBiomeQuartsY && regions[end+1] == reg {
-			end++
-		}
-		hLo := *hint
-		bLo := column.BiomeIndexNear((start+chunkBiomeMinQuartY)*4, &hLo)
-		dst[start] = bLo
-		if start == end {
-			*hint = hLo
-			start = end + 1
-			continue
-		}
-		hHi := hLo
-		bHi := column.BiomeIndexNear((end+chunkBiomeMinQuartY)*4, &hHi)
-		dst[end] = bHi
-		*hint = hHi
-		if end > start+1 {
-			if hLo == hHi {
-				for y := start + 1; y < end; y++ {
-					dst[y] = bLo
-				}
-			} else {
-				bisectNoiseBiomeRange(column, dst, start, bLo, hLo, end, bHi, hHi)
-			}
-		}
-		start = end + 1
-	}
-}
-
-func bisectNoiseBiomeRange(column vanilla.OverworldColumn, dst *[chunkBiomeQuartsY]uint8, lo int32, bLo uint8, hLo vanilla.ClimateHint, hi int32, bHi uint8, hHi vanilla.ClimateHint) {
-	mid := (lo + hi) >> 1
-	hMid := hLo
-	bMid := column.BiomeIndexNear((mid+chunkBiomeMinQuartY)*4, &hMid)
-	dst[mid] = bMid
-	if mid > lo+1 {
-		if hLo == hMid {
-			for y := lo + 1; y < mid; y++ {
-				dst[y] = bLo
-			}
-		} else {
-			bisectNoiseBiomeRange(column, dst, lo, bLo, hLo, mid, bMid, hMid)
-		}
-	}
-	if hi > mid+1 {
-		if hMid == hHi {
-			for y := mid + 1; y < hi; y++ {
-				dst[y] = bMid
-			}
-		} else {
-			bisectNoiseBiomeRange(column, dst, mid, bMid, hMid, hi, bHi, hHi)
-		}
-	}
+	vanilla.FillOverworldBiomeColumn(column, dst, hint)
 }
 
 // noiseBiomes returns the noise biomes of the chunk, sampling each of its

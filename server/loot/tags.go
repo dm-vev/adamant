@@ -217,7 +217,7 @@ func StackInItemTag(stack item.Stack, tag string) bool {
 	if !ok {
 		set = make(map[itemKey]struct{})
 		for _, id := range ItemTagMembers(tag) {
-			if it, ok := item.JavaItem(id); ok {
+			if it, ok := item.CanonicalItem(id); ok {
 				name, meta := it.EncodeItem()
 				set[itemKey{name, meta}] = struct{}{}
 			}

@@ -315,7 +315,7 @@ func (w *World) decodeBlockEntities(c *Column, entities []chunk.BlockEntity) {
 			continue
 		}
 		decoded := DecodeNBT(nb, be.Data, w.conf.Blocks).(Block)
-		decoded = restoreJavaBlockActor(c.Chunk, be.Pos, decoded)
+		decoded = restoreCanonicalBlockActor(c.Chunk, be.Pos, decoded)
 		if tracked, ok := decoded.(PositionTrackingBlock); ok && tracked.TrackingHandle() != 0 {
 			decoded = tracked.WithTrackingHandle(w.TrackPosition(be.Pos, tracked.TrackingHandle()))
 		}

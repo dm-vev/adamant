@@ -211,7 +211,7 @@ func TestTrialPotionsGiveTheirEffects(t *testing.T) {
 	cases := []struct {
 		potion potion.Potion
 		effect effect.LastingType
-		javaID string
+		canonicalID string
 	}{
 		{potion.WindCharging(), effect.WindCharged, "minecraft:wind_charged"},
 		{potion.Weaving(), effect.Weaving, "minecraft:weaving"},
@@ -221,10 +221,10 @@ func TestTrialPotionsGiveTheirEffects(t *testing.T) {
 	for _, c := range cases {
 		effects := c.potion.Effects()
 		if len(effects) != 1 || effects[0].Type() != c.effect || effects[0].Duration() != 3*time.Minute {
-			t.Errorf("%s gives %v", c.javaID, effects)
+			t.Errorf("%s gives %v", c.canonicalID, effects)
 		}
-		if p, ok := potion.FromJavaID(c.javaID); !ok || p != c.potion || p.JavaID() != c.javaID {
-			t.Errorf("Java potion %s maps to %v (%v)", c.javaID, p, ok)
+		if p, ok := potion.FromID(c.canonicalID); !ok || p != c.potion || p.ID() != c.canonicalID {
+			t.Errorf("Java potion %s maps to %v (%v)", c.canonicalID, p, ok)
 		}
 	}
 }

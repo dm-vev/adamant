@@ -48,3 +48,21 @@ func TestEmptyMapDrawsGridAlignedMapAroundUser(t *testing.T) {
 		}
 	})
 }
+
+func TestFilledMapDecodesLegacyMapIDKey(t *testing.T) {
+	t.Parallel()
+	decoded := (item.FilledMap{}).DecodeNBT(map[string]any{
+		"map_uuid":            int64(99),
+		"adamant:java_map_id": int32(12),
+	}).(item.FilledMap)
+	if !decoded.HasCanonicalID || decoded.CanonicalID != 12 || !decoded.HasNativeID || decoded.NativeID != 99 {
+		t.Fatalf("legacy DecodeNBT = %#v", decoded)
+	}
+	encoded := decoded.EncodeNBT()
+	if encoded["adamant:map_id"] != int32(12) {
+		t.Fatalf("re-encoded map ID = %#v, want 12 under adamant:map_id", encoded)
+	}
+	if _, legacy := encoded["adamant:java_map_id"]; legacy {
+		t.Fatalf("re-encoded map kept legacy key: %#v", encoded)
+	}
+}

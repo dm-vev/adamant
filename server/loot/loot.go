@@ -227,7 +227,7 @@ func matchesEnchantmentSubpredicate(predicate map[string]any, stack item.Stack) 
 			return false, fmt.Errorf("unknown registered enchantment %q", name)
 		}
 		for _, enchanted := range stack.Enchantments() {
-			id := item.JavaEnchantmentID(enchanted.Type())
+			id := item.CanonicalEnchantmentID(enchanted.Type())
 			matches := false
 			if tag {
 				_, matches = tagMembers[id]
@@ -1309,7 +1309,7 @@ func lootFiltered(stack item.Stack, raw map[string]any) (item.Stack, error) {
 			switch key {
 			case "minecraft:map_id":
 				m, isMap := stack.Item().(item.FilledMap)
-				pass = pass && isMap && (m.HasNativeID || m.HasJavaID)
+				pass = pass && isMap && (m.HasNativeID || m.HasCanonicalID)
 			default:
 				return item.Stack{}, fmt.Errorf("filtered item predicate %q is unsupported", key)
 			}
@@ -1338,7 +1338,7 @@ func lootStewEffect(m modifier, c *Context) (*item.StewType, error) {
 	}
 	entry, _ := effects[c.Random.NextInt(int32(len(effects)))].(map[string]any)
 	id, _ := entry["type"].(string)
-	stew, ok := item.StewTypeFromJavaEffect(id)
+	stew, ok := item.StewTypeFromEffect(id)
 	if !ok {
 		return nil, fmt.Errorf("set_stew_effect references unsupported effect %q", id)
 	}
@@ -1376,7 +1376,7 @@ func lootExplorationMap(stack item.Stack, raw map[string]any, c *Context) (item.
 	if decorationName == "" {
 		decorationName = "minecraft:mansion"
 	}
-	decoration, ok := world.MapDecorationTypeFromJava(decorationName)
+	decoration, ok := world.MapDecorationTypeFromName(decorationName)
 	if !ok {
 		return item.Stack{}, fmt.Errorf("exploration_map has unsupported decoration %q", decorationName)
 	}
@@ -1399,14 +1399,14 @@ func lootExplorationMap(stack item.Stack, raw map[string]any, c *Context) (item.
 	if err != nil || !found {
 		return stack, err
 	}
-	target.NativeID, target.HasNativeID, target.JavaID, target.HasJavaID = data.ID, true, data.JavaID, data.HasJavaID
+	target.NativeID, target.HasNativeID, target.CanonicalID, target.HasCanonicalID = data.ID, true, data.CanonicalID, data.HasCanonicalID
 	return stack.WithItem(target), nil
 }
 
 func lootEnchantmentLevel(stack item.Stack, id string) int {
 	want := normalize(id)
 	for _, e := range stack.Enchantments() {
-		if item.JavaEnchantmentID(e.Type()) == want {
+		if item.CanonicalEnchantmentID(e.Type()) == want {
 			return e.Level()
 		}
 	}
@@ -1415,7 +1415,7 @@ func lootEnchantmentLevel(stack item.Stack, id string) int {
 func registeredEnchantmentType(id string) (item.EnchantmentType, bool) {
 	want := normalize(id)
 	for _, enchantment := range item.Enchantments() {
-		if item.JavaEnchantmentID(enchantment) == want {
+		if item.CanonicalEnchantmentID(enchantment) == want {
 			return enchantment, true
 		}
 	}

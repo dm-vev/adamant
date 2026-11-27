@@ -16,7 +16,7 @@ import (
 // mineshafts never started; pillager outposts ignored the exclusion zone of
 // villages; ruined portals were mirrored the wrong way round and buried at
 // y 0; and locate took the nearest start on a ring rather than the first.
-func TestStructureLocateMatchesJava(t *testing.T) {
+func TestStructureLocateMatchesParity(t *testing.T) {
 	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_locate.json")
 	if err != nil {

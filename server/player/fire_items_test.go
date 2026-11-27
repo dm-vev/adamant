@@ -13,7 +13,7 @@ import (
 // TestFlintAndSteelPlacesFireAsJava follows FlintAndSteelItem.useOn and
 // BaseFireBlock.canBePlacedAt: fire needs a sturdy floor or a neighbour that
 // burns, soul sand gives soul fire, and a failed use costs no durability.
-func TestFlintAndSteelPlacesFireAsJava(t *testing.T) {
+func TestFlintAndSteelPlacesFireParity(t *testing.T) {
 	t.Parallel()
 	w := entityItemWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
@@ -48,7 +48,7 @@ func TestFlintAndSteelPlacesFireAsJava(t *testing.T) {
 
 // TestShearsFollowJava follows ShearsItem: shearing the tip of weeping
 // vines stops them at age 25, and breaking short grass wears the shears.
-func TestShearsFollowJava(t *testing.T) {
+func TestShearsParity(t *testing.T) {
 	t.Parallel()
 	w := entityItemWorld(t)
 	<-w.Exec(func(tx *world.Tx) {

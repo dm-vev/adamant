@@ -25,13 +25,13 @@ func TestEndermanSavesCarriedBlockAsBDS(t *testing.T) {
 	if carried["name"] != "minecraft:grass_block" || carried["version"] == nil {
 		t.Fatalf("saved carriedBlock %v", carried)
 	}
-	if j := readNativeMobJavaState(saved); j["CarriedBlock"] != nil {
+	if j := readNativeMobExtraState(saved); j["CarriedBlock"] != nil {
 		t.Fatalf("carried block also saved in the Java state: %v", j)
 	}
 
 	// Saves of earlier versions kept the block in the Java state.
 	legacy := &world.EntityData{}
-	entityEndermanType.DecodeNBT(mergeNativeMobJavaState(map[string]any{}, map[string]any{"CarriedBlock": map[string]any{"Name": "minecraft:sand", "Properties": map[string]any{}}}), legacy)
+	entityEndermanType.DecodeNBT(mergeNativeMobExtraState(map[string]any{}, map[string]any{"CarriedBlock": map[string]any{"Name": "minecraft:sand", "Properties": map[string]any{}}}), legacy)
 	if _, ok := legacy.Data.(*speciesState).carried.(block.Sand); !ok {
 		t.Fatalf("decoded legacy carried block %#v, want sand", legacy.Data.(*speciesState).carried)
 	}
@@ -63,7 +63,7 @@ func TestEndermanHandlesEveryHoldableBlock(t *testing.T) {
 			if !blockInTag(defaultBlockState(b), "minecraft:enderman_holdable") {
 				t.Fatalf("default state of %v left the tag", name)
 			}
-			tx.JavaPlacement(id, pos)
+			tx.BlockPlacement(id, pos)
 		}
 	})
 }

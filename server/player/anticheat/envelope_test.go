@@ -10,7 +10,7 @@ import (
 // javaTick is one tick of a player moving forward, as Java's
 // LivingEntity.aiStep and travel move it: written apart from the
 // envelopes, so that a mistake in one does not hide in the other.
-type javaTick struct {
+type simTick struct {
 	// friction is the friction of the block below, speed the movement speed
 	// attribute, input the forward input (0.98 held, Java's aiStep scaling).
 	friction, speed, input float64
@@ -24,13 +24,13 @@ type javaTick struct {
 }
 
 // javaPlayer is the state Java keeps of a player between ticks.
-type javaPlayer struct {
+type simPlayer struct {
 	vx, vy, y float64
 	onGround  bool
 }
 
 // tick moves the player a tick and returns the move: x forward, y up.
-func (j *javaPlayer) tick(t javaTick) (dx, dy float64) {
+func (j *simPlayer) tick(t simTick) (dx, dy float64) {
 	if t.jump && j.onGround {
 		factor := t.jumpFactor
 		if factor == 0 {
@@ -75,26 +75,26 @@ func (j *javaPlayer) tick(t javaTick) (dx, dy float64) {
 // against the envelope of the state before it, with no tolerance: walking,
 // sprinting on stone, ice, blue ice and slime, and sprint-jumping on ice
 // under a trapdoor, the fastest a player goes on foot.
-func TestHorizontalAllowanceHoldsJava(t *testing.T) {
+func TestHorizontalAllowanceHoldsParity(t *testing.T) {
 	sprint := 0.1 * 1.3
 	for _, tc := range []struct {
 		name     string
-		tick     javaTick
+		tick     simTick
 		ticks    int
 		terminal float64
 	}{
-		{"walking on stone", javaTick{friction: 0.6, speed: 0.1, input: 0.98}, 60, 0.2158},
-		{"sprinting on stone", javaTick{friction: 0.6, speed: sprint, input: 0.98, sprint: true}, 60, 0.2806},
-		{"sprinting on ice", javaTick{friction: 0.98, speed: sprint, input: 0.98, sprint: true}, 200, 0.2702},
-		{"sprinting on blue ice", javaTick{friction: 0.989, speed: sprint, input: 0.98, sprint: true}, 200, 0.2845},
-		{"sprinting on slime", javaTick{friction: 0.8, speed: sprint, input: 0.98, sprint: true}, 100, 0.1976},
-		{"sprint-jumping on stone", javaTick{friction: 0.6, speed: sprint, input: 0.98, sprint: true, jump: true}, 200, 0},
-		{"sprint-jumping on ice under a trapdoor", javaTick{friction: 0.98, speed: sprint, input: 0.98, sprint: true, jump: true, ceiling: 2}, 200, 0},
-		{"sprint-jumping on ice under a raised trapdoor", javaTick{friction: 0.98, speed: sprint, input: 0.98, sprint: true, jump: true, ceiling: 2.1875}, 200, 0},
-		{"sprint-jumping on blue ice under a trapdoor", javaTick{friction: 0.989, speed: sprint, input: 0.98, sprint: true, jump: true, ceiling: 2}, 200, 0},
+		{"walking on stone", simTick{friction: 0.6, speed: 0.1, input: 0.98}, 60, 0.2158},
+		{"sprinting on stone", simTick{friction: 0.6, speed: sprint, input: 0.98, sprint: true}, 60, 0.2806},
+		{"sprinting on ice", simTick{friction: 0.98, speed: sprint, input: 0.98, sprint: true}, 200, 0.2702},
+		{"sprinting on blue ice", simTick{friction: 0.989, speed: sprint, input: 0.98, sprint: true}, 200, 0.2845},
+		{"sprinting on slime", simTick{friction: 0.8, speed: sprint, input: 0.98, sprint: true}, 100, 0.1976},
+		{"sprint-jumping on stone", simTick{friction: 0.6, speed: sprint, input: 0.98, sprint: true, jump: true}, 200, 0},
+		{"sprint-jumping on ice under a trapdoor", simTick{friction: 0.98, speed: sprint, input: 0.98, sprint: true, jump: true, ceiling: 2}, 200, 0},
+		{"sprint-jumping on ice under a raised trapdoor", simTick{friction: 0.98, speed: sprint, input: 0.98, sprint: true, jump: true, ceiling: 2.1875}, 200, 0},
+		{"sprint-jumping on blue ice under a trapdoor", simTick{friction: 0.989, speed: sprint, input: 0.98, sprint: true, jump: true, ceiling: 2}, 200, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			j := javaPlayer{onGround: true}
+			j := simPlayer{onGround: true}
 			var s State
 			prevGround, prevFriction := false, 0.0
 			var dx float64
@@ -126,7 +126,7 @@ func TestHorizontalAllowanceHoldsJava(t *testing.T) {
 // within 3% of what stone allows, as it grants that too, and above Java's.
 func TestHorizontalAllowanceIsTight(t *testing.T) {
 	for _, tc := range []struct {
-		speed, friction, java, bound float64
+		speed, friction, expected, bound float64
 	}{
 		{0.1, 0.6, 0.2158, 0.2158}, {0.13, 0.6, 0.2806, 0.2806}, {0.13, 0.98, 0.2702, 0.2806},
 		{0.13, 0.989, 0.2845, 0.2845}, {0.13, 0.8, 0.1976, 0.2806},
@@ -135,8 +135,8 @@ func TestHorizontalAllowanceIsTight(t *testing.T) {
 		for range 1000 {
 			s.PrevHorizontal = HorizontalAllowance(s)
 		}
-		if got := s.PrevHorizontal; got < tc.java || got > tc.bound*1.03 {
-			t.Errorf("speed %v on friction %v: the envelope settles at %.4f, Java at %.4f, want at most %.4f", tc.speed, tc.friction, got, tc.java, tc.bound*1.03)
+		if got := s.PrevHorizontal; got < tc.expected || got > tc.bound*1.03 {
+			t.Errorf("speed %v on friction %v: the envelope settles at %.4f, Java at %.4f, want at most %.4f", tc.speed, tc.friction, got, tc.expected, tc.bound*1.03)
 		}
 	}
 	// A player who may sprint is granted the sprint it starts.
@@ -152,20 +152,20 @@ func TestHorizontalAllowanceIsTight(t *testing.T) {
 // TestVerticalAllowanceHoldsJava checks every move of Java's jumps against
 // the envelope: the apex of a jump, 1.2522; Jump Boost II; a jump on honey;
 // a jump under Slow Falling.
-func TestVerticalAllowanceHoldsJava(t *testing.T) {
+func TestVerticalAllowanceHoldsParity(t *testing.T) {
 	for _, tc := range []struct {
 		name string
-		tick javaTick
+		tick simTick
 		apex float64
 		slow bool
 	}{
-		{"jump", javaTick{friction: 0.6, speed: 0.1, jump: true}, 1.2522, false},
-		{"Jump Boost II", javaTick{friction: 0.6, speed: 0.1, jump: true, jumpBoost: 2}, 2.5168, false},
-		{"jump on honey", javaTick{friction: 0.6, speed: 0.1, jump: true, jumpFactor: 0.5}, 0.3839, false},
-		{"jump under Slow Falling", javaTick{friction: 0.6, speed: 0.1, jump: true, gravity: 0.01}, 0, true},
+		{"jump", simTick{friction: 0.6, speed: 0.1, jump: true}, 1.2522, false},
+		{"Jump Boost II", simTick{friction: 0.6, speed: 0.1, jump: true, jumpBoost: 2}, 2.5168, false},
+		{"jump on honey", simTick{friction: 0.6, speed: 0.1, jump: true, jumpFactor: 0.5}, 0.3839, false},
+		{"jump under Slow Falling", simTick{friction: 0.6, speed: 0.1, jump: true, gravity: 0.01}, 0, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			j := javaPlayer{onGround: true}
+			j := simPlayer{onGround: true}
 			s := State{Step: 0.6, JumpBoost: tc.tick.jumpBoost, JumpFactor: tc.tick.jumpFactor, SlowFalling: tc.slow}
 			apex := 0.0
 			for i := range 60 {

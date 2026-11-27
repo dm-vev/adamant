@@ -190,25 +190,29 @@ func encodeNativeMobItems(items []nativeMobItem, key string) []any {
 	return out
 }
 
-// ReadNativeMobJavaState reads the Adamant-only namespace used for Java source
-// data that has no evidenced Bedrock actor field. It is not a native BDS tag.
-func readNativeMobJavaState(data map[string]any) map[string]any {
-	state, _ := data["adamant:java"].(map[string]any)
+// readNativeMobJavaState reads the Adamant-only namespace used for extended
+// entity state that has no native Bedrock actor field.
+func readNativeMobExtraState(data map[string]any) map[string]any {
+	state, ok := data["adamant:state"].(map[string]any)
+	if !ok {
+		state, _ = data["adamant:java"].(map[string]any)
+	}
 	return cloneNativeMobNBT(state)
 }
 
-// MergeNativeMobJavaState stores Java-only compatibility data without
-// conflating UUIDs, anger timers or other Java fields with native actor tags.
-func mergeNativeMobJavaState(native, javaState map[string]any) map[string]any {
+// mergeNativeMobJavaState stores extended compatibility data without
+// conflating UUIDs, anger timers or other fields with native actor tags.
+func mergeNativeMobExtraState(native, extraState map[string]any) map[string]any {
 	out := cloneNativeMobNBT(native)
 	if out == nil {
 		out = make(map[string]any)
 	}
-	if javaState == nil {
-		delete(out, "adamant:java")
+	delete(out, "adamant:java")
+	if extraState == nil {
+		delete(out, "adamant:state")
 		return out
 	}
-	out["adamant:java"] = cloneNativeMobNBT(javaState)
+	out["adamant:state"] = cloneNativeMobNBT(extraState)
 	return out
 }
 

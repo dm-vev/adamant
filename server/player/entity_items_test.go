@@ -23,7 +23,7 @@ func entityItemWorld(t *testing.T) *world.World {
 // TestArmourStandPlacementFollowsJava follows ArmorStandItem.useOn: the stand
 // stands on the floor of the block above the clicked one, turned to the
 // nearest 45 degrees facing the player, named after the stack.
-func TestArmourStandPlacementFollowsJava(t *testing.T) {
+func TestArmourStandPlacementParity(t *testing.T) {
 	t.Parallel()
 	w := entityItemWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
@@ -109,7 +109,7 @@ func TestGlassBottleFillsFromWaterSource(t *testing.T) {
 		}
 		found := false
 		for _, it := range p.Inventory().Items() {
-			if potion, ok := it.Item().(item.Potion); ok && potion.Type.JavaID() == "minecraft:water" {
+			if potion, ok := it.Item().(item.Potion); ok && potion.Type.ID() == "minecraft:water" {
 				found = true
 			}
 		}
@@ -139,7 +139,7 @@ func bucketTestPlayer(t *testing.T, dim world.Dimension, f func(tx *world.Tx, p 
 // TestBucketsFollowJava follows BucketItem.use: water empties beside the
 // block looked at, an empty bucket picks the source up again, and water
 // evaporates in the Nether.
-func TestBucketsFollowJava(t *testing.T) {
+func TestBucketsParity(t *testing.T) {
 	t.Parallel()
 	water := item.Bucket{Content: item.LiquidBucketContent(block.Water{Depth: 8, Still: true})}
 	bucketTestPlayer(t, world.Overworld, func(tx *world.Tx, p *Player) {
@@ -199,7 +199,7 @@ func TestFishBucketSpawnsFishInWater(t *testing.T) {
 // TestCushionPlacementFollowsJava follows CushionItem.useOn: the cushion
 // faces the player's nearest cardinal direction, and inside a cauldron it
 // rests on the cauldron's floor, found on its collision shape.
-func TestCushionPlacementFollowsJava(t *testing.T) {
+func TestCushionPlacementParity(t *testing.T) {
 	t.Parallel()
 	w := entityItemWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
@@ -255,7 +255,7 @@ func TestLilyPadPlacesOnWaterAndIce(t *testing.T) {
 // block without collision or beside the face, dropped onto a slab it moved
 // up from; monsters need a difficulty above peaceful; an egg of the clicked
 // mob's own type spawns its baby; dispensers spawn in front.
-func TestSpawnEggsFollowJava(t *testing.T) {
+func TestSpawnEggsParity(t *testing.T) {
 	t.Parallel()
 	w := entityItemWorld(t)
 	w.SetDifficulty(world.DifficultyNormal)

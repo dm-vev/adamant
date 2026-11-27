@@ -56,9 +56,9 @@ func matchEntityKey(e world.Entity, key string, want any, c *Context) (bool, err
 			return false, fmt.Errorf("invalid entity type predicate %T", want)
 		}
 		if strings.HasPrefix(name, "#") {
-			return gamedata.EntityTypeTagContains(name[1:], world.JavaEntityID(e))
+			return gamedata.EntityTypeTagContains(name[1:], world.CanonicalEntityID(e))
 		}
-		return world.JavaEntityID(e) == normalize(name), nil
+		return world.CanonicalEntityID(e) == normalize(name), nil
 	case "minecraft:flags", "flags":
 		flags, ok := want.(map[string]any)
 		if !ok {
@@ -315,7 +315,7 @@ func stackHasEnchantment(stack item.Stack, m map[string]any) bool {
 		}
 	case nil:
 		for _, e := range stack.Enchantments() {
-			ids = append(ids, item.JavaEnchantmentID(e.Type()))
+			ids = append(ids, item.CanonicalEnchantmentID(e.Type()))
 		}
 	}
 	for _, id := range ids {

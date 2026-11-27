@@ -79,6 +79,12 @@ func (n *OverworldNoise) SampleColumn(x, z int32) OverworldColumn {
 	return column
 }
 
+func (n *OverworldNoise) SampleTerrainColumn(x, z int32) OverworldColumn {
+	column, _, _ := n.shapeColumn(x, z)
+	n.applyJaggedness(&column, x, z)
+	return column
+}
+
 // SampleBiomeColumn skips jagged terrain noise, which does not affect climate.
 func (n *OverworldNoise) SampleBiomeColumn(x, z int32) OverworldColumn {
 	column, nx, nz := n.shapeColumn(x, z)
@@ -145,6 +151,12 @@ func preliminarySurfaceHeight(column OverworldColumn) int32 {
 }
 
 func (n *OverworldNoise) rawDensity(x, y, z int32, column OverworldColumn) float32 {
+	var elev float32
+	var hasElev bool
+	return n.rawDensityColumn(x, y, z, column, &elev, &hasElev)
+}
+
+func (n *OverworldNoise) rawDensityColumn(x, y, z int32, column OverworldColumn, elev *float32, hasElev *bool) float32 {
 	if y >= 256 {
 		return -0.078125 * 0.64
 	}
@@ -165,8 +177,11 @@ func (n *OverworldNoise) rawDensity(x, y, z int32, column OverworldColumn) float
 	layer := n.layer.Sample(nx, ny*8, nz)
 	cheese := clampDensity(n.cheese.Sample(nx, ny*(2.0/3.0), nz)+0.27, -1, 1) + clampDensity(sloped*-0.64+1.5, 0, 0.5)
 	thickness := mapNoise(n.spaghetti2DThickness.Sample(nx*2, ny, nz*2), -0.6, -1.3)
-	elevation := mapNoise(n.spaghetti2DElevation.Sample(nx, 0, nz), -8, 8)
-	ridge := terrainAbs(elevation+gradientY(y, -64, 320, 8, -40)) + thickness
+	if !*hasElev {
+		*elev = mapNoise(n.spaghetti2DElevation.Sample(nx, 0, nz), -8, 8)
+		*hasElev = true
+	}
+	ridge := terrainAbs(*elev+gradientY(y, -64, 320, 8, -40)) + thickness
 	rarity = rarity2D(n.spaghetti2DModulator.Sample(nx*2, ny, nz*2))
 	cave := terrainAbs(n.spaghetti2D.Sample(nx/float64(rarity), ny/float64(rarity), nz/float64(rarity)))*rarity + thickness*0.083
 	spaghetti = clampDensity(max(cave, ridge*ridge*ridge), -1, 1)

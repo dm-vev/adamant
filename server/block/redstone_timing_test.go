@@ -49,7 +49,7 @@ func ticksUntil(w *world.World, limit int, done func(tx *world.Tx) bool) int {
 // step, a lamp goes out four ticks after losing power and buttons stay
 // pressed 20 (stone) or 30 (wood) ticks. Delays are measured inside a
 // repeater chain, from the first repeater switching.
-func TestRedstoneDelaysMatchJava(t *testing.T) {
+func TestRedstoneDelaysParity(t *testing.T) {
 	t.Parallel()
 	for delay := range 4 {
 		w := redstoneTimingWorld(t)

@@ -102,7 +102,7 @@ func runMinecartLootTransaction(t *testing.T, w *world.World, fn func(*world.Tx)
 	}
 }
 
-func TestMinecartLootInventoryMatchesJava263(t *testing.T) {
+func TestMinecartLootInventoryMatchesSource(t *testing.T) {
 	t.Parallel()
 	for _, fixture := range minecartLootFixtures(t) {
 		t.Run(fixture.Biome+"/"+fixture.Seed, func(t *testing.T) {

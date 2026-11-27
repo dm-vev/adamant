@@ -260,11 +260,11 @@ func changedMapResult(source item.Stack, operation string, tx *world.Tx) (item.S
 	}
 	mapID := mapItem.NativeID
 	if !mapItem.HasNativeID {
-		if !mapItem.HasJavaID {
+		if !mapItem.HasCanonicalID {
 			return item.Stack{}, fmt.Errorf("filled map has no valid map ID")
 		}
 		var err error
-		mapID, err = tx.World().MapIDByJavaID(mapItem.JavaID)
+		mapID, err = tx.World().MapIDByCanonicalID(mapItem.CanonicalID)
 		if err != nil {
 			return item.Stack{}, err
 		}
@@ -285,7 +285,7 @@ func changedMapResult(source item.Stack, operation string, tx *world.Tx) (item.S
 	}
 	result := item.FilledMap{
 		NativeID: data.ID, HasNativeID: true,
-		JavaID: data.JavaID, HasJavaID: data.HasJavaID,
+		CanonicalID: data.CanonicalID, HasCanonicalID: data.HasCanonicalID,
 	}
 	return source.WithItem(result).Grow(1 - source.Count()), nil
 }

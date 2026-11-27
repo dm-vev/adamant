@@ -31,29 +31,29 @@ func TestRecipeUnlockPacketsUnchanged(t *testing.T) {
 	registerVanillaRecipes()
 	var known []string
 	for _, r := range recipe.Recipes() {
-		known = append(known, recipe.JavaRecipeIDs(r)...)
+		known = append(known, recipe.RecipeIDs(r)...)
 	}
 	slices.Sort(known)
 	known = slices.Compact(known)
 
 	s := newCaptureSession()
 	s.br = world.DefaultBlockRegistry
-	s.javaRecipeIDs = maps.Clone(tablesOf(nil, s.br).recipeData().javaIDs)
+	s.javaRecipeIDs = maps.Clone(tablesOf(nil, s.br).recipeData().stateIDs)
 	mapped := slices.Sorted(maps.Keys(s.javaRecipeIDs))
 	if len(mapped) == 0 {
 		t.Fatal("the session maps no Java recipe ID")
 	}
 	for _, id := range mapped {
-		if !recipe.KnownJavaID(id) {
+		if !recipe.KnownID(id) {
 			t.Errorf("the session maps %s, which the game does not keep", id)
 		}
 	}
 	for _, id := range known {
-		if !recipe.KnownJavaID(id) {
+		if !recipe.KnownID(id) {
 			t.Errorf("KnownJavaID(%s) = false for an ID of a registered recipe", id)
 		}
 	}
-	if recipe.KnownJavaID("minecraft:not_a_recipe") {
+	if recipe.KnownID("minecraft:not_a_recipe") {
 		t.Error("KnownJavaID of an unknown ID = true")
 	}
 	t.Logf("the game knows %d Java recipe IDs, the session maps %d: %d kept beyond", len(known), len(mapped), len(known)-len(mapped))

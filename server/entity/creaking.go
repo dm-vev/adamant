@@ -98,8 +98,8 @@ func (creakingType) DecodeNBT(n map[string]any, data *world.EntityData) {
 	if dim, ok := n["HomeDimensionId"].(int32); ok {
 		conf.homeDimension, conf.homeDimensionSet = dim, true
 	}
-	if java := readNativeMobJavaState(n); java != nil {
-		if home, ok := java["home_pos"].([]int32); ok && len(home) == 3 {
+	if extra := readNativeMobExtraState(n); extra != nil {
+		if home, ok := extra["home_pos"].([]int32); ok && len(home) == 3 {
 			conf.home = cube.Pos{int(home[0]), int(home[1]), int(home[2])}
 			conf.bound = true
 		}
@@ -110,17 +110,17 @@ func (creakingType) DecodeNBT(n map[string]any, data *world.EntityData) {
 		data.FireDuration = 0
 	}
 	state := conf.New()
-	java := readNativeMobJavaState(n)
-	if java == nil {
-		java = n
+	extra := readNativeMobExtraState(n)
+	if extra == nil {
+		extra = n
 	}
-	if words, ok := java["last_hurt_by_player"].([]int32); ok && len(words) == 4 {
+	if words, ok := extra["last_hurt_by_player"].([]int32); ok && len(words) == 4 {
 		for i, word := range words {
 			binary.BigEndian.PutUint32(state.lastHurtByPlayer[i*4:], uint32(word))
 		}
 	}
-	state.lastHurtByPlayerMemoryTime = int(nbtconv.Int32(java, "last_hurt_by_player_memory_time"))
-	state.persistenceRequired = nbtconv.Uint8(java, "PersistenceRequired") != 0
+	state.lastHurtByPlayerMemoryTime = int(nbtconv.Int32(extra, "last_hurt_by_player_memory_time"))
+	state.persistenceRequired = nbtconv.Uint8(extra, "PersistenceRequired") != 0
 	data.Data = state
 }
 func (creakingType) EncodeNBT(data *world.EntityData) map[string]any {
@@ -160,15 +160,15 @@ func (creakingType) EncodeNBT(data *world.EntityData) map[string]any {
 	for i := range words {
 		words[i] = int32(binary.BigEndian.Uint32(b.lastHurtByPlayer[i*4:]))
 	}
-	javaState := map[string]any{"last_hurt_by_player": words, "last_hurt_by_player_memory_time": int32(b.lastHurtByPlayerMemoryTime)}
-	javaState["PersistenceRequired"] = uint8(0)
+	extraState := map[string]any{"last_hurt_by_player": words, "last_hurt_by_player_memory_time": int32(b.lastHurtByPlayerMemoryTime)}
+	extraState["PersistenceRequired"] = uint8(0)
 	if b.persistenceRequired {
-		javaState["PersistenceRequired"] = uint8(1)
+		extraState["PersistenceRequired"] = uint8(1)
 	}
 	if b.bound {
-		javaState["home_pos"] = []int32{int32(b.home.X()), int32(b.home.Y()), int32(b.home.Z())}
+		extraState["home_pos"] = []int32{int32(b.home.X()), int32(b.home.Y()), int32(b.home.Z())}
 	}
-	return mergeNativeMobJavaState(native, javaState)
+	return mergeNativeMobExtraState(native, extraState)
 }
 
 type creakingConfig struct {

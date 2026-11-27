@@ -99,11 +99,11 @@ func (p *Player) tickCarriedMapStack(stack item.Stack, current int64, seen *[64]
 	}
 	mapID := mapItem.NativeID
 	if !mapItem.HasNativeID {
-		if !mapItem.HasJavaID {
+		if !mapItem.HasCanonicalID {
 			return
 		}
 		var err error
-		mapID, err = p.tx.World().MapIDByJavaID(mapItem.JavaID)
+		mapID, err = p.tx.World().MapIDByCanonicalID(mapItem.CanonicalID)
 		if err != nil {
 			return
 		}
@@ -149,7 +149,7 @@ func (p *Player) tickMapFrames(current int64) {
 		return
 	}
 	p.tx.Maps().ForEachFrame(func(pos cube.Pos, frame world.MapFrameInfo) {
-		mapID, ok := resolveMapID(p.tx, frame.NativeID, frame.HasNativeID, frame.JavaID, frame.HasJavaID)
+		mapID, ok := resolveMapID(p.tx, frame.NativeID, frame.HasNativeID, frame.CanonicalID, frame.HasCanonicalID)
 		if !ok {
 			return
 		}
@@ -188,7 +188,7 @@ func (p *Player) trackedMapObjects(mapID int64) []world.MapTrackedObject {
 		}
 	}
 	p.tx.Maps().ForEachFrame(func(pos cube.Pos, frame world.MapFrameInfo) {
-		if frameMapID, ok := resolveMapID(p.tx, frame.NativeID, frame.HasNativeID, frame.JavaID, frame.HasJavaID); ok && frameMapID == mapID {
+		if frameMapID, ok := resolveMapID(p.tx, frame.NativeID, frame.HasNativeID, frame.CanonicalID, frame.HasCanonicalID); ok && frameMapID == mapID {
 			framePos := pos
 			objects = append(objects, world.MapTrackedObject{Block: &framePos})
 		}
@@ -221,17 +221,17 @@ func carriedMapMatches(tx *world.Tx, stack item.Stack, mapID int64) bool {
 	if !ok {
 		return false
 	}
-	id, ok := resolveMapID(tx, mapItem.NativeID, mapItem.HasNativeID, mapItem.JavaID, mapItem.HasJavaID)
+	id, ok := resolveMapID(tx, mapItem.NativeID, mapItem.HasNativeID, mapItem.CanonicalID, mapItem.HasCanonicalID)
 	return ok && id == mapID
 }
 
-func resolveMapID(tx *world.Tx, nativeID int64, hasNativeID bool, javaID int32, hasJavaID bool) (int64, bool) {
+func resolveMapID(tx *world.Tx, nativeID int64, hasNativeID bool, canonicalID int32, hasCanonicalID bool) (int64, bool) {
 	if hasNativeID {
 		return nativeID, true
 	}
-	if !hasJavaID {
+	if !hasCanonicalID {
 		return 0, false
 	}
-	id, err := tx.World().MapIDByJavaID(javaID)
+	id, err := tx.World().MapIDByCanonicalID(canonicalID)
 	return id, err == nil
 }

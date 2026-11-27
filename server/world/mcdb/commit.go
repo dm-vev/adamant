@@ -346,10 +346,10 @@ func (c *Commit) AllocateMapID() (int64, error) { return c.db.AllocateMapID() }
 
 // JavaMapID returns the Java ID of a map, reserving one in the DB at once,
 // as the DB does.
-func (c *Commit) JavaMapID(nativeID int64) (int32, error) { return c.db.JavaMapID(nativeID) }
+func (c *Commit) CanonicalMapID(nativeID int64) (int32, error) { return c.db.CanonicalMapID(nativeID) }
 
 // NativeMapID returns the native ID of a map from the DB.
-func (c *Commit) NativeMapID(javaID int32) (int64, error) { return c.db.NativeMapID(javaID) }
+func (c *Commit) NativeMapID(canonicalID int32) (int64, error) { return c.db.NativeMapID(canonicalID) }
 
 // LoadDragonFightData reads the dragon fight of the DB.
 func (c *Commit) LoadDragonFightData() (world.DragonFightData, bool, error) {

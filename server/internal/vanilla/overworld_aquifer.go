@@ -80,8 +80,8 @@ func (a *OverworldAquifer) Substance(x, y, z int32, density float64) (AquiferMat
 		return AquiferLava, false
 	}
 	anchorX, anchorY, anchorZ := (x-5)>>4, floorDiv32(y+1, 12), (z-5)>>4
-	distances := [4]int32{math.MaxInt32, math.MaxInt32, math.MaxInt32, math.MaxInt32}
-	var closest [4]int
+	d0, d1, d2, d3 := int32(math.MaxInt32), int32(math.MaxInt32), int32(math.MaxInt32), int32(math.MaxInt32)
+	var c0, c1, c2, c3 int
 	for dx := range 2 {
 		for dy := int32(-1); dy <= 1; dy++ {
 			for dz := range 2 {
@@ -95,46 +95,51 @@ func (a *OverworldAquifer) Substance(x, y, z int32, density float64) (AquiferMat
 				}
 				xd, yd, zd := center.x-x, center.y-y, center.z-z
 				distance := xd*xd + yd*yd + zd*zd
-				for rank := range 4 {
-					if distance <= distances[rank] {
-						for move := 3; move > rank; move-- {
-							distances[move], closest[move] = distances[move-1], closest[move-1]
-						}
-						distances[rank], closest[rank] = distance, index
-						break
+				if distance <= d3 {
+					if distance <= d0 {
+						d3, d2, d1, d0 = d2, d1, d0, distance
+						c3, c2, c1, c0 = c2, c1, c0, index
+					} else if distance <= d1 {
+						d3, d2, d1 = d2, d1, distance
+						c3, c2, c1 = c2, c1, index
+					} else if distance <= d2 {
+						d3, d2 = d2, distance
+						c3, c2 = c2, index
+					} else {
+						d3, c3 = distance, index
 					}
 				}
 			}
 		}
 	}
-	first := a.status(closest[0])
-	similarity12 := aquiferSimilarity(distances[0], distances[1])
+	first := a.status(c0)
+	similarity12 := aquiferSimilarity(d0, d1)
 	material := first.at(y)
 	const flowingSimilarity = 1.0 - (144.0-100.0)/25.0
 	if similarity12 <= 0 {
-		return material, similarity12 >= flowingSimilarity && first != a.status(closest[1])
+		return material, similarity12 >= flowingSimilarity && first != a.status(c1)
 	}
 	if material == AquiferWater && globalAquiferStatus(y-1).at(y-1) == AquiferLava {
 		return material, true
 	}
 	barrier := math.NaN()
-	second := a.status(closest[1])
+	second := a.status(c1)
 	if density+similarity12*a.pressure(x, y, z, &barrier, first, second) > 0 {
 		return AquiferSolid, false
 	}
-	third := a.status(closest[2])
-	similarity13 := aquiferSimilarity(distances[0], distances[2])
+	third := a.status(c2)
+	similarity13 := aquiferSimilarity(d0, d2)
 	if similarity13 > 0 && density+similarity12*similarity13*a.pressure(x, y, z, &barrier, first, third) > 0 {
 		return AquiferSolid, false
 	}
-	similarity23 := aquiferSimilarity(distances[1], distances[2])
+	similarity23 := aquiferSimilarity(d1, d2)
 	if similarity23 > 0 && density+similarity12*similarity23*a.pressure(x, y, z, &barrier, second, third) > 0 {
 		return AquiferSolid, false
 	}
 	if first != second || similarity23 >= flowingSimilarity && second != third || similarity13 >= flowingSimilarity && first != third {
 		return material, true
 	}
-	return material, similarity13 >= flowingSimilarity && aquiferSimilarity(distances[0], distances[3]) >= flowingSimilarity && first != a.status(closest[3])
+	return material, similarity13 >= flowingSimilarity && aquiferSimilarity(d0, d3) >= flowingSimilarity && first != a.status(c3)
 }
 
 func aquiferSimilarity(first, second int32) float64 { return 1 - float64(second-first)/25 }

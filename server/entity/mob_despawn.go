@@ -24,7 +24,7 @@ var notInPeaceful = func() map[string]bool {
 
 // javaAnimalClasses are the mobs that extend Java's Animal, which
 // Animal.removeWhenFarAway keeps however far they are.
-var javaAnimalClasses = func() map[string]bool {
+var persistentAnimalIDs = func() map[string]bool {
 	m := map[string]bool{}
 	for _, id := range []string{"armadillo", "axolotl", "bee", "camel", "camel_husk", "cat", "chicken", "cow", "donkey", "fox", "frog",
 		"goat", "happy_ghast", "hoglin", "horse", "llama", "mooshroom", "mule", "ocelot", "panda", "parrot", "pig", "polar_bear", "rabbit",
@@ -68,9 +68,9 @@ func (ai *MobAI) checkDespawn(m *Mob) bool {
 	if ai.caps == 0 {
 		ai.initCaps(m)
 	}
-	id := ai.javaID
+	id := ai.canonicalID
 	if id == "" {
-		id = world.JavaEntityID(m.Self)
+		id = world.CanonicalEntityID(m.Self)
 	}
 	if ai.caps&mobCapNotInPeaceful != 0 && m.tx.World().Difficulty() == world.DifficultyPeaceful {
 		discardMob(m)
@@ -194,7 +194,7 @@ func mobRemoveWhenFarAway(m *Mob, id string, distSqr float64) bool {
 		}
 		return m.AI.tickCount > 2400
 	}
-	return !javaAnimalClasses[id]
+	return !persistentAnimalIDs[id]
 }
 
 // mobRequiresCustomPersistence ports Mob.requiresCustomPersistence and its
@@ -206,9 +206,9 @@ func mobRequiresCustomPersistence(m *Mob) bool {
 	if m.AI.hasCap(m, mobCapPersister) && m.Behaviour().(mobPersister).requiresCustomPersistence(m) {
 		return true
 	}
-	id := m.AI.javaID
+	id := m.AI.canonicalID
 	if id == "" {
-		id = world.JavaEntityID(m.Self)
+		id = world.CanonicalEntityID(m.Self)
 	}
 	switch id {
 	case "minecraft:elder_guardian":
@@ -290,8 +290,8 @@ func decodePersistence(data *world.EntityData, m map[string]any) {
 		return
 	}
 	persistent := nbtBool(m, "Persistent") || nbtBool(m, "PersistenceRequired")
-	if java := readNativeMobJavaState(m); java != nil {
-		persistent = persistent || nbtBool(java, "PersistenceRequired")
+	if extra := readNativeMobExtraState(m); extra != nil {
+		persistent = persistent || nbtBool(extra, "PersistenceRequired")
 	}
 	if persistent {
 		b.mobAI().persistent = true

@@ -227,7 +227,7 @@ func (c *ghastMoveControl) tick(m *Mob) {
 		mc.operation = moveWait
 		return
 	}
-	m.data.Vel = m.data.Vel.Add(javaNormalize(travel).Mul(m.AI.FlyingSpeed * 5 / 3))
+	m.data.Vel = m.data.Vel.Add(normalizeVec3(travel).Mul(m.AI.FlyingSpeed * 5 / 3))
 }
 
 // ghastCanReach ports GhastMoveControl.canReach: the box of the ghast moves
@@ -352,7 +352,7 @@ func ghastFlyToPosition(m *Mob, distanceToBlocks int) mgl64.Vec3 {
 		result = random()
 	}
 	pos := cube.PosFromVec3(result)
-	if height := m.tx.JavaMotionBlockingHeight(pos[0], pos[2], false); height < pos[1] && height > m.tx.Range().Min() {
+	if height := m.tx.MotionBlockingHeight(pos[0], pos[2], false); height < pos[1] && height > m.tx.Range().Min() {
 		result[1] = m.data.Pos[1] - math.Abs(m.data.Pos[1]-result[1])
 	}
 	return result

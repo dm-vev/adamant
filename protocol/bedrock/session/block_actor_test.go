@@ -19,8 +19,11 @@ func TestClientActorNBTMatchesBDS(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("client actor = %#v, want %#v", got, want)
 	}
-	if _, kept := note.EncodeNBT()["adamant:java"]; kept {
+	if _, kept := note.EncodeNBT()["adamant:state"]; kept {
 		t.Fatal("note saved transient power history absent from the native Music actor")
+	}
+	if _, kept := note.EncodeNBT()["adamant:java"]; kept {
+		t.Fatal("note saved legacy power history absent from the native Music actor")
 	}
 	if note.DecodeNBT(note.EncodeNBT()).(block.Note).Powered {
 		t.Fatal("loaded note retained transient power history")

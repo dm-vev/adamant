@@ -195,7 +195,7 @@ protocol/bedrock/session	method	Session.SendGameMode	func(c protocol/bedrock/ses
 protocol/bedrock/session	method	Session.SendHealth	func(health float64, max float64, absorption float64)
 protocol/bedrock/session	method	Session.SendHeldSlot	func(slot int, c protocol/bedrock/session.Controllable, force bool)
 protocol/bedrock/session	method	Session.SendHudUpdates	func()
-protocol/bedrock/session	method	Session.SendInitiallyUnlockedRecipes	func(javaIDs []string)
+protocol/bedrock/session	method	Session.SendInitiallyUnlockedRecipes	func(stateIDs []string)
 protocol/bedrock/session	method	Session.SendInputLocks	func()
 protocol/bedrock/session	method	Session.SendJukeboxPopup	func(t server/text.Text)
 protocol/bedrock/session	method	Session.SendMessage	func(t server/text.Text)
@@ -272,7 +272,7 @@ protocol/bedrock/session	method	Session.ViewParticleShared	func(pos github.com/g
 protocol/bedrock/session	method	Session.ViewPublicAlwaysShowNameTag	func(entity server/world.Entity)
 protocol/bedrock/session	method	Session.ViewPublicNameTag	func(entity server/world.Entity)
 protocol/bedrock/session	method	Session.ViewPublicScoreTag	func(entity server/world.Entity)
-protocol/bedrock/session	method	Session.ViewRecipesUnlocked	func(javaIDs []string)
+protocol/bedrock/session	method	Session.ViewRecipesUnlocked	func(stateIDs []string)
 protocol/bedrock/session	method	Session.ViewScoreTag	func(entity server/world.Entity, scoreTag server/text.Text)
 protocol/bedrock/session	method	Session.ViewSkin	func(e server/world.Entity)
 protocol/bedrock/session	method	Session.ViewSleepingPlayers	func(sleeping int, max int)
@@ -1119,6 +1119,7 @@ server/block	method	Bed.Activate	func(pos server/block/cube.Pos, _ server/block/
 server/block	method	Bed.BreakInfo	func() server/block.BreakInfo
 server/block	method	Bed.CanDisplace	func(b server/world.Liquid) bool
 server/block	method	Bed.CanRespawnOn	func() bool
+server/block	method	Bed.CanonicalState	func() server/world.BlockState
 server/block	method	Bed.DecodeNBT	func(data map[string]interface{}) interface{}
 server/block	method	Bed.DyeColour	func() server/item.Colour
 server/block	method	Bed.EncodeBlock	func() (name string, properties map[string]interface{})
@@ -1127,7 +1128,6 @@ server/block	method	Bed.EncodeNBT	func() map[string]interface{}
 server/block	method	Bed.EntityLand	func(_ server/block/cube.Pos, _ *server/world.Tx, e server/world.Entity, distance *float64)
 server/block	method	Bed.FacingDirection	func() server/block/cube.Direction
 server/block	method	Bed.Hash	func() (uint64, uint64)
-server/block	method	Bed.JavaCanonicalState	func() server/world.BlockState
 server/block	method	Bed.LightDiffusionLevel	func() uint8
 server/block	method	Bed.MaxCount	func() int
 server/block	method	Bed.Model	func() server/world.BlockModel
@@ -1151,6 +1151,7 @@ server/block	method	BeeNest.Carve	func(f server/block/cube.Face) (server/world.B
 server/block	method	BeeNest.ComparatorOutput	func(*server/world.Tx, server/block/cube.Pos) uint8
 server/block	method	BeeNest.CreativeDrops	func() []server/item.Stack
 server/block	method	BeeNest.DecodeNBT	func(n map[string]any) any
+server/block	method	BeeNest.EmergencyRelease	func(pos server/block/cube.Pos, tx *server/world.Tx)
 server/block	method	BeeNest.EncodeBlock	func() (string, map[string]any)
 server/block	method	BeeNest.EncodeItem	func() (string, int16)
 server/block	method	BeeNest.EncodeNBT	func() map[string]any
@@ -1160,7 +1161,6 @@ server/block	method	BeeNest.HasBees	func() bool
 server/block	method	BeeNest.Hash	func() (uint64, uint64)
 server/block	method	BeeNest.HoneyHarvested	func(pos server/block/cube.Pos, tx *server/world.Tx, user server/item.User)
 server/block	method	BeeNest.IsFull	func() bool
-server/block	method	BeeNest.JavaEmergencyRelease	func(pos server/block/cube.Pos, tx *server/world.Tx)
 server/block	method	BeeNest.Model	func() server/world.BlockModel
 server/block	method	BeeNest.RandomTick	func(pos server/block/cube.Pos, tx *server/world.Tx, _ *math/rand/v2.Rand)
 server/block	method	BeeNest.ScheduledTick	func(pos server/block/cube.Pos, tx *server/world.Tx, r *math/rand/v2.Rand)
@@ -1172,6 +1172,7 @@ server/block	method	Beehive.Carve	func(server/block/cube.Face) (server/world.Blo
 server/block	method	Beehive.ComparatorOutput	func(*server/world.Tx, server/block/cube.Pos) uint8
 server/block	method	Beehive.CreativeDrops	func() []server/item.Stack
 server/block	method	Beehive.DecodeNBT	func(n map[string]any) any
+server/block	method	Beehive.EmergencyRelease	func(pos server/block/cube.Pos, tx *server/world.Tx)
 server/block	method	Beehive.EncodeBlock	func() (string, map[string]any)
 server/block	method	Beehive.EncodeItem	func() (string, int16)
 server/block	method	Beehive.EncodeNBT	func() map[string]any
@@ -1181,7 +1182,6 @@ server/block	method	Beehive.HasBees	func() bool
 server/block	method	Beehive.Hash	func() (uint64, uint64)
 server/block	method	Beehive.HoneyHarvested	func(pos server/block/cube.Pos, tx *server/world.Tx, user server/item.User)
 server/block	method	Beehive.IsFull	func() bool
-server/block	method	Beehive.JavaEmergencyRelease	func(pos server/block/cube.Pos, tx *server/world.Tx)
 server/block	method	Beehive.Model	func() server/world.BlockModel
 server/block	method	Beehive.RandomTick	func(pos server/block/cube.Pos, tx *server/world.Tx, _ *math/rand/v2.Rand)
 server/block	method	Beehive.ScheduledTick	func(pos server/block/cube.Pos, tx *server/world.Tx, r *math/rand/v2.Rand)
@@ -1636,8 +1636,8 @@ server/block	method	Chest.SideClosed	func(server/block/cube.Pos, server/block/cu
 server/block	method	Chest.StartOpen	func(tx *server/world.Tx, pos server/block/cube.Pos)
 server/block	method	Chest.StopOpen	func(tx *server/world.Tx, pos server/block/cube.Pos)
 server/block	method	Chest.UseOnBlock	func(pos server/block/cube.Pos, face server/block/cube.Face, _ github.com/go-gl/mathgl/mgl64.Vec3, tx *server/world.Tx, user server/item.User, ctx *server/item.UseContext) (used bool)
+server/block	method	Chest.WithChestState	func(previous server/world.Block, pos server/block/cube.Pos, kind string) server/world.Block
 server/block	method	Chest.WithFacing	func(facing server/block/cube.Direction) server/world.Block
-server/block	method	Chest.WithJavaChestState	func(previous server/world.Block, pos server/block/cube.Pos, kind string) server/world.Block
 server/block	method	Chest.WithName	func(a ...any) server/world.Item
 server/block	method	ChiseledBookshelf.ActivateAt	func(pos server/block/cube.Pos, face server/block/cube.Face, hit github.com/go-gl/mathgl/mgl64.Vec3, tx *server/world.Tx, user server/item.User, ctx *server/item.UseContext) bool
 server/block	method	ChiseledBookshelf.BreakInfo	func() server/block.BreakInfo
@@ -1922,8 +1922,8 @@ server/block	method	CopperChest.StopOpen	func(tx *server/world.Tx, pos server/bl
 server/block	method	CopperChest.Strip	func() (server/world.Block, server/world.Sound, bool)
 server/block	method	CopperChest.UseOnBlock	func(pos server/block/cube.Pos, face server/block/cube.Face, _ github.com/go-gl/mathgl/mgl64.Vec3, tx *server/world.Tx, user server/item.User, ctx *server/item.UseContext) bool
 server/block	method	CopperChest.Wax	func(server/block/cube.Pos, github.com/go-gl/mathgl/mgl64.Vec3) (server/world.Block, bool)
+server/block	method	CopperChest.WithChestState	func(previous server/world.Block, pos server/block/cube.Pos, kind string) server/world.Block
 server/block	method	CopperChest.WithFacing	func(facing server/block/cube.Direction) server/world.Block
-server/block	method	CopperChest.WithJavaChestState	func(previous server/world.Block, pos server/block/cube.Pos, kind string) server/world.Block
 server/block	method	CopperChest.WithName	func(a ...any) server/world.Item
 server/block	method	CopperChest.WithOxidationLevel	func(o server/block.OxidationType) server/block.Oxidisable
 server/block	method	CopperDoor.Activate	func(pos server/block/cube.Pos, _ server/block/cube.Face, tx *server/world.Tx, _ server/item.User, _ *server/item.UseContext) bool
@@ -4901,8 +4901,8 @@ server/block	method	TrappedChest.SideClosed	func(server/block/cube.Pos, server/b
 server/block	method	TrappedChest.StartOpen	func(tx *server/world.Tx, pos server/block/cube.Pos)
 server/block	method	TrappedChest.StopOpen	func(tx *server/world.Tx, pos server/block/cube.Pos)
 server/block	method	TrappedChest.UseOnBlock	func(pos server/block/cube.Pos, face server/block/cube.Face, _ github.com/go-gl/mathgl/mgl64.Vec3, tx *server/world.Tx, user server/item.User, ctx *server/item.UseContext) bool
+server/block	method	TrappedChest.WithChestState	func(previous server/world.Block, pos server/block/cube.Pos, kind string) server/world.Block
 server/block	method	TrappedChest.WithFacing	func(facing server/block/cube.Direction) server/world.Block
-server/block	method	TrappedChest.WithJavaChestState	func(previous server/world.Block, pos server/block/cube.Pos, kind string) server/world.Block
 server/block	method	TrappedChest.WithName	func(a ...any) server/world.Item
 server/block	method	TreeSapling.BoneMeal	func(pos server/block/cube.Pos, tx *server/world.Tx) server/item.BoneMealResult
 server/block	method	TreeSapling.BreakInfo	func() server/block.BreakInfo
@@ -5618,7 +5618,7 @@ server/block	type	Sculk	struct{server/block.solid; server/block.bassDrum}
 server/block	type	SculkCatalyst	struct{server/block.solid; Bloom bool; spreader *server/block.sculkSpreader}
 server/block	type	SculkSensor	struct{server/block.sourceWaterDisplacer; Phase server/block.SculkSensorPhase; data *server/block.sculkSensorData}
 server/block	type	SculkSensorPhase	uint8
-server/block	type	SculkShrieker	struct{server/block.solid; WarningLevel int; CanSummon bool; Shrieking bool; listener *server/world.VibrationData; javaState map[string]any; nativeVibrationListener map[string]any}
+server/block	type	SculkShrieker	struct{server/block.solid; WarningLevel int; CanSummon bool; Shrieking bool; listener *server/world.VibrationData; shriekerState map[string]any; nativeVibrationListener map[string]any}
 server/block	type	SculkVein	struct{server/block.transparent; server/block.empty; server/block.sourceWaterDisplacer; Faces server/block.MultiFace}
 server/block	type	SeaGrass	struct{server/block.empty; server/block.transparent; server/block.sourceWaterDisplacer; Type server/block.SeaGrassType}
 server/block	type	SeaGrassType	struct{server/block.seaGrass}
@@ -5664,7 +5664,7 @@ server/block	type	StoneBricksType	struct{server/block.stoneBricks}
 server/block	type	Stonecutter	struct{server/block.bassDrum; Facing server/block/cube.Direction}
 server/block	type	StopCrackAction	struct{server/block.action}
 server/block	type	StrawBed	struct{server/block.transparent; server/block.sourceWaterDisplacer; Facing server/block/cube.Direction; Head bool; Occupied bool; Sleeper *server/world.EntityHandle}
-server/block	type	StructureBlock	struct{server/block.solid; Mode server/block.StructureBlockMode; Name string; DataField string; Offset server/block/cube.Pos; Size [3]int; IgnoreEntities bool; IncludePlayers bool; RemoveBlocks bool; ShowBoundingBox bool; Rotation uint8; Mirror uint8; Integrity float32; Seed int64; RedstoneSaveMode int32; AnimationMode uint8; AnimationSeconds float32; Powered bool; LastTouchedPlayerID int64; Author string; Strict bool; ShowAir bool; javaFields uint8}
+server/block	type	StructureBlock	struct{server/block.solid; Mode server/block.StructureBlockMode; Name string; DataField string; Offset server/block/cube.Pos; Size [3]int; IgnoreEntities bool; IncludePlayers bool; RemoveBlocks bool; ShowBoundingBox bool; Rotation uint8; Mirror uint8; Integrity float32; Seed int64; RedstoneSaveMode int32; AnimationMode uint8; AnimationSeconds float32; Powered bool; LastTouchedPlayerID int64; Author string; Strict bool; ShowAir bool; extraFields uint8}
 server/block	type	StructureBlockEdit	struct{Mode server/block.StructureBlockMode; Name string; DataField string; IncludePlayers bool; ShowBoundingBox bool; IgnoreEntities bool; RemoveBlocks bool; Size [3]int; Offset [3]int; Rotation uint8; Mirror uint8; AnimationMode uint8; Integrity float32; Seed int64; AnimationSeconds float32; RedstoneSaveMode uint8; LastTouchedPlayerID int64}
 server/block	type	StructureBlockMode	uint8
 server/block	type	StructureVoid	struct{server/block.transparent; server/block.replaceable; server/block.empty}
@@ -6191,7 +6191,7 @@ server/client	type	Role	uint8
 server/client	type	RoleRequest	struct{Role server/client.Role; Abilities server/client.Abilities}
 server/client	type	Roster	struct{op sync.Mutex; mu sync.Mutex; players []server/client.Listed}
 server/client	type	Screens	interface{CloseDialogue(); CloseForm(); CloseMenu(m *server/menu.Menu, clientRequested bool); OpenMenu(m *server/menu.Menu, tx *server/world.Tx); OpenSign(pos server/block/cube.Pos, frontSide bool); SendDialogue(d server/player/dialogue.Dialogue, e server/world.Entity); SendForm(f server/player/form.Form); ViewCrafterSlotState(slot int, disabled bool); ViewCrafterTriggered(triggered bool); ViewEnchantmentOptions(options [3]server/menu.EnchantmentOption); ViewSlotChange(slot int, newItem server/item.Stack); ViewTrades(m *server/menu.Menu, merchant server/entity.Merchant, offers []server/entity.MerchantOffer)}
-server/client	type	Self	interface{CorrectMove(c server/client.Controllable, pos github.com/go-gl/mathgl/mgl64.Vec3, vel github.com/go-gl/mathgl/mgl64.Vec3, tick uint64); ResyncInventory(); SendAbilities(c server/client.Controllable); SendChargeItemComplete(); SendEffect(e server/entity/effect.Effect); SendEffectModification(e server/entity/effect.Effect); SendEffectRemoval(t server/entity/effect.Type); SendExperience(level int, progress float64); SendFood(food int, saturation float64, exhaustion float64); SendGameMode(c server/client.Controllable); SendHealth(health float64, max float64, absorption float64); SendHeldSlot(slot int, c server/client.Controllable, force bool); SendPermissions(c server/client.Controllable); SendPlayerSpawn(pos github.com/go-gl/mathgl/mgl64.Vec3); SendRespawn(pos github.com/go-gl/mathgl/mgl64.Vec3, c server/client.Controllable); SendSpeed(speed float64); SetPlayerSpawn(pos server/block/cube.Pos, dim server/world.Dimension); ShowSkin(sk server/player/skin.Skin); ViewRecipesUnlocked(javaIDs []string)}
+server/client	type	Self	interface{CorrectMove(c server/client.Controllable, pos github.com/go-gl/mathgl/mgl64.Vec3, vel github.com/go-gl/mathgl/mgl64.Vec3, tick uint64); ResyncInventory(); SendAbilities(c server/client.Controllable); SendChargeItemComplete(); SendEffect(e server/entity/effect.Effect); SendEffectModification(e server/entity/effect.Effect); SendEffectRemoval(t server/entity/effect.Type); SendExperience(level int, progress float64); SendFood(food int, saturation float64, exhaustion float64); SendGameMode(c server/client.Controllable); SendHealth(health float64, max float64, absorption float64); SendHeldSlot(slot int, c server/client.Controllable, force bool); SendPermissions(c server/client.Controllable); SendPlayerSpawn(pos github.com/go-gl/mathgl/mgl64.Vec3); SendRespawn(pos github.com/go-gl/mathgl/mgl64.Vec3, c server/client.Controllable); SendSpeed(speed float64); SetPlayerSpawn(pos server/block/cube.Pos, dim server/world.Dimension); ShowSkin(sk server/player/skin.Skin); ViewRecipesUnlocked(stateIDs []string)}
 server/client	type	Speaker	interface{Chat(msg ...any); Emote(emote github.com/google/uuid.UUID); ExecuteCommand(commandLine string)}
 server/client	type	Views	interface{PlaySound(s server/world.Sound, pos github.com/go-gl/mathgl/mgl64.Vec3); RemoveViewLayer(e server/world.Entity); StartShowingEntity(e server/world.Entity); StopShowingEntity(e server/world.Entity); StopSound(name string, all bool); ViewAlwaysShowNameTag(e server/world.Entity, alwaysShow bool); ViewElderGuardianCurse(pos github.com/go-gl/mathgl/mgl64.Vec3); ViewItemCooldown(item server/world.Item, d time.Duration); ViewLayer() *server/world.ViewLayer; ViewNameTag(e server/world.Entity, nameTag server/text.Text); ViewNamedParticle(pos github.com/go-gl/mathgl/mgl64.Vec3, name string, dim server/world.Dimension); ViewPublicAlwaysShowNameTag(e server/world.Entity); ViewPublicNameTag(e server/world.Entity); ViewPublicScoreTag(e server/world.Entity); ViewScoreTag(e server/world.Entity, scoreTag server/text.Text); ViewSleepingPlayers(sleeping int, max int); ViewSpectatedEntity(e server/world.Entity); ViewVisibility(e server/world.Entity, level server/world.VisibilityLevel)}
 server/client/clienttest	func	New	func() *server/client/clienttest.Recorder
@@ -6321,7 +6321,7 @@ server/client/clienttest	method	Recorder.ViewParticle	func(a0 github.com/go-gl/m
 server/client/clienttest	method	Recorder.ViewPublicAlwaysShowNameTag	func(a0 server/world.Entity)
 server/client/clienttest	method	Recorder.ViewPublicNameTag	func(a0 server/world.Entity)
 server/client/clienttest	method	Recorder.ViewPublicScoreTag	func(a0 server/world.Entity)
-server/client/clienttest	method	Recorder.ViewRecipesUnlocked	func(javaIDs []string)
+server/client/clienttest	method	Recorder.ViewRecipesUnlocked	func(stateIDs []string)
 server/client/clienttest	method	Recorder.ViewScoreTag	func(a0 server/world.Entity, a1 server/text.Text)
 server/client/clienttest	method	Recorder.ViewSkin	func(a0 server/world.Entity)
 server/client/clienttest	method	Recorder.ViewSleepingPlayers	func(a0 int, a1 int)
@@ -7043,6 +7043,7 @@ server/entity	method	Boat.Attack	func(attacker server/world.Entity, tx *server/w
 server/entity	method	Boat.Behaviour	func() server/entity.Behaviour
 server/entity	method	Boat.BindTransaction	func(tx *server/world.Tx)
 server/entity	method	Boat.BottleDragonBreath	func(tx *server/world.Tx) bool
+server/entity	method	Boat.CanonicalEntityID	func() string
 server/entity	method	Boat.CauseFallDamage	func(distance float64, multiplier float64, src server/world.DamageSource)
 server/entity	method	Boat.Close	func() error
 server/entity	method	Boat.CloseIn	func(tx *server/world.Tx) error
@@ -7068,7 +7069,6 @@ server/entity	method	Boat.HolderLeashID	func() int64
 server/entity	method	Boat.HurtEntities	func(damagePerBlock float64, maxDamage float64)
 server/entity	method	Boat.Interact	func(tx *server/world.Tx, user server/item.User, _ *server/item.UseContext) bool
 server/entity	method	Boat.IsPreventingPlayerRest	func(player server/world.Entity) bool
-server/entity	method	Boat.JavaEntityID	func() string
 server/entity	method	Boat.LeashEnt	func() *server/entity.Ent
 server/entity	method	Boat.Links	func() []server/entity.Link
 server/entity	method	Boat.MobAI	func() *server/entity.MobAI
@@ -7560,6 +7560,7 @@ server/entity	method	ChestBoat.Attack	func(attacker server/world.Entity, tx *ser
 server/entity	method	ChestBoat.Behaviour	func() server/entity.Behaviour
 server/entity	method	ChestBoat.BindTransaction	func(tx *server/world.Tx)
 server/entity	method	ChestBoat.BottleDragonBreath	func(tx *server/world.Tx) bool
+server/entity	method	ChestBoat.CanonicalEntityID	func() string
 server/entity	method	ChestBoat.CauseFallDamage	func(distance float64, multiplier float64, src server/world.DamageSource)
 server/entity	method	ChestBoat.Close	func() error
 server/entity	method	ChestBoat.CloseIn	func(tx *server/world.Tx) error
@@ -7585,7 +7586,6 @@ server/entity	method	ChestBoat.HolderLeashID	func() int64
 server/entity	method	ChestBoat.HurtEntities	func(damagePerBlock float64, maxDamage float64)
 server/entity	method	ChestBoat.Interact	func(tx *server/world.Tx, user server/item.User, ctx *server/item.UseContext) bool
 server/entity	method	ChestBoat.IsPreventingPlayerRest	func(player server/world.Entity) bool
-server/entity	method	ChestBoat.JavaEntityID	func() string
 server/entity	method	ChestBoat.LeashEnt	func() *server/entity.Ent
 server/entity	method	ChestBoat.Links	func() []server/entity.Link
 server/entity	method	ChestBoat.MobAI	func() *server/entity.MobAI
@@ -12108,7 +12108,7 @@ server/entity	type	Merchant	interface{CompleteMerchantTrade(tx *server/world.Tx,
 server/entity	type	MerchantOffer	struct{Input server/item.Stack; SecondaryInput server/item.Stack; Output server/item.Stack; Uses int; MaxUses int; XP int; RewardXP bool; Demand int; SpecialPrice int; Tier int; PriceMultiplier float32}
 server/entity	type	Milkable	interface{Milk(tx *server/world.Tx) bool; MilkSound() server/world.Sound}
 server/entity	type	Mob	struct{*server/entity.Ent; AI *server/entity.MobAI; Self server/world.Entity}
-server/entity	type	MobAI	struct{persistent bool; air int; airSet bool; Goals server/entity.GoalSelector; Targets server/entity.GoalSelector; movement server/entity.Movement; mob server/entity.Mob; pre server/entity.mobPrefetch; MovementSpeed float64; FollowRange float64; StepHeight float64; JumpStrength float64; Gravity float64; FlyingSpeed float64; EyeHeight float64; MaxHeadYaw float64; HeadRotSpeed float64; MaxHeadPitch float64; Bounciness float64; FrictionModifier float64; AirDragModifier float64; DiscardFriction bool; NoAI bool; NoGravity bool; NoPhysics bool; move server/entity.moveControl; moveOverride server/entity.mobMoveControl; lookOverride server/entity.mobMoveControl; bodyOverride server/entity.mobMoveControl; look server/entity.lookControl; jump server/entity.jumpControl; body server/entity.bodyRotationControl; nav server/entity.PathNavigation; sense server/entity.sensing; maluses map[server/entity.PathType]float64; random *server/internal/vanilla.Random; entityID int; started bool; caps uint32; capsBrain server/entity.mobBrain; capsCustom server/entity.mobCustomStep; capsSelf server/world.Entity; capsLiving server/entity.Living; capsEffect server/entity.mobEffectHolder; javaID string; despawnDist float64; tickCount int; noActionTime int; home server/entity.mobHome; aggressive bool; target *server/world.EntityHandle; lastHurtBy *server/world.EntityHandle; lastHurtByTime int; lastHurtMob *server/world.EntityHandle; lastHurtMobTime int; lastDamage server/world.DamageSource; lastDamageTime int; hurtCooldown bool; hurtTick int64; lastHurt float64; xxa float64; yya float64; zza float64; speed float64; jumping bool; ridden bool; noJumpDelay int; headYaw float64; bodyYaw float64; prevPos github.com/go-gl/mathgl/mgl64.Vec3; onGround bool; collidedHorizontally bool; collidedVertically bool; collidedBelow bool; waterHeight float64; lavaHeight float64; lastBlockPos server/block/cube.Pos; lastBlockPosSet bool; useItem server/item.Stack; useTicks int; knownSpeed github.com/go-gl/mathgl/mgl64.Vec3; stabbed map[*server/world.EntityHandle]int64}
+server/entity	type	MobAI	struct{persistent bool; air int; airSet bool; Goals server/entity.GoalSelector; Targets server/entity.GoalSelector; movement server/entity.Movement; mob server/entity.Mob; pre server/entity.mobPrefetch; MovementSpeed float64; FollowRange float64; StepHeight float64; JumpStrength float64; Gravity float64; FlyingSpeed float64; EyeHeight float64; MaxHeadYaw float64; HeadRotSpeed float64; MaxHeadPitch float64; Bounciness float64; FrictionModifier float64; AirDragModifier float64; DiscardFriction bool; NoAI bool; NoGravity bool; NoPhysics bool; move server/entity.moveControl; moveOverride server/entity.mobMoveControl; lookOverride server/entity.mobMoveControl; bodyOverride server/entity.mobMoveControl; look server/entity.lookControl; jump server/entity.jumpControl; body server/entity.bodyRotationControl; nav server/entity.PathNavigation; sense server/entity.sensing; maluses map[server/entity.PathType]float64; random *server/internal/vanilla.Random; entityID int; started bool; caps uint32; capsBrain server/entity.mobBrain; capsCustom server/entity.mobCustomStep; capsSelf server/world.Entity; capsLiving server/entity.Living; capsEffect server/entity.mobEffectHolder; canonicalID string; despawnDist float64; tickCount int; noActionTime int; home server/entity.mobHome; aggressive bool; target *server/world.EntityHandle; lastHurtBy *server/world.EntityHandle; lastHurtByTime int; lastHurtMob *server/world.EntityHandle; lastHurtMobTime int; lastDamage server/world.DamageSource; lastDamageTime int; hurtCooldown bool; hurtTick int64; lastHurt float64; xxa float64; yya float64; zza float64; speed float64; jumping bool; ridden bool; noJumpDelay int; headYaw float64; bodyYaw float64; prevPos github.com/go-gl/mathgl/mgl64.Vec3; onGround bool; collidedHorizontally bool; collidedVertically bool; collidedBelow bool; waterHeight float64; lavaHeight float64; lastBlockPos server/block/cube.Pos; lastBlockPosSet bool; useItem server/item.Stack; useTicks int; knownSpeed github.com/go-gl/mathgl/mgl64.Vec3; stabbed map[*server/world.EntityHandle]int64}
 server/entity	type	Mooshroom	struct{*server/entity.Ent}
 server/entity	type	Mount	struct{*server/entity.Ent}
 server/entity	type	MountState	struct{Saddled bool; Tamed bool; Chested bool; Sitting bool; Controlled bool; PowerJump bool; Dash bool; Rearing bool; Eating bool; Standing bool; ContainerSize int32; Strength int32; MaxStrength int32}
@@ -12316,7 +12316,7 @@ server/identity	method	Mode.String	func() string
 server/identity	type	Key	struct{xuid string; name string}
 server/identity	type	Mode	uint8
 server/identity	var	ErrEmptyName	error
-server/identity	var	ErrJavaKey	error
+server/identity	var	ErrReservedKey	error
 server/item	const	Blasting	server/item.CookingKind = 1
 server/item	const	BoatVariantAcacia	server/item.BoatVariant = 4
 server/item	const	BoatVariantBamboo	server/item.BoatVariant = 7
@@ -12382,6 +12382,8 @@ server/item	func	BoatVariantFromID	func(id string) (variant server/item.BoatVari
 server/item	func	BoatVariantFromInt	func(variant int) server/item.BoatVariant
 server/item	func	BoatVariants	func() []server/item.BoatVariant
 server/item	func	BordureIndentedBannerPattern	func() server/item.BannerPatternType
+server/item	func	CanonicalEnchantmentID	func(e server/item.EnchantmentType) string
+server/item	func	CanonicalItem	func(id string) (server/world.Item, bool)
 server/item	func	ColourBlack	func() server/item.Colour
 server/item	func	ColourBlue	func() server/item.Colour
 server/item	func	ColourBrown	func() server/item.Colour
@@ -12412,7 +12414,7 @@ server/item	func	EnchantmentByID	func(id int) (server/item.EnchantmentType, bool
 server/item	func	EnchantmentID	func(e server/item.EnchantmentType) (int, bool)
 server/item	func	Enchantments	func() []server/item.EnchantmentType
 server/item	func	FieldMasonedBannerPattern	func() server/item.BannerPatternType
-server/item	func	FilledMapVariantFromJavaItemID	func(id string) (server/item.FilledMapVariant, bool)
+server/item	func	FilledMapVariantFromID	func(id string) (server/item.FilledMapVariant, bool)
 server/item	func	FireResistanceStew	func() server/item.StewType
 server/item	func	FireworkShapeBurst	func() server/item.FireworkShape
 server/item	func	FireworkShapeCreeperHead	func() server/item.FireworkShape
@@ -12423,13 +12425,11 @@ server/item	func	FireworkShapes	func() []server/item.FireworkShape
 server/item	func	FlowBannerPattern	func() server/item.BannerPatternType
 server/item	func	FlowerBannerPattern	func() server/item.BannerPatternType
 server/item	func	GlobeBannerPattern	func() server/item.BannerPatternType
-server/item	func	GoatHornFromJavaInstrument	func(id string) (server/world/sound.Horn, bool)
+server/item	func	GoatHornFromInstrument	func(id string) (server/world/sound.Horn, bool)
 server/item	func	GusterBannerPattern	func() server/item.BannerPatternType
-server/item	func	IsJavaOnlyEnchantment	func(e server/item.EnchantmentType) bool
+server/item	func	InstrumentID	func(h server/world/sound.Horn) string
 server/item	func	IsPrimaryItem	func(t server/item.EnchantmentType, i server/world.Item) bool
-server/item	func	JavaEnchantmentID	func(e server/item.EnchantmentType) string
-server/item	func	JavaInstrumentID	func(h server/world/sound.Horn) string
-server/item	func	JavaItem	func(id string) (server/world.Item, bool)
+server/item	func	IsServerOnlyEnchantment	func(e server/item.EnchantmentType) bool
 server/item	func	JumpBoostStew	func() server/item.StewType
 server/item	func	LiquidBucketContent	func(l server/world.Liquid) server/item.BucketContent
 server/item	func	LockModeFromLegacyValue	func(v uint8) (server/item.LockMode, bool)
@@ -12453,7 +12453,7 @@ server/item	func	RegenerationStew	func() server/item.StewType
 server/item	func	RegisterCookingFuel	func(it server/world.Item, burnTicks int)
 server/item	func	RegisterCookingRecipe	func(kind server/item.CookingKind, input server/world.Item, recipe server/item.CookingRecipe)
 server/item	func	RegisterEnchantment	func(id int, enchantment server/item.EnchantmentType)
-server/item	func	RegisterJavaOnlyEnchantment	func(enchantment server/item.EnchantmentType)
+server/item	func	RegisterServerOnlyEnchantment	func(enchantment server/item.EnchantmentType)
 server/item	func	SaturationDandelionStew	func() server/item.StewType
 server/item	func	SaturationOrchidStew	func() server/item.StewType
 server/item	func	SherdTypeAngler	func() server/item.SherdType
@@ -12485,7 +12485,7 @@ server/item	func	SmithingTemplates	func() []server/item.SmithingTemplateType
 server/item	func	SolidBucketContent	func(b server/world.Block) server/item.BucketContent
 server/item	func	StackFromStructureNBT	func(data map[string]any) (server/item.Stack, error)
 server/item	func	StackToStructureNBT	func(stack server/item.Stack) (map[string]any, error)
-server/item	func	StewTypeFromJavaEffect	func(id string) (server/item.StewType, bool)
+server/item	func	StewTypeFromEffect	func(id string) (server/item.StewType, bool)
 server/item	func	StewTypes	func() []server/item.StewType
 server/item	func	TemplateBolt	func() server/item.SmithingTemplateType
 server/item	func	TemplateCoast	func() server/item.SmithingTemplateType
@@ -12818,7 +12818,7 @@ server/item	method	FilledMap.EncodeItem	func() (name string, meta int16)
 server/item	method	FilledMap.EncodeNBT	func() map[string]any
 server/item	method	FilledMap.MaxCount	func() int
 server/item	method	FilledMap.OffHand	func() bool
-server/item	method	FilledMapVariant.JavaItemID	func() string
+server/item	method	FilledMapVariant.CanonicalItemID	func() string
 server/item	method	FilledMapVariant.Valid	func() bool
 server/item	method	FireCharge.EncodeItem	func() (name string, meta int16)
 server/item	method	FireCharge.UseOnBlock	func(pos server/block/cube.Pos, face server/block/cube.Face, _ github.com/go-gl/mathgl/mgl64.Vec3, tx *server/world.Tx, user server/item.User, ctx *server/item.UseContext) bool
@@ -13430,7 +13430,7 @@ server/item	type	EnderEye	struct{}
 server/item	type	EnderPearl	struct{}
 server/item	type	Feather	struct{}
 server/item	type	FermentedSpiderEye	struct{}
-server/item	type	FilledMap	struct{JavaID int32; HasJavaID bool; NativeID int64; HasNativeID bool; Variant server/item.FilledMapVariant}
+server/item	type	FilledMap	struct{CanonicalID int32; HasCanonicalID bool; NativeID int64; HasNativeID bool; Variant server/item.FilledMapVariant}
 server/item	type	FilledMapVariant	uint8
 server/item	type	FireCharge	struct{}
 server/item	type	FireProof	interface{FireProof() bool}
@@ -13591,7 +13591,7 @@ server/item	var	EnchantmentRarityCommon	server/item.enchantmentRarityCommon
 server/item	var	EnchantmentRarityRare	server/item.enchantmentRarityRare
 server/item	var	EnchantmentRarityUncommon	server/item.enchantmentRarityUncommon
 server/item	var	EnchantmentRarityVeryRare	server/item.enchantmentRarityVeryRare
-server/item	var	ErrJavaStackCount	error
+server/item	var	ErrStackCount	error
 server/item	var	ToolTierCopper	server/item.ToolTier
 server/item	var	ToolTierDiamond	server/item.ToolTier
 server/item	var	ToolTierGold	server/item.ToolTier
@@ -13678,8 +13678,8 @@ server/item/enchantment	var	Thorns	server/item/enchantment.thorns
 server/item/enchantment	var	Unbreaking	server/item/enchantment.unbreaking
 server/item/enchantment	var	WindBurst	server/item/enchantment.windBurst
 server/item/fishing	func	Loot	func(luckLevel int, _ int) (server/item.Stack, error)
-server/item/fishing	func	LootJava	func(luckLevel int, openWater bool, seed int64) (server/item.Stack, error)
 server/item/fishing	func	LootWithRandom	func(luckLevel int, openWater bool, random *server/internal/vanilla.Random, hook server/world.Entity, rod server/item.Stack) (server/item.Stack, error)
+server/item/fishing	func	LootWithSeed	func(luckLevel int, openWater bool, seed int64) (server/item.Stack, error)
 server/item/inventory	alias	Context	= server/item/inventory.Context
 server/item/inventory	func	New	func(size int, f server/item/inventory.SlotFunc) *server/item/inventory.Inventory
 server/item/inventory	func	NewArmour	func(f func(slot int, before server/item.Stack, after server/item.Stack)) *server/item/inventory.Armour
@@ -13748,7 +13748,7 @@ server/item/potion	func	All	func() []server/item/potion.Potion
 server/item/potion	func	Awkward	func() server/item/potion.Potion
 server/item/potion	func	FireResistance	func() server/item/potion.Potion
 server/item/potion	func	From	func(id int32) server/item/potion.Potion
-server/item/potion	func	FromJavaID	func(id string) (server/item/potion.Potion, bool)
+server/item/potion	func	FromID	func(id string) (server/item/potion.Potion, bool)
 server/item/potion	func	Harming	func() server/item/potion.Potion
 server/item/potion	func	Healing	func() server/item/potion.Potion
 server/item/potion	func	Infestation	func() server/item/potion.Potion
@@ -13795,12 +13795,11 @@ server/item/potion	func	Weaving	func() server/item/potion.Potion
 server/item/potion	func	WindCharging	func() server/item/potion.Potion
 server/item/potion	func	Wither	func() server/item/potion.Potion
 server/item/potion	method	Potion.Effects	func() []server/entity/effect.Effect
-server/item/potion	method	Potion.JavaID	func() string
+server/item/potion	method	Potion.ID	func() string
 server/item/potion	method	Potion.Uint8	func() uint8
 server/item/potion	type	Potion	struct{server/item/potion.potion}
 server/item/recipe	func	DynamicRecipes	func() []server/item/recipe.DynamicRecipe
-server/item/recipe	func	JavaRecipeIDs	func(r server/item/recipe.Recipe) []string
-server/item/recipe	func	KnownJavaID	func(id string) bool
+server/item/recipe	func	KnownID	func(id string) bool
 server/item/recipe	func	NewDecoratedPotRecipe	func() server/item/recipe.DecoratedPotRecipe
 server/item/recipe	func	NewItemTag	func(tag string, count int) server/item/recipe.ItemTag
 server/item/recipe	func	NewMulti	func(id github.com/google/uuid.UUID) server/item/recipe.Multi
@@ -13813,6 +13812,7 @@ server/item/recipe	func	NewSmithingTransform	func(base server/item/recipe.Item, 
 server/item/recipe	func	NewSmithingTrim	func(base server/item/recipe.Item, addition server/item/recipe.Item, template server/item/recipe.Item, block string) server/item/recipe.SmithingTrim
 server/item/recipe	func	NewUserDataShapeless	func(input []server/item/recipe.Item, output server/item.Stack, block string) server/item/recipe.UserDataShapeless
 server/item/recipe	func	Perform	func(block string, input ...server/world.Item) (output []server/item.Stack, ok bool)
+server/item/recipe	func	RecipeIDs	func(r server/item/recipe.Recipe) []string
 server/item/recipe	func	Recipes	func() []server/item/recipe.Recipe
 server/item/recipe	func	Register	func(recipe server/item/recipe.Recipe)
 server/item/recipe	func	RegisterDynamic	func(recipe server/item/recipe.DynamicRecipe)
@@ -13824,8 +13824,8 @@ server/item/recipe	method	ItemTag.Count	func() int
 server/item/recipe	method	ItemTag.Empty	func() bool
 server/item/recipe	method	ItemTag.Tag	func() string
 server/item/recipe	method	Multi.Block	func() string
+server/item/recipe	method	Multi.CanonicalIDs	func() []string
 server/item/recipe	method	Multi.Input	func() []server/item/recipe.Item
-server/item/recipe	method	Multi.JavaIDs	func() []string
 server/item/recipe	method	Multi.Output	func() []server/item.Stack
 server/item/recipe	method	Multi.Priority	func() uint32
 server/item/recipe	method	Multi.UUID	func() github.com/google/uuid.UUID
@@ -13864,7 +13864,7 @@ server/item/recipe	type	DecoratedPotRecipe	struct{block string}
 server/item/recipe	type	DynamicRecipe	interface{Block() string; Match(input []server/item/recipe.Item) (output []server/item.Stack, ok bool)}
 server/item/recipe	type	Item	interface{Count() int; Empty() bool}
 server/item/recipe	type	ItemTag	struct{tag string; count int; items []string}
-server/item/recipe	type	Multi	struct{server/item/recipe.recipe; id github.com/google/uuid.UUID; javaIDs []string}
+server/item/recipe	type	Multi	struct{server/item/recipe.recipe; id github.com/google/uuid.UUID; stateIDs []string}
 server/item/recipe	type	Potion	struct{server/item/recipe.recipe}
 server/item/recipe	type	PotionContainerChange	struct{server/item/recipe.recipe}
 server/item/recipe	type	Recipe	interface{Block() string; Input() []server/item/recipe.Item; Output() []server/item.Stack; Priority() uint32}
@@ -13902,9 +13902,9 @@ server/loot	func	EnchantMobSpawnEquipment	func(stack server/item.Stack, specialM
 server/loot	func	Generate	func(id string, seed int64, ctx server/loot.Context) ([]server/item.Stack, error)
 server/loot	func	ItemInTag	func(itemID string, tagID string) bool
 server/loot	func	ItemTagMembers	func(tagID string) []string
-server/loot	func	JavaTableKey	func(name string) string
 server/loot	func	RandomSequence	func(id string) (string, error)
 server/loot	func	StackInItemTag	func(stack server/item.Stack, tag string) bool
+server/loot	func	TableKey	func(name string) string
 server/loot	type	Context	struct{Random *server/internal/vanilla.Random; Tool server/world.Item; ToolStack server/item.Stack; Luck float64; Looting int; PlayerKilled bool; EnchantmentLevel int; ExplosionRadius float64; Block string; Entity string; OpenWater bool; Player server/world.Entity; Origin github.com/go-gl/mathgl/mgl64.Vec3; ThisEntity server/world.Entity; SourceEntity server/world.Entity; EntityProperties map[string]any; DirectEntity server/world.Entity; DamageTags map[string]bool; EntityNBT map[string]any; SourceEntityType string; Contents []server/item.Stack; Tx *server/world.Tx; BlockState server/world.Block; Damage server/world.DamageSource; RandomSequence func(sequence string, seed int64) *server/internal/vanilla.Random; Biome string}
 server/loot	type	LootComponentHolder	interface{LootComponents() map[string]any}
 server/menu	const	Anvil	server/menu.Kind = 11
@@ -14090,9 +14090,11 @@ server/player	method	Context.AddEntity	func(e *server/world.EntityHandle) server
 server/player	method	Context.AddParticle	func(pos github.com/go-gl/mathgl/mgl64.Vec3, p server/world.Particle)
 server/player	method	Context.Biome	func(pos server/block/cube.Pos) server/world.Biome
 server/player	method	Context.Block	func(pos server/block/cube.Pos) server/world.Block
+server/player	method	Context.BlockCanSurvive	func(pos server/block/cube.Pos) (survives bool, hasSourceState bool)
 server/player	method	Context.BlockFaceSturdy	func(pos server/block/cube.Pos, face server/block/cube.Face) bool
 server/player	method	Context.BlockLight	func(pos server/block/cube.Pos) uint8
 server/player	method	Context.BlockLoaded	func(pos server/block/cube.Pos) (server/world.Block, bool)
+server/player	method	Context.BlockPlacement	func(state uint32, pos server/block/cube.Pos) (uint32, bool)
 server/player	method	Context.BlockRID	func(pos server/block/cube.Pos) (uint32, bool)
 server/player	method	Context.BlockStateID	func(pos server/block/cube.Pos) (uint32, error)
 server/player	method	Context.BroadcastSleepingIndicator	func()
@@ -14102,6 +14104,7 @@ server/player	method	Context.CanSpreadFireAround	func(pos server/block/cube.Pos)
 server/player	method	Context.Cancel	func()
 server/player	method	Context.CancelBlockUpdate	func(pos server/block/cube.Pos, b server/world.Block)
 server/player	method	Context.Cancelled	func() bool
+server/player	method	Context.CanonicalBlockState	func(pos server/block/cube.Pos) (id uint32, ok bool)
 server/player	method	Context.CaptureStructure	func(origin server/block/cube.Pos, size [3]int, entities bool) *server/world.StructureTemplate
 server/player	method	Context.ChunkComponents	func(pos server/world.ChunkPos) *server/ecs.Bag
 server/player	method	Context.ChunkFailed	func(pos server/world.ChunkPos) bool
@@ -14139,10 +14142,6 @@ server/player	method	Context.HasScheduledBlockUpdate	func(pos server/block/cube.
 server/player	method	Context.HighestBlock	func(x int, z int) int
 server/player	method	Context.HighestLightBlocker	func(x int, z int) int
 server/player	method	Context.IsDarkOutside	func() bool
-server/player	method	Context.JavaBlockCanSurvive	func(pos server/block/cube.Pos) (survives bool, hasSourceState bool)
-server/player	method	Context.JavaBlockState	func(pos server/block/cube.Pos) (id uint32, ok bool)
-server/player	method	Context.JavaMotionBlockingHeight	func(x int, z int, noLeaves bool) int
-server/player	method	Context.JavaPlacement	func(state uint32, pos server/block/cube.Pos) (uint32, bool)
 server/player	method	Context.Light	func(pos server/block/cube.Pos) uint8
 server/player	method	Context.LightBlockedInto	func(pos server/block/cube.Pos, face server/block/cube.Face) int
 server/player	method	Context.Liquid	func(pos server/block/cube.Pos) (server/world.Liquid, bool)
@@ -14155,6 +14154,7 @@ server/player	method	Context.LocalDifficulty	func(pos server/block/cube.Pos) ser
 server/player	method	Context.LootRandomSequence	func(sequence string, seed int64) *server/internal/vanilla.Random
 server/player	method	Context.Maps	func() server/world.MapTransaction
 server/player	method	Context.MayContainLiquid	func(lo server/block/cube.Pos, hi server/block/cube.Pos) bool
+server/player	method	Context.MotionBlockingHeight	func(x int, z int, noLeaves bool) int
 server/player	method	Context.MovementBlockProperties	func(block server/world.Block) (climbable bool, highSupport bool)
 server/player	method	Context.NativeLiquidBoundaryOpen	func(from server/block/cube.Pos, to server/block/cube.Pos) bool
 server/player	method	Context.NativeState	func(pos server/block/cube.Pos) server/world.NativeState
@@ -14194,8 +14194,8 @@ server/player	method	Context.SetBlockEntity	func(pos server/block/cube.Pos, b se
 server/player	method	Context.SetBlockFromCommand	func(pos server/block/cube.Pos, b server/world.Block, source server/world.BlockState)
 server/player	method	Context.SetBlockKnownShape	func(pos server/block/cube.Pos, b server/world.Block)
 server/player	method	Context.SetBlockRID	func(pos server/block/cube.Pos, rid uint32, opts *server/world.SetOpts)
+server/player	method	Context.SetBlockState	func(pos server/block/cube.Pos, state uint32) bool
 server/player	method	Context.SetFeatureState	func(pos server/block/cube.Pos, state server/world.NativeState, actor server/world.Block)
-server/player	method	Context.SetJavaBlockState	func(pos server/block/cube.Pos, state uint32) bool
 server/player	method	Context.SetLiquid	func(pos server/block/cube.Pos, b server/world.Liquid)
 server/player	method	Context.ShapeUpdate	func(pos server/block/cube.Pos, changed server/block/cube.Pos) (server/world.Block, bool)
 server/player	method	Context.SkyDarken	func() int
@@ -14647,7 +14647,7 @@ server/player	type	BlockPlaceEvent	struct{server/event.Cancellable; Player *serv
 server/player	type	ChatEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; Message string}
 server/player	type	CombatFacet	struct{p *server/player.Player}
 server/player	type	CommandEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; Command server/cmd.Command; Args []string}
-server/player	type	Config	struct{Client server/client.Client; Log *log/slog.Logger; Left func(tx *server/world.Tx, p *server/player.Player); QuitMessage server/player/chat.Translation; AntiCheat *server/player/anticheat.Config; AntiCheatExempt func(p *server/player.Player, c server/player/anticheat.Check) bool; Permissions func(p *server/player.Player) server/client.Permissions; Skin server/player/skin.Skin; XUID string; UUID github.com/google/uuid.UUID; DataUUID github.com/google/uuid.UUID; Name string; Locale golang.org/x/text/language.Tag; GameMode server/world.GameMode; Position github.com/go-gl/mathgl/mgl64.Vec3; Rotation server/block/cube.Rotation; Velocity github.com/go-gl/mathgl/mgl64.Vec3; Health float64; MaxHealth float64; FoodTick int; Food int; Exhaustion float64; Saturation float64; AirSupply int; MaxAirSupply int; TimeSinceRest int32; EnchantmentSeed int64; Experience int; HeldSlot int; Inventory *server/item/inventory.Inventory; OffHand *server/item/inventory.Inventory; Armour *server/item/inventory.Armour; EnderChestInventory *server/item/inventory.Inventory; FireTicks int64; FallDistance float64; Effects []server/entity/effect.Effect; UnlockedRecipes []string; RaidOmenPosition server/block/cube.Pos; HasRaidOmenPosition bool; ShoulderLeft map[string]any; ShoulderRight map[string]any; JavaState map[string]any; Components map[string]any; RespawnDimension server/world.Dimension; RespawnPosition server/block/cube.Pos; RespawnRotation server/block/cube.Rotation; HasRespawnPoint bool}
+server/player	type	Config	struct{Client server/client.Client; Log *log/slog.Logger; Left func(tx *server/world.Tx, p *server/player.Player); QuitMessage server/player/chat.Translation; AntiCheat *server/player/anticheat.Config; AntiCheatExempt func(p *server/player.Player, c server/player/anticheat.Check) bool; Permissions func(p *server/player.Player) server/client.Permissions; Skin server/player/skin.Skin; XUID string; UUID github.com/google/uuid.UUID; DataUUID github.com/google/uuid.UUID; Name string; Locale golang.org/x/text/language.Tag; GameMode server/world.GameMode; Position github.com/go-gl/mathgl/mgl64.Vec3; Rotation server/block/cube.Rotation; Velocity github.com/go-gl/mathgl/mgl64.Vec3; Health float64; MaxHealth float64; FoodTick int; Food int; Exhaustion float64; Saturation float64; AirSupply int; MaxAirSupply int; TimeSinceRest int32; EnchantmentSeed int64; Experience int; HeldSlot int; Inventory *server/item/inventory.Inventory; OffHand *server/item/inventory.Inventory; Armour *server/item/inventory.Armour; EnderChestInventory *server/item/inventory.Inventory; FireTicks int64; FallDistance float64; Effects []server/entity/effect.Effect; UnlockedRecipes []string; RaidOmenPosition server/block/cube.Pos; HasRaidOmenPosition bool; ShoulderLeft map[string]any; ShoulderRight map[string]any; ExtraState map[string]any; Components map[string]any; RespawnDimension server/world.Dimension; RespawnPosition server/block/cube.Pos; RespawnRotation server/block/cube.Rotation; HasRespawnPoint bool}
 server/player	type	Context	struct{*server/world.Context; p *server/player.Player}
 server/player	type	DeathEvent	struct{Player *server/player.Player; Tx *server/world.Tx; Source server/world.DamageSource; KeepInventory bool}
 server/player	type	DropEvent	struct{server/event.Cancellable; Player *server/player.Player; Tx *server/world.Tx; Item server/item.Stack}
@@ -15223,8 +15223,8 @@ server/text	type	Span	struct{Reset bool; Codes []server/text.Code; Text string; 
 server/text	type	SpanOptions	struct{Decorations server/text.Decoration; Translations func(t server/text.Text) bool}
 server/text	type	Style	struct{Colour server/text.Colour; On server/text.Decoration; Off server/text.Decoration; Reset bool}
 server/text	type	Text	struct{n *server/text.node}
-server/version	const	Java	untyped string = "26.3"
 server/version	const	Minecraft	untyped string = "1.26.60"
+server/version	const	Reference	untyped string = "26.3"
 server/version	func	MinecraftNumbers	func() []int32
 server/world	const	CaptureTimeout	time.Duration = 5000000000
 server/world	const	ChunkSavingAll	server/world.ChunkSaving = 1
@@ -15347,10 +15347,13 @@ server/world	const	Workstation	server/world.POIKind = 1
 server/world	func	ActorBlockName	func(name string) string
 server/world	func	BedrockEntityIdentifier	func(name string) string
 server/world	func	BeginTransfer	func(tx *server/world.Tx) (*server/world.Transfer, bool)
+server/world	func	BiomeAttribute	func(biome string, attribute string, def float32) float32
 server/world	func	BiomeByID	func(id int) (server/world.Biome, bool)
 server/world	func	BiomeByName	func(name string) (server/world.Biome, bool)
 server/world	func	BiomeIDs	func() []int
 server/world	func	BiomeIndex	func(id uint32) (index uint32, ok bool)
+server/world	func	BiomeNaturalSpawns	func(biome string) ([]server/world.NaturalSpawnEntry, error)
+server/world	func	BiomeSpawnCosts	func(biome string) map[string]server/world.NaturalSpawnCost
 server/world	func	Biomes	func() []server/world.Biome
 server/world	func	BlockActorNBT	func(data map[string]any, pos server/block/cube.Pos) map[string]any
 server/world	func	BlockByName	func(name string, properties map[string]any) (server/world.Block, bool)
@@ -15368,13 +15371,16 @@ server/world	func	BroadcastEntityVelocity	func(tx *server/world.Tx, e server/wor
 server/world	func	Call	func[T any](ctx context.Context, w *server/world.World, f func(tx *server/world.Tx) (T, error)) (T, error)
 server/world	func	CallEntity	func[T any](ctx context.Context, h *server/world.EntityHandle, f func(tx *server/world.Tx, e server/world.Entity) (T, error)) (T, error)
 server/world	func	CallRef	func[T any, E server/world.Entity](ctx context.Context, ref server/world.EntityRef[E], f func(tx *server/world.Tx, e E) (T, error)) (T, error)
+server/world	func	CanonicalBiomeName	func(b server/world.Biome) string
+server/world	func	CanonicalEntityID	func(e server/world.Entity) string
+server/world	func	CanonicalEntityTypeID	func(id string) string
 server/world	func	CanonicalState	func(registry server/world/chunk.BlockRegistry, state server/world.NativeState) (server/world.BlockState, error)
 server/world	func	CanonicalStateOf	func(b server/world.Block) (server/world.BlockState, error)
 server/world	func	CaptureAll	func(ctx context.Context, worlds []*server/world.World, extra func(tx *server/world.Tx) any) ([]*server/world.Checkpoint, error)
 server/world	func	CaptureAllInto	func(ctx context.Context, worlds []*server/world.World, commit server/world.Commit, extra func(tx *server/world.Tx) any) ([]*server/world.Checkpoint, error)
 server/world	func	ChunkPosition	func(pos server/block/cube.Pos) server/world.ChunkPos
 server/world	func	ClampRedstonePower	func(power int) int
-server/world	func	CloneJavaEntityNBT	func(data map[string]any) map[string]any
+server/world	func	CloneCanonicalEntityNBT	func(data map[string]any) map[string]any
 server/world	func	CloneNativeEntityNBT	func(data map[string]any) map[string]any
 server/world	func	CustomBlocks	func() map[string]server/world.CustomBlock
 server/world	func	CustomDimensions	func() []server/world.DimensionRegistration
@@ -15405,18 +15411,12 @@ server/world	func	GameRuleNames	func() []string
 server/world	func	GenerateChorusPlant	func[A server/world.ChorusGenerationAccess](access A, origin server/block/cube.Pos, random *server/internal/vanilla.Random, maxHorizontalSpread int)
 server/world	func	GenerationBlockCanSurvive	func(access server/world.GenerationShapeAccess, state uint32, pos server/block/cube.Pos) bool
 server/world	func	GenerationFireState	func(access server/world.GenerationShapeAccess, pos server/block/cube.Pos) uint32
-server/world	func	HasJavaSpawnCost	func(id string) bool
+server/world	func	HasSpawnCost	func(id string) bool
 server/world	func	HoldTransfers	func(ctx context.Context, worlds []*server/world.World) (release func(), err error)
 server/world	func	ItemByName	func(name string, meta int16) (server/world.Item, bool)
 server/world	func	Items	func() []server/world.Item
-server/world	func	JavaBiomeAttribute	func(biome string, attribute string, def float32) float32
-server/world	func	JavaBiomeName	func(b server/world.Biome) string
-server/world	func	JavaBiomeNaturalSpawns	func(biome string) ([]server/world.NaturalSpawnEntry, error)
-server/world	func	JavaBiomeSpawnCosts	func(biome string) map[string]server/world.NaturalSpawnCost
-server/world	func	JavaEntityID	func(e server/world.Entity) string
-server/world	func	JavaEntityTypeID	func(id string) string
 server/world	func	MapColourRGBA	func(packed byte) image/color.RGBA
-server/world	func	MapDecorationTypeFromJava	func(name string) (byte, bool)
+server/world	func	MapDecorationTypeFromName	func(name string) (byte, bool)
 server/world	func	MergeNativeEntityNBT	func(retained map[string]any, canonical map[string]any) map[string]any
 server/world	func	NativeStateAt	func(c *server/world/chunk.Chunk, x uint8, y int16, z uint8) server/world.NativeState
 server/world	func	New	func() *server/world.World
@@ -15574,7 +15574,7 @@ server/world	method	Column.Range	func() server/block/cube.Range
 server/world	method	Column.Ready	func() bool
 server/world	method	Column.SetBiome	func(x uint8, y int16, z uint8, biome uint32)
 server/world	method	Column.SetBlock	func(x uint8, y int16, z uint8, layer uint8, rid uint32)
-server/world	method	Column.SetJavaStateID	func(x uint8, y int16, z uint8, id uint32)
+server/world	method	Column.SetStateID	func(x uint8, y int16, z uint8, id uint32)
 server/world	method	Column.SkyLight	func(x uint8, y int16, z uint8) uint8
 server/world	method	Column.StateID	func(x uint8, y int16, z uint8) uint32
 server/world	method	Column.Sub	func() []*server/world/chunk.SubChunk
@@ -15591,9 +15591,11 @@ server/world	method	Context.AddEntity	func(e *server/world.EntityHandle) server/
 server/world	method	Context.AddParticle	func(pos github.com/go-gl/mathgl/mgl64.Vec3, p server/world.Particle)
 server/world	method	Context.Biome	func(pos server/block/cube.Pos) server/world.Biome
 server/world	method	Context.Block	func(pos server/block/cube.Pos) server/world.Block
+server/world	method	Context.BlockCanSurvive	func(pos server/block/cube.Pos) (survives bool, hasSourceState bool)
 server/world	method	Context.BlockFaceSturdy	func(pos server/block/cube.Pos, face server/block/cube.Face) bool
 server/world	method	Context.BlockLight	func(pos server/block/cube.Pos) uint8
 server/world	method	Context.BlockLoaded	func(pos server/block/cube.Pos) (server/world.Block, bool)
+server/world	method	Context.BlockPlacement	func(state uint32, pos server/block/cube.Pos) (uint32, bool)
 server/world	method	Context.BlockRID	func(pos server/block/cube.Pos) (uint32, bool)
 server/world	method	Context.BlockStateID	func(pos server/block/cube.Pos) (uint32, error)
 server/world	method	Context.BroadcastSleepingIndicator	func()
@@ -15603,6 +15605,7 @@ server/world	method	Context.CanSpreadFireAround	func(pos server/block/cube.Pos) 
 server/world	method	Context.Cancel	func()
 server/world	method	Context.CancelBlockUpdate	func(pos server/block/cube.Pos, b server/world.Block)
 server/world	method	Context.Cancelled	func() bool
+server/world	method	Context.CanonicalBlockState	func(pos server/block/cube.Pos) (id uint32, ok bool)
 server/world	method	Context.CaptureStructure	func(origin server/block/cube.Pos, size [3]int, entities bool) *server/world.StructureTemplate
 server/world	method	Context.ChunkComponents	func(pos server/world.ChunkPos) *server/ecs.Bag
 server/world	method	Context.ChunkFailed	func(pos server/world.ChunkPos) bool
@@ -15640,10 +15643,6 @@ server/world	method	Context.HasScheduledBlockUpdate	func(pos server/block/cube.P
 server/world	method	Context.HighestBlock	func(x int, z int) int
 server/world	method	Context.HighestLightBlocker	func(x int, z int) int
 server/world	method	Context.IsDarkOutside	func() bool
-server/world	method	Context.JavaBlockCanSurvive	func(pos server/block/cube.Pos) (survives bool, hasSourceState bool)
-server/world	method	Context.JavaBlockState	func(pos server/block/cube.Pos) (id uint32, ok bool)
-server/world	method	Context.JavaMotionBlockingHeight	func(x int, z int, noLeaves bool) int
-server/world	method	Context.JavaPlacement	func(state uint32, pos server/block/cube.Pos) (uint32, bool)
 server/world	method	Context.Light	func(pos server/block/cube.Pos) uint8
 server/world	method	Context.LightBlockedInto	func(pos server/block/cube.Pos, face server/block/cube.Face) int
 server/world	method	Context.Liquid	func(pos server/block/cube.Pos) (server/world.Liquid, bool)
@@ -15656,6 +15655,7 @@ server/world	method	Context.LocalDifficulty	func(pos server/block/cube.Pos) serv
 server/world	method	Context.LootRandomSequence	func(sequence string, seed int64) *server/internal/vanilla.Random
 server/world	method	Context.Maps	func() server/world.MapTransaction
 server/world	method	Context.MayContainLiquid	func(lo server/block/cube.Pos, hi server/block/cube.Pos) bool
+server/world	method	Context.MotionBlockingHeight	func(x int, z int, noLeaves bool) int
 server/world	method	Context.MovementBlockProperties	func(block server/world.Block) (climbable bool, highSupport bool)
 server/world	method	Context.NativeLiquidBoundaryOpen	func(from server/block/cube.Pos, to server/block/cube.Pos) bool
 server/world	method	Context.NativeState	func(pos server/block/cube.Pos) server/world.NativeState
@@ -15694,8 +15694,8 @@ server/world	method	Context.SetBlockEntity	func(pos server/block/cube.Pos, b ser
 server/world	method	Context.SetBlockFromCommand	func(pos server/block/cube.Pos, b server/world.Block, source server/world.BlockState)
 server/world	method	Context.SetBlockKnownShape	func(pos server/block/cube.Pos, b server/world.Block)
 server/world	method	Context.SetBlockRID	func(pos server/block/cube.Pos, rid uint32, opts *server/world.SetOpts)
+server/world	method	Context.SetBlockState	func(pos server/block/cube.Pos, state uint32) bool
 server/world	method	Context.SetFeatureState	func(pos server/block/cube.Pos, state server/world.NativeState, actor server/world.Block)
-server/world	method	Context.SetJavaBlockState	func(pos server/block/cube.Pos, state uint32) bool
 server/world	method	Context.SetLiquid	func(pos server/block/cube.Pos, b server/world.Liquid)
 server/world	method	Context.ShapeUpdate	func(pos server/block/cube.Pos, changed server/block/cube.Pos) (server/world.Block, bool)
 server/world	method	Context.SkyDarken	func() int
@@ -15939,9 +15939,11 @@ server/world	method	Tx.AddEntity	func(e *server/world.EntityHandle) server/world
 server/world	method	Tx.AddParticle	func(pos github.com/go-gl/mathgl/mgl64.Vec3, p server/world.Particle)
 server/world	method	Tx.Biome	func(pos server/block/cube.Pos) server/world.Biome
 server/world	method	Tx.Block	func(pos server/block/cube.Pos) server/world.Block
+server/world	method	Tx.BlockCanSurvive	func(pos server/block/cube.Pos) (survives bool, hasSourceState bool)
 server/world	method	Tx.BlockFaceSturdy	func(pos server/block/cube.Pos, face server/block/cube.Face) bool
 server/world	method	Tx.BlockLight	func(pos server/block/cube.Pos) uint8
 server/world	method	Tx.BlockLoaded	func(pos server/block/cube.Pos) (server/world.Block, bool)
+server/world	method	Tx.BlockPlacement	func(state uint32, pos server/block/cube.Pos) (uint32, bool)
 server/world	method	Tx.BlockRID	func(pos server/block/cube.Pos) (uint32, bool)
 server/world	method	Tx.BlockStateID	func(pos server/block/cube.Pos) (uint32, error)
 server/world	method	Tx.BroadcastSleepingIndicator	func()
@@ -15949,6 +15951,7 @@ server/world	method	Tx.BroadcastSleepingReminder	func(sleeper server/world.Sleep
 server/world	method	Tx.BuildStructure	func(pos server/block/cube.Pos, s server/world.Structure)
 server/world	method	Tx.CanSpreadFireAround	func(pos server/block/cube.Pos) bool
 server/world	method	Tx.CancelBlockUpdate	func(pos server/block/cube.Pos, b server/world.Block)
+server/world	method	Tx.CanonicalBlockState	func(pos server/block/cube.Pos) (id uint32, ok bool)
 server/world	method	Tx.CaptureStructure	func(origin server/block/cube.Pos, size [3]int, entities bool) *server/world.StructureTemplate
 server/world	method	Tx.ChunkComponents	func(pos server/world.ChunkPos) *server/ecs.Bag
 server/world	method	Tx.ChunkFailed	func(pos server/world.ChunkPos) bool
@@ -15986,10 +15989,6 @@ server/world	method	Tx.HasScheduledBlockUpdate	func(pos server/block/cube.Pos, b
 server/world	method	Tx.HighestBlock	func(x int, z int) int
 server/world	method	Tx.HighestLightBlocker	func(x int, z int) int
 server/world	method	Tx.IsDarkOutside	func() bool
-server/world	method	Tx.JavaBlockCanSurvive	func(pos server/block/cube.Pos) (survives bool, hasSourceState bool)
-server/world	method	Tx.JavaBlockState	func(pos server/block/cube.Pos) (id uint32, ok bool)
-server/world	method	Tx.JavaMotionBlockingHeight	func(x int, z int, noLeaves bool) int
-server/world	method	Tx.JavaPlacement	func(state uint32, pos server/block/cube.Pos) (uint32, bool)
 server/world	method	Tx.Light	func(pos server/block/cube.Pos) uint8
 server/world	method	Tx.LightBlockedInto	func(pos server/block/cube.Pos, face server/block/cube.Face) int
 server/world	method	Tx.Liquid	func(pos server/block/cube.Pos) (server/world.Liquid, bool)
@@ -16002,6 +16001,7 @@ server/world	method	Tx.LocalDifficulty	func(pos server/block/cube.Pos) server/wo
 server/world	method	Tx.LootRandomSequence	func(sequence string, seed int64) *server/internal/vanilla.Random
 server/world	method	Tx.Maps	func() server/world.MapTransaction
 server/world	method	Tx.MayContainLiquid	func(lo server/block/cube.Pos, hi server/block/cube.Pos) bool
+server/world	method	Tx.MotionBlockingHeight	func(x int, z int, noLeaves bool) int
 server/world	method	Tx.MovementBlockProperties	func(block server/world.Block) (climbable bool, highSupport bool)
 server/world	method	Tx.NativeLiquidBoundaryOpen	func(from server/block/cube.Pos, to server/block/cube.Pos) bool
 server/world	method	Tx.NativeState	func(pos server/block/cube.Pos) server/world.NativeState
@@ -16040,8 +16040,8 @@ server/world	method	Tx.SetBlockEntity	func(pos server/block/cube.Pos, b server/w
 server/world	method	Tx.SetBlockFromCommand	func(pos server/block/cube.Pos, b server/world.Block, source server/world.BlockState)
 server/world	method	Tx.SetBlockKnownShape	func(pos server/block/cube.Pos, b server/world.Block)
 server/world	method	Tx.SetBlockRID	func(pos server/block/cube.Pos, rid uint32, opts *server/world.SetOpts)
+server/world	method	Tx.SetBlockState	func(pos server/block/cube.Pos, state uint32) bool
 server/world	method	Tx.SetFeatureState	func(pos server/block/cube.Pos, state server/world.NativeState, actor server/world.Block)
-server/world	method	Tx.SetJavaBlockState	func(pos server/block/cube.Pos, state uint32) bool
 server/world	method	Tx.SetLiquid	func(pos server/block/cube.Pos, b server/world.Liquid)
 server/world	method	Tx.ShapeUpdate	func(pos server/block/cube.Pos, changed server/block/cube.Pos) (server/world.Block, bool)
 server/world	method	Tx.SkyDarken	func() int
@@ -16133,8 +16133,8 @@ server/world	method	World.LoadedChunkCount	func() int
 server/world	method	World.LockMap	func(id int64) (server/world.MapData, error)
 server/world	method	World.Log	func() *log/slog.Logger
 server/world	method	World.MapData	func(id int64) (server/world.MapData, error)
-server/world	method	World.MapDataByJavaID	func(javaID int32) (server/world.MapData, error)
-server/world	method	World.MapIDByJavaID	func(javaID int32) (int64, error)
+server/world	method	World.MapDataByCanonicalID	func(canonicalID int32) (server/world.MapData, error)
+server/world	method	World.MapIDByCanonicalID	func(canonicalID int32) (int64, error)
 server/world	method	World.MonsterSpawningEnabled	func() bool
 server/world	method	World.MoonBrightness	func() float32
 server/world	method	World.Name	func() string
@@ -16222,9 +16222,10 @@ server/world	type	ActorMetaPatch	struct{NameTag *string; AlwaysShowNameTag *bool
 server/world	type	ActorStorer	interface{StoreColumnActors(pos server/world.ChunkPos, dim server/world.Dimension, col *server/world/chunk.Column) error}
 server/world	type	ArmourEffectivenessReducer	interface{ArmourEffectivenessMultiplier() float64; server/world.DamageSource}
 server/world	type	ArrowSpawnConfig	struct{Damage float64; PowerLevel int; Owner server/world.Entity; Critical bool; DisablePickup bool; ObtainArrowOnPickup bool; PunchLevel int; PiercingLevel int; Tip any}
-server/world	type	BasicBlockRegistry	struct{mu sync.Mutex; javaStateIDs sync.Map; javaNativeStates sync/atomic.Pointer[[]sync/atomic.Uint64]; dryJavaStateIDs sync/atomic.Pointer[[]sync/atomic.Uint32]; light server/world.blockLightCache; states []server/world.encodedState; finalized bool; bitSize int; hashes *github.com/brentp/intintmap.Map; stateRuntimeIDs map[server/world.stateHash]uint32; blockProperties map[string]map[string]any; blocks []server/world.Block; customBlocks map[string]server/world.CustomBlock; blockInfos []server/world.blockInfo; liquidInfos []uint8; airRID uint32}
+server/world	type	BasicBlockRegistry	struct{mu sync.Mutex; stateIDs sync.Map; canonicalNativeStates sync/atomic.Pointer[[]sync/atomic.Uint64]; dryCanonicalStateIDs sync/atomic.Pointer[[]sync/atomic.Uint32]; light server/world.blockLightCache; states []server/world.encodedState; finalized bool; bitSize int; hashes *github.com/brentp/intintmap.Map; stateRuntimeIDs map[server/world.stateHash]uint32; blockProperties map[string]map[string]any; blocks []server/world.Block; customBlocks map[string]server/world.CustomBlock; blockInfos []server/world.blockInfo; liquidInfos []uint8; airRID uint32}
 server/world	type	BatchViewer	interface{BeginBatch(); EndBatch(); server/world.Viewer}
 server/world	type	Biome	interface{Depth() float64; EncodeBiome() int; HasPrecipitation() bool; Rainfall() float64; Scale() float64; String() string; Tags() []string; Temperature() float64; WaterColour() image/color.RGBA}
+server/world	type	BiomeAtProvider	interface{BiomeAt(x int32, y int32, z int32) string}
 server/world	type	Block	interface{EncodeBlock() (string, map[string]any); Hash() (uint64, uint64); Model() server/world.BlockModel}
 server/world	type	BlockAction	interface{BlockAction()}
 server/world	type	BlockChangeEvent	struct{server/event.Cancellable; Tx *server/world.Tx; Pos server/block/cube.Pos; Old server/world.Block; New server/world.Block; OldRID uint32; NewRID uint32}
@@ -16277,7 +16278,7 @@ server/world	type	EntityData	struct{Pos github.com/go-gl/mathgl/mgl64.Vec3; Vel 
 server/world	type	EntityDeathEvent	struct{Tx *server/world.Tx; Entity server/world.Entity; Source server/world.DamageSource}
 server/world	type	EntityDespawnEvent	struct{Tx *server/world.Tx; Entity server/world.Entity}
 server/world	type	EntityExplosionSource	struct{Entity server/world.Entity; ExplosionSize float64; origin github.com/go-gl/mathgl/mgl64.Vec3; hasOrigin bool}
-server/world	type	EntityHandle	struct{id github.com/google/uuid.UUID; t server/world.EntityType; typeID string; cond *sync.Cond; worldless *sync/atomic.Bool; weakTxActive bool; w *server/world.World; state *server/world.entityState; worldReady bool; worldVersion sync/atomic.Uint64; closed chan struct{}; worldChanged chan struct{}; closeOnce sync.Once; runtimeID sync/atomic.Uint64; controller sync/atomic.Pointer[server/world.Controller]; transfer sync/atomic.Pointer[server/world.Transfer]; data server/world.EntityData; spawnReason string; spawnSeed int64; spawnRandom *server/internal/vanilla.Random; spawnGroup *server/world.EntitySpawnGroup; javaRandom *server/internal/vanilla.Random; pendingVehicle github.com/google/uuid.UUID}
+server/world	type	EntityHandle	struct{id github.com/google/uuid.UUID; t server/world.EntityType; typeID string; cond *sync.Cond; worldless *sync/atomic.Bool; weakTxActive bool; w *server/world.World; state *server/world.entityState; worldReady bool; worldVersion sync/atomic.Uint64; closed chan struct{}; worldChanged chan struct{}; closeOnce sync.Once; runtimeID sync/atomic.Uint64; controller sync/atomic.Pointer[server/world.Controller]; transfer sync/atomic.Pointer[server/world.Transfer]; data server/world.EntityData; spawnReason string; spawnSeed int64; spawnRandom *server/internal/vanilla.Random; spawnGroup *server/world.EntitySpawnGroup; vanillaRandom *server/internal/vanilla.Random; pendingVehicle github.com/google/uuid.UUID}
 server/world	type	EntityMove	struct{Pos github.com/go-gl/mathgl/mgl64.Vec3; Rot server/block/cube.Rotation; HeadYaw float64; Vel github.com/go-gl/mathgl/mgl64.Vec3; OnGround bool; Changed server/world.MoveParts; Ticks int; Absolute bool; Shared any}
 server/world	type	EntityRef	struct{h *server/world.EntityHandle}
 server/world	type	EntityRegistry	struct{conf *server/world.EntityRegistryConfig; ent map[string]server/world.EntityType}
@@ -16308,16 +16309,15 @@ server/world	type	Handler	interface{HandleBlockBurn(ctx *server/world.Context, p
 server/world	type	HealingSource	interface{HealingSource()}
 server/world	type	IndirectShaper	interface{ShapesIndirectNeighbours() bool}
 server/world	type	Item	interface{EncodeItem() (name string, meta int16)}
-server/world	type	JavaBiomeAtProvider	interface{JavaBiomeAt(x int32, y int32, z int32) string}
 server/world	type	Liquid	interface{BlastResistance() float64; Harden(pos server/block/cube.Pos, tx *server/world.Tx, flownIntoBy *server/block/cube.Pos) bool; LiquidDepth() int; LiquidFalling() bool; LiquidRemoveBlock(pos server/block/cube.Pos, tx *server/world.Tx, removed server/world.Block); LiquidType() string; SpreadDecay() int; WithDepth(depth int, falling bool) server/world.Liquid; server/world.Block}
 server/world	type	LiquidDisplacer	interface{CanDisplace(b server/world.Liquid) bool; SideClosed(pos server/block/cube.Pos, side server/block/cube.Pos, tx *server/world.Tx) bool}
 server/world	type	LiquidPlacementHandler	interface{LiquidPlaced(pos server/block/cube.Pos, tx *server/world.Tx)}
 server/world	type	Loader	struct{r int; w *server/world.World; viewer server/world.Viewer; square bool; forceActive bool; mu sync.RWMutex; changeMu sync.Mutex; pos server/world.ChunkPos; loadQueue []server/world.ChunkPos; loaded map[server/world.ChunkPos]*server/world.Column; pending map[server/world.ChunkPos]struct{}; activeRadius int32; activeRadiusSq int64; closed bool; changing bool; detaching int}
 server/world	type	LocalDifficulty	struct{Base server/world.Difficulty; Effective float32}
-server/world	type	MapData	struct{ID int64; JavaID int32; HasJavaID bool; ParentID int64; Dimension int32; CenterX int32; CenterZ int32; Scale uint8; Locked bool; Tracking bool; UnlimitedTracking bool; FullyExplored bool; Colors []byte; ColorsChanged bool; ForceFullTexture bool; PixelPatch *server/world.MapPixelPatch; NativeColors []byte; NativeNBT map[string]any; Decorations []server/world.MapDecoration; TrackedObjects []server/world.MapTrackedObject}
-server/world	type	MapDataProvider	interface{AllocateMapID() (int64, error); JavaMapID(nativeID int64) (int32, error); LoadMap(id int64) (server/world.MapData, error); NativeMapID(javaID int32) (int64, error); StoreMap(server/world.MapData) error}
+server/world	type	MapData	struct{ID int64; CanonicalID int32; HasCanonicalID bool; ParentID int64; Dimension int32; CenterX int32; CenterZ int32; Scale uint8; Locked bool; Tracking bool; UnlimitedTracking bool; FullyExplored bool; Colors []byte; ColorsChanged bool; ForceFullTexture bool; PixelPatch *server/world.MapPixelPatch; NativeColors []byte; NativeNBT map[string]any; Decorations []server/world.MapDecoration; TrackedObjects []server/world.MapTrackedObject}
+server/world	type	MapDataProvider	interface{AllocateMapID() (int64, error); CanonicalMapID(nativeID int64) (int32, error); LoadMap(id int64) (server/world.MapData, error); NativeMapID(canonicalID int32) (int64, error); StoreMap(server/world.MapData) error}
 server/world	type	MapDecoration	struct{Type byte; Rotation byte; X int8; Z int8; Label string; BlockX int32; BlockY int32; BlockZ int32; KeyType int32; NativeNBT map[string]any}
-server/world	type	MapFrameInfo	struct{NativeID int64; HasNativeID bool; JavaID int32; HasJavaID bool}
+server/world	type	MapFrameInfo	struct{NativeID int64; HasNativeID bool; CanonicalID int32; HasCanonicalID bool}
 server/world	type	MapPixelPatch	struct{X int; Y int; Width int; Height int; Colors []byte}
 server/world	type	MapTrackedObject	struct{Entity *server/world.EntityHandle; Block *server/block/cube.Pos}
 server/world	type	MapTransaction	struct{tx *server/world.Tx}
@@ -16451,11 +16451,11 @@ server/world	var	DifficultyHard	server/world.difficultyHard
 server/world	var	DifficultyNormal	server/world.difficultyNormal
 server/world	var	DifficultyPeaceful	server/world.difficultyPeaceful
 server/world	var	End	server/world.end
+server/world	var	ErrBiomeNaturalSpawnsUnavailable	error
 server/world	var	ErrEntityClosed	error
 server/world	var	ErrEntityNotInWorld	error
 server/world	var	ErrEntityType	error
 server/world	var	ErrInvalidMapData	error
-server/world	var	ErrJavaBiomeNaturalSpawnsUnavailable	error
 server/world	var	ErrMapDataUnavailable	error
 server/world	var	ErrNoStructureLookup	error
 server/world	var	ErrOwnerWait	error
@@ -17402,7 +17402,7 @@ server/world/chunk	method	Chunk.Native	func(x uint8, y int16, z uint8) (block ui
 server/world/chunk	method	Chunk.Range	func() server/block/cube.Range
 server/world/chunk	method	Chunk.SetBiome	func(x uint8, y int16, z uint8, biome uint32)
 server/world/chunk	method	Chunk.SetBlock	func(x uint8, y int16, z uint8, layer uint8, block uint32)
-server/world/chunk	method	Chunk.SetJavaStateID	func(x uint8, y int16, z uint8, id uint32)
+server/world/chunk	method	Chunk.SetStateID	func(x uint8, y int16, z uint8, id uint32)
 server/world/chunk	method	Chunk.SkyLight	func(x uint8, y int16, z uint8) uint8
 server/world/chunk	method	Chunk.StateID	func(x uint8, y int16, z uint8) uint32
 server/world/chunk	method	Chunk.Sub	func() []*server/world/chunk.SubChunk
@@ -17424,8 +17424,8 @@ server/world/chunk	method	PalettedStorage.Equal	func(other *server/world/chunk.P
 server/world/chunk	method	PalettedStorage.Indices	func() (words []uint32, bitsPerIndex uint16)
 server/world/chunk	method	PalettedStorage.Palette	func() *server/world/chunk.Palette
 server/world/chunk	method	PalettedStorage.Set	func(x byte, y byte, z byte, v uint32)
-server/world/chunk	method	PalettedStorage.SetJavaStateID	func(x byte, y byte, z byte, id uint32)
 server/world/chunk	method	PalettedStorage.SetPaletteIndex	func(x byte, y byte, z byte, index uint16)
+server/world/chunk	method	PalettedStorage.SetStateID	func(x byte, y byte, z byte, id uint32)
 server/world/chunk	method	PalettedStorage.StateID	func(x byte, y byte, z byte) uint32
 server/world/chunk	method	SubChunk.Block	func(x byte, y byte, z byte, layer uint8) uint32
 server/world/chunk	method	SubChunk.BlockLight	func(x byte, y byte, z byte) uint8
@@ -17451,7 +17451,7 @@ server/world/chunk	type	LightProperties	struct{Emission uint8; Dampening uint8; 
 server/world/chunk	type	LightRegistry	interface{DryLightProperties() []server/world/chunk.LightProperties; LightProperties(state uint32, fg uint32, bg uint32) server/world/chunk.LightProperties}
 server/world/chunk	type	MissingBlockState	struct{Position server/block/cube.Pos; Layer uint8; Properties []string}
 server/world/chunk	type	Palette	struct{last uint32; lastIndex int16; size server/world/chunk.paletteSize; cacheLen uint8; cacheNext uint8; cacheVals [4]uint32; cacheIdxs [4]int16; values []uint32}
-server/world/chunk	type	PalettedStorage	struct{bitsPerIndex uint16; filledBitsPerIndex uint16; indexMask uint32; indicesStart unsafe.Pointer; palette *server/world/chunk.Palette; missingStateEntries map[uint16]server/world/chunk.missingStateEntry; javaStateIDs map[uint16]uint32; indices []uint32}
+server/world/chunk	type	PalettedStorage	struct{bitsPerIndex uint16; filledBitsPerIndex uint16; indexMask uint32; indicesStart unsafe.Pointer; palette *server/world/chunk.Palette; missingStateEntries map[uint16]server/world/chunk.missingStateEntry; stateIDs map[uint16]uint32; indices []uint32}
 server/world/chunk	type	SavedScheduledTick	struct{server/world/chunk.ScheduledTick; Delay int32; NativeBlock uint32}
 server/world/chunk	type	ScheduledTick	struct{Pos server/block/cube.Pos; Kind server/world/chunk.ScheduledTickKind; Type string; Priority int32}
 server/world/chunk	type	ScheduledTickKind	uint8
@@ -17539,17 +17539,17 @@ server/world/mcdb	method	ColumnIterator.Next	func() bool
 server/world/mcdb	method	ColumnIterator.Position	func() server/world.ChunkPos
 server/world/mcdb	method	ColumnIterator.Release	func()
 server/world/mcdb	method	Commit.AllocateMapID	func() (int64, error)
+server/world/mcdb	method	Commit.CanonicalMapID	func(nativeID int64) (int32, error)
 server/world/mcdb	method	Commit.Close	func() error
 server/world/mcdb	method	Commit.Commit	func(id uint64) error
 server/world/mcdb	method	Commit.Discard	func()
-server/world/mcdb	method	Commit.JavaMapID	func(nativeID int64) (int32, error)
 server/world/mcdb	method	Commit.LoadColumn	func(pos server/world.ChunkPos, dim server/world.Dimension) (*server/world/chunk.Column, error)
 server/world/mcdb	method	Commit.LoadDragonFightData	func() (server/world.DragonFightData, bool, error)
 server/world/mcdb	method	Commit.LoadMap	func(id int64) (server/world.MapData, error)
 server/world/mcdb	method	Commit.LoadPlayerSpawnPosition	func(id github.com/google/uuid.UUID) (server/block/cube.Pos, bool, error)
 server/world/mcdb	method	Commit.LoadPositionTrackingData	func() (server/world.PositionTrackingData, error)
 server/world/mcdb	method	Commit.LoadWorldData	func(namespace string) ([]byte, error)
-server/world/mcdb	method	Commit.NativeMapID	func(javaID int32) (int64, error)
+server/world/mcdb	method	Commit.NativeMapID	func(canonicalID int32) (int64, error)
 server/world/mcdb	method	Commit.SaveDragonFightData	func(d server/world.DragonFightData) error
 server/world/mcdb	method	Commit.SavePlayerSpawnPosition	func(id github.com/google/uuid.UUID, pos server/block/cube.Pos) error
 server/world/mcdb	method	Commit.SavePositionTrackingData	func(data server/world.PositionTrackingData) error
@@ -17564,9 +17564,9 @@ server/world/mcdb	method	Commit.StoreMap	func(data server/world.MapData) error
 server/world/mcdb	method	Config.Open	func(dir string) (*server/world/mcdb.DB, error)
 server/world/mcdb	method	DB.AllocateMapID	func() (int64, error)
 server/world/mcdb	method	DB.BeginCommit	func() server/world.Commit
+server/world/mcdb	method	DB.CanonicalMapID	func(nativeID int64) (int32, error)
 server/world/mcdb	method	DB.Close	func() error
 server/world/mcdb	method	DB.Dir	func() string
-server/world/mcdb	method	DB.JavaMapID	func(nativeID int64) (int32, error)
 server/world/mcdb	method	DB.LastCheckpoint	func() (server/world/mcdb.CheckpointRecord, error)
 server/world/mcdb	method	DB.LoadColumn	func(pos server/world.ChunkPos, dim server/world.Dimension) (*server/world/chunk.Column, error)
 server/world/mcdb	method	DB.LoadDragonFightData	func() (server/world.DragonFightData, bool, error)
@@ -17577,7 +17577,7 @@ server/world/mcdb	method	DB.LoadPositionTrackingData	func() (server/world.Positi
 server/world/mcdb	method	DB.LoadStructureTemplate	func(name string) (map[string]any, bool, error)
 server/world/mcdb	method	DB.LoadWorldData	func(namespace string) ([]byte, error)
 server/world/mcdb	method	DB.LoadsConcurrently	func() bool
-server/world/mcdb	method	DB.NativeMapID	func(javaID int32) (int64, error)
+server/world/mcdb	method	DB.NativeMapID	func(canonicalID int32) (int64, error)
 server/world/mcdb	method	DB.NewColumnIterator	func(r *server/world/mcdb.IteratorRange) *server/world/mcdb.ColumnIterator
 server/world/mcdb	method	DB.PlayerRecords	func(yield func(id github.com/google/uuid.UUID, record []byte) bool) error
 server/world/mcdb	method	DB.SaveDragonFightData	func(d server/world.DragonFightData) error
@@ -17615,7 +17615,7 @@ server/world/mcdb/leveldat	method	LevelDat.Unmarshal	func(dst any) error
 server/world/mcdb/leveldat	method	LevelDat.Ver	func() int
 server/world/mcdb/leveldat	method	LevelDat.Write	func(w io.Writer) error
 server/world/mcdb/leveldat	method	LevelDat.WriteFile	func(name string) error
-server/world/mcdb/leveldat	type	Data	struct{Java map[string]any "nbt:\"adamant:java\""; BaseGameVersion string "nbt:\"baseGameVersion\""; BiomeOverride string; ConfirmedPlatformLockedContent bool; CentreMapsToOrigin bool "nbt:\"CenterMapsToOrigin\""; CheatsEnabled bool "nbt:\"cheatsEnabled\""; DaylightCycle int32 "nbt:\"daylightCycle\""; Difficulty int32; EduOffer int32 "nbt:\"eduOffer\""; FlatWorldLayers string; ForceGameType bool; GameType int32; Generator int32; InventoryVersion string; LANBroadcast bool; LANBroadcastIntent bool; LastPlayed int64; LevelName string; LimitedWorldOriginX int32; LimitedWorldOriginY int32; LimitedWorldOriginZ int32; LimitedWorldDepth int32 "nbt:\"limitedWorldDepth\""; LimitedWorldWidth int32 "nbt:\"limitedWorldWidth\""; LocatorBar bool "nbt:\"locatorbar\""; MinimumCompatibleClientVersion []int32; MultiPlayerGame bool "nbt:\"MultiplayerGame\""; MultiPlayerGameIntent bool "nbt:\"MultiplayerGameIntent\""; NetherScale int32; NetworkVersion int32; Platform int32; PlatformBroadcastIntent int32; RandomSeed int64; ShowTags bool "nbt:\"showtags\""; SingleUseWorld bool "nbt:\"isSingleUseWorld\""; SpawnX int32; SpawnY int32; SpawnZ int32; SpawnV1Villagers bool; StorageVersion int32; Time int64; XBLBroadcast bool; XBLBroadcastIntent int32; XBLBroadcastMode int32; Abilities struct{AttackMobs bool "nbt:\"attackmobs\""; AttackPlayers bool "nbt:\"attackplayers\""; Build bool "nbt:\"build\""; Mine bool "nbt:\"mine\""; DoorsAndSwitches bool "nbt:\"doorsandswitches\""; FlySpeed float32 "nbt:\"flySpeed\""; Flying bool "nbt:\"flying\""; InstantBuild bool "nbt:\"instabuild\""; Invulnerable bool "nbt:\"invulnerable\""; Lightning bool "nbt:\"lightning\""; MayFly bool "nbt:\"mayfly\""; OP bool "nbt:\"op\""; OpenContainers bool "nbt:\"opencontainers\""; PermissionsLevel int32 "nbt:\"permissionsLevel\""; PlayerPermissionsLevel int32 "nbt:\"playerPermissionsLevel\""; Teleport bool "nbt:\"teleport\""; WalkSpeed float32 "nbt:\"walkSpeed\""; VerticalFlySpeed float32 "nbt:\"verticalFlySpeed\""} "nbt:\"abilities\""; BonusChestEnabled bool "nbt:\"bonusChestEnabled\""; BonusChestSpawned bool "nbt:\"bonusChestSpawned\""; CommandBlockOutput bool "nbt:\"commandblockoutput\""; CommandBlocksEnabled bool "nbt:\"commandblocksenabled\""; CommandsEnabled bool "nbt:\"commandsEnabled\""; CurrentTick int64 "nbt:\"currentTick\""; DoDayLightCycle bool "nbt:\"dodaylightcycle\""; DoEntityDrops bool "nbt:\"doentitydrops\""; DoFireTick bool "nbt:\"dofiretick\""; DoImmediateRespawn bool "nbt:\"doimmediaterespawn\""; DoInsomnia bool "nbt:\"doinsomnia\""; DoMobLoot bool "nbt:\"domobloot\""; DoMobSpawning bool "nbt:\"domobspawning\""; DoTileDrops bool "nbt:\"dotiledrops\""; DoWeatherCycle bool "nbt:\"doweathercycle\""; DrowningDamage bool "nbt:\"drowningdamage\""; EduLevel bool "nbt:\"eduLevel\""; EducationFeaturesEnabled bool "nbt:\"educationFeaturesEnabled\""; ExperimentalGamePlay bool "nbt:\"experimentalgameplay\""; FallDamage bool "nbt:\"falldamage\""; FireDamage bool "nbt:\"firedamage\""; FunctionCommandLimit int32 "nbt:\"functioncommandlimit\""; HasBeenLoadedInCreative bool "nbt:\"hasBeenLoadedInCreative\""; HasLockedBehaviourPack bool "nbt:\"hasLockedBehaviorPack\""; HasLockedResourcePack bool "nbt:\"hasLockedResourcePack\""; ImmutableWorld bool "nbt:\"immutableWorld\""; IsCreatedInEditor bool "nbt:\"isCreatedInEditor\""; IsExportedFromEditor bool "nbt:\"isExportedFromEditor\""; IsFromLockedTemplate bool "nbt:\"isFromLockedTemplate\""; IsFromWorldTemplate bool "nbt:\"isFromWorldTemplate\""; IsWorldTemplateOptionLocked bool "nbt:\"isWorldTemplateOptionLocked\""; KeepInventory bool "nbt:\"keepinventory\""; LastOpenedWithVersion []int32 "nbt:\"lastOpenedWithVersion\""; LightningLevel float32 "nbt:\"lightningLevel\""; LightningTime int32 "nbt:\"lightningTime\""; MaxCommandChainLength int32 "nbt:\"maxcommandchainlength\""; MobGriefing bool "nbt:\"mobgriefing\""; NaturalRegeneration bool "nbt:\"naturalregeneration\""; PRID string "nbt:\"prid\""; PVP bool "nbt:\"pvp\""; RainLevel float32 "nbt:\"rainLevel\""; RainTime int32 "nbt:\"rainTime\""; RandomTickSpeed int32 "nbt:\"randomtickspeed\""; RequiresCopiedPackRemovalCheck bool "nbt:\"requiresCopiedPackRemovalCheck\""; SendCommandFeedback bool "nbt:\"sendcommandfeedback\""; ServerChunkTickRange int32 "nbt:\"serverChunkTickRange\""; ShowCoordinates bool "nbt:\"showcoordinates\""; ShowDeathMessages bool "nbt:\"showdeathmessages\""; SpawnMobs bool "nbt:\"spawnMobs\""; SpawnRadius int32 "nbt:\"spawnradius\""; StartWithMapEnabled bool "nbt:\"startWithMapEnabled\""; TexturePacksRequired bool "nbt:\"texturePacksRequired\""; TNTExplodes bool "nbt:\"tntexplodes\""; UseMSAGamerTagsOnly bool "nbt:\"useMsaGamertagsOnly\""; WorldStartCount int64 "nbt:\"worldStartCount\""; Experiments map[string]any "nbt:\"experiments\""; FreezeDamage bool "nbt:\"freezedamage\""; WorldPolicies map[string]any "nbt:\"world_policies\""; WorldVersion int32 "nbt:\"WorldVersion\""; RespawnBlocksExplode bool "nbt:\"respawnblocksexplode\""; ShowBorderEffect bool "nbt:\"showbordereffect\""; PermissionsLevel int32 "nbt:\"permissionsLevel\""; PlayerPermissionsLevel int32 "nbt:\"playerPermissionsLevel\""; IsRandomSeedAllowed bool "nbt:\"isRandomSeedAllowed\""; DoLimitedCrafting bool "nbt:\"dolimitedcrafting\""; EditorWorldType int32 "nbt:\"editorWorldType\""; PlayersSleepingPercentage int32 "nbt:\"playerssleepingpercentage\""; RecipesUnlock bool "nbt:\"recipesunlock\""; NaturalGeneration bool "nbt:\"naturalgeneration\""; ProjectilesCanBreakBlocks bool "nbt:\"projectilescanbreakblocks\""; ShowRecipeMessages bool "nbt:\"showrecipemessages\""; IsHardcore bool "nbt:\"IsHardcore\""; ShowDaysPlayed bool "nbt:\"showdaysplayed\""; TNTExplosionDropDecay bool "nbt:\"tntexplosiondropdecay\""; HasUncompleteWorldFileOnDisk bool "nbt:\"HasUncompleteWorldFileOnDisk\""; PlayerHasDied bool "nbt:\"PlayerHasDied\""; UseAllowList bool "nbt:\"UseAllowList\""; AllowAnonymousBlockDropsInEditorWorlds bool "nbt:\"allowAnonymousBlockDropsInEditorWorlds\""; PlayerWaypoints int32 "nbt:\"playerwaypoints\""; ServerEditorConnectionPolicy int32 "nbt:\"serverEditorConnectionPolicy\""}
+server/world/mcdb/leveldat	type	Data	struct{ExtraState map[string]any "nbt:\"adamant:state,omitempty\""; LegacyExtraState map[string]any "nbt:\"adamant:java,omitempty\""; BaseGameVersion string "nbt:\"baseGameVersion\""; BiomeOverride string; ConfirmedPlatformLockedContent bool; CentreMapsToOrigin bool "nbt:\"CenterMapsToOrigin\""; CheatsEnabled bool "nbt:\"cheatsEnabled\""; DaylightCycle int32 "nbt:\"daylightCycle\""; Difficulty int32; EduOffer int32 "nbt:\"eduOffer\""; FlatWorldLayers string; ForceGameType bool; GameType int32; Generator int32; InventoryVersion string; LANBroadcast bool; LANBroadcastIntent bool; LastPlayed int64; LevelName string; LimitedWorldOriginX int32; LimitedWorldOriginY int32; LimitedWorldOriginZ int32; LimitedWorldDepth int32 "nbt:\"limitedWorldDepth\""; LimitedWorldWidth int32 "nbt:\"limitedWorldWidth\""; LocatorBar bool "nbt:\"locatorbar\""; MinimumCompatibleClientVersion []int32; MultiPlayerGame bool "nbt:\"MultiplayerGame\""; MultiPlayerGameIntent bool "nbt:\"MultiplayerGameIntent\""; NetherScale int32; NetworkVersion int32; Platform int32; PlatformBroadcastIntent int32; RandomSeed int64; ShowTags bool "nbt:\"showtags\""; SingleUseWorld bool "nbt:\"isSingleUseWorld\""; SpawnX int32; SpawnY int32; SpawnZ int32; SpawnV1Villagers bool; StorageVersion int32; Time int64; XBLBroadcast bool; XBLBroadcastIntent int32; XBLBroadcastMode int32; Abilities struct{AttackMobs bool "nbt:\"attackmobs\""; AttackPlayers bool "nbt:\"attackplayers\""; Build bool "nbt:\"build\""; Mine bool "nbt:\"mine\""; DoorsAndSwitches bool "nbt:\"doorsandswitches\""; FlySpeed float32 "nbt:\"flySpeed\""; Flying bool "nbt:\"flying\""; InstantBuild bool "nbt:\"instabuild\""; Invulnerable bool "nbt:\"invulnerable\""; Lightning bool "nbt:\"lightning\""; MayFly bool "nbt:\"mayfly\""; OP bool "nbt:\"op\""; OpenContainers bool "nbt:\"opencontainers\""; PermissionsLevel int32 "nbt:\"permissionsLevel\""; PlayerPermissionsLevel int32 "nbt:\"playerPermissionsLevel\""; Teleport bool "nbt:\"teleport\""; WalkSpeed float32 "nbt:\"walkSpeed\""; VerticalFlySpeed float32 "nbt:\"verticalFlySpeed\""} "nbt:\"abilities\""; BonusChestEnabled bool "nbt:\"bonusChestEnabled\""; BonusChestSpawned bool "nbt:\"bonusChestSpawned\""; CommandBlockOutput bool "nbt:\"commandblockoutput\""; CommandBlocksEnabled bool "nbt:\"commandblocksenabled\""; CommandsEnabled bool "nbt:\"commandsEnabled\""; CurrentTick int64 "nbt:\"currentTick\""; DoDayLightCycle bool "nbt:\"dodaylightcycle\""; DoEntityDrops bool "nbt:\"doentitydrops\""; DoFireTick bool "nbt:\"dofiretick\""; DoImmediateRespawn bool "nbt:\"doimmediaterespawn\""; DoInsomnia bool "nbt:\"doinsomnia\""; DoMobLoot bool "nbt:\"domobloot\""; DoMobSpawning bool "nbt:\"domobspawning\""; DoTileDrops bool "nbt:\"dotiledrops\""; DoWeatherCycle bool "nbt:\"doweathercycle\""; DrowningDamage bool "nbt:\"drowningdamage\""; EduLevel bool "nbt:\"eduLevel\""; EducationFeaturesEnabled bool "nbt:\"educationFeaturesEnabled\""; ExperimentalGamePlay bool "nbt:\"experimentalgameplay\""; FallDamage bool "nbt:\"falldamage\""; FireDamage bool "nbt:\"firedamage\""; FunctionCommandLimit int32 "nbt:\"functioncommandlimit\""; HasBeenLoadedInCreative bool "nbt:\"hasBeenLoadedInCreative\""; HasLockedBehaviourPack bool "nbt:\"hasLockedBehaviorPack\""; HasLockedResourcePack bool "nbt:\"hasLockedResourcePack\""; ImmutableWorld bool "nbt:\"immutableWorld\""; IsCreatedInEditor bool "nbt:\"isCreatedInEditor\""; IsExportedFromEditor bool "nbt:\"isExportedFromEditor\""; IsFromLockedTemplate bool "nbt:\"isFromLockedTemplate\""; IsFromWorldTemplate bool "nbt:\"isFromWorldTemplate\""; IsWorldTemplateOptionLocked bool "nbt:\"isWorldTemplateOptionLocked\""; KeepInventory bool "nbt:\"keepinventory\""; LastOpenedWithVersion []int32 "nbt:\"lastOpenedWithVersion\""; LightningLevel float32 "nbt:\"lightningLevel\""; LightningTime int32 "nbt:\"lightningTime\""; MaxCommandChainLength int32 "nbt:\"maxcommandchainlength\""; MobGriefing bool "nbt:\"mobgriefing\""; NaturalRegeneration bool "nbt:\"naturalregeneration\""; PRID string "nbt:\"prid\""; PVP bool "nbt:\"pvp\""; RainLevel float32 "nbt:\"rainLevel\""; RainTime int32 "nbt:\"rainTime\""; RandomTickSpeed int32 "nbt:\"randomtickspeed\""; RequiresCopiedPackRemovalCheck bool "nbt:\"requiresCopiedPackRemovalCheck\""; SendCommandFeedback bool "nbt:\"sendcommandfeedback\""; ServerChunkTickRange int32 "nbt:\"serverChunkTickRange\""; ShowCoordinates bool "nbt:\"showcoordinates\""; ShowDeathMessages bool "nbt:\"showdeathmessages\""; SpawnMobs bool "nbt:\"spawnMobs\""; SpawnRadius int32 "nbt:\"spawnradius\""; StartWithMapEnabled bool "nbt:\"startWithMapEnabled\""; TexturePacksRequired bool "nbt:\"texturePacksRequired\""; TNTExplodes bool "nbt:\"tntexplodes\""; UseMSAGamerTagsOnly bool "nbt:\"useMsaGamertagsOnly\""; WorldStartCount int64 "nbt:\"worldStartCount\""; Experiments map[string]any "nbt:\"experiments\""; FreezeDamage bool "nbt:\"freezedamage\""; WorldPolicies map[string]any "nbt:\"world_policies\""; WorldVersion int32 "nbt:\"WorldVersion\""; RespawnBlocksExplode bool "nbt:\"respawnblocksexplode\""; ShowBorderEffect bool "nbt:\"showbordereffect\""; PermissionsLevel int32 "nbt:\"permissionsLevel\""; PlayerPermissionsLevel int32 "nbt:\"playerPermissionsLevel\""; IsRandomSeedAllowed bool "nbt:\"isRandomSeedAllowed\""; DoLimitedCrafting bool "nbt:\"dolimitedcrafting\""; EditorWorldType int32 "nbt:\"editorWorldType\""; PlayersSleepingPercentage int32 "nbt:\"playerssleepingpercentage\""; RecipesUnlock bool "nbt:\"recipesunlock\""; NaturalGeneration bool "nbt:\"naturalgeneration\""; ProjectilesCanBreakBlocks bool "nbt:\"projectilescanbreakblocks\""; ShowRecipeMessages bool "nbt:\"showrecipemessages\""; IsHardcore bool "nbt:\"IsHardcore\""; ShowDaysPlayed bool "nbt:\"showdaysplayed\""; TNTExplosionDropDecay bool "nbt:\"tntexplosiondropdecay\""; HasUncompleteWorldFileOnDisk bool "nbt:\"HasUncompleteWorldFileOnDisk\""; PlayerHasDied bool "nbt:\"PlayerHasDied\""; UseAllowList bool "nbt:\"UseAllowList\""; AllowAnonymousBlockDropsInEditorWorlds bool "nbt:\"allowAnonymousBlockDropsInEditorWorlds\""; PlayerWaypoints int32 "nbt:\"playerwaypoints\""; ServerEditorConnectionPolicy int32 "nbt:\"serverEditorConnectionPolicy\""}
 server/world/mcdb/leveldat	type	LevelDat	struct{hdr server/world/mcdb/leveldat.header; data []byte}
 server/world/particle	const	CauldronAddDye	server/world/particle.CauldronEffectKind = 7
 server/world/particle	const	CauldronCleanArmour	server/world/particle.CauldronEffectKind = 2

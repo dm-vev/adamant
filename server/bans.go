@@ -32,7 +32,7 @@ func (f banFields) expired(now time.Time) bool {
 type banTime struct{ time.Time }
 
 // javaBanTime is the layout of Java's BanListEntry.DATE_FORMAT.
-const javaBanTime = "2006-01-02 15:04:05 -0700"
+const legacyBanTime = "2006-01-02 15:04:05 -0700"
 
 func (t banTime) MarshalJSON() ([]byte, error) {
 	return json.Marshal(t.UTC().Format(time.RFC3339))
@@ -48,7 +48,7 @@ func (t *banTime) UnmarshalJSON(data []byte) error {
 		t.Time = time.Time{}
 		return nil
 	}
-	for _, layout := range []string{time.RFC3339Nano, javaBanTime} {
+	for _, layout := range []string{time.RFC3339Nano, legacyBanTime} {
 		if v, err := time.Parse(layout, s); err == nil {
 			t.Time = v.UTC()
 			return nil

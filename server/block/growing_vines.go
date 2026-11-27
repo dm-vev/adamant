@@ -19,7 +19,7 @@ type WeepingVines struct {
 
 // ScheduledTick destroys weeping vines that no longer survive, matching GrowingPlantBlock.tick.
 func (v WeepingVines) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
-	if survives, hasSourceState := tx.JavaBlockCanSurvive(pos); hasSourceState && !survives {
+	if survives, hasSourceState := tx.BlockCanSurvive(pos); hasSourceState && !survives {
 		breakBlock(v, pos, tx)
 	}
 }
@@ -46,7 +46,7 @@ type TwistingVines struct {
 
 // ScheduledTick destroys twisting vines that no longer survive, matching GrowingPlantBlock.tick.
 func (v TwistingVines) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
-	if survives, hasSourceState := tx.JavaBlockCanSurvive(pos); hasSourceState && !survives {
+	if survives, hasSourceState := tx.BlockCanSurvive(pos); hasSourceState && !survives {
 		breakBlock(v, pos, tx)
 	}
 }
@@ -112,7 +112,7 @@ type CaveVines struct {
 
 // ScheduledTick destroys cave vines that no longer survive, matching GrowingPlantBlock.tick.
 func (v CaveVines) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
-	if survives, hasSourceState := tx.JavaBlockCanSurvive(pos); hasSourceState && !survives {
+	if survives, hasSourceState := tx.BlockCanSurvive(pos); hasSourceState && !survives {
 		breakBlock(v, pos, tx)
 	}
 }

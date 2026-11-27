@@ -252,7 +252,7 @@ func (w Water) GrowWaterPlants(pos cube.Pos, face cube.Face, tx *world.Tx) bool 
 // biomeProducesCorals reports if the biome at pos is in
 // produces_corals_from_bonemeal.
 func biomeProducesCorals(tx *world.Tx, pos cube.Pos) bool {
-	in, _ := gamedata.BiomeTagContains("minecraft:produces_corals_from_bonemeal", world.JavaBiomeName(tx.Biome(pos)))
+	in, _ := gamedata.BiomeTagContains("minecraft:produces_corals_from_bonemeal", world.CanonicalBiomeName(tx.Biome(pos)))
 	return in
 }
 

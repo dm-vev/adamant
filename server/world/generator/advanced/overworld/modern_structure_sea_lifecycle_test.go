@@ -114,7 +114,7 @@ func TestMutableSeaHeightAndActorsSurviveNativeMCDBRestart(t *testing.T) {
 			}
 			actorsBefore := seaLifecycleActors(t, db, chunks)
 			for pos, actor := range actorsBefore {
-				table := loot.JavaTableKey(actor["LootTable"].(string))
+				table := loot.TableKey(actor["LootTable"].(string))
 				if strings.HasPrefix(kind, "shipwreck") && !strings.HasPrefix(table, "minecraft:chests/shipwreck_") {
 					t.Fatalf("shipwreck actor at%v got %s", pos, table)
 				}

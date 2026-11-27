@@ -127,7 +127,7 @@ func villagerFullLook() prioritizedBehavior {
 
 // entityMobCategory returns the MobCategory of the type of an entity.
 func entityMobCategory(e world.Entity) string {
-	c, ok := mobCategories[world.JavaEntityID(e)]
+	c, ok := mobCategories[world.CanonicalEntityID(e)]
 	if !ok {
 		return "misc"
 	}
@@ -1930,7 +1930,7 @@ func newMoveToSkySeeingSpot(speed float64) *oneShot {
 
 // villagerNoBlocksAbove ports MoveToSkySeeingSpot.hasNoBlocksAbove.
 func villagerNoBlocksAbove(m *Mob, pos cube.Pos) bool {
-	return canSeeSky(m.tx, pos) && float64(m.tx.JavaMotionBlockingHeight(pos[0], pos[2], false)) <= m.data.Pos[1]
+	return canSeeSky(m.tx, pos) && float64(m.tx.MotionBlockingHeight(pos[0], pos[2], false)) <= m.data.Pos[1]
 }
 
 // newCelebrateVillagersSurvivedRaid ports CelebrateVillagersSurvivedRaid:

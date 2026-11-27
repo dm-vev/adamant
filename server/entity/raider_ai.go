@@ -163,7 +163,7 @@ func (g *raiderPatrolGoal) Tick(m *Mob) {
 			dir = dir.Normalize()
 		}
 		leg := cube.PosFromVec3(m.data.Pos.Add(dir.Mul(10)))
-		leg[1] = m.tx.JavaMotionBlockingHeight(leg[0], leg[2], true)
+		leg[1] = m.tx.MotionBlockingHeight(leg[0], leg[2], true)
 		speed := .7
 		if b.patrolLeader {
 			speed = .595
@@ -171,7 +171,7 @@ func (g *raiderPatrolGoal) Tick(m *Mob) {
 		if !m.AI.nav.MoveToPos(m, float64(leg[0]), float64(leg[1]), float64(leg[2]), speed) {
 			r := m.Random()
 			random := m.BlockPos().Add(cube.Pos{-8 + int(r.NextInt(16)), 0, -8 + int(r.NextInt(16))})
-			random[1] = m.tx.JavaMotionBlockingHeight(random[0], random[2], true)
+			random[1] = m.tx.MotionBlockingHeight(random[0], random[2], true)
 			m.AI.nav.MoveToPos(m, float64(random[0]), float64(random[1]), float64(random[2]), .7)
 			g.cooldownUntil = m.tx.CurrentTick() + 200
 		} else if b.patrolLeader {

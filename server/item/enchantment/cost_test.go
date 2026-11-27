@@ -10,7 +10,7 @@ import (
 // javaCosts holds, for each enchantment of Java 26.3
 // (data/minecraft/enchantment/*.json), its weight, max_level, and the base
 // and per_level_above_first of its min_cost and max_cost.
-var javaCosts = map[string][6]int{
+var enchantmentCosts = map[string][6]int{
 	"aqua_affinity":         {2, 1, 1, 0, 41, 0},
 	"bane_of_arthropods":    {5, 5, 5, 8, 25, 8},
 	"binding_curse":         {1, 1, 25, 0, 50, 0},
@@ -60,10 +60,10 @@ var javaCosts = map[string][6]int{
 // every level of each registered enchantment against Java's. An enchanting
 // table draws its enchantments by those weights, among those whose costs
 // hold its own (EnchantmentHelper.getAvailableEnchantmentResults).
-func TestJavaCostsAndWeights(t *testing.T) {
+func TestCostsAndWeights(t *testing.T) {
 	for _, e := range item.Enchantments() {
-		id := strings.TrimPrefix(item.JavaEnchantmentID(e), "minecraft:")
-		want, ok := javaCosts[id]
+		id := strings.TrimPrefix(item.CanonicalEnchantmentID(e), "minecraft:")
+		want, ok := enchantmentCosts[id]
 		if !ok {
 			t.Errorf("%s is not a Java enchantment", id)
 			continue

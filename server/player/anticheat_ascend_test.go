@@ -106,7 +106,7 @@ func TestAscendOffAndExempt(t *testing.T) {
 		t.Fatalf("Ascend off: %d violations", n)
 	}
 	creative := noFallTrace(nil)
-	creative.setup = func(_ *world.Tx, p *Player, _ *javaMover) { p.SetGameMode(world.GameModeCreative) }
+	creative.setup = func(_ *world.Tx, p *Player, _ *simMover) { p.SetGameMode(world.GameModeCreative) }
 	if n, _ := runTrace(t, w, creative).count(anticheat.Ascend); n != 0 {
 		t.Fatalf("a player who may fly: %d violations", n)
 	}

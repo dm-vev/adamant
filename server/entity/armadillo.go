@@ -38,7 +38,7 @@ func (armadilloType) BBox(e world.Entity) cube.BBox {
 	return cube.Box(-.35, 0, -.35, .35, .65, .35)
 }
 func (armadilloType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	s := readNativeMobJavaState(m)
+	s := readNativeMobExtraState(m)
 	if s == nil {
 		s = m
 	}
@@ -67,7 +67,7 @@ func (armadilloType) DecodeNBT(m map[string]any, d *world.EntityData) {
 func (armadilloType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*armadilloBehaviour)
 	a := encodeNativeMobAttributes(readNativeMobAttributes(d.NativeNBT), []nativeMobAttr{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
-	return mergeNativeMobJavaState(map[string]any{"Attributes": a}, mergeNativeMobNBT(readNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "scute_time": int32(b.scuteTime), "state": armadilloStateNames[b.state]})))
+	return mergeNativeMobExtraState(map[string]any{"Attributes": a}, mergeNativeMobNBT(readNativeMobExtraState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "scute_time": int32(b.scuteTime), "state": armadilloStateNames[b.state]})))
 }
 
 // armadilloState ports Armadillo.ArmadilloState.

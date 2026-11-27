@@ -93,7 +93,7 @@ func RegisterEnchantment(id int, enchantment EnchantmentType) {
 
 	enchantmentsMap[id] = enchantment
 	enchantmentIDs[enchantment] = id
-	enchantmentsByJavaID[JavaEnchantmentID(enchantment)] = enchantment
+	enchantmentsByCanonicalID[CanonicalEnchantmentID(enchantment)] = enchantment
 	enchantmentsSorted = sortedEnchantments()
 }
 
@@ -105,41 +105,41 @@ func RegisterEnchantment(id int, enchantment EnchantmentType) {
 // Bedrock reads. Enchantments lists it after the enchantments registered
 // with an ID, in the order of registration. An enchantment registered with
 // an ID too is not Java-only.
-func RegisterJavaOnlyEnchantment(enchantment EnchantmentType) {
+func RegisterServerOnlyEnchantment(enchantment EnchantmentType) {
 	enchantmentMu.Lock()
 	defer enchantmentMu.Unlock()
 
-	if !slices.Contains(javaOnlyEnchantments, enchantment) {
-		javaOnlyEnchantments = append(javaOnlyEnchantments, enchantment)
+	if !slices.Contains(serverOnlyEnchantments, enchantment) {
+		serverOnlyEnchantments = append(serverOnlyEnchantments, enchantment)
 	}
-	enchantmentsByJavaID[JavaEnchantmentID(enchantment)] = enchantment
+	enchantmentsByCanonicalID[CanonicalEnchantmentID(enchantment)] = enchantment
 	enchantmentsSorted = sortedEnchantments()
 }
 
 // IsJavaOnlyEnchantment reports if e was registered with
 // RegisterJavaOnlyEnchantment and not with an ID: Bedrock has no ID of it.
-func IsJavaOnlyEnchantment(e EnchantmentType) bool {
+func IsServerOnlyEnchantment(e EnchantmentType) bool {
 	enchantmentMu.RLock()
 	defer enchantmentMu.RUnlock()
-	return javaOnly(e)
+	return serverOnly(e)
 }
 
 // javaOnly reports if e is a Java-only enchantment. The caller holds
 // enchantmentMu.
-func javaOnly(e EnchantmentType) bool {
+func serverOnly(e EnchantmentType) bool {
 	_, numbered := enchantmentIDs[e]
-	return !numbered && slices.Contains(javaOnlyEnchantments, e)
+	return !numbered && slices.Contains(serverOnlyEnchantments, e)
 }
 
 // enchantmentByJavaID returns the registered enchantment of a Java ID, with
 // or without the minecraft namespace.
-func enchantmentByJavaID(id string) (EnchantmentType, bool) {
+func enchantmentByCanonicalID(id string) (EnchantmentType, bool) {
 	if !strings.Contains(id, ":") {
 		id = "minecraft:" + id
 	}
 	enchantmentMu.RLock()
 	defer enchantmentMu.RUnlock()
-	e, ok := enchantmentsByJavaID[id]
+	e, ok := enchantmentsByCanonicalID[id]
 	return e, ok
 }
 
@@ -153,7 +153,7 @@ func enchantmentOrder(e EnchantmentType) int {
 	if id, ok := enchantmentIDs[e]; ok {
 		return id
 	}
-	if i := slices.Index(javaOnlyEnchantments, e); i >= 0 {
+	if i := slices.Index(serverOnlyEnchantments, e); i >= 0 {
 		// Item NBT holds an ID as an int16, so an ID is below 1<<15.
 		return 1<<16 + i
 	}
@@ -166,10 +166,10 @@ var (
 	enchantmentIDs  = map[EnchantmentType]int{}
 	// javaOnlyEnchantments holds the enchantments of
 	// RegisterJavaOnlyEnchantment, in the order they were registered.
-	javaOnlyEnchantments []EnchantmentType
+	serverOnlyEnchantments []EnchantmentType
 	// enchantmentsByJavaID holds every registered enchantment by its Java
 	// ID.
-	enchantmentsByJavaID = map[string]EnchantmentType{}
+	enchantmentsByCanonicalID = map[string]EnchantmentType{}
 	// enchantmentsSorted holds the registered enchantments as Enchantments
 	// returns them. RegisterEnchantment and RegisterJavaOnlyEnchantment
 	// build it again; it is never changed otherwise, and Enchantments
@@ -225,12 +225,12 @@ func sortedEnchantments() []EnchantmentType {
 	slices.SortFunc(entries, func(a, b entry) int {
 		return cmp.Or(cmp.Compare(a.id, b.id), cmp.Compare(a.at, b.at))
 	})
-	e := make([]EnchantmentType, len(entries), len(entries)+len(javaOnlyEnchantments))
+	e := make([]EnchantmentType, len(entries), len(entries)+len(serverOnlyEnchantments))
 	for i, entry := range entries {
 		e[i] = entry.e
 	}
-	for _, j := range javaOnlyEnchantments {
-		if javaOnly(j) {
+	for _, j := range serverOnlyEnchantments {
+		if serverOnly(j) {
 			e = append(e, j)
 		}
 	}
