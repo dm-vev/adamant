@@ -1,8 +1,10 @@
 package builtin
 
 import (
+	"errors"
 	"math"
 	"math/rand/v2"
+	"time"
 
 	"github.com/dm-vev/adamant/server/block/cube"
 	"github.com/dm-vev/adamant/server/cmd"
@@ -23,58 +25,80 @@ func registerPlayerTeleportCommands(srv serverAdapter) {
 // teleportCommand moves targets to a single destination entity.
 type teleportCommand struct {
 	srv         serverAdapter
-	Targets     []cmd.Target `cmd:"targets"`
-	Destination []cmd.Target `cmd:"destination"`
+	Targets     cmd.Entities  `cmd:"targets"`
+	Destination cmd.OneEntity `cmd:"destination"`
 }
 
 // teleportSelfCommand moves the executing entity to a destination entity.
 type teleportSelfCommand struct {
 	srv         serverAdapter
-	Destination []cmd.Target `cmd:"destination"`
+	Destination cmd.OneEntity `cmd:"destination"`
 }
 
 func (teleportCommand) RequiredLevel() cmd.Level     { return cmd.LevelGameMaster }
 func (teleportSelfCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
 
-func (c teleportCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	teleportToEntity(c.Targets, c.Destination, o)
+func (c teleportCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	teleportToEntity(src, o, tx, c.Targets, c.Destination)
 }
 
-func (c teleportSelfCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
-	self, ok := commandExecutor(src)
-	if !ok {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
-	teleportToEntity([]cmd.Target{self}, c.Destination, o)
+func (c teleportSelfCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	teleportToEntity(src, o, tx, optionalEntities(cmd.Optional[cmd.Entities]{}, src), c.Destination)
+}
+
+type teleportDest struct {
+	world *world.World
+	pos   mgl64.Vec3
+	yaw   float64
+	pitch float64
 }
 
 // teleportToEntity applies Java's single-destination rule and copies the
 // destination rotation, as TeleportCommand.teleportToEntity does.
-func teleportToEntity(targets, destination []cmd.Target, o *cmd.Output) {
-	if len(destination) != 1 {
-		o.Errorf("Only one entity is allowed, but the provided selector allows more than one")
-		return
-	}
-	if len(targets) == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
-	dest := destination[0]
-	yaw, pitch := 0.0, 0.0
-	if rotated, ok := dest.(interface{ Rotation() cube.Rotation }); ok {
-		yaw, pitch = rotated.Rotation().Yaw(), rotated.Rotation().Pitch()
-	}
-	for _, t := range targets {
-		moveTeleportTarget(t, dest.Position(), yaw, pitch)
-	}
-	o.Printf("Teleported %d entities.", len(targets))
+func teleportToEntity(src cmd.Source, o *cmd.Output, tx *world.Tx, targets cmd.Selector, destination cmd.OneEntity) {
+	cmd.ForEach(src, o, tx, destination,
+		func(rtx *world.Tx, t cmd.Target) teleportDest {
+			d := teleportDest{pos: t.Position()}
+			if rtx != nil {
+				d.world = rtx.World()
+			}
+			if rotated, ok := t.(interface{ Rotation() cube.Rotation }); ok {
+				d.yaw, d.pitch = rotated.Rotation().Yaw(), rotated.Rotation().Pitch()
+			}
+			return d
+		},
+		func(src cmd.Source, o *cmd.Output, tx *world.Tx, rs []cmd.Result[teleportDest]) {
+			if len(rs) != 1 {
+				o.Errort(cmd.MessageNoTargets)
+				return
+			}
+			dest := rs[0].Value
+			cmd.ForEach(src, o, tx, targets,
+				func(rtx *world.Tx, t cmd.Target) int {
+					if _, ok := t.(world.Entity); !ok {
+						return 0
+					}
+					transferTargetToWorld(rtx, t, dest.world, dest.pos, true, dest.yaw, dest.pitch)
+					return 1
+				},
+				func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[int]) {
+					tally := cmd.TallyOf(rs)
+					if tally.NonZero == 0 {
+						o.Errort(cmd.MessageNoTargets)
+						return
+					}
+					o.SetResult(tally.NonZero)
+					o.Printf("Teleported %d entities.", tally.NonZero)
+				},
+			)
+		},
+	)
 }
 
 // teleportPositionCommand is `tp <targets> <location>`.
 type teleportPositionCommand struct {
 	srv      serverAdapter
-	Targets  []cmd.Target `cmd:"targets"`
+	Targets  cmd.Entities `cmd:"targets"`
 	Position mgl64.Vec3   `cmd:"position"`
 }
 
@@ -88,39 +112,45 @@ func (teleportPositionCommand) RequiredLevel() cmd.Level     { return cmd.LevelG
 func (teleportSelfPositionCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
 
 func (c teleportPositionCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
-	teleportToPosition(c.Targets, c.Position, o, src, tx)
+	teleportToPosition(src, o, tx, c.Targets, c.Position, false, 0, 0)
 }
 
 func (c teleportSelfPositionCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
-	self, ok := commandExecutor(src)
-	if !ok {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
-	teleportToPosition([]cmd.Target{self}, c.Position, o, src, tx)
+	teleportToPosition(src, o, tx, optionalEntities(cmd.Optional[cmd.Entities]{}, src), c.Position, false, 0, 0)
 }
 
-// teleportToPosition keeps each target's rotation, as Java does when no
-// rotation argument is given.
-func teleportToPosition(targets []cmd.Target, pos mgl64.Vec3, o *cmd.Output, src cmd.Source, tx *world.Tx) {
-	if len(targets) == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
-	var destination = tx.World()
+func commandContextWorld(src cmd.Source, tx *world.Tx) *world.World {
 	if context, ok := cmd.ExecutionContextOf(src); ok && context.World != nil {
-		destination = context.World
+		return context.World
 	}
-	for _, t := range targets {
-		if p, ok := t.(*player.Player); ok && p.H().World() != destination {
-			p.TeleportToWorld(tx, destination, pos)
-			continue
-		}
-		if p, ok := t.(interface{ Teleport(mgl64.Vec3) }); ok {
-			p.Teleport(pos)
-		}
+	if tx != nil {
+		return tx.World()
 	}
-	o.Printf("Teleported %d entities.", len(targets))
+	return nil
+}
+
+// teleportToPosition moves each target to destination world and pos, optionally
+// updating rotation.
+func teleportToPosition(src cmd.Source, o *cmd.Output, tx *world.Tx, targets cmd.Selector, pos mgl64.Vec3, setRot bool, yaw, pitch float64) {
+	destination := commandContextWorld(src, tx)
+	cmd.ForEach(src, o, tx, targets,
+		func(rtx *world.Tx, t cmd.Target) int {
+			if _, ok := t.(world.Entity); !ok {
+				return 0
+			}
+			transferTargetToWorld(rtx, t, destination, pos, setRot, yaw, pitch)
+			return 1
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[int]) {
+			tally := cmd.TallyOf(rs)
+			if tally.NonZero == 0 {
+				o.Errort(cmd.MessageNoTargets)
+				return
+			}
+			o.SetResult(tally.NonZero)
+			o.Printf("Teleported %d entities.", tally.NonZero)
+		},
+	)
 }
 
 // commandExecutor returns the entity a command runs as, following execute
@@ -137,73 +167,116 @@ func commandExecutor(src cmd.Source) (cmd.Target, bool) {
 
 type teleportRotationCommand struct {
 	srv      serverAdapter
-	Targets  []cmd.Target `cmd:"targets"`
+	Targets  cmd.Entities `cmd:"targets"`
 	Position mgl64.Vec3   `cmd:"position"`
 	Yaw      float64      `cmd:"yaw"`
 	Pitch    float64      `cmd:"pitch"`
 }
 
 func (teleportRotationCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
-func (c teleportRotationCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	if len(c.Targets) == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
-	for _, target := range c.Targets {
-		moveTeleportTarget(target, c.Position, c.Yaw, c.Pitch)
-	}
-	o.Printf("Teleported %d entities.", len(c.Targets))
+func (c teleportRotationCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	teleportToPosition(src, o, tx, c.Targets, c.Position, true, c.Yaw, c.Pitch)
 }
 
 type teleportFacingPositionCommand struct {
 	srv      serverAdapter
-	Targets  []cmd.Target   `cmd:"targets"`
+	Targets  cmd.Entities   `cmd:"targets"`
 	Position mgl64.Vec3     `cmd:"position"`
 	Facing   cmd.SubCommand `cmd:"facing"`
 	LookAt   mgl64.Vec3     `cmd:"location"`
 }
 
 func (teleportFacingPositionCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
-func (c teleportFacingPositionCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	if len(c.Targets) == 0 {
-		o.Errort(cmd.MessageNoTargets)
-		return
-	}
-	for _, target := range c.Targets {
-		yaw, pitch := teleportLookAt(c.Position, c.LookAt)
-		moveTeleportTarget(target, c.Position, yaw, pitch)
-	}
-	o.Printf("Teleported %d entities.", len(c.Targets))
+func (c teleportFacingPositionCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	yaw, pitch := teleportLookAt(c.Position, c.LookAt)
+	teleportToPosition(src, o, tx, c.Targets, c.Position, true, yaw, pitch)
 }
 
 type teleportFacingEntityCommand struct {
 	srv      serverAdapter
-	Targets  []cmd.Target   `cmd:"targets"`
+	Targets  cmd.Entities   `cmd:"targets"`
 	Position mgl64.Vec3     `cmd:"position"`
 	Facing   cmd.SubCommand `cmd:"facing"`
 	Entity   cmd.SubCommand `cmd:"entity"`
-	LookAt   []cmd.Target   `cmd:"target"`
+	LookAt   cmd.OneEntity  `cmd:"target"`
 }
 
 func (teleportFacingEntityCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
-func (c teleportFacingEntityCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	if len(c.Targets) == 0 {
-		o.Errort(cmd.MessageNoTargets)
+func (c teleportFacingEntityCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	pos := c.Position
+	targets := c.Targets
+	cmd.ForEach(src, o, tx, c.LookAt,
+		func(_ *world.Tx, t cmd.Target) mgl64.Vec3 {
+			look := t.Position()
+			if eyed, ok := t.(interface{ EyeHeight() float64 }); ok {
+				look[1] += eyed.EyeHeight()
+			}
+			return look
+		},
+		func(src cmd.Source, o *cmd.Output, tx *world.Tx, rs []cmd.Result[mgl64.Vec3]) {
+			if len(rs) != 1 {
+				o.Errort(cmd.MessageNoTargets)
+				return
+			}
+			yaw, pitch := teleportLookAt(pos, rs[0].Value)
+			teleportToPosition(src, o, tx, targets, pos, true, yaw, pitch)
+		},
+	)
+}
+
+func transferTargetToWorld(tx *world.Tx, target cmd.Target, destination *world.World, pos mgl64.Vec3, setRot bool, yaw, pitch float64) {
+	if destination == nil || tx == nil || destination == tx.World() {
+		if setRot {
+			moveTeleportTarget(target, pos, yaw, pitch)
+		} else if teleporter, ok := target.(interface{ Teleport(mgl64.Vec3) }); ok {
+			teleporter.Teleport(pos)
+		}
 		return
 	}
-	if len(c.LookAt) != 1 {
-		o.Errorf("Only one entity is allowed, but the provided selector allows more than one")
+	if p, ok := target.(*player.Player); ok {
+		if setRot {
+			rot := p.Rotation()
+			p.Move(mgl64.Vec3{}, yaw-rot.Yaw(), pitch-rot.Pitch())
+		}
+		p.TeleportToWorld(tx, destination, pos)
 		return
 	}
-	look := c.LookAt[0].Position()
-	if eyed, ok := c.LookAt[0].(interface{ EyeHeight() float64 }); ok {
-		look[1] += eyed.EyeHeight()
+	if e, ok := target.(world.Entity); ok {
+		transferEntityToWorld(tx, e, destination, pos, setRot, yaw, pitch)
 	}
-	for _, target := range c.Targets {
-		yaw, pitch := teleportLookAt(c.Position, look)
-		moveTeleportTarget(target, c.Position, yaw, pitch)
+}
+
+func transferEntityToWorld(tx *world.Tx, e world.Entity, destination *world.World, pos mgl64.Vec3, setRot bool, yaw, pitch float64) {
+	if destination == nil || tx == nil || destination == tx.World() {
+		if setRot {
+			moveTeleportTarget(e, pos, yaw, pitch)
+		} else if teleporter, ok := e.(interface{ Teleport(mgl64.Vec3) }); ok {
+			teleporter.Teleport(pos)
+		}
+		return
 	}
-	o.Printf("Teleported %d entities.", len(c.Targets))
+	transfer, ok := world.BeginTransfer(tx)
+	if !ok {
+		e.H().DoAfter(50*time.Millisecond, func(rtx *world.Tx, ent world.Entity) {
+			transferEntityToWorld(rtx, ent, destination, pos, setRot, yaw, pitch)
+		})
+		return
+	}
+	handle := transfer.Remove(tx, e)
+	if handle == nil {
+		return
+	}
+	task := destination.Do(func(destTx *world.Tx) {
+		ne := destTx.AddEntity(handle)
+		if setRot {
+			moveTeleportTarget(ne, pos, yaw, pitch)
+		} else if teleporter, ok := ne.(interface{ Teleport(mgl64.Vec3) }); ok {
+			teleporter.Teleport(pos)
+		}
+	})
+	if errors.Is(task.Err(), world.ErrWorldClosed) {
+		tx.AddEntity(handle)
+	}
 }
 
 // moveTeleportTarget ports Entity.teleportTo: the target turns before it
@@ -274,57 +347,126 @@ func (c spawnpointCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 
 type rideCommand struct {
 	srv     serverAdapter
-	Target  []cmd.Target   `cmd:"target"`
+	Target  cmd.OneEntity  `cmd:"target"`
 	Mount   cmd.SubCommand `cmd:"mount"`
-	Vehicle []cmd.Target   `cmd:"vehicle"`
+	Vehicle cmd.OneEntity  `cmd:"vehicle"`
+}
+
+type rideTargetInfo struct {
+	ok    bool
+	world *world.World
+	name  string
+}
+
+type rideMountResult struct {
+	mounted        bool
+	diffDim        bool
+	invalidTarget  bool
+	invalidVehicle bool
+	vehicleName    string
 }
 
 func (rideCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
-func (c rideCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
-	target, ok := singleTarget(c.Target, o)
-	if !ok {
-		return
-	}
-	vehicleTarget, ok := singleTarget(c.Vehicle, o)
-	if !ok {
-		return
-	}
-	rider, ok := target.(world.Entity)
-	if !ok {
-		o.Errort(cmd.MessageParameterInvalid, "target")
-		return
-	}
-	vehicle, ok := vehicleTarget.(world.Entity)
-	if !ok {
-		o.Errort(cmd.MessageParameterInvalid, "vehicle")
-		return
-	}
-	if !entity.MountVehicle(tx, vehicle, rider) {
-		o.Errort(cmd.MessageParameterInvalid, "vehicle")
-		return
-	}
-	o.Printf("%s is now riding %s.", entityName(rider), entityName(vehicle))
+func (c rideCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	vehicleSel := c.Vehicle
+	cmd.ForEach(src, o, tx, c.Target,
+		func(rtx *world.Tx, t cmd.Target) rideTargetInfo {
+			e, ok := t.(world.Entity)
+			if !ok {
+				return rideTargetInfo{}
+			}
+			var w *world.World
+			if rtx != nil {
+				w = rtx.World()
+			}
+			return rideTargetInfo{ok: true, world: w, name: entityName(e)}
+		},
+		func(src cmd.Source, o *cmd.Output, tx *world.Tx, rs []cmd.Result[rideTargetInfo]) {
+			if len(rs) != 1 {
+				o.Errort(cmd.MessageNoTargets)
+				return
+			}
+			riderInfo := rs[0].Value
+			riderHandle := rs[0].Handle
+			if !riderInfo.ok || riderHandle == nil {
+				o.Errort(cmd.MessageParameterInvalid, "target")
+				return
+			}
+			cmd.ForEach(src, o, tx, vehicleSel,
+				func(vtx *world.Tx, t cmd.Target) rideMountResult {
+					vehicle, ok := t.(world.Entity)
+					if !ok {
+						return rideMountResult{invalidVehicle: true}
+					}
+					if vtx == nil || vtx.World() != riderInfo.world {
+						return rideMountResult{diffDim: true}
+					}
+					rider, ok := riderHandle.Entity(vtx)
+					if !ok {
+						return rideMountResult{invalidTarget: true}
+					}
+					if !entity.MountVehicle(vtx, vehicle, rider) {
+						return rideMountResult{invalidVehicle: true}
+					}
+					return rideMountResult{mounted: true, vehicleName: entityName(vehicle)}
+				},
+				func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[rideMountResult]) {
+					if len(rs) != 1 {
+						o.Errort(cmd.MessageNoTargets)
+						return
+					}
+					res := rs[0].Value
+					switch {
+					case res.diffDim:
+						o.Errorf("Can't mount entity from a different dimension")
+					case res.invalidTarget:
+						o.Errort(cmd.MessageParameterInvalid, "target")
+					case !res.mounted || res.invalidVehicle:
+						o.Errort(cmd.MessageParameterInvalid, "vehicle")
+					default:
+						o.Printf("%s is now riding %s.", riderInfo.name, res.vehicleName)
+					}
+				},
+			)
+		},
+	)
 }
 
 type dismountCommand struct {
 	srv      serverAdapter
-	Target   []cmd.Target   `cmd:"target"`
+	Target   cmd.OneEntity  `cmd:"target"`
 	Dismount cmd.SubCommand `cmd:"dismount"`
 }
 
-func (dismountCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
-func (c dismountCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
-	target, ok := singleTarget(c.Target, o)
-	if !ok {
-		return
-	}
-	rider, ok := target.(world.Entity)
-	if !ok || !entity.DismountRider(rider, tx) {
-		o.Errort(cmd.MessageParameterInvalid, "target")
-		return
-	}
-	o.Printf("%s dismounted.", entityName(rider))
+type dismountResult struct {
+	ok   bool
+	name string
 }
+
+func (dismountCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
+func (c dismountCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	cmd.ForEach(src, o, tx, c.Target,
+		func(rtx *world.Tx, t cmd.Target) dismountResult {
+			rider, ok := t.(world.Entity)
+			if !ok || !entity.DismountRider(rider, rtx) {
+				return dismountResult{}
+			}
+			return dismountResult{ok: true, name: entityName(rider)}
+		},
+		func(_ cmd.Source, o *cmd.Output, _ *world.Tx, rs []cmd.Result[dismountResult]) {
+			if len(rs) != 1 {
+				o.Errort(cmd.MessageNoTargets)
+				return
+			}
+			if !rs[0].Value.ok {
+				o.Errort(cmd.MessageParameterInvalid, "target")
+				return
+			}
+			o.Printf("%s dismounted.", rs[0].Value.name)
+		},
+	)
+}
+
 func entityName(e world.Entity) string {
 	if n, ok := e.(interface{ Name() string }); ok {
 		return n.Name()
@@ -338,7 +480,7 @@ type spreadPlayersCommand struct {
 	SpreadDistance float64      `cmd:"spreadDistance"`
 	MaxRange       float64      `cmd:"maxRange"`
 	RespectTeams   bool         `cmd:"respectTeams"`
-	Targets        []cmd.Target `cmd:"targets"`
+	Targets        cmd.Entities `cmd:"targets"`
 }
 type spreadPlayersUnderCommand struct {
 	srv            serverAdapter
@@ -348,23 +490,83 @@ type spreadPlayersUnderCommand struct {
 	Under          cmd.SubCommand `cmd:"under"`
 	MaxHeight      int            `cmd:"maxHeight"`
 	RespectTeams   bool           `cmd:"respectTeams"`
-	Targets        []cmd.Target   `cmd:"targets"`
+	Targets        cmd.Entities   `cmd:"targets"`
 }
 
 func (spreadPlayersCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
-func (c spreadPlayersCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
-	spreadPlayers(tx, o, c.Center, c.SpreadDistance, c.MaxRange, tx.Range().Max(), c.Targets)
+func (c spreadPlayersCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	destWorld := commandContextWorld(src, tx)
+	maxHeight := tx.Range().Max()
+	if destWorld != nil {
+		maxHeight = destWorld.Range().Max()
+	}
+	spreadPlayersForEach(src, o, tx, destWorld, c.Center, c.SpreadDistance, c.MaxRange, maxHeight, c.Targets)
 }
 func (spreadPlayersUnderCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
-func (c spreadPlayersUnderCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
-	spreadPlayers(tx, o, c.Center, c.SpreadDistance, c.MaxRange, c.MaxHeight, c.Targets)
+func (c spreadPlayersUnderCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	destWorld := commandContextWorld(src, tx)
+	spreadPlayersForEach(src, o, tx, destWorld, c.Center, c.SpreadDistance, c.MaxRange, c.MaxHeight, c.Targets)
 }
 
 type spreadPosition struct{ x, z float64 }
 
-// spreadPlayers ports SpreadPlayersCommand: positions start uniformly in the
-// square range, are pushed one block away from the average of too-close
-// neighbours, and unsafe positions are re-rolled, for at most 10000 rounds.
+func spreadPlayersForEach(src cmd.Source, o *cmd.Output, tx *world.Tx, destWorld *world.World, center mgl64.Vec3, distance, maxRange float64, maxHeight int, targets cmd.Entities) {
+	if distance < 0 || maxRange < distance+1 {
+		o.Errorf("Maximum range must be at least spread distance + 1")
+		return
+	}
+	minY := tx.Range().Min()
+	if destWorld != nil {
+		minY = destWorld.Range().Min()
+	}
+	if maxHeight < minY {
+		o.Errorf("maxHeight is below the world's minimum height")
+		return
+	}
+	cmd.ForEach(src, o, tx, targets,
+		func(_ *world.Tx, t cmd.Target) bool {
+			_, ok := t.(*player.Player)
+			return ok
+		},
+		func(src cmd.Source, o *cmd.Output, rtx *world.Tx, rs []cmd.Result[bool]) {
+			var handles []*world.EntityHandle
+			for _, r := range rs {
+				if r.Value && r.Handle != nil {
+					handles = append(handles, r.Handle)
+				}
+			}
+			if len(handles) == 0 {
+				o.Errort(cmd.MessageNoTargets)
+				return
+			}
+			cmd.InWorld(src, o, rtx, destWorld, func(_ cmd.Source, o *cmd.Output, dtx *world.Tx) {
+				dests, ok := computeSpreadPositions(dtx, center, distance, maxRange, maxHeight, len(handles))
+				if !ok {
+					o.Errorf("Could not spread %d players around %g, %g (too many players for space - try using spread of at most %g)", len(handles), center[0], center[2], distance)
+					return
+				}
+				for i, h := range handles {
+					pos := dests[i]
+					if e, ok := h.Entity(dtx); ok {
+						if p, ok := e.(*player.Player); ok {
+							p.Teleport(pos)
+						}
+						continue
+					}
+					h.Do(func(ptx *world.Tx, e world.Entity) {
+						if p, ok := e.(*player.Player); ok {
+							p.TeleportToWorld(ptx, destWorld, pos)
+						}
+					})
+				}
+				o.SetResult(len(handles))
+				o.Printf("Spread %d players around %g, %g", len(handles), center[0], center[2])
+			})
+		},
+	)
+}
+
+// spreadPlayers ports SpreadPlayersCommand for direct single-world callers.
 func spreadPlayers(tx *world.Tx, o *cmd.Output, center mgl64.Vec3, distance, maxRange float64, maxHeight int, targets []cmd.Target) {
 	players := playersFromTargets(targets)
 	if len(players) == 0 {
@@ -379,13 +581,29 @@ func spreadPlayers(tx *world.Tx, o *cmd.Output, center mgl64.Vec3, distance, max
 		o.Errorf("maxHeight is below the world's minimum height")
 		return
 	}
+	dests, ok := computeSpreadPositions(tx, center, distance, maxRange, maxHeight, len(players))
+	if !ok {
+		o.Errorf("Could not spread %d players around %g, %g (too many players for space - try using spread of at most %g)", len(players), center[0], center[2], distance)
+		return
+	}
+	for i, p := range players {
+		p.Teleport(dests[i])
+	}
+	o.Printf("Spread %d players around %g, %g", len(players), center[0], center[2])
+}
+
+// computeSpreadPositions ports SpreadPlayersCommand's relaxation loop:
+// positions start uniformly in the square range, are pushed one block away
+// from the average of too-close neighbours, and unsafe positions are re-rolled,
+// for at most 10000 rounds.
+func computeSpreadPositions(tx *world.Tx, center mgl64.Vec3, distance, maxRange float64, maxHeight, count int) ([]mgl64.Vec3, bool) {
 	minX, minZ := center[0]-maxRange, center[2]-maxRange
 	maxX, maxZ := center[0]+maxRange, center[2]+maxRange
 	randomize := func(p *spreadPosition) {
 		p.x = minX + rand.Float64()*(maxX-minX)
 		p.z = minZ + rand.Float64()*(maxZ-minZ)
 	}
-	positions := make([]spreadPosition, len(players))
+	positions := make([]spreadPosition, count)
 	for i := range positions {
 		randomize(&positions[i])
 	}
@@ -432,14 +650,14 @@ func spreadPlayers(tx *world.Tx, o *cmd.Output, center mgl64.Vec3, distance, max
 		}
 	}
 	if iteration >= 10000 {
-		o.Errorf("Could not spread %d players around %g, %g (too many players for space - try using spread of at most %g)", len(players), center[0], center[2], distance)
-		return
+		return nil, false
 	}
-	for i, p := range players {
+	dests := make([]mgl64.Vec3, count)
+	for i := range positions {
 		y, _ := spreadSpawnY(tx, positions[i], maxHeight)
-		p.Teleport(mgl64.Vec3{math.Floor(positions[i].x) + .5, float64(y), math.Floor(positions[i].z) + .5})
+		dests[i] = mgl64.Vec3{math.Floor(positions[i].x) + .5, float64(y), math.Floor(positions[i].z) + .5}
 	}
-	o.Printf("Spread %d players around %g, %g", len(players), center[0], center[2])
+	return dests, true
 }
 
 // spreadSpawnY ports Position.getSpawnY and isSafe: the first non-air block

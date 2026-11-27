@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dm-vev/adamant/server/world"
@@ -60,6 +61,40 @@ func ForEach[R any](
 	default:
 		forEachEntities(src, o, tx, ctxWorld, s, each, then)
 	}
+}
+
+// InWorld runs fn in a transaction of target. If tx already belongs to target
+// (or target is nil), fn runs synchronously before InWorld returns. Otherwise
+// InWorld holds o, schedules fn on target's owner without waiting, and
+// delivers o once fn and any nested ForEach/InWorld calls it started complete.
+func InWorld(src Source, o *Output, tx *world.Tx, target *world.World, fn func(src Source, o *Output, tx *world.Tx)) {
+	if target == nil || (tx != nil && tx.World() == target) {
+		fn(src, o, tx)
+		return
+	}
+	ref := captureSource(src)
+	o.acquire(src)
+	var released atomic.Bool
+	task := target.Do(func(rtx *world.Tx) {
+		resolved := ref.resolve(rtx)
+		fn(resolved, o, rtx)
+		if released.CompareAndSwap(false, true) {
+			o.release(rtx, resolved)
+		}
+	})
+	task.OnDone(func(err error) {
+		if !released.CompareAndSwap(false, true) {
+			return
+		}
+		if errors.Is(err, world.ErrWorldClosed) {
+			o.abort()
+			return
+		}
+		if errors.Is(err, world.ErrTaskPanicked) {
+			o.Error(errUnexpectedCommand)
+		}
+		o.release(nil, ref.resolve(nil))
+	})
 }
 
 // contextWorld returns the execution world of src, falling back to tx's world.

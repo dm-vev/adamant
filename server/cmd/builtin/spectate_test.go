@@ -27,14 +27,17 @@ func TestSpectateFollowsAnEntity(t *testing.T) {
 		watcher = tx.AddEntity(world.EntitySpawnOpts{}.New(player.Type, player.Config{Name: "Watcher", Position: mgl64.Vec3{0, 64, 0}, GameMode: world.GameModeSurvival})).H()
 		cow = tx.AddEntity(entity.NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{20.5, 64, 0.5}})).H()
 		p, c := resolve(tx)
-		if out := runTestCommand(spectate, "@e[type=cow] Watcher", tx); out.ErrorCount() == 0 {
+		if out := runTestCommand(spectate, "@e[type=cow,limit=1] Watcher", tx); out.ErrorCount() == 0 {
 			t.Fatal("a survival player started spectating")
 		}
 		p.SetGameMode(world.GameModeSpectator)
+		if out := runTestCommand(spectate, "@e[type=cow] Watcher", tx); out.ErrorCount() == 0 {
+			t.Fatal("multi-entity selector was accepted for spectate target")
+		}
 		if out := runTestCommand(spectate, "Watcher Watcher", tx); out.ErrorCount() == 0 {
 			t.Fatal("a player spectated itself")
 		}
-		if out := runTestCommand(spectate, "@e[type=cow] Watcher", tx); out.ErrorCount() != 0 {
+		if out := runTestCommand(spectate, "@e[type=cow,limit=1] Watcher", tx); out.ErrorCount() != 0 {
 			t.Fatalf("spectating the cow failed: %v", out.Errors())
 		}
 		c.Teleport(mgl64.Vec3{30.5, 64, 0.5})
@@ -53,7 +56,7 @@ func TestSpectateFollowsAnEntity(t *testing.T) {
 			t.Fatal("leaving spectator mode kept spectating the cow")
 		}
 		p.SetGameMode(world.GameModeSpectator)
-		if out := runTestCommand(spectate, "@e[type=cow] Watcher", tx); out.ErrorCount() != 0 {
+		if out := runTestCommand(spectate, "@e[type=cow,limit=1] Watcher", tx); out.ErrorCount() != 0 {
 			t.Fatalf("spectating the cow again failed: %v", out.Errors())
 		}
 		c.Hurt(1000, entity.VoidDamageSource{})
