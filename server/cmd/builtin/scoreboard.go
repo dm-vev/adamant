@@ -144,33 +144,6 @@ func (scoreboardObjectiveList) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	o.Printf("Objectives: %v", m.ObjectiveNames())
 }
 
-// scoreHolders resolves a Java ScoreHolderArgument: `*` is every tracked
-// holder, selectors resolve to player names or entity UUIDs, and any other
-// text is a literal (fake player) name.
-func scoreHolders(spec string, src cmd.Source, tx *world.Tx, m *scoreboard.Model) ([]string, error) {
-	switch {
-	case spec == "*":
-		return m.Holders(), nil
-	case strings.HasPrefix(spec, "@"):
-		targets, err := cmd.ResolveTargets(spec, src, tx)
-		if err != nil {
-			return nil, err
-		}
-		names := make([]string, 0, len(targets))
-		for _, t := range targets {
-			if name := cmd.ScoreHolderName(t); name != "" {
-				names = append(names, name)
-			}
-		}
-		if len(names) == 0 {
-			return nil, cmd.MessageNoTargets.F()
-		}
-		return names, nil
-	default:
-		return []string{spec}, nil
-	}
-}
-
 // resolveScoreHolders resolves a Java ScoreHolderArgument across worlds via
 // cmd.ForEach when spec is an @-selector, and synchronously for `*` or literal
 // fake-player names.
@@ -238,26 +211,27 @@ func updateScores(src cmd.Source, o *cmd.Output, tx *world.Tx, spec, objective s
 		o.Errorf("That objective is read-only and cannot be set")
 		return
 	}
-	holders, err := scoreHolders(spec, src, tx, m)
-	if err != nil {
-		o.Error(err)
-		return
-	}
-	last := 0
-	for _, holder := range holders {
-		if last, err = change(m, holder); err != nil {
-			o.Errorf("cannot change score: %v", err)
+	resolveScoreHolders(spec, src, o, tx, m, func(_ cmd.Source, o *cmd.Output, tx *world.Tx, holders []string, err error) {
+		if err != nil {
+			o.Error(err)
 			return
 		}
-	}
-	refreshScoreboard(tx, m)
-	if len(holders) == 1 {
-		o.SetResult(last)
-		o.Printf("Set [%s] for %s to %d", objective, holders[0], last)
-		return
-	}
-	o.SetResult(len(holders))
-	o.Printf("Set [%s] for %d entities", objective, len(holders))
+		last := 0
+		for _, holder := range holders {
+			if last, err = change(m, holder); err != nil {
+				o.Errorf("cannot change score: %v", err)
+				return
+			}
+		}
+		refreshScoreboard(tx, m)
+		if len(holders) == 1 {
+			o.SetResult(last)
+			o.Printf("Set [%s] for %s to %d", objective, holders[0], last)
+			return
+		}
+		o.SetResult(len(holders))
+		o.Printf("Set [%s] for %d entities", objective, len(holders))
+	})
 }
 
 func (c scoreboardScoreGet) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
@@ -266,22 +240,24 @@ func (c scoreboardScoreGet) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 		o.Error("world unavailable")
 		return
 	}
-	holders, err := scoreHolders(c.Holder, src, tx, m)
-	if err != nil {
-		o.Error(err)
-		return
-	}
-	if len(holders) != 1 {
-		o.Errorf("Only one entity is allowed, but the provided selector allows more than one")
-		return
-	}
-	v, ok := m.Score(c.Objective, holders[0])
-	if !ok {
-		o.Errorf("Can't get value of %s for %s; none is set", c.Objective, holders[0])
-		return
-	}
-	o.SetResult(v)
-	o.Printf("%s has %d [%s]", holders[0], v, c.Objective)
+	objective := c.Objective
+	resolveScoreHolders(c.Holder, src, o, tx, m, func(_ cmd.Source, o *cmd.Output, _ *world.Tx, holders []string, err error) {
+		if err != nil {
+			o.Error(err)
+			return
+		}
+		if len(holders) != 1 {
+			o.Errorf("Only one entity is allowed, but the provided selector allows more than one")
+			return
+		}
+		v, ok := m.Score(objective, holders[0])
+		if !ok {
+			o.Errorf("Can't get value of %s for %s; none is set", objective, holders[0])
+			return
+		}
+		o.SetResult(v)
+		o.Printf("%s has %d [%s]", holders[0], v, objective)
+	})
 }
 
 func (c scoreboardScoreReset) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
@@ -290,22 +266,23 @@ func (c scoreboardScoreReset) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 		o.Error("world unavailable")
 		return
 	}
-	holders, err := scoreHolders(c.Holder, src, tx, m)
-	if err != nil {
-		o.Error(err)
-		return
-	}
 	objective, single := c.Objective.Load()
-	for _, holder := range holders {
-		if single {
-			m.ResetScore(objective, holder)
-		} else {
-			m.ResetHolder(holder)
+	resolveScoreHolders(c.Holder, src, o, tx, m, func(_ cmd.Source, o *cmd.Output, tx *world.Tx, holders []string, err error) {
+		if err != nil {
+			o.Error(err)
+			return
 		}
-	}
-	refreshScoreboard(tx, m)
-	o.SetResult(len(holders))
-	o.Printf("Reset scores for %d entities", len(holders))
+		for _, holder := range holders {
+			if single {
+				m.ResetScore(objective, holder)
+			} else {
+				m.ResetHolder(holder)
+			}
+		}
+		refreshScoreboard(tx, m)
+		o.SetResult(len(holders))
+		o.Printf("Reset scores for %d entities", len(holders))
+	})
 }
 
 func (c scoreboardScoreList) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
@@ -321,24 +298,25 @@ func (c scoreboardScoreList) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 		o.Printf("There are %d tracked entities: %s", len(holders), strings.Join(holders, ", "))
 		return
 	}
-	holders, err := scoreHolders(spec, src, tx, m)
-	if err != nil {
-		o.Error(err)
-		return
-	}
-	for _, holder := range holders {
-		scores := m.HolderScores(holder)
-		names := make([]string, 0, len(scores))
-		for name := range scores {
-			names = append(names, name)
+	resolveScoreHolders(spec, src, o, tx, m, func(_ cmd.Source, o *cmd.Output, _ *world.Tx, holders []string, err error) {
+		if err != nil {
+			o.Error(err)
+			return
 		}
-		slices.Sort(names)
-		o.SetResult(len(scores))
-		o.Printf("%s has %d scores:", holder, len(scores))
-		for _, name := range names {
-			o.Printf("[%s]: %d", name, scores[name])
+		for _, holder := range holders {
+			scores := m.HolderScores(holder)
+			names := make([]string, 0, len(scores))
+			for name := range scores {
+				names = append(names, name)
+			}
+			slices.Sort(names)
+			o.SetResult(len(scores))
+			o.Printf("%s has %d scores:", holder, len(scores))
+			for _, name := range names {
+				o.Printf("[%s]: %d", name, scores[name])
+			}
 		}
-	}
+	})
 }
 
 func (c scoreboardScoreEnable) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
@@ -351,15 +329,17 @@ func (c scoreboardScoreEnable) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) 
 		o.Errorf("You can only enable trigger-objectives")
 		return
 	}
-	holders, err := scoreHolders(c.Holder, src, tx, m)
-	if err != nil {
-		o.Error(err)
-		return
-	}
-	for _, holder := range holders {
-		m.SetTriggerEnabled(holder, true)
-	}
-	o.Printf("Enabled trigger %s for %d entities", c.Objective, len(holders))
+	objective := c.Objective
+	resolveScoreHolders(c.Holder, src, o, tx, m, func(_ cmd.Source, o *cmd.Output, _ *world.Tx, holders []string, err error) {
+		if err != nil {
+			o.Error(err)
+			return
+		}
+		for _, holder := range holders {
+			m.SetTriggerEnabled(holder, true)
+		}
+		o.Printf("Enabled trigger %s for %d entities", objective, len(holders))
+	})
 }
 
 func (c scoreboardScoreOperation) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
@@ -368,30 +348,33 @@ func (c scoreboardScoreOperation) Run(src cmd.Source, o *cmd.Output, tx *world.T
 		o.Error("world unavailable")
 		return
 	}
-	targets, err := scoreHolders(c.Target, src, tx, m)
-	if err != nil {
-		o.Error(err)
-		return
-	}
-	sources, err := scoreHolders(c.Source, src, tx, m)
-	if err != nil {
-		o.Error(err)
-		return
-	}
-	for _, target := range targets {
-		for _, source := range sources {
-			if err := m.Operate(c.TargetObjective, target, string(c.Operator), c.SourceObjective, source); err != nil {
-				o.Errorf("cannot operate on scores: %v", err)
+	targetObj, sourceObj, op, sourceSpec := c.TargetObjective, c.SourceObjective, string(c.Operator), c.Source
+	resolveScoreHolders(c.Target, src, o, tx, m, func(src cmd.Source, o *cmd.Output, tx *world.Tx, targets []string, err error) {
+		if err != nil {
+			o.Error(err)
+			return
+		}
+		resolveScoreHolders(sourceSpec, src, o, tx, m, func(_ cmd.Source, o *cmd.Output, tx *world.Tx, sources []string, err error) {
+			if err != nil {
+				o.Error(err)
 				return
 			}
-		}
-	}
-	refreshScoreboard(tx, m)
-	if len(targets) == 1 {
-		v, _ := m.Score(c.TargetObjective, targets[0])
-		o.SetResult(v)
-	}
-	o.Printf("Updated [%s] for %d entities", c.TargetObjective, len(targets))
+			for _, target := range targets {
+				for _, source := range sources {
+					if err := m.Operate(targetObj, target, op, sourceObj, source); err != nil {
+						o.Errorf("cannot operate on scores: %v", err)
+						return
+					}
+				}
+			}
+			refreshScoreboard(tx, m)
+			if len(targets) == 1 {
+				v, _ := m.Score(targetObj, targets[0])
+				o.SetResult(v)
+			}
+			o.Printf("Updated [%s] for %d entities", targetObj, len(targets))
+		})
+	})
 }
 func scoreboardModel(tx *world.Tx) *scoreboard.Model {
 	if tx == nil {

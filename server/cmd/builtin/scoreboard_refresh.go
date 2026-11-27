@@ -1,31 +1,65 @@
 package builtin
 
 import (
+	"github.com/dm-vev/adamant/server/player"
 	model "github.com/dm-vev/adamant/server/scoreboard"
 	"github.com/dm-vev/adamant/server/world"
 )
 
-// refreshScoreboard mirrors the model's sidebar onto every Bedrock viewer
-// immediately after a command changes it.
-func refreshScoreboard(tx *world.Tx, m *model.Model) {
+// eachOnlinePlayer invokes fn for every player in tx's world synchronously and
+// schedules fn on every other server dimension without blocking.
+func eachOnlinePlayer(tx *world.Tx, fn func(*player.Player)) {
 	if tx == nil {
 		return
 	}
 	for p := range onlinePlayers(tx) {
-		p.SyncScoreboard(m)
+		fn(p)
 	}
+	if commandServer == nil {
+		return
+	}
+	origin := tx.World()
+	var seen [3]*world.World
+	n := 0
+	for _, w := range [3]*world.World{commandServer.World(), commandServer.Nether(), commandServer.End()} {
+		if w == nil || w == origin {
+			continue
+		}
+		dup := false
+		for i := range n {
+			if seen[i] == w {
+				dup = true
+				break
+			}
+		}
+		if dup {
+			continue
+		}
+		seen[n] = w
+		n++
+		w.Do(func(wtx *world.Tx) {
+			for p := range onlinePlayers(wtx) {
+				fn(p)
+			}
+		})
+	}
+}
+
+// refreshScoreboard mirrors the model's sidebar onto every Bedrock viewer
+// immediately after a command changes it.
+func refreshScoreboard(tx *world.Tx, m *model.Model) {
+	eachOnlinePlayer(tx, func(p *player.Player) {
+		p.SyncScoreboard(m)
+	})
 }
 
 // refreshTeamNameTags applies team prefix and suffix to online members.
 func refreshTeamNameTags(tx *world.Tx, m *model.Model) {
-	if tx == nil {
-		return
-	}
-	for p := range onlinePlayers(tx) {
+	eachOnlinePlayer(tx, func(p *player.Player) {
 		if team, ok := m.TeamFor(p.Name()); ok {
 			p.SetNameTag(teamColorCode(team.Color) + team.Prefix + p.Name() + team.Suffix)
 		}
-	}
+	})
 }
 
 func teamColorCode(color string) string {

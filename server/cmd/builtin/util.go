@@ -22,20 +22,6 @@ func onlinePlayers(tx *world.Tx) iter.Seq[*player.Player] {
 	}
 }
 
-// singleTarget enforces Java's single-entity selector arguments on the
-// framework's multi-target parameter type.
-func singleTarget(targets []cmd.Target, o *cmd.Output) (cmd.Target, bool) {
-	if len(targets) != 1 {
-		if len(targets) == 0 {
-			o.Errort(cmd.MessageNoTargets)
-		} else {
-			o.Errorf("Only one entity is allowed, but the provided selector allows more than one")
-		}
-		return nil, false
-	}
-	return targets[0], true
-}
-
 type namedSource interface {
 	Name() string
 }

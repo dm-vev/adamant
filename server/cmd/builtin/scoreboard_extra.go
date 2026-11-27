@@ -84,44 +84,73 @@ func (c teamRemove) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 		o.Error("team not found")
 		return
 	}
-	for p := range onlinePlayers(tx) {
+	eachOnlinePlayer(tx, func(p *player.Player) {
 		if oldTeam.Members[p.Name()] {
 			p.SetNameTag(p.Name())
 		}
-	}
+	})
 	refreshTeamNameTags(tx, m)
 	o.Printf("Removed team %s.", c.Name)
 }
-func (c teamJoin) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
+func (c teamJoin) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	m := scoreboardModel(tx)
 	if m == nil {
 		o.Error("world unavailable")
 		return
 	}
-	if err := m.JoinTeam(c.Name, c.Members); err != nil {
-		o.Errorf("cannot join team: %v", err)
-		return
-	}
-	refreshTeamNameTags(tx, m)
-	o.Printf("Added %s to team %s.", c.Members, c.Name)
-}
-func (c teamLeave) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
-	m := scoreboardModel(tx)
-	if m == nil {
-		o.Error("world unavailable")
-		return
-	}
-	if m.LeaveTeam(c.Members) == 0 {
-		o.Error("not a team member")
-		return
-	}
-	for p := range onlinePlayers(tx) {
-		if p.Name() == c.Members {
-			p.SetNameTag(p.Name())
+	teamName := c.Name
+	resolveScoreHolders(c.Members, src, o, tx, m, func(_ cmd.Source, o *cmd.Output, tx *world.Tx, holders []string, err error) {
+		if err != nil {
+			o.Error(err)
+			return
 		}
+		for _, holder := range holders {
+			if err := m.JoinTeam(teamName, holder); err != nil {
+				o.Errorf("cannot join team: %v", err)
+				return
+			}
+		}
+		refreshTeamNameTags(tx, m)
+		if len(holders) == 1 {
+			o.Printf("Added %s to team %s.", holders[0], teamName)
+			return
+		}
+		o.Printf("Added %d entities to team %s.", len(holders), teamName)
+	})
+}
+func (c teamLeave) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	m := scoreboardModel(tx)
+	if m == nil {
+		o.Error("world unavailable")
+		return
 	}
-	refreshTeamNameTags(tx, m)
-	o.Printf("Removed %s from their team.", c.Members)
+	resolveScoreHolders(c.Members, src, o, tx, m, func(_ cmd.Source, o *cmd.Output, tx *world.Tx, holders []string, err error) {
+		if err != nil {
+			o.Error(err)
+			return
+		}
+		removed := make(map[string]struct{}, len(holders))
+		for _, holder := range holders {
+			if m.LeaveTeam(holder) > 0 {
+				removed[holder] = struct{}{}
+			}
+		}
+		if len(removed) == 0 {
+			o.Error("not a team member")
+			return
+		}
+		eachOnlinePlayer(tx, func(p *player.Player) {
+			if _, ok := removed[p.Name()]; ok {
+				p.SetNameTag(p.Name())
+			}
+		})
+		refreshTeamNameTags(tx, m)
+		if len(holders) == 1 {
+			o.Printf("Removed %s from their team.", holders[0])
+			return
+		}
+		o.Printf("Removed %d entities from their teams.", len(removed))
+	})
 }
 
 type teamMessage struct {
@@ -130,22 +159,22 @@ type teamMessage struct {
 
 func (c teamMessage) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	m := scoreboardModel(tx)
-	sender, ok := src.(*player.Player)
-	if m == nil || !ok {
+	senderName := commandPlayerName(src)
+	if m == nil || senderName == "" {
 		o.Error("player and world required")
 		return
 	}
-	team, ok := m.TeamFor(sender.Name())
+	team, ok := m.TeamFor(senderName)
 	if !ok {
 		o.Error("you are not on a team")
 		return
 	}
 	message := strings.TrimSpace(string(c.Message))
-	for p := range onlinePlayers(tx) {
+	eachOnlinePlayer(tx, func(p *player.Player) {
 		if team.Members[p.Name()] {
-			p.Messagef("[%s] %s: %s", team.DisplayName, sender.Name(), message)
+			p.Messagef("[%s] %s: %s", team.DisplayName, senderName, message)
 		}
-	}
+	})
 }
 
 type triggerEnable struct {
@@ -158,6 +187,11 @@ type triggerUse struct {
 }
 
 func commandPlayerName(src cmd.Source) string {
+	if ctx, ok := cmd.ExecutionContextOf(src); ok {
+		if p, ok := ctx.Executor.(*player.Player); ok {
+			return p.Name()
+		}
+	}
 	if p, ok := src.(*player.Player); ok {
 		return p.Name()
 	}
@@ -220,19 +254,52 @@ func (bossbarProperty) Options(cmd.Source) []string {
 	return []string{"name", "value", "max", "color", "visible", "players"}
 }
 
-func (c bossbarSet) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
+func (c bossbarSet) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	m := scoreboardModel(tx)
 	if m == nil {
 		o.Error("world unavailable")
 		return
 	}
-	if err := m.ModifyBossBar(c.ID, string(c.Property), strings.TrimSpace(string(c.Value))); err != nil {
-		o.Errorf("cannot modify bossbar: %v", err)
+	id, prop, val := c.ID, string(c.Property), strings.TrimSpace(string(c.Value))
+	apply := func(o *cmd.Output, tx *world.Tx, value string) {
+		if err := m.ModifyBossBar(id, prop, value); err != nil {
+			o.Errorf("cannot modify bossbar: %v", err)
+			return
+		}
+		bar, _ := m.BossBar(id)
+		sendBossBar(tx, bar)
+		o.Printf("Updated bossbar %s.", id)
+	}
+	if prop == "players" && strings.HasPrefix(val, "@") {
+		sel, err := cmd.ParsePlayers(val, src)
+		if err != nil {
+			o.Error(err)
+			return
+		}
+		cmd.ForEach(src, o, tx, sel,
+			func(_ *world.Tx, t cmd.Target) string {
+				if p, ok := t.(*player.Player); ok {
+					return p.Name()
+				}
+				return ""
+			},
+			func(_ cmd.Source, o *cmd.Output, tx *world.Tx, rs []cmd.Result[string]) {
+				names := make([]string, 0, len(rs))
+				for _, r := range rs {
+					if r.Value != "" {
+						names = append(names, r.Value)
+					}
+				}
+				if len(names) == 0 {
+					o.Errort(cmd.MessageNoTargets)
+					return
+				}
+				apply(o, tx, strings.Join(names, ","))
+			},
+		)
 		return
 	}
-	bar, _ := m.BossBar(c.ID)
-	sendBossBar(tx, bar)
-	o.Printf("Updated bossbar %s.", c.ID)
+	apply(o, tx, val)
 }
 
 type bossbarAdd struct {
@@ -270,9 +337,10 @@ func (c bossbarRemove) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 		o.Error("bossbar not found")
 		return
 	}
-	for p := range onlinePlayers(tx) {
-		p.RemoveBossBarID(c.ID)
-	}
+	id := c.ID
+	eachOnlinePlayer(tx, func(p *player.Player) {
+		p.RemoveBossBarID(id)
+	})
 	o.Printf("Removed bossbar %s.", c.ID)
 }
 func sendBossBar(tx *world.Tx, data scoreboard.BossBar) {
@@ -280,9 +348,9 @@ func sendBossBar(tx *world.Tx, data scoreboard.BossBar) {
 		return
 	}
 	if !data.Visible {
-		for p := range onlinePlayers(tx) {
+		eachOnlinePlayer(tx, func(p *player.Player) {
 			p.RemoveBossBarID(data.ID)
-		}
+		})
 		return
 	}
 	color := bossbar.Purple()
@@ -301,7 +369,7 @@ func sendBossBar(tx *world.Tx, data scoreboard.BossBar) {
 		color = bossbar.White()
 	}
 	bar := bossbar.New(data.Name).WithID(data.ID).WithColour(color).WithHealthPercentage(data.Value / data.Max)
-	for p := range onlinePlayers(tx) {
+	eachOnlinePlayer(tx, func(p *player.Player) {
 		show := len(data.Players) == 0
 		for _, name := range data.Players {
 			if name == p.Name() {
@@ -314,5 +382,5 @@ func sendBossBar(tx *world.Tx, data scoreboard.BossBar) {
 		} else {
 			p.RemoveBossBarID(data.ID)
 		}
-	}
+	})
 }
