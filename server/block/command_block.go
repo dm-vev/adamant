@@ -158,6 +158,7 @@ func (b CommandBlock) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, aft
 func (b CommandBlock) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	b.execute(pos, tx)
 }
+
 type commandBlockKey struct {
 	w   *world.World
 	pos cube.Pos

@@ -35,9 +35,9 @@ func newOpWaitSource(p *player.Player) *opWaitSource {
 	return &opWaitSource{name: p.Name(), pos: p.Position(), done: make(chan struct{})}
 }
 
-func (s *opWaitSource) Name() string               { return s.name }
-func (s *opWaitSource) Position() mgl64.Vec3       { return s.pos }
-func (*opWaitSource) PermissionLevel() cmd.Level   { return cmd.LevelOwner }
+func (s *opWaitSource) Name() string             { return s.name }
+func (s *opWaitSource) Position() mgl64.Vec3     { return s.pos }
+func (*opWaitSource) PermissionLevel() cmd.Level { return cmd.LevelOwner }
 
 func (s *opWaitSource) SendCommandOutput(o *cmd.Output) {
 	s.mu.Lock()

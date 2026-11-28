@@ -386,6 +386,7 @@ func (c idleTimeoutCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	c.srv.SetIdleTimeout(c.Minutes)
 	o.Printf("Set the idle timeout to %d minutes.", c.Minutes)
 }
+
 type transferResult struct {
 	ok  bool
 	err error
