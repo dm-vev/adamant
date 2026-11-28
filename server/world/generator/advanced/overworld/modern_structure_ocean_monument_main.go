@@ -68,50 +68,8 @@ func (p modernOceanMonumentPiece) modernMonumentMainBlocks(clip structure.Bounds
 	if err := waterBox(0, 0, 0, 58, 25, 58); err != nil {
 		return nil, err
 	}
-	generateWing := func(xoff int32, flipped bool) {
-		if !chunkIntersects(xoff, 0, xoff+23, 20) {
-			return
-		}
-		box(xoff, 0, 0, xoff+24, 0, 20, "minecraft:prismarine")
-		_ = waterBox(xoff, 1, 0, xoff+24, 10, 20)
-		for i := range int32(4) {
-			box(xoff+i, i+1, i, xoff+i, i+1, 20, "minecraft:prismarine_bricks")
-			box(xoff+i+7, i+5, i+7, xoff+i+7, i+5, 20, "minecraft:prismarine_bricks")
-			box(xoff+17-i, i+5, i+7, xoff+17-i, i+5, 20, "minecraft:prismarine_bricks")
-			box(xoff+24-i, i+1, i, xoff+24-i, i+1, 20, "minecraft:prismarine_bricks")
-			box(xoff+i+1, i+1, i, xoff+23-i, i+1, i, "minecraft:prismarine_bricks")
-			box(xoff+i+8, i+5, i+7, xoff+16-i, i+5, i+7, "minecraft:prismarine_bricks")
-		}
-		box(xoff+4, 4, 4, xoff+6, 4, 20, "minecraft:prismarine")
-		box(xoff+7, 4, 4, xoff+17, 4, 6, "minecraft:prismarine")
-		box(xoff+18, 4, 4, xoff+20, 4, 20, "minecraft:prismarine")
-		box(xoff+11, 8, 11, xoff+13, 8, 20, "minecraft:prismarine")
-		for _, z := range []int32{12, 15, 18} {
-			put(xoff+12, 9, z, "minecraft:prismarine_bricks")
-		}
-		leftPos, rightPos := xoff+5, xoff+19
-		if flipped {
-			leftPos, rightPos = xoff+19, xoff+5
-		}
-		for z := int32(20); z >= 5; z -= 3 {
-			put(leftPos, 5, z, "minecraft:prismarine_bricks")
-		}
-		for z := int32(19); z >= 7; z -= 3 {
-			put(rightPos, 5, z, "minecraft:prismarine_bricks")
-		}
-		for i := range int32(4) {
-			pos := xoff + 17 - i*3
-			if flipped {
-				pos = xoff + 24 - (17 - i*3)
-			}
-			put(pos, 5, 5, "minecraft:prismarine_bricks")
-		}
-		put(rightPos, 5, 5, "minecraft:prismarine_bricks")
-		box(xoff+11, 1, 12, xoff+13, 7, 12, "minecraft:prismarine")
-		box(xoff+12, 1, 11, xoff+12, 7, 13, "minecraft:prismarine")
-	}
-	generateWing(0, false)
-	generateWing(33, true)
+	generateModernMonumentWing(0, false, chunkIntersects, put, box, waterBox)
+	generateModernMonumentWing(33, true, chunkIntersects, put, box, waterBox)
 
 	if chunkIntersects(22, 5, 35, 17) {
 		_ = waterBox(25, 0, 0, 32, 8, 20)
@@ -380,4 +338,54 @@ func (p modernOceanMonumentPiece) modernMonumentMainBlocks(clip structure.Bounds
 		_ = waterBox(-i, i*2, 58+i, 57+i, 23, 58+i)
 	}
 	return blocks, nil
+}
+
+func generateModernMonumentWing(
+	xoff int32,
+	flipped bool,
+	chunkIntersects func(x0, z0, x1, z1 int32) bool,
+	put func(x, y, z int32, name string),
+	box func(x0, y0, z0, x1, y1, z1 int32, name string),
+	waterBox func(x0, y0, z0, x1, y1, z1 int32) error,
+) {
+	if !chunkIntersects(xoff, 0, xoff+23, 20) {
+		return
+	}
+	box(xoff, 0, 0, xoff+24, 0, 20, "minecraft:prismarine")
+	_ = waterBox(xoff, 1, 0, xoff+24, 10, 20)
+	for i := range int32(4) {
+		box(xoff+i, i+1, i, xoff+i, i+1, 20, "minecraft:prismarine_bricks")
+		box(xoff+i+7, i+5, i+7, xoff+i+7, i+5, 20, "minecraft:prismarine_bricks")
+		box(xoff+17-i, i+5, i+7, xoff+17-i, i+5, 20, "minecraft:prismarine_bricks")
+		box(xoff+24-i, i+1, i, xoff+24-i, i+1, 20, "minecraft:prismarine_bricks")
+		box(xoff+i+1, i+1, i, xoff+23-i, i+1, i, "minecraft:prismarine_bricks")
+		box(xoff+i+8, i+5, i+7, xoff+16-i, i+5, i+7, "minecraft:prismarine_bricks")
+	}
+	box(xoff+4, 4, 4, xoff+6, 4, 20, "minecraft:prismarine")
+	box(xoff+7, 4, 4, xoff+17, 4, 6, "minecraft:prismarine")
+	box(xoff+18, 4, 4, xoff+20, 4, 20, "minecraft:prismarine")
+	box(xoff+11, 8, 11, xoff+13, 8, 20, "minecraft:prismarine")
+	for _, z := range []int32{12, 15, 18} {
+		put(xoff+12, 9, z, "minecraft:prismarine_bricks")
+	}
+	leftPos, rightPos := xoff+5, xoff+19
+	if flipped {
+		leftPos, rightPos = xoff+19, xoff+5
+	}
+	for z := int32(20); z >= 5; z -= 3 {
+		put(leftPos, 5, z, "minecraft:prismarine_bricks")
+	}
+	for z := int32(19); z >= 7; z -= 3 {
+		put(rightPos, 5, z, "minecraft:prismarine_bricks")
+	}
+	for i := range int32(4) {
+		pos := xoff + 17 - i*3
+		if flipped {
+			pos = xoff + 24 - (17 - i*3)
+		}
+		put(pos, 5, 5, "minecraft:prismarine_bricks")
+	}
+	put(rightPos, 5, 5, "minecraft:prismarine_bricks")
+	box(xoff+11, 1, 12, xoff+13, 7, 12, "minecraft:prismarine")
+	box(xoff+12, 1, 11, xoff+12, 7, 13, "minecraft:prismarine")
 }

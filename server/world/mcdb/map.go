@@ -398,70 +398,79 @@ func mapDataFromNBT(root map[string]any, id int64) (world.MapData, error) {
 		NativeColors: append([]byte(nil), colors...), NativeNBT: cloneCompound(root),
 	}
 	if rawDecorations, exists := root["decorations"]; exists {
-		decorations, ok := rawDecorations.([]any)
-		if !ok {
-			return world.MapData{}, fmt.Errorf("invalid native decorations tag: got %T, want list", rawDecorations)
+		decs, err := decodeMapDecorations(rawDecorations)
+		if err != nil {
+			return world.MapData{}, err
 		}
-		data.Decorations = make([]world.MapDecoration, 0, len(decorations))
-		for _, raw := range decorations {
-			d, ok := raw.(map[string]any)
-			if !ok {
-				return world.MapData{}, fmt.Errorf("invalid native decoration element %T", raw)
-			}
-			details, ok := d["data"].(map[string]any)
-			if !ok {
-				return world.MapData{}, fmt.Errorf("invalid native decoration data compound: got %T", d["data"])
-			}
-			rot, ok := details["rot"].(int32)
-			if !ok {
-				return world.MapData{}, fmt.Errorf("invalid native decoration rot tag: got %T", details["rot"])
-			}
-			typ, ok := details["type"].(int32)
-			if !ok {
-				return world.MapData{}, fmt.Errorf("invalid native decoration type tag: got %T", details["type"])
-			}
-			dx, ok := details["x"].(int32)
-			if !ok {
-				return world.MapData{}, fmt.Errorf("invalid native decoration x tag: got %T", details["x"])
-			}
-			dy, ok := details["y"].(int32)
-			if !ok {
-				return world.MapData{}, fmt.Errorf("invalid native decoration y tag: got %T", details["y"])
-			}
-			if rot < 0 || rot > 255 || typ < 0 || typ > 255 {
-				return world.MapData{}, fmt.Errorf("native decoration type/rotation outside byte range: %d/%d", typ, rot)
-			}
-			if dx < -128 || dx > 127 || dy < -128 || dy > 127 {
-				return world.MapData{}, fmt.Errorf("native decoration position outside signed byte range: %d/%d", dx, dy)
-			}
-			key, ok := d["key"].(map[string]any)
-			if !ok {
-				return world.MapData{}, fmt.Errorf("invalid native decoration key compound: got %T", d["key"])
-			}
-			blockX, ok := key["blockX"].(int32)
-			if !ok {
-				return world.MapData{}, fmt.Errorf("invalid native decoration blockX tag: got %T", key["blockX"])
-			}
-			blockY, ok := key["blockY"].(int32)
-			if !ok {
-				return world.MapData{}, fmt.Errorf("invalid native decoration blockY tag: got %T", key["blockY"])
-			}
-			blockZ, ok := key["blockZ"].(int32)
-			if !ok {
-				return world.MapData{}, fmt.Errorf("invalid native decoration blockZ tag: got %T", key["blockZ"])
-			}
-			keyType, ok := key["type"].(int32)
-			if !ok {
-				return world.MapData{}, fmt.Errorf("invalid native decoration key type tag: got %T", key["type"])
-			}
-			data.Decorations = append(data.Decorations, world.MapDecoration{
-				Type: byte(typ), Rotation: byte(rot), X: int8(dx), Z: int8(dy),
-				BlockX: blockX, BlockY: blockY, BlockZ: blockZ, KeyType: keyType,
-				NativeNBT: cloneCompound(d),
-			})
-		}
+		data.Decorations = decs
 	}
 	return data, nil
+}
+
+func decodeMapDecorations(rawDecorations any) ([]world.MapDecoration, error) {
+	decorations, ok := rawDecorations.([]any)
+	if !ok {
+		return nil, fmt.Errorf("invalid native decorations tag: got %T, want list", rawDecorations)
+	}
+	out := make([]world.MapDecoration, 0, len(decorations))
+	for _, raw := range decorations {
+		d, ok := raw.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("invalid native decoration element %T", raw)
+		}
+		details, ok := d["data"].(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("invalid native decoration data compound: got %T", d["data"])
+		}
+		rot, ok := details["rot"].(int32)
+		if !ok {
+			return nil, fmt.Errorf("invalid native decoration rot tag: got %T", details["rot"])
+		}
+		typ, ok := details["type"].(int32)
+		if !ok {
+			return nil, fmt.Errorf("invalid native decoration type tag: got %T", details["type"])
+		}
+		dx, ok := details["x"].(int32)
+		if !ok {
+			return nil, fmt.Errorf("invalid native decoration x tag: got %T", details["x"])
+		}
+		dy, ok := details["y"].(int32)
+		if !ok {
+			return nil, fmt.Errorf("invalid native decoration y tag: got %T", details["y"])
+		}
+		if rot < 0 || rot > 255 || typ < 0 || typ > 255 {
+			return nil, fmt.Errorf("native decoration type/rotation outside byte range: %d/%d", typ, rot)
+		}
+		if dx < -128 || dx > 127 || dy < -128 || dy > 127 {
+			return nil, fmt.Errorf("native decoration position outside signed byte range: %d/%d", dx, dy)
+		}
+		key, ok := d["key"].(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("invalid native decoration key compound: got %T", d["key"])
+		}
+		blockX, ok := key["blockX"].(int32)
+		if !ok {
+			return nil, fmt.Errorf("invalid native decoration blockX tag: got %T", key["blockX"])
+		}
+		blockY, ok := key["blockY"].(int32)
+		if !ok {
+			return nil, fmt.Errorf("invalid native decoration blockY tag: got %T", key["blockY"])
+		}
+		blockZ, ok := key["blockZ"].(int32)
+		if !ok {
+			return nil, fmt.Errorf("invalid native decoration blockZ tag: got %T", key["blockZ"])
+		}
+		keyType, ok := key["type"].(int32)
+		if !ok {
+			return nil, fmt.Errorf("invalid native decoration key type tag: got %T", key["type"])
+		}
+		out = append(out, world.MapDecoration{
+			Type: byte(typ), Rotation: byte(rot), X: int8(dx), Z: int8(dy),
+			BlockX: blockX, BlockY: blockY, BlockZ: blockZ, KeyType: keyType,
+			NativeNBT: cloneCompound(d),
+		})
+	}
+	return out, nil
 }
 
 func mapDataToNBT(root map[string]any, data world.MapData) error {

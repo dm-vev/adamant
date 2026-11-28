@@ -84,12 +84,10 @@ server/world/generator/advanced/overworld/modern_structure_mineshaft.go minePiec
 server/world/generator/advanced/overworld/modern_structure_ocean_monument.go buildModernMonumentRoomGraph 132 port
 server/world/generator/advanced/overworld/modern_structure_ocean_monument.go modernOceanMonumentPiece.Place 103 port
 server/world/generator/advanced/overworld/modern_structure_ocean_monument_main.go modernOceanMonumentPiece.modernMonumentMainBlocks 363 port
-server/world/generator/advanced/overworld/modern_structure_ocean_monument_rooms.go emitModernMonumentChild 173 port
 server/world/generator/advanced/overworld/modern_structure_ocean_ruin.go buildModernOceanRuin 102 port
 server/world/generator/advanced/overworld/modern_structure_pyramid.go modernDesertPyramid.Place 344 port
 server/world/generator/advanced/overworld/modern_structure_stronghold.go strongholdPiece.Place 428 port
 server/world/generator/advanced/overworld/modern_surface.go modernSurface.Apply 113 port
-server/world/mcdb/map.go mapDataFromNBT 107
 server/world/portal/nether.go CreateNetherPortal 174
 server/world/raid.go Tx.tickRaids 103
 server/world/redstone_circuit.go redstoneEngine.tickCircuits 159
