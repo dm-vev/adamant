@@ -3454,6 +3454,7 @@ server/client/clienttest.Recorder	server/player/hud.Renderer	*
 server/client/clienttest.Recorder	server/player/input.Restricter	*
 server/client/clienttest.Recorder	server/world.Viewer	*
 server/client/clienttest.Recorder	server/world.viewLayerViewer	*
+server/cmd.BlockSource	server/cmd.Deferrer	*
 server/cmd.BlockSource	server/cmd.Leveled	*
 server/cmd.BlockSource	server/cmd.NamedTarget	*
 server/cmd.BlockSource	server/cmd.Source	*

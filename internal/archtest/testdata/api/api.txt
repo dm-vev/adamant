@@ -6364,11 +6364,16 @@ server/cmd	func	ExecuteLine	func(source server/cmd.Source, commandLine string, t
 server/cmd	func	ExecutionContextOf	func(src server/cmd.Source) (server/cmd.ExecutionContext, bool)
 server/cmd	func	ForEach	func[R any](src server/cmd.Source, o *server/cmd.Output, tx *server/world.Tx, sel server/cmd.Selector, each func(tx *server/world.Tx, t server/cmd.Target) R, then func(src server/cmd.Source, o *server/cmd.Output, tx *server/world.Tx, results []server/cmd.Result[R]))
 server/cmd	func	HasLevel	func(id github.com/google/uuid.UUID, l server/cmd.Level) bool
+server/cmd	func	InWorld	func(src server/cmd.Source, o *server/cmd.Output, tx *server/world.Tx, target *server/world.World, fn func(src server/cmd.Source, o *server/cmd.Output, tx *server/world.Tx))
 server/cmd	func	IsOperator	func(id github.com/google/uuid.UUID) bool
 server/cmd	func	Later	func(src server/cmd.Source) func(tx *server/world.Tx, o *server/cmd.Output)
 server/cmd	func	New	func(name string, description string, aliases []string, r ...server/cmd.Runnable) server/cmd.Command
 server/cmd	func	NewBlockSource	func(pos server/block/cube.Pos, w *server/world.World, name string) *server/cmd.BlockSource
+server/cmd	func	ParseEntities	func(text string, src server/cmd.Source) (server/cmd.Entities, error)
 server/cmd	func	ParseNumber	func(s string, bitSize int) (float64, error)
+server/cmd	func	ParseOneEntity	func(text string, src server/cmd.Source) (server/cmd.OneEntity, error)
+server/cmd	func	ParseOnePlayer	func(text string, src server/cmd.Source) (server/cmd.OnePlayer, error)
+server/cmd	func	ParsePlayers	func(text string, src server/cmd.Source) (server/cmd.Players, error)
 server/cmd	func	PlayerLevel	func(id github.com/google/uuid.UUID) server/cmd.Level
 server/cmd	func	Register	func(command server/cmd.Command)
 server/cmd	func	RequiredLevel	func(c server/cmd.Command, r server/cmd.Runnable) server/cmd.Level
@@ -6385,7 +6390,10 @@ server/cmd	func	SourceLevel	func(src server/cmd.Source) server/cmd.Level
 server/cmd	func	TallyOf	func(results []server/cmd.Result[int]) server/cmd.Tally
 server/cmd	func	WithContext	func(src server/cmd.Source, context server/cmd.ExecutionContext) server/cmd.ContextSource
 server/cmd	method	BlockSource.BlockPosition	func() server/block/cube.Pos
+server/cmd	method	BlockSource.Defer	func() func()
+server/cmd	method	BlockSource.Deferred	func() bool
 server/cmd	method	BlockSource.Name	func() string
+server/cmd	method	BlockSource.OnDeferred	func(fn func(o *server/cmd.Output, text string))
 server/cmd	method	BlockSource.Output	func() *server/cmd.Output
 server/cmd	method	BlockSource.PermissionLevel	func() server/cmd.Level
 server/cmd	method	BlockSource.Position	func() github.com/go-gl/mathgl/mgl64.Vec3
@@ -6406,6 +6414,7 @@ server/cmd	method	ContextSource.CommandExecutionContext	func() server/cmd.Execut
 server/cmd	method	ContextSource.Position	func() github.com/go-gl/mathgl/mgl64.Vec3
 server/cmd	method	ContextSource.SendCommandOutput	func(o *server/cmd.Output)
 server/cmd	method	ContextSource.Unwrap	func() server/cmd.Source
+server/cmd	method	ExecutionContext.EntityHandle	func() *server/world.EntityHandle
 server/cmd	method	Level.String	func() string
 server/cmd	method	Line.Leftover	func() []string
 server/cmd	method	Line.Len	func() int
@@ -6434,7 +6443,7 @@ server/cmd	method	Output.WithoutMessages	func() *server/cmd.Output
 server/cmd	method	Tally.Feedback	func(o *server/cmd.Output, failed error, single func(who string) string, multiple func(who string) string)
 server/cmd	type	Allower	interface{Allow(src server/cmd.Source) bool}
 server/cmd	type	Anchor	uint8
-server/cmd	type	BlockSource	struct{pos server/block/cube.Pos; world *server/world.World; name string; output *server/cmd.Output}
+server/cmd	type	BlockSource	struct{pos server/block/cube.Pos; world *server/world.World; name string; mu sync.Mutex; output *server/cmd.Output; deferred bool; pending int; onDeferred func(o *server/cmd.Output, text string)}
 server/cmd	type	Command	struct{v []reflect.Value; name string; description string; descriptionTranslation server/player/chat.Translation; usage string; aliases []string}
 server/cmd	type	ConstrainedEnum	interface{Constraints(option string) []server/cmd.EnumConstraint; server/cmd.Enum}
 server/cmd	type	ContextSource	struct{server/cmd.Source; Context server/cmd.ExecutionContext}
@@ -6444,7 +6453,7 @@ server/cmd	type	Entities	struct{sel *server/cmd.entitySelector}
 server/cmd	type	Enum	interface{Options(source server/cmd.Source) []string; Type() string}
 server/cmd	type	EnumConstraint	uint8
 server/cmd	type	Execution	struct{Source server/cmd.Source; Command server/cmd.Command; Args string; Output *server/cmd.Output; Level server/cmd.Level; Denied bool}
-server/cmd	type	ExecutionContext	struct{Executor server/world.Entity; Position github.com/go-gl/mathgl/mgl64.Vec3; Rotation server/block/cube.Rotation; World *server/world.World; Anchor server/cmd.Anchor}
+server/cmd	type	ExecutionContext	struct{Executor server/world.Entity; ExecutorHandle *server/world.EntityHandle; Position github.com/go-gl/mathgl/mgl64.Vec3; Rotation server/block/cube.Rotation; World *server/world.World; Anchor server/cmd.Anchor}
 server/cmd	type	Level	uint8
 server/cmd	type	Leveled	interface{PermissionLevel() server/cmd.Level}
 server/cmd	type	Line	struct{args []string; seen []string; src server/cmd.Source; cmd server/cmd.Command}
